@@ -1,5 +1,18 @@
 create extension if not exists pgcrypto with schema extensions;
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'builder-assets',
+  'builder-assets',
+  true,
+  8388608,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
 create table if not exists public.kpi_metrics (
   id text primary key,
   label text not null,
@@ -156,6 +169,10 @@ drop policy if exists "Authenticated users can manage layout_schemas" on public.
 drop policy if exists "Authenticated users can read subscription_orders" on public.subscription_orders;
 drop policy if exists "Public users can create subscription_orders" on public.subscription_orders;
 drop policy if exists "Authenticated users can update subscription_orders" on public.subscription_orders;
+drop policy if exists "Authenticated users can upload builder assets" on storage.objects;
+drop policy if exists "Authenticated users can update builder assets" on storage.objects;
+drop policy if exists "Authenticated users can delete builder assets" on storage.objects;
+drop policy if exists "Public users can read builder assets" on storage.objects;
 
 create policy "Authenticated users can manage kpi_metrics"
   on public.kpi_metrics for all to authenticated
@@ -197,6 +214,20 @@ create policy "Public users can create subscription_orders"
 create policy "Authenticated users can update subscription_orders"
   on public.subscription_orders for update to authenticated
   using (true) with check (true);
+
+create policy "Public users can read builder assets"
+  on storage.objects for select to public
+  using (bucket_id = 'builder-assets');
+create policy "Authenticated users can upload builder assets"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'builder-assets');
+create policy "Authenticated users can update builder assets"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'builder-assets')
+  with check (bucket_id = 'builder-assets');
+create policy "Authenticated users can delete builder assets"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'builder-assets');
 
 grant select, insert, update, delete on public.kpi_metrics to authenticated;
 grant select, insert, update, delete on public.chart_points to authenticated;

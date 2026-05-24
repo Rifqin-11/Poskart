@@ -3,7 +3,7 @@ import type { ChartPoint, KpiMetric } from "@/types/analytics";
 import type { Booth } from "@/types/booth";
 import type { LayoutSchema } from "@/types/builder";
 import type { PricingProduct } from "@/types/pricing";
-import type { Template } from "@/types/template";
+import type { Template, TemplateFormValues } from "@/types/template";
 import type { Tenant } from "@/types/tenant";
 import type { ThemePreset, ThemeSchema } from "@/types/theme";
 import type { Transaction } from "@/types/transaction";
@@ -31,6 +31,11 @@ type BoothRow = Omit<Booth, "appVersion" | "lastSync" | "pricingProfile"> & {
 type TemplateRow = Omit<Template, "assignedBooths" | "updatedAt"> & {
   assigned_booths: number;
   updated_at_label: string;
+  tagline: string | null;
+  photo_count: number;
+  accent_color: string;
+  frame_image_url: string | null;
+  is_default: boolean;
 };
 
 type PricingProductRow = Omit<PricingProduct, "promoPrice" | "printLimit" | "qrisDownload" | "gifEnabled"> & {
@@ -119,6 +124,11 @@ const mapTemplate = (row: TemplateRow): Template => ({
   status: row.status,
   assignedBooths: row.assigned_booths,
   updatedAt: row.updated_at_label,
+  tagline: row.tagline ?? undefined,
+  photoCount: row.photo_count ?? 4,
+  accentColor: row.accent_color ?? "#C4121A",
+  frameImageUrl: row.frame_image_url ?? undefined,
+  isDefault: row.is_default ?? false,
 });
 
 const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({
@@ -192,10 +202,58 @@ async function getTemplates(): Promise<Template[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("templates")
-    .select("id,name,category,status,assigned_booths,updated_at_label")
+    .select("id,name,category,status,assigned_booths,updated_at_label,tagline,photo_count,accent_color,frame_image_url,is_default")
     .order("updated_at", { ascending: false });
 
   return assertSupabaseResult(data as TemplateRow[] | null, error, "Unable to load templates").map(mapTemplate);
+}
+
+async function createTemplate(values: TemplateFormValues): Promise<void> {
+  const supabase = createClient();
+  const now = new Date().toISOString();
+  const id = `TPL-${Date.now()}`;
+  const { error } = await supabase.from("templates").insert({
+    id,
+    name: values.name,
+    category: values.category,
+    status: values.status,
+    assigned_booths: 0,
+    updated_at_label: "just now",
+    tagline: values.tagline || null,
+    photo_count: values.photoCount,
+    accent_color: values.accentColor,
+    frame_image_url: values.frameImageUrl || null,
+    is_default: values.isDefault,
+    updated_at: now,
+  });
+
+  if (error) throw new Error(`Unable to create template: ${error.message}`);
+}
+
+async function updateTemplate(
+  id: string,
+  values: Partial<TemplateFormValues>,
+): Promise<void> {
+  const supabase = createClient();
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString(), updated_at_label: "just now" };
+
+  if (values.name !== undefined) patch.name = values.name;
+  if (values.category !== undefined) patch.category = values.category;
+  if (values.status !== undefined) patch.status = values.status;
+  if (values.tagline !== undefined) patch.tagline = values.tagline || null;
+  if (values.photoCount !== undefined) patch.photo_count = values.photoCount;
+  if (values.accentColor !== undefined) patch.accent_color = values.accentColor;
+  if (values.frameImageUrl !== undefined) patch.frame_image_url = values.frameImageUrl || null;
+  if (values.isDefault !== undefined) patch.is_default = values.isDefault;
+
+  const { error } = await supabase.from("templates").update(patch).eq("id", id);
+  if (error) throw new Error(`Unable to update template: ${error.message}`);
+}
+
+async function deleteTemplate(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("templates").delete().eq("id", id);
+  if (error) throw new Error(`Unable to delete template: ${error.message}`);
 }
 
 async function getPricingProducts(): Promise<PricingProduct[]> {
@@ -300,6 +358,9 @@ export const adminService = {
   transactions: getTransactions,
   booths: getBooths,
   templates: getTemplates,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
   pricing: getPricingProducts,
   tenants: getTenants,
   themes: getThemes,

@@ -1,4 +1,4 @@
-export type BuilderPage = "landing" | "camera" | "preview" | "thanks";
+export type BuilderPage = "landing" | "payment" | "camera" | "preview" | "thanks";
 
 export type BuilderComponentType =
   | "text"
@@ -6,6 +6,8 @@ export type BuilderComponentType =
   | "button"
   | "stamp"
   | "qr"
+  | "qr-placeholder"
+  | "camera-view"
   | "receipt-preview"
   | "frame-preview"
   | "social-handle"
@@ -27,8 +29,21 @@ export type BuilderNode = {
   props: Record<string, unknown>;
 };
 
+export type BuilderCanvas = {
+  width: number;
+  height: number;
+  orientation: "portrait" | "landscape";
+  backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundVideo?: string;
+  /** Per-page background images/videos — keyed by BuilderPage */
+  pageBackgrounds?: Partial<Record<BuilderPage, { image?: string; video?: string }>>;
+  /** If true, nodes render as colored hotspot overlays instead of real UI components */
+  overlayMode?: boolean;
+};
+
 export type LayoutSchema = {
   version: 1;
-  canvas: { width: number; height: number; orientation: "portrait" | "landscape" };
+  canvas: BuilderCanvas;
   pages: Record<BuilderPage, BuilderNode[]>;
 };

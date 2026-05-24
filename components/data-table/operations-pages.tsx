@@ -11,14 +11,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, useEffect, useState } from "react";
 import {
   BadgeCheck,
   Battery,
   Boxes,
+  Check,
   CloudUpload,
   CreditCard,
   Download,
+  Edit2,
   Folder,
   MoreHorizontal,
   Power,
@@ -26,7 +28,9 @@ import {
   RotateCcw,
   ShieldCheck,
   SlidersHorizontal,
+  Star,
   Store,
+  Trash2,
   Users,
   Wrench,
 } from "lucide-react";
@@ -38,19 +42,27 @@ import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TemplateFormSheet } from "@/components/templates/template-form-sheet";
 import {
+  useAppConfig,
   useAssets,
   useBooths,
+  useCreateTemplate,
+  useDeleteTemplate,
   useDashboardData,
   usePricing,
+  useSaveAppConfig,
   useTemplates,
   useTenants,
   useTransactions,
+  useUpdateTemplate,
 } from "@/hooks/use-admin-data";
 import { formatCurrency } from "@/lib/utils";
+import type { Template, TemplateFormValues } from "@/types/template";
 
 function useClientMounted() {
   return useSyncExternalStore(
@@ -82,35 +94,159 @@ function PageHeader({
 
 export function TemplateManagement() {
   const { data = [] } = useTemplates();
+  const createTemplate = useCreateTemplate();
+  const updateTemplate = useUpdateTemplate();
+  const deleteTemplate = useDeleteTemplate();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editing, setEditing] = useState<Template | null>(null);
+
+  const openAdd = () => { setEditing(null); setSheetOpen(true); };
+  const openEdit = (t: Template) => { setEditing(t); setSheetOpen(true); };
+  const closeSheet = () => { setSheetOpen(false); setEditing(null); };
+
+  const handleSave = async (values: TemplateFormValues) => {
+    if (editing) {
+      await updateTemplate.mutateAsync({ id: editing.id, patch: values });
+      toast.success("Template updated");
+    } else {
+      await createTemplate.mutateAsync(values);
+      toast.success("Template created");
+    }
+  };
+
+  const handleDelete = (t: Template) => {
+    if (!confirm(`Delete "${t.name}"? This cannot be undone.`)) return;
+    deleteTemplate.mutate(t.id, {
+      onSuccess: () => toast.success("Template deleted"),
+      onError: (err) => toast.error(err instanceof Error ? err.message : "Delete failed"),
+    });
+  };
+
+  const handleSetDefault = (t: Template) => {
+    updateTemplate.mutate(
+      { id: t.id, patch: { isDefault: true } },
+      {
+        onSuccess: () => toast.success(`"${t.name}" set as default template`),
+        onError: (err) => toast.error(err instanceof Error ? err.message : "Failed"),
+      },
+    );
+  };
 
   return (
     <div>
       <PageHeader
         title="Template Management"
-        description="Manage receipt, frame, postcard, seasonal, and event templates."
-        action={<Button><CloudUpload className="size-4" /> Upload template</Button>}
+        description="Frame templates for the Flutter photobooth picker screen."
+        action={
+          <Button onClick={openAdd}>
+            <CloudUpload className="size-4" /> Add template
+          </Button>
+        }
       />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {data.map((template) => (
-          <Card key={template.id}>
-            <CardHeader>
-              <div className="mb-3 flex h-40 items-center justify-center rounded-md bg-zinc-100">
-                <Boxes className="size-10 text-zinc-400" />
+
+      <TemplateFormSheet
+        open={sheetOpen}
+        template={editing}
+        onClose={closeSheet}
+        onSave={handleSave}
+      />
+
+      {data.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <Boxes className="mb-4 size-10 text-zinc-300" />
+            <div className="text-sm font-medium text-zinc-500">No templates yet</div>
+            <div className="mt-1 text-xs text-zinc-400">Create your first frame template for the Flutter app.</div>
+            <Button className="mt-4" onClick={openAdd}>Add template</Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {data.map((template) => (
+            <Card key={template.id} className="group relative overflow-hidden">
+              {/* Frame image or placeholder */}
+              <div
+                className="relative flex h-40 items-center justify-center overflow-hidden"
+                style={{ background: `${template.accentColor}18` }}
+              >
+                {template.frameImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={template.frameImageUrl}
+                    alt={template.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <Boxes className="size-10" style={{ color: template.accentColor }} />
+                )}
+                {template.isDefault && (
+                  <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-700 shadow">
+                    <Star className="size-2.5 fill-yellow-400 text-yellow-400" /> Default
+                  </span>
+                )}
+                {/* Action buttons on hover */}
+                <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <button
+                    onClick={() => openEdit(template)}
+                    className="rounded-md bg-white/90 p-1.5 shadow hover:bg-white"
+                    title="Edit"
+                  >
+                    <Edit2 className="size-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(template)}
+                    className="rounded-md bg-white/90 p-1.5 text-red-600 shadow hover:bg-white"
+                    title="Delete"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <CardTitle>{template.name}</CardTitle>
-                <Badge variant={template.status === "published" ? "success" : "secondary"}>{template.status}</Badge>
-              </div>
-              <CardDescription>{template.category} · {template.assignedBooths} booths</CardDescription>
-            </CardHeader>
-            <CardContent className="flex gap-2">
-              <Button variant="outline" size="sm">Preview</Button>
-              <Button variant="outline" size="sm">Duplicate</Button>
-              <Button size="sm">Assign</Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <CardTitle className="truncate text-sm">{template.name}</CardTitle>
+                    {template.tagline && (
+                      <CardDescription className="truncate text-xs">{template.tagline}</CardDescription>
+                    )}
+                  </div>
+                  <Badge variant={template.status === "published" ? "success" : "secondary"}>
+                    {template.status}
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardContent className="pt-0">
+                <div className="mb-3 flex items-center gap-3">
+                  <div
+                    className="size-4 shrink-0 rounded-full border border-zinc-200"
+                    style={{ background: template.accentColor }}
+                    title={template.accentColor}
+                  />
+                  <span className="text-xs text-zinc-500">{template.photoCount} photos</span>
+                  <span className="text-xs text-zinc-400">{template.category}</span>
+                </div>
+                <div className="flex gap-2">
+                  {!template.isDefault && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleSetDefault(template)}
+                    >
+                      <Check className="size-3.5" /> Set default
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(template)}>
+                    <Edit2 className="size-3.5" /> Edit
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -403,11 +539,52 @@ export function TenantManagement() {
 }
 
 export function SettingsPanel() {
+  const { data: config } = useAppConfig();
+  const saveConfig = useSaveAppConfig();
+  const { data: templates = [] } = useTemplates();
+
+  const [form, setForm] = useState({
+    merchant_name: "",
+    qris_payload_prefix: "",
+    share_base_url: "",
+    countdown_duration_seconds: 3,
+    flash_duration_ms: 220,
+    auto_return_duration_seconds: 8,
+    default_template_id: "",
+  });
+
+  // Populate form when config loads from Supabase
+  useEffect(() => {
+    if (config) {
+      setForm({
+        merchant_name: config.merchant_name,
+        qris_payload_prefix: config.qris_payload_prefix,
+        share_base_url: config.share_base_url,
+        countdown_duration_seconds: config.countdown_duration_seconds,
+        flash_duration_ms: config.flash_duration_ms,
+        auto_return_duration_seconds: config.auto_return_duration_seconds,
+        default_template_id: config.default_template_id ?? "",
+      });
+    }
+  }, [config]);
+
+  const handleSaveFlutterConfig = async () => {
+    try {
+      await saveConfig.mutateAsync({
+        ...form,
+        default_template_id: form.default_template_id || null,
+      });
+      toast.success("Flutter config saved to Supabase");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Save failed");
+    }
+  };
+
   return (
     <div>
       <PageHeader
         title="Settings & Configuration"
-        description="Global controls for QRIS, printer, timers, watermark, and maintenance mode."
+        description="Global controls for QRIS, printer, timers, watermark, and Flutter kiosk behavior."
         action={<Button><ShieldCheck className="size-4" /> Save settings</Button>}
       />
       <Tabs defaultValue="payment">
@@ -416,6 +593,7 @@ export function SettingsPanel() {
           <TabsTrigger value="booth">Booth</TabsTrigger>
           <TabsTrigger value="media">Media</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
+          <TabsTrigger value="flutter">Flutter Config</TabsTrigger>
         </TabsList>
         <TabsContent value="payment">
           <Card><CardHeader><CardTitle>QRIS provider</CardTitle><CardDescription>Sandbox-ready provider keys and callbacks.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><Input placeholder="Provider merchant ID" /><Input placeholder="Webhook secret" /><Switch checked /> <span className="text-sm">Auto retry failed QRIS payment</span></CardContent></Card>
@@ -428,6 +606,131 @@ export function SettingsPanel() {
         </TabsContent>
         <TabsContent value="system">
           <Card><CardHeader><CardTitle>Maintenance mode</CardTitle><CardDescription>Pause public kiosk sessions during maintenance.</CardDescription></CardHeader><CardContent className="flex items-center gap-3"><Wrench className="size-4" /><Switch /> <span className="text-sm">Maintenance mode disabled</span></CardContent></Card>
+        </TabsContent>
+
+        {/* Flutter Config tab — operational settings read by Flutter at startup */}
+        <TabsContent value="flutter" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Flutter Kiosk Config</CardTitle>
+                  <CardDescription>
+                    Settings read by the Flutter app at startup via{" "}
+                    <code className="rounded bg-zinc-100 px-1 text-xs">/api/flutter-config</code>.
+                  </CardDescription>
+                </div>
+                <Button onClick={handleSaveFlutterConfig} disabled={saveConfig.isPending}>
+                  {saveConfig.isPending ? "Saving…" : "Save to Supabase"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Merchant & URLs */}
+              <div className="space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Merchant & URLs</div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Merchant name
+                    <Input
+                      className="mt-1"
+                      placeholder="POSKART"
+                      value={form.merchant_name}
+                      onChange={(e) => setForm((f) => ({ ...f, merchant_name: e.target.value }))}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-zinc-600">
+                    QRIS payload prefix
+                    <Input
+                      className="mt-1"
+                      placeholder="qris://poskart/pay"
+                      value={form.qris_payload_prefix}
+                      onChange={(e) => setForm((f) => ({ ...f, qris_payload_prefix: e.target.value }))}
+                    />
+                  </label>
+                </div>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Share base URL
+                  <Input
+                    className="mt-1"
+                    placeholder="https://poskart.app/s"
+                    value={form.share_base_url}
+                    onChange={(e) => setForm((f) => ({ ...f, share_base_url: e.target.value }))}
+                  />
+                </label>
+              </div>
+
+              {/* Timers */}
+              <div className="space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Timers</div>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Countdown before photo: {form.countdown_duration_seconds}s
+                  <Slider
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={form.countdown_duration_seconds}
+                    onChange={(e) => setForm((f) => ({ ...f, countdown_duration_seconds: Number(e.target.value) }))}
+                  />
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Flash duration: {form.flash_duration_ms}ms
+                  <Slider
+                    min={50}
+                    max={1000}
+                    step={10}
+                    value={form.flash_duration_ms}
+                    onChange={(e) => setForm((f) => ({ ...f, flash_duration_ms: Number(e.target.value) }))}
+                  />
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Auto-return to landing: {form.auto_return_duration_seconds}s
+                  <Slider
+                    min={3}
+                    max={30}
+                    step={1}
+                    value={form.auto_return_duration_seconds}
+                    onChange={(e) => setForm((f) => ({ ...f, auto_return_duration_seconds: Number(e.target.value) }))}
+                  />
+                </label>
+              </div>
+
+              {/* Default template */}
+              <label className="block text-xs font-medium text-zinc-600">
+                Default template (pre-selected in Flutter picker)
+                <Select
+                  className="mt-1"
+                  value={form.default_template_id}
+                  onChange={(e) => setForm((f) => ({ ...f, default_template_id: e.target.value }))}
+                >
+                  <option value="">— None —</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </Select>
+              </label>
+
+              {/* Config preview */}
+              <div className="rounded-lg bg-zinc-950 p-4">
+                <div className="mb-2 text-xs font-medium text-zinc-400">Live config preview (from Supabase)</div>
+                <pre className="overflow-x-auto text-xs text-zinc-200">
+                  {JSON.stringify(
+                    {
+                      merchantName: form.merchant_name,
+                      qrisPayloadPrefix: form.qris_payload_prefix,
+                      shareBaseUrl: form.share_base_url,
+                      countdownDurationSeconds: form.countdown_duration_seconds,
+                      flashDurationMs: form.flash_duration_ms,
+                      autoReturnDurationSeconds: form.auto_return_duration_seconds,
+                      defaultTemplateId: form.default_template_id || null,
+                    },
+                    null,
+                    2,
+                  )}
+                </pre>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

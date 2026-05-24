@@ -127,7 +127,7 @@ insert into public.layout_schemas (id, name, status, schema) values
     'published',
     '{
       "version": 1,
-      "canvas": { "width": 512, "height": 720, "orientation": "portrait" },
+      "canvas": { "width": 512, "height": 720, "orientation": "portrait", "backgroundColor": "#ffffff" },
       "pages": {
         "landing": [
           {
