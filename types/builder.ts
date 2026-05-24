@@ -1,4 +1,4 @@
-export type BuilderPage = "landing" | "payment" | "camera" | "preview" | "thanks";
+export type BuilderPage = "landing" | "payment" | "template" | "camera" | "preview" | "thanks";
 
 export type BuilderComponentType =
   | "text"
@@ -8,10 +8,16 @@ export type BuilderComponentType =
   | "qr"
   | "qr-placeholder"
   | "camera-view"
+  | "photo-result"         // Captured photo result slot on camera page
+  | "countdown-overlay"   // Full-screen countdown (3-2-1) before shutter
+  | "flash-overlay"       // Full-screen white flash after shutter
   | "receipt-preview"
   | "frame-preview"
+  | "template-list"       // Grid of frame templates on the /template picker page
+  | "template-preview"    // Large single-template preview panel
   | "social-handle"
-  | "background-decoration";
+  | "background-decoration"
+  | "return-countdown";    // Spinning loader + auto-return text on thanks page
 
 export type BuilderNode = {
   id: string;
@@ -26,6 +32,8 @@ export type BuilderNode = {
   locked: boolean;
   visible: boolean;
   zIndex: number;
+  /** When true, resize preserves width/height ratio */
+  lockAspect?: boolean;
   props: Record<string, unknown>;
 };
 
@@ -40,6 +48,21 @@ export type BuilderCanvas = {
   pageBackgrounds?: Partial<Record<BuilderPage, { image?: string; video?: string }>>;
   /** If true, nodes render as colored hotspot overlays instead of real UI components */
   overlayMode?: boolean;
+  /** Pages omitted from this array will be hidden on the tablet app.
+   *  Undefined means all pages enabled. */
+  enabledPages?: BuilderPage[];
+  /** Payment dialog dimensions (as fraction of canvas).
+   *  Flutter: maxWidth 520, centered dialog.
+   *  On 1280x800: widthRatio=0.406 (520/1280), heightRatio=0.75 (~600/800) */
+  paymentModal?: {
+    widthRatio: number;
+    heightRatio: number;
+    borderRadius: number;
+    barrierColor?: string;
+    backgroundColor?: string;
+  };
+  /** User-imported custom fonts. Saved alongside theme so they can be re-injected on load. */
+  customFonts?: { name: string; url: string }[];
 };
 
 export type LayoutSchema = {

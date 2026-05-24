@@ -1,3 +1,5 @@
+import type { FrameLayout } from "./frame-template";
+
 export type Template = {
   id: string;
   name: string;
@@ -11,6 +13,8 @@ export type Template = {
   accentColor: string;
   frameImageUrl?: string;
   isDefault: boolean;
+  /** Full visual frame layout — designed in the Frame Builder */
+  frameLayout?: FrameLayout | null;
 };
 
 export type TemplateFormValues = {
@@ -22,4 +26,5 @@ export type TemplateFormValues = {
   accentColor: string;
   frameImageUrl: string;
   isDefault: boolean;
+  frameLayout?: FrameLayout | null;
 };
