@@ -48,8 +48,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <Link href="/dashboard" className="mb-6 flex items-center gap-3" onClick={onNavigate}>
-        <div className="grid size-9 place-items-center rounded-lg bg-zinc-950 text-white">
-          <Camera className="size-4" />
+        <div className="grid size-9 place-items-center overflow-hidden rounded-lg bg-zinc-950">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/Logo Poskart.png"
+            alt="POSKART Logo"
+            className="size-7 object-contain"
+          />
         </div>
         <div>
           <div className="text-sm font-semibold tracking-tight">POSKART</div>
@@ -133,7 +138,7 @@ export function AdminShell({
             <div className="ml-auto flex items-center gap-3">
               <div className="hidden text-right md:block">
                 <div className="text-xs text-zinc-500">Signed in as</div>
-                <div className="max-w-48 truncate text-sm font-medium">{userEmail ?? "POSKART Admin"}</div>
+                <div className="max-w-48 truncate text-sm font-medium">{userEmail ?? "POSKART Photobooth"}</div>
               </div>
               <Button variant="outline" size="sm">
                 Publish

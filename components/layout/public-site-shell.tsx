@@ -17,8 +17,13 @@ export function PublicHeader() {
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3">
-          <div className="grid size-9 place-items-center rounded-lg bg-zinc-950 text-white">
-            <Camera className="size-4" />
+          <div className="grid size-9 place-items-center overflow-hidden rounded-lg">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/Logo Poskart.png"
+              alt="POSKART Logo"
+              className="size-7 object-contain"
+            />
           </div>
           <div>
             <div className="text-sm font-semibold tracking-tight">{businessProfile.brandName}</div>
@@ -48,8 +53,13 @@ export function PublicFooter({ className }: { className?: string }) {
     <footer className={cn("border-t border-zinc-200 bg-white", className)}>
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_1.4fr] lg:px-8">
         <div className="flex items-center gap-3">
-          <div className="grid size-9 place-items-center rounded-lg bg-zinc-950 text-white">
-            <Camera className="size-4" />
+          <div className="grid size-9 place-items-center overflow-hidden rounded-lg">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/Logo Poskart.png"
+              alt="POSKART Logo"
+              className="size-7 object-contain"
+            />
           </div>
           <div>
             <div className="text-sm font-semibold">{businessProfile.brandName}</div>

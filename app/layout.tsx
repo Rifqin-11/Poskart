@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "POSKART Admin",
+  title: "POSKART Photobooth",
   description: "SaaS dashboard and visual builder for POSKART photobooth kiosks.",
 };
 
