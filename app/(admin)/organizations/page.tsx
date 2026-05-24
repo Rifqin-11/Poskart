@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { PricingManagement } from "@/components/data-table/operations-pages";
+import { TenantManagement } from "@/components/data-table/operations-pages";
 
-export default async function AdminPricingPage() {
+export default async function TenantsPage() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   const email = data.user?.email;
@@ -14,5 +14,5 @@ export default async function AdminPricingPage() {
     redirect("/dashboard");
   }
 
-  return <PricingManagement />;
+  return <TenantManagement />;
 }

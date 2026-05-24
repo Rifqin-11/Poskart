@@ -32,7 +32,7 @@ export async function signInAction(formData: FormData) {
     return encodedRedirect("error", "/login", error.message);
   }
 
-  return encodedRedirect("success", "/dashboard", "Signed in successfully.");
+  return encodedRedirect("success", "/onboarding", "Signed in successfully.");
 }
 
 export async function signUpAction(formData: FormData) {
@@ -65,7 +65,7 @@ export async function signUpAction(formData: FormData) {
       data: {
         full_name: fullName,
       },
-      emailRedirectTo: `${siteUrl}/auth/callback`,
+      emailRedirectTo: `${siteUrl}/auth/callback?next=/onboarding`,
     },
   });
 
@@ -92,7 +92,7 @@ export async function signInWithGoogleAction() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${siteUrl}/auth/callback?next=/dashboard`,
+      redirectTo: `${siteUrl}/auth/callback?next=/onboarding`,
     },
   });
 

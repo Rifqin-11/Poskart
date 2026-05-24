@@ -2,7 +2,7 @@ export type PrintStatus = "pending" | "printed" | "failed" | "reprinting";
 
 export type Transaction = {
   id: string;
-  booth: string;
+  device: string;
   location: string;
   customer: string;
   packageName: string;

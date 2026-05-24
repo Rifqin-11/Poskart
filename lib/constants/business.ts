@@ -3,9 +3,9 @@ export const businessProfile = {
   businessName: "POSKART Indonesia",
   legalName: "POSKART Indonesia",
   description:
-    "POSKART adalah SaaS dashboard dan visual builder untuk mengelola photobooth kiosk, template, QRIS transaction monitoring, booth devices, pricing, media assets, tenant, dan analytics.",
-  email: "rifqinaufal9009@gmail.com",
-  salesEmail: "rifqinaufal9009@gmail.com",
+    "POSKART adalah SaaS dashboard dan visual builder untuk mengelola photobooth kiosk, template, QRIS transaction monitoring, device devices, pricing, media assets, organization, dan analytics.",
+  email: "support@poskart.my.id",
+  salesEmail: "sales@poskart.my.id",
   phone: "+62 82219262377",
   whatsapp: "+62 82219262377",
   whatsappUrl: "https://wa.me/6282219262377",
@@ -15,36 +15,46 @@ export const businessProfile = {
   taxNote:
     "Harga belum termasuk pajak yang berlaku, kecuali dinyatakan lain pada invoice atau kontrak.",
   billingNote:
-    "Subscription POSKART tersedia dalam pilihan 1 bulan, 3 bulan, dan 1 tahun. Paket 1 bulan ditagihkan Rp 50K, paket 3 bulan Rp 140K, dan paket 1 tahun Rp 500K.",
+    "Subscription POSKART tersedia dalam pilihan 1 bulan, 3 bulan, 6 bulan, dan 1 tahun untuk 1 device. Device tambahan ditagihkan Rp 50K per device per bulan.",
   purchaseFlow:
     "Untuk berlangganan, pelanggan dapat memilih paket, lanjut ke halaman checkout, lalu menyelesaikan pembayaran melalui payment link resmi setelah payment gateway production aktif.",
 };
 
+export const ADDITIONAL_DEVICE_PRICE_MONTHLY = 50000;
+export const INCLUDED_SUBSCRIPTION_DEVICES = 1;
+
 export const pricingPlans = [
   {
     id: "monthly",
-    name: "Monthly",
+    name: "1 Month",
     price: "Rp 50K",
     amount: 50000,
+    durationMonths: 1,
+    includedDevices: INCLUDED_SUBSCRIPTION_DEVICES,
+    additionalDevicePriceMonthly: ADDITIONAL_DEVICE_PRICE_MONTHLY,
     period: "/month",
     duration: "1 month access",
     description: "For operators who want to start POSKART with flexible monthly billing.",
-    cta: "Subscribe Monthly",
+    cta: "Subscribe 1 Month",
     highlighted: false,
     features: [
       "POSKART dashboard",
       "Visual layout builder",
       "Theme and template CMS",
       "QRIS transaction monitoring",
-      "Booth and media management",
+      "1 device included",
+      "Additional device Rp 50K/device/month",
     ],
-    limits: ["1 month access", "Monthly renewal", "Suitable for trial operations"],
+    limits: ["1 month access", "1 device included", "Flexible renewal"],
   },
   {
     id: "quarterly",
     name: "3 Months",
     price: "Rp 140K",
     amount: 140000,
+    durationMonths: 3,
+    includedDevices: INCLUDED_SUBSCRIPTION_DEVICES,
+    additionalDevicePriceMonthly: ADDITIONAL_DEVICE_PRICE_MONTHLY,
     period: "/3 months",
     duration: "3 months access",
     description: "For teams that want a lower total price than monthly renewal.",
@@ -55,15 +65,42 @@ export const pricingPlans = [
       "Visual layout builder",
       "Theme and template CMS",
       "QRIS transaction monitoring",
-      "Booth and media management",
+      "1 device included",
+      "Additional device Rp 50K/device/month",
     ],
-    limits: ["3 months access", "Save Rp 10K versus monthly", "Recommended for active operations"],
+    limits: ["3 months access", "1 device included", "Save Rp 10K versus monthly"],
+  },
+  {
+    id: "semiannual",
+    name: "6 Months",
+    price: "Rp 300K",
+    amount: 300000,
+    durationMonths: 6,
+    includedDevices: INCLUDED_SUBSCRIPTION_DEVICES,
+    additionalDevicePriceMonthly: ADDITIONAL_DEVICE_PRICE_MONTHLY,
+    period: "/6 months",
+    duration: "6 months access",
+    description: "For operators who prefer a fixed six-month subscription cycle.",
+    cta: "Subscribe 6 Months",
+    highlighted: false,
+    features: [
+      "POSKART dashboard",
+      "Visual layout builder",
+      "Theme and template CMS",
+      "QRIS transaction monitoring",
+      "1 device included",
+      "Additional device Rp 50K/device/month",
+    ],
+    limits: ["6 months access", "1 device included", "Stable mid-term billing"],
   },
   {
     id: "yearly",
     name: "1 Year",
     price: "Rp 500K",
     amount: 500000,
+    durationMonths: 12,
+    includedDevices: INCLUDED_SUBSCRIPTION_DEVICES,
+    additionalDevicePriceMonthly: ADDITIONAL_DEVICE_PRICE_MONTHLY,
     period: "/year",
     duration: "12 months access",
     description: "Best value for long-term POSKART operations and yearly planning.",
@@ -74,11 +111,31 @@ export const pricingPlans = [
       "Visual layout builder",
       "Theme and template CMS",
       "QRIS transaction monitoring",
-      "Booth and media management",
+      "1 device included",
+      "Additional device Rp 50K/device/month",
     ],
-    limits: ["12 months access", "Save Rp 100K versus monthly", "Best value subscription"],
+    limits: ["12 months access", "1 device included", "Best value subscription"],
   },
 ];
+
+export type PricingPlan = (typeof pricingPlans)[number];
+
+export function calculateSubscriptionTotal(plan: PricingPlan, deviceCount: number) {
+  const normalizedDeviceCount = Math.max(1, Math.floor(deviceCount || 1));
+  const additionalDevices = Math.max(0, normalizedDeviceCount - plan.includedDevices);
+  const additionalDeviceAmount =
+    additionalDevices * plan.additionalDevicePriceMonthly * plan.durationMonths;
+
+  return {
+    deviceCount: normalizedDeviceCount,
+    includedDevices: plan.includedDevices,
+    additionalDevices,
+    additionalDevicePriceMonthly: plan.additionalDevicePriceMonthly,
+    baseAmount: plan.amount,
+    additionalDeviceAmount,
+    totalAmount: plan.amount + additionalDeviceAmount,
+  };
+}
 
 export const legalLinks = [
   { href: "/about", label: "About" },

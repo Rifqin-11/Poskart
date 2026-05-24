@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { CheckCircle2, CreditCard, LockKeyhole, ReceiptText } from "lucide-react";
 import { createSubscriptionOrderAction } from "@/app/checkout/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { businessProfile, pricingPlans } from "@/lib/constants/business";
+import { businessProfile, calculateSubscriptionTotal, pricingPlans } from "@/lib/constants/business";
 import { formatCurrency } from "@/lib/utils";
 
 export function CheckoutContent() {
@@ -14,7 +15,9 @@ export function CheckoutContent() {
   const selectedPlanId = searchParams.get("plan") ?? "yearly";
   const successMessage = searchParams.get("success");
   const errorMessage = searchParams.get("error");
-  const plan = pricingPlans.find((item) => item.id === selectedPlanId) ?? pricingPlans[2];
+  const plan = pricingPlans.find((item) => item.id === selectedPlanId) ?? pricingPlans[3];
+  const [deviceCount, setDeviceCount] = useState(1);
+  const quote = calculateSubscriptionTotal(plan, deviceCount);
 
   return (
     <form
@@ -61,10 +64,32 @@ export function CheckoutContent() {
               <Input className="mt-1" name="whatsapp" placeholder="+62..." required />
             </label>
             <label className="text-xs font-medium text-zinc-500">
-              Booth or company name
-              <Input className="mt-1" name="companyName" placeholder="Nama booth / perusahaan" />
+              Device or company name
+              <Input className="mt-1" name="companyName" placeholder="Nama device / perusahaan" />
             </label>
           </div>
+        </div>
+
+        <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">Subscription devices</h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-500">
+            Every plan includes 1 device. Additional devices are charged Rp 50K per device per month.
+          </p>
+          <label className="mt-5 block max-w-xs text-xs font-medium text-zinc-500">
+            Total devices
+            <Input
+              className="mt-1"
+              name="deviceCount"
+              type="number"
+              min={1}
+              max={99}
+              value={deviceCount}
+              onChange={(event) =>
+                setDeviceCount(Math.max(1, Number(event.target.value) || 1))
+              }
+              required
+            />
+          </label>
         </div>
 
         <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-5 text-sm leading-7 text-zinc-600">
@@ -87,7 +112,9 @@ export function CheckoutContent() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-sm font-semibold">{plan.name}</div>
-              <div className="mt-1 text-xs text-zinc-500">{plan.duration}</div>
+              <div className="mt-1 text-xs text-zinc-500">
+                {plan.duration} · {quote.deviceCount} device{quote.deviceCount > 1 ? "s" : ""}
+              </div>
             </div>
             <div className="text-right">
               <div className="text-lg font-semibold">{plan.price}</div>
@@ -96,8 +123,18 @@ export function CheckoutContent() {
           </div>
           <div className="mt-4 border-t border-zinc-200 pt-4">
             <div className="flex justify-between text-sm">
-              <span>Subtotal</span>
-              <span>{formatCurrency(plan.amount)}</span>
+              <span>Base subscription</span>
+              <span>{formatCurrency(quote.baseAmount)}</span>
+            </div>
+            <div className="mt-2 flex justify-between text-sm">
+              <span>
+                Additional devices
+                <span className="block text-xs text-zinc-500">
+                  {quote.additionalDevices} x {formatCurrency(quote.additionalDevicePriceMonthly)} x {plan.durationMonths} month
+                  {plan.durationMonths > 1 ? "s" : ""}
+                </span>
+              </span>
+              <span>{formatCurrency(quote.additionalDeviceAmount)}</span>
             </div>
             <div className="mt-2 flex justify-between text-sm text-zinc-500">
               <span>Tax</span>
@@ -105,7 +142,7 @@ export function CheckoutContent() {
             </div>
             <div className="mt-4 flex justify-between border-t border-zinc-200 pt-4 text-base font-semibold">
               <span>Total due</span>
-              <span>{formatCurrency(plan.amount)}</span>
+              <span>{formatCurrency(quote.totalAmount)}</span>
             </div>
           </div>
         </div>

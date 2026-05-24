@@ -42,7 +42,7 @@ export function AuthForm({
             <CardTitle className="text-xl">{isLogin ? "Sign in to POSKART" : "Create POSKART account"}</CardTitle>
             <CardDescription>
               {isLogin
-                ? "Access dashboard, builder, transactions, and booth operations."
+                ? "Access dashboard, builder, transactions, and device operations."
                 : "Create an account for POSKART dashboard access."}
             </CardDescription>
           </CardHeader>

@@ -11,7 +11,7 @@ export function PricingCards({ defaultPlanId = "yearly" }: { defaultPlanId?: str
   const [activePlanId, setActivePlanId] = useState(defaultPlanId);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {pricingPlans.map((plan) => {
         const active = activePlanId === plan.id;
 

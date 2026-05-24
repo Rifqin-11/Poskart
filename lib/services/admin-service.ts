@@ -1,10 +1,10 @@
 import { createClient } from "@/lib/supabase/client";
 import type { ChartPoint, KpiMetric } from "@/types/analytics";
-import type { Booth } from "@/types/booth";
+import type { Device } from "@/types/device";
 import type { LayoutSchema } from "@/types/builder";
 import type { PricingProduct } from "@/types/pricing";
 import type { Template, TemplateFormValues } from "@/types/template";
-import type { Tenant } from "@/types/tenant";
+import type { Organization } from "@/types/organization";
 import type { ThemePreset, ThemeSchema } from "@/types/theme";
 import type { Transaction } from "@/types/transaction";
 
@@ -33,7 +33,7 @@ type TransactionRow = Omit<
 };
 
 type BoothRow = Omit<
-  Booth,
+  Device,
   | "appVersion"
   | "lastSync"
   | "pricingProfile"
@@ -68,12 +68,43 @@ type PricingProductRow = Omit<
   gif_enabled: boolean;
 };
 
-type TenantRow = Omit<Tenant, "renewalDate"> & {
-  renewal_date: string;
-};
-
 type ThemePresetRow = Omit<ThemePreset, "schema"> & {
   schema: ThemeSchema;
+};
+
+type SubscriptionPlanMetadata = {
+  name?: string | null;
+  included_devices?: number | null;
+};
+
+type SubscriptionRow = {
+  plan_id?: string | null;
+  status?: string | null;
+  current_period_end?: string | null;
+  device_limit?: number | null;
+  subscription_plans?: SubscriptionPlanMetadata | SubscriptionPlanMetadata[] | null;
+};
+
+type OrganizationRow = {
+  id: string;
+  name: string;
+  status: Organization["status"];
+  renewal_date: string;
+  devices?: { count: number }[] | null;
+  organization_members?: { count: number }[] | null;
+  subscriptions?: SubscriptionRow | SubscriptionRow[] | null;
+};
+
+type ProfileWithOrganization = {
+  id: string;
+  email: string;
+  role: string;
+  created_at: string;
+  organization_members?: Array<{
+    role: string;
+    organization_id: string;
+    organizations?: { id: string; name: string } | null;
+  }> | null;
 };
 
 export type LayoutSchemaRow = {
@@ -109,16 +140,16 @@ export type AssetInput = {
 
 export type PricingProductInput = Omit<PricingProduct, "id">;
 
-export type BoothInput = Omit<Booth, "id">;
+export type BoothInput = Omit<Device, "id">;
 
-export type TenantInput = Omit<Tenant, "id">;
+export type TenantInput = Omit<Organization, "id">;
 
 export type DashboardData = {
   kpiMetrics: KpiMetric[];
   weeklyChart: ChartPoint[];
   monthlyChart: ChartPoint[];
   transactions: Transaction[];
-  booths: Booth[];
+  devices: Device[];
 };
 
 function assertSupabaseResult<T>(
@@ -147,7 +178,7 @@ const mapChartPoint = ({
 
 const mapTransaction = (row: TransactionRow): Transaction => ({
   id: row.id,
-  booth: row.booth,
+  device: row.device,
   location: row.location,
   customer: row.customer,
   packageName: row.package_name,
@@ -160,7 +191,7 @@ const mapTransaction = (row: TransactionRow): Transaction => ({
   printLastError: row.print_last_error ?? null,
 });
 
-const mapBooth = (row: BoothRow): Booth => ({
+const mapBooth = (row: BoothRow): Device => ({
   id: row.id,
   name: row.name,
   location: row.location,
@@ -201,16 +232,6 @@ const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({
   active: row.active,
 });
 
-const mapTenant = (row: TenantRow): Tenant => ({
-  id: row.id,
-  name: row.name,
-  plan: row.plan,
-  status: row.status,
-  booths: row.booths,
-  users: row.users,
-  renewalDate: row.renewal_date,
-});
-
 async function getKpiMetrics(): Promise<KpiMetric[]> {
   const supabase = createClient();
   const { data, error } = await supabase
@@ -248,7 +269,7 @@ async function getChartPoints(
 }
 
 const TRANSACTION_COLUMNS =
-  "id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_status,print_attempts,print_last_error";
+  "id,device,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_status,print_attempts,print_last_error";
 
 const BOOTH_COLUMNS =
   "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,session_countdown_seconds,payment_countdown_seconds";
@@ -274,7 +295,7 @@ async function getFailedPrintsByBooth(
   const { data, error } = await supabase
     .from("transactions")
     .select(TRANSACTION_COLUMNS)
-    .eq("booth", boothName)
+    .eq("device", boothName)
     .in("print_status", ["failed", "pending"])
     .order("created_at", { ascending: false })
     .limit(50);
@@ -314,17 +335,17 @@ async function retryPrint(transactionId: string): Promise<void> {
   if (error) throw new Error(`Unable to queue reprint: ${error.message}`);
 }
 
-async function getBooths(): Promise<Booth[]> {
+async function getBooths(): Promise<Device[]> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from("booths")
+    .from("devices")
     .select(BOOTH_COLUMNS)
     .order("name", { ascending: true });
 
   return assertSupabaseResult(
     data as BoothRow[] | null,
     error,
-    "Unable to load booths",
+    "Unable to load devices",
   ).map(mapBooth);
 }
 
@@ -415,18 +436,76 @@ async function getPricingProducts(): Promise<PricingProduct[]> {
   ).map(mapPricingProduct);
 }
 
-async function getTenants(): Promise<Tenant[]> {
+async function getTenants(): Promise<Organization[]> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from("tenants")
-    .select("id,name,plan,status,booths,users,renewal_date")
+    .from("organizations")
+    .select(`
+      id,
+      name,
+      status,
+      renewal_date,
+      devices:devices(count),
+      organization_members:organization_members(count),
+      subscriptions (
+        plan_id,
+        status,
+        device_limit,
+        current_period_end,
+        subscription_plans (
+          name,
+          duration_months,
+          base_price,
+          included_devices,
+          additional_device_price_monthly
+        )
+      )
+    `)
     .order("name", { ascending: true });
 
-  return assertSupabaseResult(
-    data as TenantRow[] | null,
-    error,
-    "Unable to load tenants",
-  ).map(mapTenant);
+  if (error) throw new Error(`Unable to load organizations: ${error.message}`);
+
+  return ((data ?? []) as OrganizationRow[]).map((row) => {
+    const sub = Array.isArray(row.subscriptions) ? row.subscriptions[0] : row.subscriptions;
+    const planMeta = Array.isArray(sub?.subscription_plans)
+      ? sub?.subscription_plans[0]
+      : sub?.subscription_plans;
+    const planId = sub?.plan_id || 'free';
+    const subStatus = sub?.status || 'free';
+    const expiresAt = sub?.current_period_end || null;
+    const deviceLimit = sub?.device_limit ?? planMeta?.included_devices ?? 1;
+    const planName =
+      planMeta?.name ??
+      (planId === "free"
+        ? "Free"
+        : planId === "monthly"
+          ? "1 Month"
+          : planId === "quarterly"
+            ? "3 Months"
+            : planId === "semiannual"
+              ? "6 Months"
+              : planId === "yearly"
+                ? "1 Year"
+                : planId);
+
+    // Get count value from counts response structure
+    const devicesCount = row.devices?.[0]?.count ?? 0;
+    const usersCount = row.organization_members?.[0]?.count ?? 0;
+
+    return {
+      id: row.id,
+      name: row.name,
+      status: row.status,
+      devices: devicesCount,
+      users: usersCount,
+      renewalDate: row.renewal_date,
+      planId: planId,
+      subscriptionStatus: subStatus,
+      subscriptionExpiresAt: expiresAt,
+      deviceLimit,
+      plan: planName,
+    };
+  });
 }
 
 async function getThemes(): Promise<ThemePreset[]> {
@@ -558,7 +637,7 @@ async function deletePricingProduct(id: string): Promise<void> {
 async function createBooth(values: BoothInput): Promise<void> {
   const supabase = createClient();
   const id = `BTH-${Date.now()}`;
-  const { error } = await supabase.from("booths").insert({
+  const { error } = await supabase.from("devices").insert({
     id,
     name: values.name,
     location: values.location,
@@ -573,7 +652,7 @@ async function createBooth(values: BoothInput): Promise<void> {
     payment_countdown_seconds: values.paymentCountdownSeconds ?? null,
     updated_at: new Date().toISOString(),
   });
-  if (error) throw new Error(`Unable to create booth: ${error.message}`);
+  if (error) throw new Error(`Unable to create device: ${error.message}`);
 }
 
 async function updateBooth(
@@ -599,30 +678,37 @@ async function updateBooth(
   if (patch.paymentCountdownSeconds !== undefined)
     dbPatch.payment_countdown_seconds = patch.paymentCountdownSeconds ?? null;
 
-  const { error } = await supabase.from("booths").update(dbPatch).eq("id", id);
-  if (error) throw new Error(`Unable to update booth: ${error.message}`);
+  const { error } = await supabase.from("devices").update(dbPatch).eq("id", id);
+  if (error) throw new Error(`Unable to update device: ${error.message}`);
 }
 
 async function deleteBooth(id: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("booths").delete().eq("id", id);
-  if (error) throw new Error(`Unable to delete booth: ${error.message}`);
+  const { error } = await supabase.from("devices").delete().eq("id", id);
+  if (error) throw new Error(`Unable to delete device: ${error.message}`);
 }
 
 async function createTenant(values: TenantInput): Promise<void> {
   const supabase = createClient();
-  const id = `TNT-${Date.now()}`;
-  const { error } = await supabase.from("tenants").insert({
-    id,
+  const orgId = `org_${Date.now()}`;
+  
+  const { error: orgErr } = await supabase.from("organizations").insert({
+    id: orgId,
     name: values.name,
-    plan: values.plan,
     status: values.status,
-    booths: values.booths,
-    users: values.users,
     renewal_date: values.renewalDate,
     updated_at: new Date().toISOString(),
   });
-  if (error) throw new Error(`Unable to create tenant: ${error.message}`);
+  if (orgErr) throw new Error(`Unable to create organization: ${orgErr.message}`);
+
+  const { error: subErr } = await supabase.from("subscriptions").insert({
+    organization_id: orgId,
+    plan_id: values.planId || 'free',
+    status: values.subscriptionStatus || 'free',
+    current_period_end: values.subscriptionExpiresAt || null,
+    device_limit: values.deviceLimit ?? 1,
+  });
+  if (subErr) throw new Error(`Unable to create subscription: ${subErr.message}`);
 }
 
 async function updateTenant(
@@ -634,20 +720,41 @@ async function updateTenant(
     updated_at: new Date().toISOString(),
   };
   if (patch.name !== undefined) dbPatch.name = patch.name;
-  if (patch.plan !== undefined) dbPatch.plan = patch.plan;
   if (patch.status !== undefined) dbPatch.status = patch.status;
-  if (patch.booths !== undefined) dbPatch.booths = patch.booths;
-  if (patch.users !== undefined) dbPatch.users = patch.users;
   if (patch.renewalDate !== undefined) dbPatch.renewal_date = patch.renewalDate;
+  
+  if (Object.keys(dbPatch).length > 1) {
+    const { error } = await supabase.from("organizations").update(dbPatch).eq("id", id);
+    if (error) throw new Error(`Unable to update organization: ${error.message}`);
+  }
 
-  const { error } = await supabase.from("tenants").update(dbPatch).eq("id", id);
-  if (error) throw new Error(`Unable to update tenant: ${error.message}`);
+  // Update subscription separately
+  if (patch.planId !== undefined || patch.subscriptionStatus !== undefined || patch.subscriptionExpiresAt !== undefined || patch.deviceLimit !== undefined) {
+    const subPatch: Record<string, unknown> = {};
+    if (patch.planId !== undefined) subPatch.plan_id = patch.planId;
+    if (patch.subscriptionStatus !== undefined) subPatch.status = patch.subscriptionStatus;
+    if (patch.subscriptionExpiresAt !== undefined) subPatch.current_period_end = patch.subscriptionExpiresAt;
+    if (patch.deviceLimit !== undefined) subPatch.device_limit = Math.max(1, patch.deviceLimit);
+    
+    if (Object.keys(subPatch).length > 0) {
+      const { error } = await supabase.from("subscriptions").update(subPatch).eq("organization_id", id);
+      if (error) {
+        await supabase.from("subscriptions").upsert({
+          organization_id: id,
+          plan_id: patch.planId || 'free',
+          status: patch.subscriptionStatus || 'free',
+          current_period_end: patch.subscriptionExpiresAt || null,
+          device_limit: patch.deviceLimit ?? 1,
+        });
+      }
+    }
+  }
 }
 
 async function deleteTenant(id: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("tenants").delete().eq("id", id);
-  if (error) throw new Error(`Unable to delete tenant: ${error.message}`);
+  const { error } = await supabase.from("organizations").delete().eq("id", id);
+  if (error) throw new Error(`Unable to delete organization: ${error.message}`);
 }
 
 async function getLayoutSchemas(): Promise<LayoutSchemaRow[]> {
@@ -765,7 +872,7 @@ async function publishThemeSchema(schema: ThemeSchema): Promise<void> {
 }
 
 async function getDashboard(): Promise<DashboardData> {
-  const [kpiMetrics, weeklyChart, monthlyChart, transactions, booths] =
+  const [kpiMetrics, weeklyChart, monthlyChart, transactions, devices] =
     await Promise.all([
       getKpiMetrics(),
       getChartPoints("weekly"),
@@ -774,7 +881,191 @@ async function getDashboard(): Promise<DashboardData> {
       getBooths(),
     ]);
 
-  return { kpiMetrics, weeklyChart, monthlyChart, transactions, booths };
+  return { kpiMetrics, weeklyChart, monthlyChart, transactions, devices };
+}
+
+async function getSubscriptionStatus(): Promise<{ tier: "Free" | "Pro"; expiry: string | null; planId: string | null; planName: string; deviceLimit: number }> {
+  const supabase = createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData?.user?.id) {
+    return { tier: "Free", expiry: null, planId: null, planName: "Free", deviceLimit: 1 };
+  }
+
+  const { data: profile } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", userData.user.id)
+    .limit(1)
+    .single();
+
+  if (!profile?.organization_id) {
+    return { tier: "Free", expiry: null, planId: null, planName: "Free", deviceLimit: 1 };
+  }
+
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select(`
+      plan_id,
+      status,
+      device_limit,
+      current_period_end,
+      subscription_plans (
+        name,
+        included_devices
+      )
+    `)
+    .eq("organization_id", profile.organization_id)
+    .maybeSingle();
+
+  const planName = sub?.subscription_plans?.name ?? "Free";
+  const deviceLimit = sub?.device_limit ?? sub?.subscription_plans?.included_devices ?? 1;
+
+  if (sub && sub.plan_id !== "free" && sub.current_period_end) {
+    const expiryTime = new Date(sub.current_period_end).getTime();
+    if (expiryTime > Date.now()) {
+      return {
+        tier: "Pro",
+        expiry: new Date(expiryTime).toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }),
+        planId: sub.plan_id,
+        planName,
+        deviceLimit,
+      };
+    }
+  }
+
+  return { tier: "Free", expiry: null, planId: sub?.plan_id ?? null, planName, deviceLimit };
+}
+
+async function getSubscriptionOrders() {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("subscription_orders")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+async function updateSubscriptionOrderStatus({
+  id,
+  status,
+}: {
+  id: string;
+  status: "pending" | "paid" | "failed" | "cancelled";
+}) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("subscription_orders")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function getProfiles() {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(`
+      id,
+      email,
+      role,
+      created_at,
+      organization_members (
+        role,
+        organization_id,
+        organizations (
+          id,
+          name
+        )
+      )
+    `)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as ProfileWithOrganization[]).map((profile) => {
+    const memberInfo = profile.organization_members?.[0];
+    return {
+      id: profile.id,
+      email: profile.email,
+      role: profile.role,
+      created_at: profile.created_at,
+      organizationId: memberInfo?.organization_id || null,
+      organizationName: memberInfo?.organizations?.name || null,
+      memberRole: memberInfo?.role || null,
+    };
+  });
+}
+
+async function updateProfile({
+  id,
+  patch,
+  organizationId,
+}: {
+  id: string;
+  patch: Record<string, unknown>;
+  organizationId?: string | null;
+}) {
+  const supabase = createClient();
+  
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+
+  if (organizationId !== undefined) {
+    if (organizationId) {
+      const { data: existing } = await supabase
+        .from("organization_members")
+        .select("id")
+        .eq("profile_id", id)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        const { error: mErr } = await supabase
+          .from("organization_members")
+          .update({ organization_id: organizationId, updated_at: new Date().toISOString() })
+          .eq("profile_id", id);
+        if (mErr) throw mErr;
+      } else {
+        const { error: mErr } = await supabase
+          .from("organization_members")
+          .insert({
+            organization_id: organizationId,
+            profile_id: id,
+            role: "staff",
+          });
+        if (mErr) throw mErr;
+      }
+    } else {
+      const { error: mErr } = await supabase
+        .from("organization_members")
+        .delete()
+        .eq("profile_id", id);
+      if (mErr) throw mErr;
+    }
+  }
+
+  return profile;
+}
+
+async function deleteProfile(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+  return true;
 }
 
 export const adminService = {
@@ -782,7 +1073,7 @@ export const adminService = {
   transactions: getTransactions,
   failedPrintsByBooth: getFailedPrintsByBooth,
   retryPrint,
-  booths: getBooths,
+  devices: getBooths,
   templates: getTemplates,
   createTemplate,
   updateTemplate,
@@ -794,7 +1085,7 @@ export const adminService = {
   createBooth,
   updateBooth,
   deleteBooth,
-  tenants: getTenants,
+  organizations: getTenants,
   createTenant,
   updateTenant,
   deleteTenant,
@@ -811,4 +1102,232 @@ export const adminService = {
   setActiveLayout,
   deactivateLayout,
   deleteLayout,
+  getSubscriptionStatus,
+  getSubscriptionOrders,
+  updateSubscriptionOrderStatus,
+  getProfiles,
+  updateProfile,
+  deleteProfile,
+  getMyTenantDetails,
+  updateMyTenantName,
+  getMyTenantMembers,
+  getMyTenantInvitations,
+  inviteUserToTenant,
+  deleteTenantInvitation,
+  removeMemberFromTenant,
 };
+
+async function getMyTenantDetails() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: profile, error: pErr } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+  if (pErr || !profile?.organization_id) throw new Error("No organization associated");
+
+  const { data: organization, error: tErr } = await supabase
+    .from("organizations")
+    .select(`
+      *,
+      subscriptions (
+        plan_id,
+        status,
+        current_period_end,
+        device_limit,
+        subscription_plans (
+          name,
+          duration_months,
+          base_price,
+          included_devices,
+          additional_device_price_monthly
+        )
+      )
+    `)
+    .eq("id", profile.organization_id)
+    .single();
+  if (tErr) throw tErr;
+  const sub = Array.isArray(organization.subscriptions)
+    ? organization.subscriptions[0]
+    : organization.subscriptions;
+  const subscriptionExpiryTime = sub?.current_period_end
+    ? new Date(sub.current_period_end).getTime()
+    : 0;
+  const subscriptionIsActive =
+    sub?.plan_id &&
+    sub.plan_id !== "free" &&
+    ["active", "trialing"].includes(sub.status ?? "") &&
+    subscriptionExpiryTime > Date.now();
+
+  return {
+    ...organization,
+    plan_id: sub?.plan_id ?? "free",
+    plan_name: sub?.subscription_plans?.name ?? "Free",
+    join_code: organization.join_code ?? null,
+    subscription_status: sub?.status ?? "free",
+    subscription_expires_at: sub?.current_period_end ?? null,
+    device_limit: sub?.device_limit ?? sub?.subscription_plans?.included_devices ?? 1,
+    subscription_is_active: subscriptionIsActive,
+  };
+}
+
+async function updateMyTenantName(name: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: profile } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+  if (!profile?.organization_id) throw new Error("No organization associated");
+
+  const { data, error } = await supabase
+    .from("organizations")
+    .update({ name, updated_at: new Date().toISOString() })
+    .eq("id", profile.organization_id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function getMyTenantMembers() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: profile } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+  if (!profile?.organization_id) throw new Error("No organization associated");
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("organization_id", profile.organization_id)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+async function getMyTenantInvitations() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: profile } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+  if (!profile?.organization_id) throw new Error("No organization associated");
+
+  const { data, error } = await supabase
+    .from("tenant_invitations")
+    .select("*")
+    .eq("organization_id", profile.organization_id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+async function inviteUserToTenant(email: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: profile } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+  if (!profile?.organization_id) throw new Error("No organization associated");
+
+  const { data: existingMember } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .eq("organization_id", profile.organization_id)
+    .maybeSingle();
+  if (existingMember) throw new Error("User is already a member of this organization");
+
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existingProfile) {
+    const { error: updateErr } = await supabase
+      .from("profiles")
+      .update({ organization_id: profile.organization_id })
+      .eq("id", existingProfile.id);
+    if (updateErr) throw updateErr;
+    return { status: "joined" };
+  } else {
+    const { data, error } = await supabase
+      .from("tenant_invitations")
+      .insert({
+        email: email,
+        organization_id: profile.organization_id,
+        invited_by: user.email ?? "Admin",
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return { status: "invited", data };
+  }
+}
+
+async function deleteTenantInvitation(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("tenant_invitations")
+    .delete()
+    .eq("id", id);
+  if (error) throw error;
+  return true;
+}
+
+async function removeMemberFromTenant(memberId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  if (memberId === user.id) {
+    throw new Error("You cannot remove yourself from your own organization");
+  }
+
+  const newTenantId = 'tnt_' + Math.random().toString(36).substring(2, 15);
+  const { error: tErr } = await supabase
+    .from("organizations")
+    .insert({
+      id: newTenantId,
+      name: "Personal Org",
+      plan: "Free",
+      status: "active",
+      devices: 0,
+      users: 1,
+      renewal_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    });
+  if (tErr) throw tErr;
+
+  const { error: pErr } = await supabase
+    .from("profiles")
+    .update({ organization_id: newTenantId })
+    .eq("id", memberId);
+  if (pErr) throw pErr;
+  return true;
+}

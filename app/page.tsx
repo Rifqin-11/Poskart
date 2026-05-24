@@ -573,7 +573,7 @@ export default function Home() {
             </p>
           </div>
           <div className="rounded-full border border-zinc-200 bg-zinc-50 p-1 text-xs font-medium text-zinc-600">
-            Monthly, 3-month, and yearly subscription available
+            1, 3, 6, and 12-month subscription available
           </div>
         </div>
 

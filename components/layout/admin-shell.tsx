@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ArrowRight,
   BarChart3,
   Blocks,
-  Camera,
-  ChevronDown,
   CreditCard,
   Gauge,
   ImageIcon,
   LayoutTemplate,
+  LockKeyhole,
   Menu,
   MonitorSmartphone,
   Palette,
@@ -18,9 +18,11 @@ import {
   Sparkles,
   Store,
   LogOut,
-  Users,
+  Building,
+  Shield,
 } from "lucide-react";
 import { useState } from "react";
+import { useSubscriptionStatus } from "@/hooks/use-admin-data";
 import { signOutAction } from "@/app/auth/actions";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,25 +32,48 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
-  { href: "/themes", label: "Themes", icon: Palette },
-  { href: "/builder", label: "Builder", icon: Blocks },
-  { href: "/templates", label: "Templates", icon: LayoutTemplate },
-  { href: "/admin/pricing", label: "Pricing", icon: CreditCard },
-  { href: "/transactions", label: "Transactions", icon: Store },
-  { href: "/booths", label: "Booths", icon: MonitorSmartphone },
-  { href: "/assets", label: "Assets", icon: ImageIcon },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/tenants", label: "Tenants", icon: Users },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/organization", label: "Organization", icon: Building },
+  { href: "/themes", label: "Themes", icon: Palette, requiresSubscription: true },
+  { href: "/builder", label: "Builder", icon: Blocks, requiresSubscription: true },
+  { href: "/templates", label: "Templates", icon: LayoutTemplate, requiresSubscription: true },
+  { href: "/admin/pricing", label: "Pricing", icon: CreditCard, superAdminOnly: true },
+  { href: "/transactions", label: "Transactions", icon: Store, requiresSubscription: true },
+  { href: "/devices", label: "Devices", icon: MonitorSmartphone, requiresSubscription: true },
+  { href: "/assets", label: "Assets", icon: ImageIcon, requiresSubscription: true },
+  { href: "/analytics", label: "Analytics", icon: BarChart3, requiresSubscription: true },
+  { href: "/organizations", label: "Super Admin", icon: Shield, superAdminOnly: true },
+  { href: "/settings", label: "Settings", icon: Settings, requiresSubscription: true },
 ];
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function isSuperAdmin(email?: string | null): boolean {
+  if (!email) return false;
+  const adminEmails = ["rifqinaufal9009@gmail.com", "admin@poskart.id", "admin@poskart.my.id"];
+  return adminEmails.includes(email.toLowerCase());
+}
+
+function SidebarContent({
+  userEmail,
+  onNavigate,
+}: {
+  userEmail?: string;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
+
+  const { data: sub, isLoading } = useSubscriptionStatus();
+  const tier = sub?.tier ?? "Free";
+  const expiry = sub?.expiry;
+  const planName = sub?.planName ?? "Free";
+  const deviceLimit = sub?.deviceLimit ?? 1;
+
+  const adminMode = isSuperAdmin(userEmail);
+  const hasActiveSubscription = adminMode || tier === "Pro";
+  const filteredNavItems = navItems.filter((item) => !item.superAdminOnly || adminMode);
 
   return (
     <div className="flex h-full flex-col">
       <Link href="/dashboard" className="mb-6 flex items-center gap-3" onClick={onNavigate}>
-        <div className="grid size-9 place-items-center overflow-hidden rounded-lg bg-zinc-950">
+        <div className="grid size-9 place-items-center overflow-hidden rounded-lg">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/Logo Poskart.png"
@@ -62,20 +87,79 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </Link>
 
-      <div className="mb-4 rounded-lg border border-zinc-200 bg-white p-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-xs text-zinc-500">Tenant</div>
-            <div className="text-sm font-medium">POSKART Bandung</div>
+      <div
+        className={cn(
+          "mb-4 rounded-lg border bg-white p-3 shadow-sm",
+          hasActiveSubscription ? "border-emerald-200" : "border-amber-200 bg-amber-50/50",
+        )}
+      >
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Subscription</div>
+            {!isLoading && !hasActiveSubscription ? (
+              <LockKeyhole className="size-3.5 text-amber-600" />
+            ) : null}
           </div>
-          <ChevronDown className="size-4 text-zinc-400" />
+          {isLoading ? (
+            <div className="h-5 w-24 animate-pulse rounded bg-zinc-100" />
+          ) : (
+            <div className="space-y-1.5">
+              <span
+                className={cn(
+                  "inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-xs font-semibold shadow-xs",
+                  hasActiveSubscription
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border-amber-200 bg-white text-amber-800",
+                )}
+              >
+                {tier === "Pro" ? planName : "Free"} Account
+              </span>
+              <div className="text-[11px] leading-4 text-zinc-500">
+                {deviceLimit} device{deviceLimit > 1 ? "s" : ""} allowed
+                {!hasActiveSubscription ? " · Builder locked" : ""}
+              </div>
+            </div>
+          )}
+          {!isLoading && (
+            expiry ? (
+              <div className="text-[11px] text-zinc-500">
+                Expires: <span className="font-medium text-zinc-700">{expiry}</span>
+              </div>
+            ) : (
+              <Link
+                href="/pricing"
+                onClick={onNavigate}
+                className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-red-600 hover:text-red-700 transition-colors"
+              >
+                Activate subscription
+                <ArrowRight className="size-3" />
+              </Link>
+            )
+          )}
         </div>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1">
-        {navItems.map((item) => {
+        {filteredNavItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href;
+          const locked = Boolean(item.requiresSubscription && !hasActiveSubscription);
+          if (locked) {
+            return (
+              <Link
+                key={item.href}
+                href={`/organization?subscription=required&next=${encodeURIComponent(item.href)}`}
+                onClick={onNavigate}
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-amber-50 hover:text-amber-700"
+                title="Requires an active POSKART subscription"
+              >
+                <Icon className="size-4" />
+                <span className="flex-1">{item.label}</span>
+                <LockKeyhole className="size-3.5" />
+              </Link>
+            );
+          }
+
           return (
             <Link
               key={item.href}
@@ -99,7 +183,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           Live network
         </div>
         <div className="text-xs leading-5 text-zinc-500">
-          18 booths connected, 326 sessions today, QRIS latency stable.
+          18 devices connected, 326 sessions today, QRIS latency stable.
         </div>
       </div>
     </div>
@@ -115,15 +199,18 @@ export function AdminShell({
 }) {
   const [open, setOpen] = useState(false);
   const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
+  const { data: subscription } = useSubscriptionStatus();
+  const adminMode = isSuperAdmin(userEmail);
+  const canPublish = adminMode || subscription?.tier === "Pro";
 
   return (
     <div className="min-h-screen bg-zinc-50">
       <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-zinc-200 bg-zinc-50 p-4 lg:block">
-        <SidebarContent />
+        <SidebarContent userEmail={userEmail} />
       </aside>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SidebarContent onNavigate={() => setOpen(false)} />
+        <SidebarContent userEmail={userEmail} onNavigate={() => setOpen(false)} />
       </Sheet>
 
       <div className="lg:pl-72">
@@ -140,7 +227,8 @@ export function AdminShell({
                 <div className="text-xs text-zinc-500">Signed in as</div>
                 <div className="max-w-48 truncate text-sm font-medium">{userEmail ?? "POSKART Photobooth"}</div>
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" disabled={!canPublish}>
+                {!canPublish ? <LockKeyhole className="size-3.5" /> : null}
                 Publish
               </Button>
               <form action={signOutAction}>

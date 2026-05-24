@@ -11,8 +11,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   BadgeCheck,
   Battery,
@@ -24,6 +25,7 @@ import {
   Edit2,
   Folder,
   ImagePlus,
+  LockKeyhole,
   Plus,
   Power,
   Printer,
@@ -92,7 +94,22 @@ import {
   useUpdatePricing,
   useUpdateTemplate,
   useUpdateTenant,
+  useSubscriptionStatus,
+  useSubscriptionOrders,
+  useUpdateSubscriptionOrderStatus,
+  useProfiles,
+  useUpdateProfile,
+  useDeleteProfile,
+  useTenantDetails,
+  useUpdateTenantName,
+  useTenantMembers,
+  useTenantInvitations,
+  useInviteUser,
+  useDeleteInvitation,
+  useRemoveMember,
 } from "@/hooks/use-admin-data";
+import { createClient } from "@/lib/supabase/client";
+import { pricingPlans } from "@/lib/constants/business";
 import type {
   AssetInput,
   AssetItem,
@@ -102,10 +119,34 @@ import type {
 } from "@/lib/services/admin-service";
 import { uploadLibraryAsset } from "@/lib/services/storage-service";
 import { formatCurrency } from "@/lib/utils";
-import type { Booth } from "@/types/booth";
+import type { Device } from "@/types/device";
 import type { PricingProduct } from "@/types/pricing";
 import type { Template } from "@/types/template";
-import type { Tenant } from "@/types/tenant";
+import type { Organization } from "@/types/organization";
+import type { Transaction } from "@/types/transaction";
+
+type AdminUserProfile = {
+  id: string;
+  email: string;
+  role: string;
+  created_at: string;
+  organizationId: string | null;
+  organizationName: string | null;
+  memberRole: string | null;
+};
+
+type OrganizationMemberRow = {
+  id: string;
+  email: string;
+  role: string;
+  created_at: string;
+};
+
+type OrganizationInvitationRow = {
+  id: string;
+  email: string;
+  created_at: string;
+};
 
 function useClientMounted() {
   return useSyncExternalStore(
@@ -645,8 +686,8 @@ export function TransactionsMonitoring() {
           <div className="grid gap-3 md:grid-cols-4">
             <Input placeholder="Search transaction" />
             <Select defaultValue="all">
-              <option value="all">All booths</option>
-              <option>Booth 01</option>
+              <option value="all">All devices</option>
+              <option>Device 01</option>
             </Select>
             <Select defaultValue="all">
               <option value="all">All locations</option>
@@ -664,7 +705,7 @@ export function TransactionsMonitoring() {
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
-                <TableHead>Booth</TableHead>
+                <TableHead>Device</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Package</TableHead>
                 <TableHead>Amount</TableHead>
@@ -673,12 +714,12 @@ export function TransactionsMonitoring() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((transaction) => (
+              {data.map((transaction: Transaction) => (
                 <TableRow key={transaction.id}>
                   <TableCell className="font-mono text-xs">
                     {transaction.id}
                   </TableCell>
-                  <TableCell>{transaction.booth}</TableCell>
+                  <TableCell>{transaction.device}</TableCell>
                   <TableCell>{transaction.location}</TableCell>
                   <TableCell>{transaction.packageName}</TableCell>
                   <TableCell>{formatCurrency(transaction.amount)}</TableCell>
@@ -738,32 +779,55 @@ const EMPTY_BOOTH: BoothInput = {
   paymentCountdownSeconds: null,
 };
 
+type DeviceFormOptions = {
+  themes: string[];
+  frameTemplates: string[];
+  pricingProfiles: string[];
+};
+
 export function BoothManagement() {
   const { data = [], refetch } = useBooths();
   const { data: layouts = [] } = useLayoutSchemas();
+  const { data: templates = [] } = useTemplates();
+  const { data: pricingProducts = [] } = usePricing();
   const createBooth = useCreateBooth();
   const updateBooth = useUpdateBooth();
   const deleteBooth = useDeleteBooth();
-  const [editing, setEditing] = useState<Booth | null>(null);
+  const [editing, setEditing] = useState<Device | null>(null);
   const [creating, setCreating] = useState(false);
-  const [assignFor, setAssignFor] = useState<Booth | null>(null);
-  const [failedFor, setFailedFor] = useState<Booth | null>(null);
+  const [assignFor, setAssignFor] = useState<Device | null>(null);
+  const [failedFor, setFailedFor] = useState<Device | null>(null);
 
-  const handleDelete = (booth: Booth) => {
-    if (!confirm(`Delete booth "${booth.name}"?`)) return;
-    deleteBooth.mutate(booth.id, {
-      onSuccess: () => toast.success("Booth deleted"),
+  const deviceFormOptions = useMemo<DeviceFormOptions>(
+    () => ({
+      themes: layouts.map((layout) => layout.name).filter(Boolean),
+      frameTemplates: templates
+        .filter((template) => template.category === "frame")
+        .map((template) => template.name)
+        .filter(Boolean),
+      pricingProfiles: pricingProducts
+        .filter((product) => product.active)
+        .map((product) => product.name)
+        .filter(Boolean),
+    }),
+    [layouts, pricingProducts, templates],
+  );
+
+  const handleDelete = (device: Device) => {
+    if (!confirm(`Delete device "${device.name}"?`)) return;
+    deleteBooth.mutate(device.id, {
+      onSuccess: () => toast.success("Device deleted"),
       onError: (err) =>
         toast.error(err instanceof Error ? err.message : "Delete failed"),
     });
   };
 
-  const assignTheme = (booth: Booth, themeName: string) => {
+  const assignTheme = (device: Device, themeName: string) => {
     updateBooth.mutate(
-      { id: booth.id, patch: { theme: themeName } },
+      { id: device.id, patch: { theme: themeName } },
       {
         onSuccess: () => {
-          toast.success(`Assigned "${themeName}" to ${booth.name}`);
+          toast.success(`Assigned "${themeName}" to ${device.name}`);
           setAssignFor(null);
         },
         onError: (err) =>
@@ -775,8 +839,8 @@ export function BoothManagement() {
   return (
     <div>
       <PageHeader
-        title="Booth Device Management"
-        description="Monitor kiosk health, app versions, sync, remote actions, and assigned profiles."
+        title="Device Management"
+        description="Configure kiosk theme, frame template, pricing package, countdowns, sync status, and remote actions."
         action={
           <div className="flex gap-2">
             <Button
@@ -789,40 +853,40 @@ export function BoothManagement() {
               <RefreshCw className="size-4" /> Refresh network
             </Button>
             <Button onClick={() => setCreating(true)}>
-              <Plus className="size-4" /> Add booth
+              <Plus className="size-4" /> Add device
             </Button>
           </div>
         }
       />
       <div className="grid gap-4 xl:grid-cols-2">
-        {data.map((booth) => (
-          <Card key={booth.id}>
+        {data.map((device) => (
+          <Card key={device.id}>
             <CardHeader className="flex-row items-start justify-between">
               <div>
-                <CardTitle>{booth.name}</CardTitle>
+                <CardTitle>{device.name}</CardTitle>
                 <CardDescription>
-                  {booth.location} · {booth.appVersion}
+                  {device.location} · {device.appVersion}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Badge
                   variant={
-                    booth.status === "online"
+                    device.status === "online"
                       ? "success"
-                      : booth.status === "maintenance"
+                      : device.status === "maintenance"
                         ? "warning"
                         : "destructive"
                   }
                 >
-                  {booth.status}
+                  {device.status}
                 </Badge>
                 <DropdownMenu
                   items={[
-                    { label: "Edit", onClick: () => setEditing(booth) },
+                    { label: "Edit", onClick: () => setEditing(device) },
                     {
                       label: "Delete",
                       destructive: true,
-                      onClick: () => handleDelete(booth),
+                      onClick: () => handleDelete(device),
                     },
                   ]}
                 />
@@ -832,25 +896,25 @@ export function BoothManagement() {
               <div className="grid grid-cols-3 gap-3 text-sm">
                 <div className="rounded-md bg-zinc-50 p-3">
                   <Battery className="mb-2 size-4" />
-                  {booth.battery}% battery
+                  {device.battery}% battery
                 </div>
                 <div className="rounded-md bg-zinc-50 p-3">
                   <BadgeCheck className="mb-2 size-4" />
-                  {booth.lastSync}
+                  {device.lastSync}
                 </div>
                 <div className="rounded-md bg-zinc-50 p-3">
                   <Store className="mb-2 size-4" />
-                  {booth.pricingProfile}
+                  {device.pricingProfile}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 rounded-md bg-zinc-50 p-3 text-xs text-zinc-600">
+              <div className="grid gap-2 rounded-md bg-zinc-50 p-3 text-xs text-zinc-600 sm:grid-cols-2">
                 <div className="flex items-center gap-1.5">
                   <Timer className="size-3.5 text-zinc-400" />
                   <span>
                     Session:{" "}
                     <span className="font-semibold text-zinc-800">
-                      {booth.sessionCountdownSeconds
-                        ? `${booth.sessionCountdownSeconds}s`
+                      {device.sessionCountdownSeconds
+                        ? `${device.sessionCountdownSeconds}s`
                         : "default"}
                     </span>
                   </span>
@@ -860,8 +924,8 @@ export function BoothManagement() {
                   <span>
                     Payment:{" "}
                     <span className="font-semibold text-zinc-800">
-                      {booth.paymentCountdownSeconds
-                        ? `${booth.paymentCountdownSeconds}s`
+                      {device.paymentCountdownSeconds
+                        ? `${device.paymentCountdownSeconds}s`
                         : "default"}
                     </span>
                   </span>
@@ -869,16 +933,28 @@ export function BoothManagement() {
                 <div className="col-span-2 flex items-center gap-1.5">
                   <span className="text-zinc-500">Theme:</span>
                   <span className="font-medium text-zinc-700">
-                    {booth.theme || "—"}
+                    {device.theme || "—"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-zinc-500">Frame:</span>
+                  <span className="font-medium text-zinc-700">
+                    {device.template || "—"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-zinc-500">Price:</span>
+                  <span className="font-medium text-zinc-700">
+                    {device.pricingProfile || "—"}
                   </span>
                 </div>
               </div>
-              <Progress value={booth.battery} />
+              <Progress value={device.battery} />
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => toast.message(`${booth.name} restart queued`)}
+                  onClick={() => toast.message(`${device.name} restart queued`)}
                 >
                   <Power className="size-4" /> Restart
                 </Button>
@@ -886,7 +962,7 @@ export function BoothManagement() {
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    toast.message(`${booth.name} remote refresh queued`)
+                    toast.message(`${device.name} remote refresh queued`)
                   }
                 >
                   <RotateCcw className="size-4" /> Remote refresh
@@ -894,12 +970,12 @@ export function BoothManagement() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setFailedFor(booth)}
+                  onClick={() => setFailedFor(device)}
                 >
                   <Printer className="size-4" /> Failed prints
                 </Button>
-                <Button size="sm" onClick={() => setAssignFor(booth)}>
-                  Assign theme
+                <Button size="sm" onClick={() => setAssignFor(device)}>
+                  <SlidersHorizontal className="size-4" /> Configure
                 </Button>
               </div>
             </CardContent>
@@ -910,10 +986,10 @@ export function BoothManagement() {
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <Store className="mb-3 size-8 text-zinc-300" />
               <div className="text-sm font-medium text-zinc-500">
-                No booths yet
+                No devices yet
               </div>
               <Button className="mt-3" onClick={() => setCreating(true)}>
-                <Plus className="size-4" /> Add booth
+                <Plus className="size-4" /> Add device
               </Button>
             </CardContent>
           </Card>
@@ -922,14 +998,15 @@ export function BoothManagement() {
 
       {creating ? (
         <BoothFormDialog
-          title="Add booth"
+          title="Add device"
           initial={EMPTY_BOOTH}
+          options={deviceFormOptions}
           submitting={createBooth.isPending}
           onClose={() => setCreating(false)}
           onSubmit={(values) => {
             createBooth.mutate(values, {
               onSuccess: () => {
-                toast.success("Booth created");
+                toast.success("Device created");
                 setCreating(false);
               },
               onError: (err) =>
@@ -944,6 +1021,7 @@ export function BoothManagement() {
         <BoothFormDialog
           title={`Edit ${editing.name}`}
           initial={editing}
+          options={deviceFormOptions}
           submitting={updateBooth.isPending}
           onClose={() => setEditing(null)}
           onSubmit={(values) => {
@@ -951,7 +1029,7 @@ export function BoothManagement() {
               { id: editing.id, patch: values },
               {
                 onSuccess: () => {
-                  toast.success("Booth updated");
+                  toast.success("Device updated");
                   setEditing(null);
                 },
                 onError: (err) =>
@@ -965,7 +1043,7 @@ export function BoothManagement() {
       ) : null}
       {failedFor ? (
         <FailedPrintsDialog
-          booth={failedFor}
+          device={failedFor}
           onClose={() => setFailedFor(null)}
         />
       ) : null}
@@ -973,43 +1051,91 @@ export function BoothManagement() {
         <Dialog
           open
           onOpenChange={(o) => !o && setAssignFor(null)}
-          title={`Assign theme to ${assignFor.name}`}
+          title={`Configure ${assignFor.name}`}
         >
-          {layouts.length === 0 ? (
-            <p className="text-sm text-zinc-500">
-              No themes saved yet. Open the Visual Builder to create one.
-            </p>
-          ) : (
-            <ul className="divide-y divide-zinc-100">
-              {layouts.map((layout) => {
-                const isCurrent = assignFor.theme === layout.name;
-                return (
-                  <li
-                    key={layout.id}
-                    className="flex items-center justify-between py-2"
-                  >
-                    <div>
-                      <div className="text-sm font-medium text-zinc-800">
-                        {layout.name}
-                      </div>
-                      <div className="text-xs text-zinc-400">
-                        {layout.status}
-                        {layout.is_active ? " · live" : ""}
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant={isCurrent ? "outline" : "default"}
-                      disabled={isCurrent || updateBooth.isPending}
-                      onClick={() => assignTheme(assignFor, layout.name)}
-                    >
-                      {isCurrent ? "Assigned" : "Assign"}
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <div className="space-y-5">
+            <div>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Theme / layout
+              </div>
+              {layouts.length === 0 ? (
+                <p className="rounded-md border border-dashed border-zinc-200 p-3 text-sm text-zinc-500">
+                  No builder themes saved yet. Open the Visual Builder to create one.
+                </p>
+              ) : (
+                <ul className="divide-y divide-zinc-100 rounded-md border border-zinc-200">
+                  {layouts.map((layout) => {
+                    const isCurrent = assignFor.theme === layout.name;
+                    return (
+                      <li
+                        key={layout.id}
+                        className="flex items-center justify-between gap-3 p-3"
+                      >
+                        <div>
+                          <div className="text-sm font-medium text-zinc-800">
+                            {layout.name}
+                          </div>
+                          <div className="text-xs text-zinc-400">
+                            {layout.status}
+                            {layout.is_active ? " · live" : ""}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={isCurrent ? "outline" : "default"}
+                          disabled={isCurrent || updateBooth.isPending}
+                          onClick={() => assignTheme(assignFor, layout.name)}
+                        >
+                          {isCurrent ? "Assigned" : "Assign"}
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <DeviceQuickSelect
+                label="Frame template"
+                value={assignFor.template}
+                emptyLabel="No frame templates yet"
+                options={deviceFormOptions.frameTemplates}
+                onChange={(value) =>
+                  updateBooth.mutate(
+                    { id: assignFor.id, patch: { template: value } },
+                    {
+                      onSuccess: () => {
+                        toast.success("Frame template updated");
+                        setAssignFor(null);
+                      },
+                      onError: (err) =>
+                        toast.error(err instanceof Error ? err.message : "Update failed"),
+                    },
+                  )
+                }
+              />
+              <DeviceQuickSelect
+                label="Pricing package"
+                value={assignFor.pricingProfile}
+                emptyLabel="No active pricing packages yet"
+                options={deviceFormOptions.pricingProfiles}
+                onChange={(value) =>
+                  updateBooth.mutate(
+                    { id: assignFor.id, patch: { pricingProfile: value } },
+                    {
+                      onSuccess: () => {
+                        toast.success("Pricing package updated");
+                        setAssignFor(null);
+                      },
+                      onError: (err) =>
+                        toast.error(err instanceof Error ? err.message : "Update failed"),
+                    },
+                  )
+                }
+              />
+            </div>
+          </div>
         </Dialog>
       ) : null}
     </div>
@@ -1019,18 +1145,20 @@ export function BoothManagement() {
 function BoothFormDialog({
   title,
   initial,
+  options,
   submitting,
   onClose,
   onSubmit,
 }: {
   title: string;
-  initial: BoothInput | Booth;
+  initial: BoothInput | Device;
+  options: DeviceFormOptions;
   submitting: boolean;
   onClose: () => void;
   onSubmit: (values: BoothInput) => void;
 }) {
   const [form, setForm] = useState<BoothInput>(() => {
-    const { id: _ignored, ...rest } = initial as Booth;
+    const { id: _ignored, ...rest } = initial as Device;
     void _ignored;
     return rest as BoothInput;
   });
@@ -1054,7 +1182,7 @@ function BoothFormDialog({
             className="mt-1"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Booth 01"
+            placeholder="Device 01"
           />
         </label>
         <label className="block text-xs font-medium text-zinc-600">
@@ -1072,7 +1200,7 @@ function BoothFormDialog({
             className="mt-1"
             value={form.status}
             onChange={(e) =>
-              setForm({ ...form, status: e.target.value as Booth["status"] })
+              setForm({ ...form, status: e.target.value as Device["status"] })
             }
           >
             <option value="online">online</option>
@@ -1110,32 +1238,64 @@ function BoothFormDialog({
         </label>
         <label className="block text-xs font-medium text-zinc-600">
           Theme
-          <Input
+          <Select
             className="mt-1"
             value={form.theme}
             onChange={(e) => setForm({ ...form, theme: e.target.value })}
-            placeholder="Default"
-          />
+          >
+            <option value="">Use default theme</option>
+            {includeCurrentOption(options.themes, form.theme).map((theme) => (
+              <option key={theme} value={theme}>
+                {theme}
+              </option>
+            ))}
+          </Select>
         </label>
         <label className="block text-xs font-medium text-zinc-600">
-          Template
-          <Input
+          Frame template
+          <Select
             className="mt-1"
             value={form.template}
             onChange={(e) => setForm({ ...form, template: e.target.value })}
-            placeholder="Frame Classic"
-          />
+          >
+            <option value="">Select frame template</option>
+            {includeCurrentOption(options.frameTemplates, form.template).map(
+              (template) => (
+                <option key={template} value={template}>
+                  {template}
+                </option>
+              ),
+            )}
+          </Select>
+          {options.frameTemplates.length === 0 ? (
+            <span className="mt-1 block text-[10px] text-zinc-400">
+              Create frame templates from the Templates page first.
+            </span>
+          ) : null}
         </label>
         <label className="md:col-span-2 block text-xs font-medium text-zinc-600">
-          Pricing profile
-          <Input
+          Pricing package
+          <Select
             className="mt-1"
             value={form.pricingProfile}
             onChange={(e) =>
               setForm({ ...form, pricingProfile: e.target.value })
             }
-            placeholder="Standard"
-          />
+          >
+            <option value="">Select pricing package</option>
+            {includeCurrentOption(options.pricingProfiles, form.pricingProfile).map(
+              (profile) => (
+                <option key={profile} value={profile}>
+                  {profile}
+                </option>
+              ),
+            )}
+          </Select>
+          {options.pricingProfiles.length === 0 ? (
+            <span className="mt-1 block text-[10px] text-zinc-400">
+              Add active pricing packages from Pricing first.
+            </span>
+          ) : null}
         </label>
         <div className="md:col-span-2 mt-1 rounded-md border border-dashed border-zinc-200 p-3">
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -1196,14 +1356,54 @@ function BoothFormDialog({
   );
 }
 
+function includeCurrentOption(options: string[], currentValue?: string | null) {
+  if (!currentValue || options.includes(currentValue)) return options;
+  return [currentValue, ...options];
+}
+
+function DeviceQuickSelect({
+  label,
+  value,
+  emptyLabel,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  emptyLabel: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  const normalizedOptions = includeCurrentOption(options, value);
+
+  return (
+    <label className="block text-xs font-medium text-zinc-600">
+      {label}
+      <Select
+        className="mt-1"
+        value={value}
+        disabled={options.length === 0}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">{options.length === 0 ? emptyLabel : `Select ${label.toLowerCase()}`}</option>
+        {normalizedOptions.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </Select>
+    </label>
+  );
+}
+
 function FailedPrintsDialog({
-  booth,
+  device,
   onClose,
 }: {
-  booth: Booth;
+  device: Device;
   onClose: () => void;
 }) {
-  const { data = [], isLoading, refetch } = useFailedPrintsByBooth(booth.name);
+  const { data = [], isLoading, refetch } = useFailedPrintsByBooth(device.name);
   const retry = useRetryPrint();
 
   const handleRetry = (transactionId: string) => {
@@ -1221,7 +1421,7 @@ function FailedPrintsDialog({
     <Dialog
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`Failed prints — ${booth.name}`}
+      title={`Failed prints — ${device.name}`}
     >
       {isLoading ? (
         <p className="text-sm text-zinc-500">Loading…</p>
@@ -1755,7 +1955,7 @@ export function AnalyticsDashboard() {
     <div>
       <PageHeader
         title="Analytics & Statistics"
-        description="Revenue, growth, booth performance, downloads, peak hours, and conversion."
+        description="Revenue, growth, device performance, downloads, peak hours, and conversion."
         action={
           <Button variant="outline">
             <Download className="size-4" /> Download CSV
@@ -1838,126 +2038,204 @@ export function AnalyticsDashboard() {
   );
 }
 
-const PLAN_OPTIONS: Tenant["plan"][] = [
-  "Monthly",
-  "3 Months",
-  "1 Year",
-  "Starter",
-  "Growth",
-  "Enterprise",
+const SUBSCRIPTION_PLAN_OPTIONS = [
+  { id: "free", label: "Free Account", description: "1 device" },
+  ...pricingPlans.map((plan) => ({
+    id: plan.id,
+    label: plan.name,
+    description: `${plan.duration} · ${plan.price} · 1 device included`,
+  })),
 ];
-const TENANT_STATUS: Tenant["status"][] = ["active", "trial", "paused"];
+
 const EMPTY_TENANT: TenantInput = {
   name: "",
-  plan: "Monthly",
-  status: "trial",
-  booths: 0,
+  plan: "Free",
+  status: "active",
+  devices: 0,
   users: 1,
   renewalDate: new Date().toISOString().slice(0, 10),
+  planId: "free",
+  subscriptionStatus: "free",
+  subscriptionExpiresAt: null,
+  deviceLimit: 1,
 };
 
 export function TenantManagement() {
   const { data = [] } = useTenants();
+  const { data: profiles = [], isLoading: isLoadingProfiles } = useProfiles();
   const createTenant = useCreateTenant();
   const updateTenant = useUpdateTenant();
   const deleteTenant = useDeleteTenant();
-  const [editing, setEditing] = useState<Tenant | null>(null);
+  const updateProfile = useUpdateProfile();
+  
+  const [editing, setEditing] = useState<Organization | null>(null);
+  const [editingProfile, setEditingProfile] = useState<AdminUserProfile | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const handleDelete = (tenant: Tenant) => {
-    if (!confirm(`Delete tenant "${tenant.name}"?`)) return;
-    deleteTenant.mutate(tenant.id, {
-      onSuccess: () => toast.success("Tenant deleted"),
-      onError: (err) =>
-        toast.error(err instanceof Error ? err.message : "Delete failed"),
+  const handleDelete = (organization: Organization) => {
+    if (!confirm(`Delete organization "${organization.name}"?`)) return;
+    deleteTenant.mutate(organization.id, {
+      onSuccess: () => toast.success("Organization deleted"),
+      onError: (err) => toast.error(err instanceof Error ? err.message : "Delete failed"),
     });
   };
 
   return (
     <div>
       <PageHeader
-        title="User & Tenant Management"
-        description="Multi-tenant SaaS controls for booths, themes, subscriptions, and permissions."
+        title="Super Admin Dashboard"
+        description="Multi-organization SaaS controls and registered user accounts."
         action={
           <Button onClick={() => setCreating(true)}>
-            <Users className="size-4" /> Create tenant
+            <Users className="size-4" /> Create organization
           </Button>
         }
       />
-      <Card>
-        <CardContent className="pt-5">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tenant</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Booths</TableHead>
-                <TableHead>Users</TableHead>
-                <TableHead>Renewal</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.map((tenant) => (
-                <TableRow key={tenant.id}>
-                  <TableCell className="font-medium">{tenant.name}</TableCell>
-                  <TableCell>{tenant.plan}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        tenant.status === "active"
-                          ? "success"
-                          : tenant.status === "trial"
-                            ? "warning"
-                            : "secondary"
-                      }
-                    >
-                      {tenant.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{tenant.booths}</TableCell>
-                  <TableCell>{tenant.users}</TableCell>
-                  <TableCell>{tenant.renewalDate}</TableCell>
-                  <TableCell>
-                    <DropdownMenu
-                      items={[
-                        { label: "Edit", onClick: () => setEditing(tenant) },
-                        {
-                          label: "Delete",
-                          destructive: true,
-                          onClick: () => handleDelete(tenant),
-                        },
-                      ]}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-              {data.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-8 text-center text-sm text-zinc-400"
-                  >
-                    No tenants yet. Click <strong>Create tenant</strong>.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
+      <Tabs defaultValue="organizations">
+        <TabsList className="mb-4">
+          <TabsTrigger value="organizations">Organizations</TabsTrigger>
+          <TabsTrigger value="users">Registered Users</TabsTrigger>
+        </TabsList>
+        <TabsContent value="organizations">
+          <Card>
+            <CardContent className="pt-5">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Organization</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead>Subscription Status</TableHead>
+                    <TableHead>Org Status</TableHead>
+                    <TableHead>Devices</TableHead>
+                    <TableHead>Users</TableHead>
+                    <TableHead>Renewal / Expiration</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.map((organization) => (
+                    <TableRow key={organization.id}>
+                      <TableCell className="font-medium">{organization.name}</TableCell>
+                      <TableCell>{organization.plan}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            organization.subscriptionStatus === "active"
+                              ? "success"
+                              : organization.subscriptionStatus === "trialing" || organization.subscriptionStatus === "trial"
+                                ? "warning"
+                                : "secondary"
+                          }
+                        >
+                          {organization.subscriptionStatus || "free"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            organization.status === "active"
+                              ? "outline"
+                              : "secondary"
+                          }
+                        >
+                          {organization.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{organization.devices} / {organization.deviceLimit ?? 1}</TableCell>
+                      <TableCell>{organization.users}</TableCell>
+                      <TableCell>
+                        {organization.subscriptionExpiresAt
+                          ? new Date(organization.subscriptionExpiresAt).toLocaleDateString()
+                          : "Never"}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu
+                          items={[
+                            { label: "Edit", onClick: () => setEditing(organization) },
+                            {
+                              label: "Delete",
+                              destructive: true,
+                              onClick: () => handleDelete(organization),
+                            },
+                          ]}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {data.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={8}
+                        className="py-8 text-center text-sm text-zinc-400"
+                      >
+                        No organizations yet. Click <strong>Create organization</strong>.
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="users">
+          <Card>
+            <CardHeader>
+              <CardTitle>User Accounts</CardTitle>
+              <CardDescription>All user accounts across the system.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>System Role</TableHead>
+                    <TableHead>Organization</TableHead>
+                    <TableHead>Joined At</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(profiles as AdminUserProfile[]).map((profile) => (
+                    <TableRow key={profile.id}>
+                      <TableCell className="font-medium">{profile.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={profile.role === "admin" ? "warning" : "secondary"}>
+                          {profile.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-zinc-600">
+                        {profile.organizationName || "None"}
+                      </TableCell>
+                      <TableCell>{new Date(profile.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => setEditingProfile(profile)}>
+                          Edit User
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {profiles.length === 0 && !isLoadingProfiles && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-zinc-500 py-8">No users found.</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+      
       {creating ? (
         <TenantFormDialog
-          title="Create tenant"
+          title="Create organization"
           initial={EMPTY_TENANT}
           submitting={createTenant.isPending}
           onClose={() => setCreating(false)}
           onSubmit={(values) => {
             createTenant.mutate(values, {
               onSuccess: () => {
-                toast.success("Tenant created");
+                toast.success("Organization created");
                 setCreating(false);
               },
               onError: (err) =>
@@ -1979,7 +2257,7 @@ export function TenantManagement() {
               { id: editing.id, patch: values },
               {
                 onSuccess: () => {
-                  toast.success("Tenant updated");
+                  toast.success("Organization updated");
                   setEditing(null);
                 },
                 onError: (err) =>
@@ -1990,6 +2268,53 @@ export function TenantManagement() {
             );
           }}
         />
+      ) : null}
+
+      {editingProfile ? (
+        <Dialog open onOpenChange={(o) => !o && setEditingProfile(null)} title={`Edit ${editingProfile.email}`}>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-700">System Role</label>
+              <Select 
+                className="mt-1"
+                value={editingProfile.role} 
+                onChange={(e) => setEditingProfile({ ...editingProfile, role: e.target.value })}
+              >
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700">Organization</label>
+              <Select 
+                className="mt-1"
+                value={editingProfile.organizationId || ""} 
+                onChange={(e) => setEditingProfile({ ...editingProfile, organizationId: e.target.value || null })}
+              >
+                <option value="">No Organization</option>
+                {data.map((org) => (
+                  <option key={org.id} value={org.id}>{org.name}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-4 border-t border-zinc-100">
+              <Button variant="outline" onClick={() => setEditingProfile(null)}>Cancel</Button>
+              <Button 
+                onClick={() => {
+                  updateProfile.mutate({ id: editingProfile.id, patch: { role: editingProfile.role }, organizationId: editingProfile.organizationId }, {
+                    onSuccess: () => {
+                      toast.success("User updated successfully");
+                      setEditingProfile(null);
+                    },
+                    onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to update user")
+                  });
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </Dialog>
       ) : null}
     </div>
   );
@@ -2003,15 +2328,26 @@ function TenantFormDialog({
   onSubmit,
 }: {
   title: string;
-  initial: TenantInput | Tenant;
+  initial: TenantInput | Organization;
   submitting: boolean;
   onClose: () => void;
   onSubmit: (values: TenantInput) => void;
 }) {
   const [form, setForm] = useState<TenantInput>(() => {
-    const { id: _ignored, ...rest } = initial as Tenant;
+    const { id: _ignored, ...rest } = initial as Organization;
     void _ignored;
-    return rest as TenantInput;
+    return {
+      name: rest.name || "",
+      plan: rest.plan || "Free",
+      status: rest.status || "active",
+      devices: rest.devices || 0,
+      users: rest.users || 1,
+      renewalDate: rest.renewalDate || new Date().toISOString().slice(0, 10),
+      planId: rest.planId || "free",
+      subscriptionStatus: rest.subscriptionStatus || "free",
+      subscriptionExpiresAt: rest.subscriptionExpiresAt || null,
+      deviceLimit: rest.deviceLimit || 1,
+    } as TenantInput;
   });
 
   return (
@@ -2024,89 +2360,131 @@ function TenantFormDialog({
             toast.error("Name is required");
             return;
           }
+          if ((form.deviceLimit ?? 1) < 1) {
+            toast.error("Device limit must be at least 1");
+            return;
+          }
+          if ((form.devices ?? 0) > (form.deviceLimit ?? 1)) {
+            toast.error("Device limit cannot be lower than existing devices");
+            return;
+          }
           onSubmit(form);
         }}
       >
         <label className="md:col-span-2 block text-xs font-medium text-zinc-600">
-          Name
+          Organization Name
           <Input
             className="mt-1"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="PT Photo Booth Indonesia"
+            placeholder="PT Photo Device Indonesia"
           />
         </label>
+        
         <label className="block text-xs font-medium text-zinc-600">
-          Plan
+          Subscription Plan
           <Select
             className="mt-1"
-            value={form.plan}
-            onChange={(e) =>
-              setForm({ ...form, plan: e.target.value as Tenant["plan"] })
-            }
+            value={form.planId || "free"}
+            onChange={(e) => {
+              const val = e.target.value;
+              const selected = pricingPlans.find((plan) => plan.id === val);
+              setForm({
+                ...form,
+                planId: val,
+                plan: selected?.name ?? "Free",
+                subscriptionStatus:
+                  val === "free"
+                    ? "free"
+                    : form.subscriptionStatus === "free"
+                      ? "active"
+                      : form.subscriptionStatus,
+                deviceLimit: Math.max(1, form.deviceLimit ?? 1),
+              });
+            }}
           >
-            {PLAN_OPTIONS.map((p) => (
-              <option key={p} value={p}>
-                {p}
+            {SUBSCRIPTION_PLAN_OPTIONS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label} ({option.description})
               </option>
             ))}
           </Select>
         </label>
+
         <label className="block text-xs font-medium text-zinc-600">
-          Status
+          Subscription Status
+          <Select
+            className="mt-1"
+            value={form.subscriptionStatus || "free"}
+            onChange={(e) =>
+              setForm({ ...form, subscriptionStatus: e.target.value })
+            }
+          >
+            <option value="free">Free</option>
+            <option value="active">Active</option>
+            <option value="trialing">Trialing</option>
+            <option value="past_due">Past Due</option>
+            <option value="canceled">Canceled</option>
+          </Select>
+        </label>
+
+        <label className="block text-xs font-medium text-zinc-600">
+          Workspace Status (Platform level)
           <Select
             className="mt-1"
             value={form.status}
             onChange={(e) =>
-              setForm({ ...form, status: e.target.value as Tenant["status"] })
+              setForm({ ...form, status: e.target.value as Organization["status"] })
             }
           >
-            {TENANT_STATUS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
+            <option value="active">Active</option>
+            <option value="trial">Trial</option>
+            <option value="paused">Paused</option>
           </Select>
         </label>
+
         <label className="block text-xs font-medium text-zinc-600">
-          Booths
+          Subscription Expiry Date
           <Input
             className="mt-1"
-            type="number"
-            min={0}
-            value={form.booths}
+            type="date"
+            value={form.subscriptionExpiresAt ? new Date(form.subscriptionExpiresAt).toISOString().slice(0, 10) : ""}
             onChange={(e) =>
-              setForm({ ...form, booths: Number(e.target.value) })
+              setForm({
+                ...form,
+                subscriptionExpiresAt: e.target.value ? new Date(e.target.value).toISOString() : null,
+              })
             }
           />
         </label>
+
         <label className="block text-xs font-medium text-zinc-600">
-          Users
+          Paid Device Limit
           <Input
             className="mt-1"
             type="number"
             min={1}
-            value={form.users}
+            value={form.deviceLimit ?? 1}
             onChange={(e) =>
-              setForm({ ...form, users: Number(e.target.value) })
+              setForm({
+                ...form,
+                deviceLimit: Math.max(1, Number(e.target.value) || 1),
+              })
             }
           />
         </label>
-        <label className="md:col-span-2 block text-xs font-medium text-zinc-600">
-          Renewal date
-          <Input
-            className="mt-1"
-            type="date"
-            value={form.renewalDate}
-            onChange={(e) => setForm({ ...form, renewalDate: e.target.value })}
-          />
-        </label>
-        <div className="md:col-span-2 flex justify-end gap-2 pt-2">
+
+        <div className="md:col-span-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-[11px] leading-5 text-zinc-500">
+          Subscription plans include 1 device. Additional devices are billed at
+          Rp 50K/device/month and should be reflected in this paid device limit.
+        </div>
+
+        <div className="md:col-span-2 flex justify-end gap-2 pt-2 border-t border-zinc-100">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Saving…" : "Save"}
+            {submitting ? "Saving..." : "Save"}
           </Button>
         </div>
       </form>
@@ -2127,7 +2505,7 @@ type SettingsForm = {
   qris_provider_merchant_id: string;
   qris_webhook_secret: string;
   qris_auto_retry: boolean;
-  // Booth
+  // Device
   printer_name: string;
   booth_timeout_seconds: number;
   // Media
@@ -2238,7 +2616,7 @@ export function SettingsPanel() {
       <Tabs defaultValue="payment">
         <TabsList>
           <TabsTrigger value="payment">Payment</TabsTrigger>
-          <TabsTrigger value="booth">Booth</TabsTrigger>
+          <TabsTrigger value="device">Device</TabsTrigger>
           <TabsTrigger value="media">Media</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="flutter">Flutter Config</TabsTrigger>
@@ -2293,10 +2671,10 @@ export function SettingsPanel() {
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="booth">
+        <TabsContent value="device">
           <Card>
             <CardHeader>
-              <CardTitle>Booth behavior</CardTitle>
+              <CardTitle>Device behavior</CardTitle>
               <CardDescription>
                 Timeouts, printers, and return timers.
               </CardDescription>
@@ -2313,7 +2691,7 @@ export function SettingsPanel() {
                 />
               </label>
               <label className="block text-xs font-medium text-zinc-600">
-                Booth timeout (seconds)
+                Device timeout (seconds)
                 <Input
                   className="mt-1"
                   type="number"
@@ -2590,6 +2968,312 @@ export function SettingsPanel() {
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+
+export function OrganizationPanel() {
+  const searchParams = useSearchParams();
+  const subscriptionRequired = searchParams.get("subscription") === "required";
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Organization Management"
+        description="Manage your subscription plan, organization details, and team members."
+      />
+      <OrganizationSettings subscriptionRequired={subscriptionRequired} />
+    </div>
+  );
+}
+
+function OrganizationSettings({
+  subscriptionRequired,
+}: {
+  subscriptionRequired: boolean;
+}) {
+  const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
+  const { data: members = [] } = useTenantMembers();
+  const { data: invitations = [] } = useTenantInvitations();
+  
+  const updateName = useUpdateTenantName();
+  const inviteUser = useInviteUser();
+  const deleteInvitation = useDeleteInvitation();
+  const removeMember = useRemoveMember();
+
+  const [editedName, setEditedName] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [myEmail, setMyEmail] = useState("");
+
+  const supabase = createClient();
+  useEffect(() => {
+    supabase.auth.getUser().then((res: { data: { user: { email?: string | null } | null } }) => {
+      if (res.data?.user?.email) setMyEmail(res.data.user.email);
+    });
+  }, [supabase]);
+
+  if (isLoadingTenant) return <div className="p-8 text-center text-zinc-500">Loading organization details...</div>;
+
+  const organizationName = editedName ?? tenant?.name ?? "";
+  const planName = tenant?.plan_name ?? "Free Account";
+  const subscriptionStatus = tenant?.subscription_status ?? "free";
+  const expiresAt = tenant?.subscription_expires_at
+    ? new Date(tenant.subscription_expires_at)
+    : null;
+  const isFreeAccount =
+    (tenant?.plan_id ?? "free") === "free" ||
+    subscriptionStatus === "free" ||
+    !tenant?.subscription_is_active;
+  const deviceLimit = tenant?.device_limit ?? 1;
+
+  return (
+    <div className="space-y-6">
+      {subscriptionRequired ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="flex items-start gap-3">
+            <LockKeyhole className="mt-0.5 size-4 shrink-0" />
+            <div>
+              <div className="font-semibold">Active subscription required</div>
+              <p className="mt-1 leading-6">
+                Theme, builder, template, devices, assets, analytics, settings,
+                and transaction tools are locked while this organization is on
+                Free Account.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <Card>
+        <CardContent className="grid gap-6 p-5 lg:grid-cols-[1fr_320px]">
+          <div>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <CardTitle>Organization Details</CardTitle>
+                <CardDescription className="mt-1">
+                  Update your organization&apos;s name and review subscription access.
+                </CardDescription>
+              </div>
+              <Badge variant={isFreeAccount ? "warning" : "success"}>
+                {isFreeAccount ? "Free Account" : "Active subscription"}
+              </Badge>
+            </div>
+
+            <div className="mt-6 flex max-w-xl items-end gap-3">
+              <div className="flex-1 space-y-1">
+                <label className="text-xs font-medium text-zinc-500">Organization Name</label>
+                <Input value={organizationName} onChange={(e) => setEditedName(e.target.value)} placeholder="My Organization" />
+              </div>
+              <Button 
+                disabled={!organizationName.trim() || organizationName === tenant?.name || updateName.isPending}
+                onClick={() => {
+                  updateName.mutate(organizationName, {
+                    onSuccess: () => {
+                      toast.success("Organization name updated");
+                      setEditedName(null);
+                    },
+                    onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to update name")
+                  });
+                }}
+              >
+                {updateName.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                <CreditCard className="mb-2 size-4 text-zinc-500" />
+                <div className="text-xs text-zinc-500">Plan</div>
+                <div className="mt-1 text-sm font-semibold text-zinc-900">{planName}</div>
+              </div>
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                <ShieldCheck className="mb-2 size-4 text-zinc-500" />
+                <div className="text-xs text-zinc-500">Status</div>
+                <div className="mt-1 text-sm font-semibold capitalize text-zinc-900">{subscriptionStatus}</div>
+              </div>
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                <Store className="mb-2 size-4 text-zinc-500" />
+                <div className="text-xs text-zinc-500">Device Limit</div>
+                <div className="mt-1 text-sm font-semibold text-zinc-900">
+                  {deviceLimit} device{deviceLimit > 1 ? "s" : ""}
+                </div>
+              </div>
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                <Timer className="mb-2 size-4 text-zinc-500" />
+                <div className="text-xs text-zinc-500">Expiry</div>
+                <div className="mt-1 text-sm font-semibold text-zinc-900">
+                  {expiresAt ? expiresAt.toLocaleDateString() : "Not active"}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-zinc-200 bg-white p-3">
+              <div className="text-xs font-medium text-zinc-500">Organization join code</div>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-sm font-semibold tracking-[0.24em] text-zinc-950">
+                  {tenant?.join_code ?? "Pending"}
+                </div>
+                <div className="text-xs leading-5 text-zinc-500">
+                  Share this code with staff so they can join this workspace during onboarding.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={
+              isFreeAccount
+                ? "rounded-lg border border-amber-200 bg-amber-50 p-4"
+                : "rounded-lg border border-emerald-200 bg-emerald-50 p-4"
+            }
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              {isFreeAccount ? (
+                <LockKeyhole className="size-4 text-amber-700" />
+              ) : (
+                <ShieldCheck className="size-4 text-emerald-700" />
+              )}
+              {isFreeAccount ? "Workspace locked" : "Workspace active"}
+            </div>
+            <p className="mt-3 text-sm leading-6 text-zinc-600">
+              {isFreeAccount
+                ? "Free Account can view dashboard and organization settings only. Activate a subscription to unlock builder, themes, templates, devices, assets, analytics, transactions, and settings."
+                : "This organization can use the POSKART operating tools according to the active subscription and paid device limit."}
+            </p>
+            <Link
+              href="/pricing"
+              className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-zinc-950 px-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+            >
+              {isFreeAccount ? "View subscription plans" : "Manage billing"}
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Team Members</CardTitle>
+          <CardDescription>People with access to this organization.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form 
+            className="mb-5 flex max-w-md items-end gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!inviteEmail.trim() || inviteEmail === myEmail) return;
+              inviteUser.mutate(inviteEmail, {
+                onSuccess: () => {
+                  toast.success(`Invitation sent to ${inviteEmail}`);
+                  setInviteEmail("");
+                },
+                onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to invite user")
+              });
+            }}
+          >
+            <div className="flex-1 space-y-1">
+              <label className="text-xs font-medium text-zinc-500">Invite Email</label>
+              <Input 
+                type="email" 
+                value={inviteEmail} 
+                onChange={(e) => setInviteEmail(e.target.value)} 
+                placeholder="colleague@example.com" 
+              />
+            </div>
+            <Button disabled={!inviteEmail.trim() || inviteEmail === myEmail || inviteUser.isPending}>
+              {inviteUser.isPending ? "Sending..." : "Invite"}
+            </Button>
+          </form>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User Email</TableHead>
+                <TableHead>System Role</TableHead>
+                <TableHead>Joined At</TableHead>
+                <TableHead></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(members as OrganizationMemberRow[]).map((m) => (
+                <TableRow key={m.id}>
+                  <TableCell className="font-medium">
+                    {m.email}
+                    {m.email === myEmail && <Badge variant="secondary" className="ml-2 text-[10px]">You</Badge>}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={m.role === "admin" ? "warning" : "secondary"}>
+                      {m.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-zinc-500">
+                    {new Date(m.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      disabled={m.email === myEmail}
+                      onClick={() => {
+                        if (confirm(`Remove ${m.email} from organization?`)) {
+                          removeMember.mutate(m.id, {
+                            onSuccess: () => toast.success("Member removed"),
+                            onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to remove member")
+                          });
+                        }
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {members.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-zinc-500 py-6">No members found.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+
+          {invitations.length > 0 && (
+            <div className="pt-4 mt-4 border-t border-zinc-100">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Invited At</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(invitations as OrganizationInvitationRow[]).map((inv) => (
+                    <TableRow key={inv.id}>
+                      <TableCell className="font-medium text-zinc-600">{inv.email}</TableCell>
+                      <TableCell className="text-zinc-500">{new Date(inv.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => {
+                            deleteInvitation.mutate(inv.id, {
+                              onSuccess: () => toast.success("Invitation cancelled"),
+                            });
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -33,7 +33,7 @@ export type AppConfigRow = {
   qris_provider_merchant_id: string;
   qris_webhook_secret: string;
   qris_auto_retry: boolean;
-  // Booth
+  // Device
   printer_name: string;
   booth_timeout_seconds: number;
   // Media

@@ -44,7 +44,7 @@ export function useRetryPrint() {
 }
 
 export function useBooths() {
-  return useQuery({ queryKey: ["booths"], queryFn: adminService.booths });
+  return useQuery({ queryKey: ["devices"], queryFn: adminService.devices });
 }
 
 export function useTemplates() {
@@ -56,7 +56,7 @@ export function usePricing() {
 }
 
 export function useTenants() {
-  return useQuery({ queryKey: ["tenants"], queryFn: adminService.tenants });
+  return useQuery({ queryKey: ["organizations"], queryFn: adminService.organizations });
 }
 
 export function useThemes() {
@@ -164,12 +164,12 @@ export function useDeletePricing() {
   });
 }
 
-// ── Booths ─────────────────────────────────────────────────
+// ── Devices ─────────────────────────────────────────────────
 export function useCreateBooth() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (values: BoothInput) => adminService.createBooth(values),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["booths"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["devices"] }),
   });
 }
 
@@ -178,7 +178,7 @@ export function useUpdateBooth() {
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<BoothInput> }) =>
       adminService.updateBooth(id, patch),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["booths"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["devices"] }),
   });
 }
 
@@ -186,16 +186,16 @@ export function useDeleteBooth() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => adminService.deleteBooth(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["booths"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["devices"] }),
   });
 }
 
-// ── Tenants ────────────────────────────────────────────────
+// ── Organizations ────────────────────────────────────────────────
 export function useCreateTenant() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (values: TenantInput) => adminService.createTenant(values),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tenants"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["organizations"] }),
   });
 }
 
@@ -204,7 +204,7 @@ export function useUpdateTenant() {
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<TenantInput> }) =>
       adminService.updateTenant(id, patch),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tenants"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["organizations"] }),
   });
 }
 
@@ -212,7 +212,7 @@ export function useDeleteTenant() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => adminService.deleteTenant(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["tenants"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["organizations"] }),
   });
 }
 
@@ -292,6 +292,121 @@ export function useDeleteLayout() {
     mutationFn: (id: string) => adminService.deleteLayout(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["layout-schemas"] });
+    },
+  });
+}
+
+export function useSubscriptionStatus() {
+  return useQuery({
+    queryKey: ["subscription-status"],
+    queryFn: adminService.getSubscriptionStatus,
+  });
+}
+
+export function useSubscriptionOrders() {
+  return useQuery({
+    queryKey: ["subscription-orders"],
+    queryFn: adminService.getSubscriptionOrders,
+  });
+}
+
+export function useUpdateSubscriptionOrderStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminService.updateSubscriptionOrderStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscription-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription-status"] });
+    },
+  });
+}
+
+export function useProfiles() {
+  return useQuery({
+    queryKey: ["profiles"],
+    queryFn: adminService.getProfiles,
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminService.updateProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription-status"] });
+    },
+  });
+}
+
+export function useDeleteProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminService.deleteProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+    },
+  });
+}
+
+export function useTenantDetails() {
+  return useQuery({
+    queryKey: ["organization-details"],
+    queryFn: adminService.getMyTenantDetails,
+  });
+}
+
+export function useUpdateTenantName() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminService.updateMyTenantName,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organization-details"] });
+    },
+  });
+}
+
+export function useTenantMembers() {
+  return useQuery({
+    queryKey: ["organization-members"],
+    queryFn: adminService.getMyTenantMembers,
+  });
+}
+
+export function useTenantInvitations() {
+  return useQuery({
+    queryKey: ["organization-invitations"],
+    queryFn: adminService.getMyTenantInvitations,
+  });
+}
+
+export function useInviteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminService.inviteUserToTenant,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organization-members"] });
+      queryClient.invalidateQueries({ queryKey: ["organization-invitations"] });
+    },
+  });
+}
+
+export function useDeleteInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminService.deleteTenantInvitation,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organization-invitations"] });
+    },
+  });
+}
+
+export function useRemoveMember() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: adminService.removeMemberFromTenant,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["organization-members"] });
     },
   });
 }

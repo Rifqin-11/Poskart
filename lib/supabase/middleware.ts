@@ -31,22 +31,36 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims;
   const protectedRoutes = [
     "/dashboard",
+    "/organization",
+    "/onboarding",
     "/builder",
     "/themes",
     "/templates",
     "/admin",
     "/transactions",
-    "/booths",
+    "/devices",
     "/assets",
     "/analytics",
-    "/tenants",
+    "/organizations",
     "/settings",
   ];
   const authRoutes = ["/login", "/register"];
+  const subscriptionRoutes = [
+    "/builder",
+    "/themes",
+    "/templates",
+    "/transactions",
+    "/devices",
+    "/assets",
+    "/analytics",
+    "/settings",
+  ];
+  const adminEmails = ["rifqinaufal9009@gmail.com", "admin@poskart.id", "admin@poskart.my.id"];
   const pathname = request.nextUrl.pathname;
 
   const isProtectedRoute = protectedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const isAuthRoute = authRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  const isSubscriptionRoute = subscriptionRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
@@ -60,6 +74,70 @@ export async function updateSession(request: NextRequest) {
     url.pathname = "/dashboard";
     url.search = "";
     return NextResponse.redirect(url);
+  }
+
+  if (user && isProtectedRoute) {
+    const { data: member } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("profile_id", user.sub)
+      .limit(1)
+      .maybeSingle();
+    const hasOrganization = Boolean(member?.organization_id);
+
+    if (!hasOrganization && pathname !== "/onboarding") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    if (hasOrganization && pathname === "/onboarding") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  if (user && isSubscriptionRoute) {
+    const email = typeof user.email === "string" ? user.email.toLowerCase() : "";
+    const isSuperAdmin = adminEmails.includes(email);
+
+    if (!isSuperAdmin) {
+      const { data: member } = await supabase
+        .from("organization_members")
+        .select("organization_id")
+        .eq("profile_id", user.sub)
+        .limit(1)
+        .maybeSingle();
+
+      const { data: subscription } = member?.organization_id
+        ? await supabase
+            .from("subscriptions")
+            .select("plan_id,status,current_period_end")
+            .eq("organization_id", member.organization_id)
+            .maybeSingle()
+        : { data: null };
+
+      const expiryTime = subscription?.current_period_end
+        ? new Date(subscription.current_period_end).getTime()
+        : 0;
+      const hasActiveSubscription =
+        subscription?.plan_id &&
+        subscription.plan_id !== "free" &&
+        ["active", "trialing"].includes(subscription.status ?? "") &&
+        expiryTime > Date.now();
+
+      if (!hasActiveSubscription) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/organization";
+        url.search = "";
+        url.searchParams.set("subscription", "required");
+        url.searchParams.set("next", pathname);
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   return supabaseResponse;

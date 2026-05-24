@@ -2211,9 +2211,9 @@ function PropertiesPanel({
                 }
               />
               <span>
-                Use booth/global value
+                Use device/global value
                 <span className="block text-[10px] text-zinc-400">
-                  When checked, Flutter reads the booth&apos;s
+                  When checked, Flutter reads the device&apos;s
                   `session_countdown_seconds` (or app_config fallback).
                 </span>
               </span>
@@ -2273,9 +2273,9 @@ function PropertiesPanel({
                 }
               />
               <span>
-                Use booth/global value
+                Use device/global value
                 <span className="block text-[10px] text-zinc-400">
-                  When checked, Flutter reads the booth&apos;s
+                  When checked, Flutter reads the device&apos;s
                   `payment_countdown_seconds`.
                 </span>
               </span>
