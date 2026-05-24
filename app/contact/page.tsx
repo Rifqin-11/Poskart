@@ -65,9 +65,6 @@ export default function ContactPage() {
             <p><span className="font-medium text-zinc-950">Support hours:</span> {businessProfile.supportHours}</p>
             <p><span className="font-medium text-zinc-950">Website:</span> {businessProfile.domain}</p>
           </div>
-          <div className="mt-6 rounded-md bg-white p-4 text-sm leading-6 text-zinc-600">
-            Untuk pengajuan payment gateway production, pastikan informasi kontak ini diganti dengan data bisnis aktif dan sesuai dokumen legal sebelum submit.
-          </div>
         </div>
       </section>
       <PublicFooter />

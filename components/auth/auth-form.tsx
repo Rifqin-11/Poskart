@@ -20,7 +20,7 @@ export function AuthForm({
     <div className="min-h-screen bg-zinc-50 px-4 py-10 text-zinc-950">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md flex-col justify-center">
         <Link href="/" className="mb-8 flex items-center gap-3 self-center">
-          <div className="grid size-10 place-items-center overflow-hidden rounded-lg bg-zinc-950">
+          <div className="grid size-10 place-items-center overflow-hidden rounded-lg">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/Logo Poskart.png"
