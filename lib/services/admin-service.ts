@@ -2,7 +2,11 @@ import { createClient } from "@/lib/supabase/client";
 import type { ChartPoint, KpiMetric } from "@/types/analytics";
 import type { Device } from "@/types/device";
 import type { LayoutSchema } from "@/types/builder";
-import type { PricingProduct } from "@/types/pricing";
+import type {
+  PricingProduct,
+  SubscriptionPlan,
+  SubscriptionPlanInput,
+} from "@/types/pricing";
 import type { Template, TemplateFormValues } from "@/types/template";
 import type { Organization } from "@/types/organization";
 import type { ThemePreset, ThemeSchema } from "@/types/theme";
@@ -37,12 +41,16 @@ type BoothRow = Omit<
   | "appVersion"
   | "lastSync"
   | "pricingProfile"
+  | "frameTemplates"
+  | "pricingProfiles"
   | "sessionCountdownSeconds"
   | "paymentCountdownSeconds"
 > & {
   app_version: string;
   last_sync: string;
   pricing_profile: string;
+  frame_templates: string[] | null;
+  pricing_profiles: string[] | null;
   session_countdown_seconds: number | null;
   payment_countdown_seconds: number | null;
 };
@@ -66,6 +74,18 @@ type PricingProductRow = Omit<
   print_limit: number;
   qris_download: boolean;
   gif_enabled: boolean;
+};
+
+type SubscriptionPlanRow = {
+  id: string;
+  name: string;
+  max_devices: number;
+  duration_months: number;
+  base_price: number;
+  included_devices: number;
+  additional_device_price_monthly: number;
+  is_public: boolean;
+  features: Record<string, unknown> | null;
 };
 
 type ThemePresetRow = Omit<ThemePreset, "schema"> & {
@@ -140,6 +160,8 @@ export type AssetInput = {
 
 export type PricingProductInput = Omit<PricingProduct, "id">;
 
+export type { SubscriptionPlanInput };
+
 export type BoothInput = Omit<Device, "id">;
 
 export type TenantInput = Omit<Organization, "id">;
@@ -191,6 +213,12 @@ const mapTransaction = (row: TransactionRow): Transaction => ({
   printLastError: row.print_last_error ?? null,
 });
 
+function normalizeAssignmentList(values?: string[] | null, fallback?: string | null) {
+  const list = Array.isArray(values) ? values.filter(Boolean) : [];
+  if (list.length > 0) return list;
+  return fallback ? [fallback] : [];
+}
+
 const mapBooth = (row: BoothRow): Device => ({
   id: row.id,
   name: row.name,
@@ -202,6 +230,8 @@ const mapBooth = (row: BoothRow): Device => ({
   theme: row.theme,
   template: row.template,
   pricingProfile: row.pricing_profile,
+  frameTemplates: normalizeAssignmentList(row.frame_templates, row.template),
+  pricingProfiles: normalizeAssignmentList(row.pricing_profiles, row.pricing_profile),
   sessionCountdownSeconds: row.session_countdown_seconds ?? null,
   paymentCountdownSeconds: row.payment_countdown_seconds ?? null,
 });
@@ -230,6 +260,18 @@ const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({
   qrisDownload: row.qris_download,
   gifEnabled: row.gif_enabled,
   active: row.active,
+});
+
+const mapSubscriptionPlan = (row: SubscriptionPlanRow): SubscriptionPlan => ({
+  id: row.id,
+  name: row.name,
+  maxDevices: row.max_devices,
+  durationMonths: row.duration_months,
+  basePrice: row.base_price,
+  includedDevices: row.included_devices,
+  additionalDevicePriceMonthly: row.additional_device_price_monthly,
+  isPublic: row.is_public,
+  features: row.features ?? {},
 });
 
 async function getKpiMetrics(): Promise<KpiMetric[]> {
@@ -272,7 +314,7 @@ const TRANSACTION_COLUMNS =
   "id,device,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_status,print_attempts,print_last_error";
 
 const BOOTH_COLUMNS =
-  "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,session_countdown_seconds,payment_countdown_seconds";
+  "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds";
 
 async function getTransactions(): Promise<Transaction[]> {
   const supabase = createClient();
@@ -434,6 +476,55 @@ async function getPricingProducts(): Promise<PricingProduct[]> {
     error,
     "Unable to load pricing products",
   ).map(mapPricingProduct);
+}
+
+async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("subscription_plans")
+    .select(
+      "id,name,max_devices,duration_months,base_price,included_devices,additional_device_price_monthly,is_public,features",
+    )
+    .in("id", ["monthly", "quarterly", "semiannual", "yearly"])
+    .order("duration_months", { ascending: true });
+
+  return assertSupabaseResult(
+    data as SubscriptionPlanRow[] | null,
+    error,
+    "Unable to load subscription plans",
+  ).map(mapSubscriptionPlan);
+}
+
+async function updateSubscriptionPlan(
+  id: string,
+  values: SubscriptionPlanInput,
+): Promise<void> {
+  const supabase = createClient();
+  const includedDevices = Math.max(1, Math.floor(values.includedDevices || 1));
+  const durationMonths = Math.max(1, Math.floor(values.durationMonths || 1));
+  const additionalDevicePriceMonthly = Math.max(
+    0,
+    Math.floor(values.additionalDevicePriceMonthly || 0),
+  );
+  const { error } = await supabase
+    .from("subscription_plans")
+    .update({
+      name: values.name.trim(),
+      max_devices: includedDevices,
+      duration_months: durationMonths,
+      base_price: Math.max(0, Math.floor(values.basePrice || 0)),
+      included_devices: includedDevices,
+      additional_device_price_monthly: additionalDevicePriceMonthly,
+      is_public: values.isPublic,
+      features: {
+        included: `${includedDevices} device${includedDevices > 1 ? "s" : ""}`,
+        addon: `Rp ${Math.round(additionalDevicePriceMonthly / 1000)}K/device/month`,
+      },
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) throw new Error(`Unable to update subscription plan: ${error.message}`);
 }
 
 async function getTenants(): Promise<Organization[]> {
@@ -637,6 +728,8 @@ async function deletePricingProduct(id: string): Promise<void> {
 async function createBooth(values: BoothInput): Promise<void> {
   const supabase = createClient();
   const id = `BTH-${Date.now()}`;
+  const frameTemplates = normalizeAssignmentList(values.frameTemplates, values.template);
+  const pricingProfiles = normalizeAssignmentList(values.pricingProfiles, values.pricingProfile);
   const { error } = await supabase.from("devices").insert({
     id,
     name: values.name,
@@ -646,8 +739,10 @@ async function createBooth(values: BoothInput): Promise<void> {
     app_version: values.appVersion,
     last_sync: values.lastSync,
     theme: values.theme,
-    template: values.template,
-    pricing_profile: values.pricingProfile,
+    template: frameTemplates[0] ?? "",
+    pricing_profile: pricingProfiles[0] ?? "",
+    frame_templates: frameTemplates,
+    pricing_profiles: pricingProfiles,
     session_countdown_seconds: values.sessionCountdownSeconds ?? null,
     payment_countdown_seconds: values.paymentCountdownSeconds ?? null,
     updated_at: new Date().toISOString(),
@@ -671,8 +766,18 @@ async function updateBooth(
   if (patch.lastSync !== undefined) dbPatch.last_sync = patch.lastSync;
   if (patch.theme !== undefined) dbPatch.theme = patch.theme;
   if (patch.template !== undefined) dbPatch.template = patch.template;
+  if (patch.frameTemplates !== undefined) {
+    const frameTemplates = normalizeAssignmentList(patch.frameTemplates, patch.template);
+    dbPatch.frame_templates = frameTemplates;
+    dbPatch.template = frameTemplates[0] ?? "";
+  }
   if (patch.pricingProfile !== undefined)
     dbPatch.pricing_profile = patch.pricingProfile;
+  if (patch.pricingProfiles !== undefined) {
+    const pricingProfiles = normalizeAssignmentList(patch.pricingProfiles, patch.pricingProfile);
+    dbPatch.pricing_profiles = pricingProfiles;
+    dbPatch.pricing_profile = pricingProfiles[0] ?? "";
+  }
   if (patch.sessionCountdownSeconds !== undefined)
     dbPatch.session_countdown_seconds = patch.sessionCountdownSeconds ?? null;
   if (patch.paymentCountdownSeconds !== undefined)
@@ -1082,6 +1187,8 @@ export const adminService = {
   createPricingProduct,
   updatePricingProduct,
   deletePricingProduct,
+  subscriptionPlans: getSubscriptionPlans,
+  updateSubscriptionPlan,
   createBooth,
   updateBooth,
   deleteBooth,

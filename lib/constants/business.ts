@@ -15,13 +15,19 @@ export const businessProfile = {
   taxNote:
     "Harga belum termasuk pajak yang berlaku, kecuali dinyatakan lain pada invoice atau kontrak.",
   billingNote:
-    "Subscription POSKART tersedia dalam pilihan 1 bulan, 3 bulan, 6 bulan, dan 1 tahun untuk 1 device. Device tambahan ditagihkan Rp 50K per device per bulan.",
+    "Subscription POSKART tersedia dalam pilihan 1 bulan dan 3 bulan dengan 1 device, 6 bulan dengan 3 devices, serta 1 tahun dengan 5 devices. Device tambahan ditagihkan Rp 50K per device per bulan.",
   purchaseFlow:
     "Untuk berlangganan, pelanggan dapat memilih paket, lanjut ke halaman checkout, lalu menyelesaikan pembayaran melalui payment link resmi setelah payment gateway production aktif.",
 };
 
 export const ADDITIONAL_DEVICE_PRICE_MONTHLY = 50000;
-export const INCLUDED_SUBSCRIPTION_DEVICES = 1;
+
+export const SUBSCRIPTION_INCLUDED_DEVICES = {
+  monthly: 1,
+  quarterly: 1,
+  semiannual: 3,
+  yearly: 5,
+} as const;
 
 export const pricingPlans = [
   {
@@ -30,7 +36,7 @@ export const pricingPlans = [
     price: "Rp 50K",
     amount: 50000,
     durationMonths: 1,
-    includedDevices: INCLUDED_SUBSCRIPTION_DEVICES,
+    includedDevices: SUBSCRIPTION_INCLUDED_DEVICES.monthly,
     additionalDevicePriceMonthly: ADDITIONAL_DEVICE_PRICE_MONTHLY,
     period: "/month",
     duration: "1 month access",
@@ -53,7 +59,7 @@ export const pricingPlans = [
     price: "Rp 140K",
     amount: 140000,
     durationMonths: 3,
-    includedDevices: INCLUDED_SUBSCRIPTION_DEVICES,
+    includedDevices: SUBSCRIPTION_INCLUDED_DEVICES.quarterly,
     additionalDevicePriceMonthly: ADDITIONAL_DEVICE_PRICE_MONTHLY,
     period: "/3 months",
     duration: "3 months access",
@@ -61,7 +67,7 @@ export const pricingPlans = [
     cta: "Subscribe 3 Months",
     highlighted: false,
     features: [
-      "POSKART  dashboard",
+      "POSKART dashboard",
       "Visual layout builder",
       "Theme and template CMS",
       "QRIS transaction monitoring",
@@ -76,7 +82,7 @@ export const pricingPlans = [
     price: "Rp 300K",
     amount: 300000,
     durationMonths: 6,
-    includedDevices: INCLUDED_SUBSCRIPTION_DEVICES,
+    includedDevices: SUBSCRIPTION_INCLUDED_DEVICES.semiannual,
     additionalDevicePriceMonthly: ADDITIONAL_DEVICE_PRICE_MONTHLY,
     period: "/6 months",
     duration: "6 months access",
@@ -88,10 +94,10 @@ export const pricingPlans = [
       "Visual layout builder",
       "Theme and template CMS",
       "QRIS transaction monitoring",
-      "1 device included",
+      "3 devices included",
       "Additional device Rp 50K/device/month",
     ],
-    limits: ["6 months access", "1 device included", "Stable mid-term billing"],
+    limits: ["6 months access", "3 devices included", "Stable mid-term billing"],
   },
   {
     id: "yearly",
@@ -99,7 +105,7 @@ export const pricingPlans = [
     price: "Rp 500K",
     amount: 500000,
     durationMonths: 12,
-    includedDevices: INCLUDED_SUBSCRIPTION_DEVICES,
+    includedDevices: SUBSCRIPTION_INCLUDED_DEVICES.yearly,
     additionalDevicePriceMonthly: ADDITIONAL_DEVICE_PRICE_MONTHLY,
     period: "/year",
     duration: "12 months access",
@@ -111,17 +117,20 @@ export const pricingPlans = [
       "Visual layout builder",
       "Theme and template CMS",
       "QRIS transaction monitoring",
-      "1 device included",
+      "5 devices included",
       "Additional device Rp 50K/device/month",
     ],
-    limits: ["12 months access", "1 device included", "Best value subscription"],
+    limits: ["12 months access", "5 devices included", "Best value subscription"],
   },
 ];
 
 export type PricingPlan = (typeof pricingPlans)[number];
 
 export function calculateSubscriptionTotal(plan: PricingPlan, deviceCount: number) {
-  const normalizedDeviceCount = Math.max(1, Math.floor(deviceCount || 1));
+  const normalizedDeviceCount = Math.max(
+    plan.includedDevices,
+    Math.floor(deviceCount || plan.includedDevices),
+  );
   const additionalDevices = Math.max(0, normalizedDeviceCount - plan.includedDevices);
   const additionalDeviceAmount =
     additionalDevices * plan.additionalDevicePriceMonthly * plan.durationMonths;

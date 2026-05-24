@@ -16,7 +16,7 @@ export function CheckoutContent() {
   const successMessage = searchParams.get("success");
   const errorMessage = searchParams.get("error");
   const plan = pricingPlans.find((item) => item.id === selectedPlanId) ?? pricingPlans[3];
-  const [deviceCount, setDeviceCount] = useState(1);
+  const [deviceCount, setDeviceCount] = useState<number>(plan.includedDevices);
   const quote = calculateSubscriptionTotal(plan, deviceCount);
 
   return (
@@ -73,7 +73,7 @@ export function CheckoutContent() {
         <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold">Subscription devices</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-500">
-            Every plan includes 1 device. Additional devices are charged Rp 50K per device per month.
+            This plan includes {plan.includedDevices} device{plan.includedDevices > 1 ? "s" : ""}. Additional devices are charged Rp 50K per device per month.
           </p>
           <label className="mt-5 block max-w-xs text-xs font-medium text-zinc-500">
             Total devices
@@ -81,11 +81,13 @@ export function CheckoutContent() {
               className="mt-1"
               name="deviceCount"
               type="number"
-              min={1}
+              min={plan.includedDevices}
               max={99}
-              value={deviceCount}
+              value={quote.deviceCount}
               onChange={(event) =>
-                setDeviceCount(Math.max(1, Number(event.target.value) || 1))
+                setDeviceCount(
+                  Math.max(plan.includedDevices, Number(event.target.value) || plan.includedDevices),
+                )
               }
               required
             />
@@ -123,7 +125,12 @@ export function CheckoutContent() {
           </div>
           <div className="mt-4 border-t border-zinc-200 pt-4">
             <div className="flex justify-between text-sm">
-              <span>Base subscription</span>
+              <span>
+                Base subscription
+                <span className="block text-xs text-zinc-500">
+                  Includes {quote.includedDevices} device{quote.includedDevices > 1 ? "s" : ""}
+                </span>
+              </span>
               <span>{formatCurrency(quote.baseAmount)}</span>
             </div>
             <div className="mt-2 flex justify-between text-sm">

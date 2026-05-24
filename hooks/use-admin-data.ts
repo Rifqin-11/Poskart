@@ -6,6 +6,7 @@ import type {
   AssetInput,
   BoothInput,
   PricingProductInput,
+  SubscriptionPlanInput,
   TenantInput,
 } from "@/lib/services/admin-service";
 import { configService } from "@/lib/services/config-service";
@@ -161,6 +162,31 @@ export function useDeletePricing() {
   return useMutation({
     mutationFn: (id: string) => adminService.deletePricingProduct(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pricing"] }),
+  });
+}
+
+export function useSubscriptionPlans() {
+  return useQuery({
+    queryKey: ["subscription-plans"],
+    queryFn: adminService.subscriptionPlans,
+  });
+}
+
+export function useUpdateSubscriptionPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      values,
+    }: {
+      id: string;
+      values: SubscriptionPlanInput;
+    }) => adminService.updateSubscriptionPlan(id, values),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["subscription-plans"] });
+      qc.invalidateQueries({ queryKey: ["organizations"] });
+      qc.invalidateQueries({ queryKey: ["subscription-status"] });
+    },
   });
 }
 

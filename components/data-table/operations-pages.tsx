@@ -86,12 +86,14 @@ import {
   useRetryPrint,
   usePricing,
   useSaveAppConfig,
+  useSubscriptionPlans,
   useTemplates,
   useTenants,
   useTransactions,
   useUpdateAsset,
   useUpdateBooth,
   useUpdatePricing,
+  useUpdateSubscriptionPlan,
   useUpdateTemplate,
   useUpdateTenant,
   useSubscriptionStatus,
@@ -118,9 +120,9 @@ import type {
   TenantInput,
 } from "@/lib/services/admin-service";
 import { uploadLibraryAsset } from "@/lib/services/storage-service";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import type { Device } from "@/types/device";
-import type { PricingProduct } from "@/types/pricing";
+import type { PricingProduct, SubscriptionPlan } from "@/types/pricing";
 import type { Template } from "@/types/template";
 import type { Organization } from "@/types/organization";
 import type { Transaction } from "@/types/transaction";
@@ -775,6 +777,8 @@ const EMPTY_BOOTH: BoothInput = {
   theme: "",
   template: "",
   pricingProfile: "Standard",
+  frameTemplates: [],
+  pricingProfiles: ["Standard"],
   sessionCountdownSeconds: null,
   paymentCountdownSeconds: null,
 };
@@ -832,6 +836,26 @@ export function BoothManagement() {
         },
         onError: (err) =>
           toast.error(err instanceof Error ? err.message : "Failed"),
+      },
+    );
+  };
+
+  const updateDeviceAssignments = (
+    device: Device,
+    patch: Pick<Partial<BoothInput>, "frameTemplates" | "pricingProfiles">,
+    successMessage: string,
+  ) => {
+    updateBooth.mutate(
+      { id: device.id, patch },
+      {
+        onSuccess: () => {
+          toast.success(successMessage);
+          setAssignFor((current) =>
+            current?.id === device.id ? { ...current, ...patch } : current,
+          );
+        },
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Update failed"),
       },
     );
   };
@@ -904,7 +928,7 @@ export function BoothManagement() {
                 </div>
                 <div className="rounded-md bg-zinc-50 p-3">
                   <Store className="mb-2 size-4" />
-                  {device.pricingProfile}
+                  {formatAssignmentList(device.pricingProfiles)}
                 </div>
               </div>
               <div className="grid gap-2 rounded-md bg-zinc-50 p-3 text-xs text-zinc-600 sm:grid-cols-2">
@@ -939,13 +963,13 @@ export function BoothManagement() {
                 <div className="flex items-center gap-1.5">
                   <span className="text-zinc-500">Frame:</span>
                   <span className="font-medium text-zinc-700">
-                    {device.template || "—"}
+                    {formatAssignmentList(device.frameTemplates)}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-zinc-500">Price:</span>
                   <span className="font-medium text-zinc-700">
-                    {device.pricingProfile || "—"}
+                    {formatAssignmentList(device.pricingProfiles)}
                   </span>
                 </div>
               </div>
@@ -1096,41 +1120,29 @@ export function BoothManagement() {
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
-              <DeviceQuickSelect
-                label="Frame template"
-                value={assignFor.template}
+              <DeviceMultiSelect
+                label="Frame templates"
+                values={assignFor.frameTemplates}
                 emptyLabel="No frame templates yet"
                 options={deviceFormOptions.frameTemplates}
-                onChange={(value) =>
-                  updateBooth.mutate(
-                    { id: assignFor.id, patch: { template: value } },
-                    {
-                      onSuccess: () => {
-                        toast.success("Frame template updated");
-                        setAssignFor(null);
-                      },
-                      onError: (err) =>
-                        toast.error(err instanceof Error ? err.message : "Update failed"),
-                    },
+                onChange={(values) =>
+                  updateDeviceAssignments(
+                    assignFor,
+                    { frameTemplates: values },
+                    "Frame templates updated",
                   )
                 }
               />
-              <DeviceQuickSelect
-                label="Pricing package"
-                value={assignFor.pricingProfile}
+              <DeviceMultiSelect
+                label="Pricing packages"
+                values={assignFor.pricingProfiles}
                 emptyLabel="No active pricing packages yet"
                 options={deviceFormOptions.pricingProfiles}
-                onChange={(value) =>
-                  updateBooth.mutate(
-                    { id: assignFor.id, patch: { pricingProfile: value } },
-                    {
-                      onSuccess: () => {
-                        toast.success("Pricing package updated");
-                        setAssignFor(null);
-                      },
-                      onError: (err) =>
-                        toast.error(err instanceof Error ? err.message : "Update failed"),
-                    },
+                onChange={(values) =>
+                  updateDeviceAssignments(
+                    assignFor,
+                    { pricingProfiles: values },
+                    "Pricing packages updated",
                   )
                 }
               />
@@ -1160,7 +1172,11 @@ function BoothFormDialog({
   const [form, setForm] = useState<BoothInput>(() => {
     const { id: _ignored, ...rest } = initial as Device;
     void _ignored;
-    return rest as BoothInput;
+    return {
+      ...rest,
+      frameTemplates: normalizeStringList(rest.frameTemplates, rest.template),
+      pricingProfiles: normalizeStringList(rest.pricingProfiles, rest.pricingProfile),
+    } as BoothInput;
   });
 
   return (
@@ -1251,52 +1267,48 @@ function BoothFormDialog({
             ))}
           </Select>
         </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Frame template
-          <Select
+        <div className="block text-xs font-medium text-zinc-600">
+          Frame templates
+          <DeviceMultiSelect
             className="mt-1"
-            value={form.template}
-            onChange={(e) => setForm({ ...form, template: e.target.value })}
-          >
-            <option value="">Select frame template</option>
-            {includeCurrentOption(options.frameTemplates, form.template).map(
-              (template) => (
-                <option key={template} value={template}>
-                  {template}
-                </option>
-              ),
-            )}
-          </Select>
+            values={form.frameTemplates}
+            emptyLabel="No frame templates yet"
+            options={includeCurrentOptions(options.frameTemplates, form.frameTemplates)}
+            onChange={(values) =>
+              setForm({
+                ...form,
+                frameTemplates: values,
+                template: values[0] ?? "",
+              })
+            }
+          />
           {options.frameTemplates.length === 0 ? (
             <span className="mt-1 block text-[10px] text-zinc-400">
               Create frame templates from the Templates page first.
             </span>
           ) : null}
-        </label>
-        <label className="md:col-span-2 block text-xs font-medium text-zinc-600">
-          Pricing package
-          <Select
+        </div>
+        <div className="md:col-span-2 block text-xs font-medium text-zinc-600">
+          Pricing packages
+          <DeviceMultiSelect
             className="mt-1"
-            value={form.pricingProfile}
-            onChange={(e) =>
-              setForm({ ...form, pricingProfile: e.target.value })
+            values={form.pricingProfiles}
+            emptyLabel="No active pricing packages yet"
+            options={includeCurrentOptions(options.pricingProfiles, form.pricingProfiles)}
+            onChange={(values) =>
+              setForm({
+                ...form,
+                pricingProfiles: values,
+                pricingProfile: values[0] ?? "",
+              })
             }
-          >
-            <option value="">Select pricing package</option>
-            {includeCurrentOption(options.pricingProfiles, form.pricingProfile).map(
-              (profile) => (
-                <option key={profile} value={profile}>
-                  {profile}
-                </option>
-              ),
-            )}
-          </Select>
+          />
           {options.pricingProfiles.length === 0 ? (
             <span className="mt-1 block text-[10px] text-zinc-400">
               Add active pricing packages from Pricing first.
             </span>
           ) : null}
-        </label>
+        </div>
         <div className="md:col-span-2 mt-1 rounded-md border border-dashed border-zinc-200 p-3">
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
             <Timer className="size-3.5" /> Countdown overrides (optional)
@@ -1361,38 +1373,112 @@ function includeCurrentOption(options: string[], currentValue?: string | null) {
   return [currentValue, ...options];
 }
 
-function DeviceQuickSelect({
+function getSubscriptionPlanOptions(plans: SubscriptionPlan[]) {
+  const normalizedPlans =
+    plans.length > 0
+      ? plans
+      : pricingPlans.map((plan) => ({
+          id: plan.id,
+          name: plan.name,
+          durationMonths: plan.durationMonths,
+          basePrice: plan.amount,
+          includedDevices: plan.includedDevices,
+        }));
+
+  return [
+    { id: "free", label: "Free Account", description: "1 device" },
+    ...normalizedPlans.map((plan) => ({
+      id: plan.id,
+      label: plan.name,
+      description: `${plan.durationMonths} month${plan.durationMonths > 1 ? "s" : ""} · ${formatCurrency(plan.basePrice)} · ${plan.includedDevices} device${plan.includedDevices > 1 ? "s" : ""} included`,
+    })),
+  ];
+}
+
+function includeCurrentOptions(options: string[], currentValues?: string[] | null) {
+  const values = normalizeStringList(currentValues);
+  return [...values.filter((value) => !options.includes(value)), ...options];
+}
+
+function normalizeStringList(values?: string[] | null, fallback?: string | null) {
+  const list = Array.isArray(values)
+    ? values.map((value) => value.trim()).filter(Boolean)
+    : [];
+  if (list.length > 0) return Array.from(new Set(list));
+  return fallback?.trim() ? [fallback.trim()] : [];
+}
+
+function formatAssignmentList(values?: string[] | null, fallback?: string | null) {
+  const list = normalizeStringList(values, fallback);
+  if (list.length === 0) return "—";
+  if (list.length <= 2) return list.join(", ");
+  return `${list.slice(0, 2).join(", ")} +${list.length - 2}`;
+}
+
+function DeviceMultiSelect({
   label,
-  value,
+  values,
   emptyLabel,
   options,
+  className,
   onChange,
 }: {
-  label: string;
-  value: string;
+  label?: string;
+  values: string[];
   emptyLabel: string;
   options: string[];
-  onChange: (value: string) => void;
+  className?: string;
+  onChange: (values: string[]) => void;
 }) {
-  const normalizedOptions = includeCurrentOption(options, value);
+  const selectedValues = normalizeStringList(values);
+  const normalizedOptions = includeCurrentOptions(options, selectedValues);
+
+  const toggleValue = (option: string) => {
+    if (selectedValues.includes(option)) {
+      onChange(selectedValues.filter((value) => value !== option));
+      return;
+    }
+    onChange([...selectedValues, option]);
+  };
 
   return (
-    <label className="block text-xs font-medium text-zinc-600">
-      {label}
-      <Select
-        className="mt-1"
-        value={value}
-        disabled={options.length === 0}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        <option value="">{options.length === 0 ? emptyLabel : `Select ${label.toLowerCase()}`}</option>
-        {normalizedOptions.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </Select>
-    </label>
+    <div className={cn("block text-xs font-medium text-zinc-600", className)}>
+      {label ? <div>{label}</div> : null}
+      <div className="mt-1 rounded-md border border-zinc-200 bg-white p-1.5 shadow-sm">
+        {normalizedOptions.length === 0 ? (
+          <div className="px-2 py-1.5 text-xs font-normal text-zinc-400">
+            {emptyLabel}
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {normalizedOptions.map((option) => {
+              const selected = selectedValues.includes(option);
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => toggleValue(option)}
+                  className={cn(
+                    "inline-flex min-h-8 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                    selected
+                      ? "border-zinc-950 bg-zinc-950 text-white"
+                      : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 hover:text-zinc-950",
+                  )}
+                >
+                  {selected ? <Check className="size-3.5" /> : null}
+                  {option}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {selectedValues.length > 0 ? (
+        <div className="mt-1 text-[10px] font-normal text-zinc-400">
+          {selectedValues.length} selected
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -2038,15 +2124,6 @@ export function AnalyticsDashboard() {
   );
 }
 
-const SUBSCRIPTION_PLAN_OPTIONS = [
-  { id: "free", label: "Free Account", description: "1 device" },
-  ...pricingPlans.map((plan) => ({
-    id: plan.id,
-    label: plan.name,
-    description: `${plan.duration} · ${plan.price} · 1 device included`,
-  })),
-];
-
 const EMPTY_TENANT: TenantInput = {
   name: "",
   plan: "Free",
@@ -2063,6 +2140,7 @@ const EMPTY_TENANT: TenantInput = {
 export function TenantManagement() {
   const { data = [] } = useTenants();
   const { data: profiles = [], isLoading: isLoadingProfiles } = useProfiles();
+  const { data: subscriptionPlans = [] } = useSubscriptionPlans();
   const createTenant = useCreateTenant();
   const updateTenant = useUpdateTenant();
   const deleteTenant = useDeleteTenant();
@@ -2095,6 +2173,7 @@ export function TenantManagement() {
         <TabsList className="mb-4">
           <TabsTrigger value="organizations">Organizations</TabsTrigger>
           <TabsTrigger value="users">Registered Users</TabsTrigger>
+          <TabsTrigger value="saas-pricing">SaaS Pricing</TabsTrigger>
         </TabsList>
         <TabsContent value="organizations">
           <Card>
@@ -2224,12 +2303,16 @@ export function TenantManagement() {
             </CardContent>
           </Card>
         </TabsContent>
+        <TabsContent value="saas-pricing">
+          <SaasPricingManagement />
+        </TabsContent>
       </Tabs>
       
       {creating ? (
         <TenantFormDialog
           title="Create organization"
           initial={EMPTY_TENANT}
+          subscriptionPlans={subscriptionPlans}
           submitting={createTenant.isPending}
           onClose={() => setCreating(false)}
           onSubmit={(values) => {
@@ -2250,6 +2333,7 @@ export function TenantManagement() {
         <TenantFormDialog
           title={`Edit ${editing.name}`}
           initial={editing}
+          subscriptionPlans={subscriptionPlans}
           submitting={updateTenant.isPending}
           onClose={() => setEditing(null)}
           onSubmit={(values) => {
@@ -2320,15 +2404,246 @@ export function TenantManagement() {
   );
 }
 
+function SaasPricingManagement() {
+  const { data: plans = [], isLoading } = useSubscriptionPlans();
+  const updatePlan = useUpdateSubscriptionPlan();
+  const [editing, setEditing] = useState<SubscriptionPlan | null>(null);
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>SaaS Subscription Pricing</CardTitle>
+          <CardDescription>
+            Manage public subscription prices, durations, included devices, and
+            additional device add-on pricing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Plan</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Base price</TableHead>
+                <TableHead>Included</TableHead>
+                <TableHead>Add-on</TableHead>
+                <TableHead>Public</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {plans.map((plan) => (
+                <TableRow key={plan.id}>
+                  <TableCell>
+                    <div className="font-medium">{plan.name}</div>
+                    <div className="text-xs text-zinc-400">{plan.id}</div>
+                  </TableCell>
+                  <TableCell>
+                    {plan.durationMonths} month{plan.durationMonths > 1 ? "s" : ""}
+                  </TableCell>
+                  <TableCell>{formatCurrency(plan.basePrice)}</TableCell>
+                  <TableCell>
+                    {plan.includedDevices} device{plan.includedDevices > 1 ? "s" : ""}
+                  </TableCell>
+                  <TableCell>
+                    {formatCurrency(plan.additionalDevicePriceMonthly)}/device/month
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={plan.isPublic ? "success" : "secondary"}>
+                      {plan.isPublic ? "Public" : "Hidden"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="outline" onClick={() => setEditing(plan)}>
+                      <Edit2 className="size-4" /> Edit
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {plans.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-8 text-center text-sm text-zinc-400">
+                    {isLoading ? "Loading subscription plans..." : "No subscription plans found."}
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {editing ? (
+        <SubscriptionPlanDialog
+          plan={editing}
+          submitting={updatePlan.isPending}
+          onClose={() => setEditing(null)}
+          onSubmit={(values) => {
+            updatePlan.mutate(
+              { id: editing.id, values },
+              {
+                onSuccess: () => {
+                  toast.success("SaaS pricing updated");
+                  setEditing(null);
+                },
+                onError: (err) =>
+                  toast.error(err instanceof Error ? err.message : "Update failed"),
+              },
+            );
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function SubscriptionPlanDialog({
+  plan,
+  submitting,
+  onClose,
+  onSubmit,
+}: {
+  plan: SubscriptionPlan;
+  submitting: boolean;
+  onClose: () => void;
+  onSubmit: (values: {
+    name: string;
+    durationMonths: number;
+    basePrice: number;
+    includedDevices: number;
+    additionalDevicePriceMonthly: number;
+    isPublic: boolean;
+  }) => void;
+}) {
+  const [form, setForm] = useState({
+    name: plan.name,
+    durationMonths: plan.durationMonths,
+    basePrice: plan.basePrice,
+    includedDevices: plan.includedDevices,
+    additionalDevicePriceMonthly: plan.additionalDevicePriceMonthly,
+    isPublic: plan.isPublic,
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()} title={`Edit ${plan.name}`}>
+      <form
+        className="grid gap-3 md:grid-cols-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!form.name.trim()) {
+            toast.error("Plan name is required");
+            return;
+          }
+          if (form.durationMonths < 1 || form.includedDevices < 1) {
+            toast.error("Duration and included devices must be at least 1");
+            return;
+          }
+          onSubmit(form);
+        }}
+      >
+        <label className="md:col-span-2 block text-xs font-medium text-zinc-600">
+          Plan name
+          <Input
+            className="mt-1"
+            value={form.name}
+            onChange={(event) => setForm({ ...form, name: event.target.value })}
+          />
+        </label>
+        <label className="block text-xs font-medium text-zinc-600">
+          Duration months
+          <Input
+            className="mt-1"
+            type="number"
+            min={1}
+            value={form.durationMonths}
+            onChange={(event) =>
+              setForm({ ...form, durationMonths: Math.max(1, Number(event.target.value) || 1) })
+            }
+          />
+        </label>
+        <label className="block text-xs font-medium text-zinc-600">
+          Base price (IDR)
+          <Input
+            className="mt-1"
+            type="number"
+            min={0}
+            step={1000}
+            value={form.basePrice}
+            onChange={(event) =>
+              setForm({ ...form, basePrice: Math.max(0, Number(event.target.value) || 0) })
+            }
+          />
+        </label>
+        <label className="block text-xs font-medium text-zinc-600">
+          Included devices
+          <Input
+            className="mt-1"
+            type="number"
+            min={1}
+            value={form.includedDevices}
+            onChange={(event) =>
+              setForm({ ...form, includedDevices: Math.max(1, Number(event.target.value) || 1) })
+            }
+          />
+        </label>
+        <label className="block text-xs font-medium text-zinc-600">
+          Additional device price/month
+          <Input
+            className="mt-1"
+            type="number"
+            min={0}
+            step={1000}
+            value={form.additionalDevicePriceMonthly}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                additionalDevicePriceMonthly: Math.max(0, Number(event.target.value) || 0),
+              })
+            }
+          />
+        </label>
+        <div className="md:col-span-2 flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+          <div>
+            <div className="text-sm font-medium text-zinc-800">Public plan</div>
+            <div className="text-xs leading-5 text-zinc-500">
+              Hidden plans stay in database but should not be shown in public checkout flows.
+            </div>
+          </div>
+          <Switch
+            checked={form.isPublic}
+            onCheckedChange={(checked) => setForm({ ...form, isPublic: checked })}
+          />
+        </div>
+        <div className="md:col-span-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs leading-5 text-zinc-500">
+          Preview: {formatCurrency(form.basePrice)} for {form.durationMonths} month
+          {form.durationMonths > 1 ? "s" : ""}, includes {form.includedDevices} device
+          {form.includedDevices > 1 ? "s" : ""}. Extra devices cost{" "}
+          {formatCurrency(form.additionalDevicePriceMonthly)}/device/month.
+        </div>
+        <div className="md:col-span-2 flex justify-end gap-2 border-t border-zinc-100 pt-3">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Saving..." : "Save pricing"}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
 function TenantFormDialog({
   title,
   initial,
+  subscriptionPlans,
   submitting,
   onClose,
   onSubmit,
 }: {
   title: string;
   initial: TenantInput | Organization;
+  subscriptionPlans: SubscriptionPlan[];
   submitting: boolean;
   onClose: () => void;
   onSubmit: (values: TenantInput) => void;
@@ -2349,6 +2664,11 @@ function TenantFormDialog({
       deviceLimit: rest.deviceLimit || 1,
     } as TenantInput;
   });
+  const selectedSubscriptionPlan = subscriptionPlans.find((plan) => plan.id === form.planId);
+  const fallbackPlan = pricingPlans.find((plan) => plan.id === form.planId);
+  const includedDeviceCount =
+    selectedSubscriptionPlan?.includedDevices ?? fallbackPlan?.includedDevices ?? 1;
+  const planOptions = getSubscriptionPlanOptions(subscriptionPlans);
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} title={title}>
@@ -2388,22 +2708,25 @@ function TenantFormDialog({
             value={form.planId || "free"}
             onChange={(e) => {
               const val = e.target.value;
-              const selected = pricingPlans.find((plan) => plan.id === val);
+              const selected =
+                subscriptionPlans.find((plan) => plan.id === val) ??
+                pricingPlans.find((plan) => plan.id === val);
+              const includedDevices = selected?.includedDevices ?? 1;
               setForm({
                 ...form,
                 planId: val,
-                plan: selected?.name ?? "Free",
+                plan: val === "free" ? "Free" : selected?.name ?? "Free",
                 subscriptionStatus:
                   val === "free"
                     ? "free"
                     : form.subscriptionStatus === "free"
                       ? "active"
                       : form.subscriptionStatus,
-                deviceLimit: Math.max(1, form.deviceLimit ?? 1),
+                deviceLimit: Math.max(includedDevices, form.devices ?? 0),
               });
             }}
           >
-            {SUBSCRIPTION_PLAN_OPTIONS.map((option) => (
+            {planOptions.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label} ({option.description})
               </option>
@@ -2475,8 +2798,11 @@ function TenantFormDialog({
         </label>
 
         <div className="md:col-span-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-[11px] leading-5 text-zinc-500">
-          Subscription plans include 1 device. Additional devices are billed at
-          Rp 50K/device/month and should be reflected in this paid device limit.
+          {selectedSubscriptionPlan
+            ? `${selectedSubscriptionPlan.name} includes ${includedDeviceCount} device${includedDeviceCount > 1 ? "s" : ""}. `
+            : "Free Account includes 1 device. "}
+          Additional devices are billed at Rp 50K/device/month and should be
+          reflected in this paid device limit.
         </div>
 
         <div className="md:col-span-2 flex justify-end gap-2 pt-2 border-t border-zinc-100">
