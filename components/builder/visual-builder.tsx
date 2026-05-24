@@ -24,12 +24,14 @@ import {
   BringToFront,
   Camera,
   Copy,
+  Crosshair,
   Eye,
   EyeOff,
   Film,
   Grid2X2,
   Image as ImageIcon,
   Lock,
+  Maximize2,
   Monitor,
   Move,
   PaintBucket,
@@ -835,170 +837,174 @@ function CanvasControls() {
   const clearBg = () => setPageBackground(activePage, { image: undefined, video: undefined });
   const hasBg = !!(bgImage || bgVideo);
 
+  const DEVICE_PRESETS = [
+    { label: "— Custom —",        w: 0,    h: 0    },
+    { label: "Redmi Pad 2",       w: 2560, h: 1600 },
+    { label: "Redmi Pad SE",      w: 1920, h: 1200 },
+    { label: "iPad 10th Gen",     w: 1668, h: 2388 },
+    { label: "iPad Air M2",       w: 1640, h: 2360 },
+    { label: "iPad Pro 11\"",     w: 1668, h: 2420 },
+    { label: "Samsung Tab A7",    w: 1200, h: 2000 },
+    { label: "Samsung Tab A8",    w: 1340, h: 2000 },
+    { label: "Phone FHD+",        w: 1080, h: 2400 },
+  ];
+
+  // Find active preset (match either portrait or landscape orientation of that device)
+  const activePreset = DEVICE_PRESETS.find(
+    (p) => p.w > 0 && (
+      (canvas.width === p.w && canvas.height === p.h) ||
+      (canvas.width === p.h && canvas.height === p.w)
+    )
+  );
+  const selectedPresetValue = activePreset?.label ?? "";
+
+  const applyPreset = (label: string) => {
+    const p = DEVICE_PRESETS.find((d) => d.label === label);
+    if (!p || p.w === 0) return;
+    // Apply in current orientation preference
+    const isLandscape = canvas.orientation === "landscape";
+    const w = isLandscape ? Math.max(p.w, p.h) : Math.min(p.w, p.h);
+    const h = isLandscape ? Math.min(p.w, p.h) : Math.max(p.w, p.h);
+    updateCanvas({ width: w, height: h, orientation: w >= h ? "landscape" : "portrait" });
+  };
+
+  const applyOrientationWithPreset = (orientation: "portrait" | "landscape") => {
+    if (activePreset && activePreset.w > 0) {
+      const w = orientation === "landscape" ? Math.max(activePreset.w, activePreset.h) : Math.min(activePreset.w, activePreset.h);
+      const h = orientation === "landscape" ? Math.min(activePreset.w, activePreset.h) : Math.max(activePreset.w, activePreset.h);
+      updateCanvas({ width: w, height: h, orientation });
+    } else {
+      applyOrientation(orientation);
+    }
+  };
+
   return (
-    <div className="mb-5 space-y-3 rounded-lg border border-zinc-200 p-3">
-      <div className="flex items-center gap-2 text-sm font-semibold">
-        <Smartphone className="size-4 text-zinc-500" />
-        Canvas
-      </div>
+    <PanelSection title="Canvas" icon={<Smartphone className="size-3.5 text-zinc-500" />}>
 
-      {/* ── Canvas Mode toggle ─────────────────────── */}
+      {/* Canvas Mode toggle */}
       <div className="space-y-1.5">
-        <div className="text-xs font-medium text-zinc-500">Canvas mode</div>
+        <div className="text-xs font-medium text-zinc-500">Mode</div>
         <div className="grid grid-cols-2 gap-1 rounded-lg bg-zinc-100 p-0.5">
-          <button
-            onClick={() => updateCanvas({ overlayMode: false })}
-            className={cn(
-              "flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-medium transition-all",
-              !canvas.overlayMode
-                ? "bg-white text-zinc-900 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-700",
-            )}
-          >
-            <Type className="size-3.5" />
-            Custom
+          <button onClick={() => updateCanvas({ overlayMode: false })}
+            className={cn("flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
+              !canvas.overlayMode ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700")}>
+            <Type className="size-3.5" /> Custom
           </button>
-          <button
-            onClick={() => updateCanvas({ overlayMode: true })}
-            className={cn(
-              "flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-medium transition-all",
-              canvas.overlayMode
-                ? "bg-white text-zinc-900 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-700",
-            )}
-          >
-            <Grid2X2 className="size-3.5" />
-            Overlay
+          <button onClick={() => updateCanvas({ overlayMode: true })}
+            className={cn("flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
+              canvas.overlayMode ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700")}>
+            <Grid2X2 className="size-3.5" /> Overlay
           </button>
         </div>
-        <div className="text-[10px] leading-relaxed text-zinc-400">
-          {canvas.overlayMode
-            ? "Nodes shown as colored hotspot boxes — drag to define where Flutter renders each component."
-            : "Nodes shown as real UI — text, buttons, images render as they appear in the app."}
-        </div>
+        {canvas.overlayMode && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] text-amber-700">
+            <strong>Overlay mode</strong> — set semantic roles so Flutter knows where each widget goes.
+          </div>
+        )}
       </div>
 
-      {/* Overlay mode notice */}
-      {canvas.overlayMode && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-2 py-2 text-[10px] text-amber-700">
-          <strong>Overlay mode</strong> — set semantic roles on each hotspot so Flutter knows which action
-          or widget to place there (camera feed, confirm button, QR code, etc.)
-        </div>
-      )}
+      {/* Device preset dropdown */}
+      <label className="block text-xs font-medium text-zinc-500">
+        Device
+        <Select className="mt-1" value={selectedPresetValue}
+          onChange={(e) => applyPreset(e.target.value)}>
+          {DEVICE_PRESETS.map((p) => (
+            <option key={p.label} value={p.label}>
+              {p.label}{p.w > 0 ? ` (${p.w}×${p.h})` : ""}
+            </option>
+          ))}
+        </Select>
+      </label>
 
-      {/* Size */}
+      {/* Orientation */}
+      <label className="block text-xs font-medium text-zinc-500">
+        Orientation
+        <Select className="mt-1" value={canvas.orientation}
+          onChange={(e) => applyOrientationWithPreset(e.target.value as "portrait" | "landscape")}>
+          <option value="portrait">Portrait</option>
+          <option value="landscape">Landscape</option>
+        </Select>
+      </label>
+
+      {/* Manual size */}
       <div className="grid grid-cols-2 gap-2">
         <label className="text-xs font-medium text-zinc-500">
-          Width px
+          W px
           <Input className="mt-1" min={240} max={3840} type="number" value={canvas.width}
             onChange={(e) => updateCanvas({ width: Number(e.target.value) })} />
         </label>
         <label className="text-xs font-medium text-zinc-500">
-          Height px
+          H px
           <Input className="mt-1" min={240} max={3840} type="number" value={canvas.height}
             onChange={(e) => updateCanvas({ height: Number(e.target.value) })} />
         </label>
       </div>
-      <label className="block text-xs font-medium text-zinc-500">
-        Orientation
-        <Select className="mt-1" value={canvas.orientation}
-          onChange={(e) => applyOrientation(e.target.value as "portrait" | "landscape")}>
-          <option value="portrait">Portrait (1080 × 1920)</option>
-          <option value="landscape">Landscape (1920 × 1080)</option>
-        </Select>
-      </label>
 
-      {/* Background media upload */}
+      {/* App background */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-xs font-medium text-zinc-500">App background</div>
+          <div className="text-xs font-medium text-zinc-500">Background</div>
           <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-mono text-zinc-500 capitalize">{activePage}</span>
         </div>
 
-        {/* Current background preview */}
         {bgVideo ? (
           <div className="relative overflow-hidden rounded-lg border border-zinc-200">
-            <video src={bgVideo} autoPlay loop muted playsInline
-              className="h-28 w-full object-cover" />
+            <video src={bgVideo} autoPlay loop muted playsInline className="h-24 w-full object-cover" />
             <div className="absolute right-1 top-1 flex items-center gap-1">
               <span className="flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white">
                 <Film className="size-2.5" /> VIDEO
               </span>
-              <button onClick={clearBg} className="rounded bg-red-500/80 p-0.5 text-white hover:bg-red-500">
-                <X className="size-3" />
-              </button>
+              <button onClick={clearBg} className="rounded bg-red-500/80 p-0.5 text-white hover:bg-red-500"><X className="size-3" /></button>
             </div>
           </div>
         ) : bgImage ? (
           <div className="relative overflow-hidden rounded-lg border border-zinc-200">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={bgImage} alt="bg" className="h-28 w-full object-cover" />
+            <img src={bgImage} alt="bg" className="h-24 w-full object-cover" />
             <div className="absolute right-1 top-1 flex items-center gap-1">
               <span className="flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white">
                 <ImageIcon className="size-2.5" /> IMAGE
               </span>
-              <button onClick={clearBg} className="rounded bg-red-500/80 p-0.5 text-white hover:bg-red-500">
-                <X className="size-3" />
-              </button>
+              <button onClick={clearBg} className="rounded bg-red-500/80 p-0.5 text-white hover:bg-red-500"><X className="size-3" /></button>
             </div>
           </div>
         ) : null}
 
-        {/* Drop zone */}
         <div
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={(e) => { e.preventDefault(); setDragOver(false); void handleFile(e.dataTransfer.files[0]); }}
           onClick={() => fileInputRef.current?.click()}
-          className={cn(
-            "relative flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed py-4 text-center transition-colors",
-            dragOver ? "border-blue-400 bg-blue-50" : "border-zinc-200 bg-zinc-50 hover:border-zinc-300",
-          )}
+          className={cn("relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed py-3 text-center transition-colors",
+            dragOver ? "border-blue-400 bg-blue-50" : "border-zinc-200 bg-zinc-50 hover:border-zinc-300")}
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
+          <input ref={fileInputRef} type="file" className="hidden"
             accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,video/mp4,video/webm,video/quicktime"
-            disabled={uploading}
-            onChange={(e) => void handleFile(e.target.files?.[0])}
-          />
-          <Upload className="size-4 text-zinc-400" />
-          <div className="space-y-0.5">
-            <div className="text-xs font-medium text-zinc-600">
-              {uploading ? "Uploading…" : hasBg ? "Click or drop to replace" : "Upload app design"}
-            </div>
-            <div className="text-[10px] text-zinc-400">
-              Image (JPG/PNG/WebP, max 8 MB) · Video (MP4/WebM, max 200 MB)
-            </div>
-          </div>
+            disabled={uploading} onChange={(e) => void handleFile(e.target.files?.[0])} />
+          <Upload className="size-3.5 text-zinc-400" />
+          <div className="text-[10px] font-medium text-zinc-600">{uploading ? "Uploading…" : hasBg ? "Replace" : "Upload design"}</div>
+          <div className="text-[9px] text-zinc-400">Image / Video (MP4/WebM)</div>
         </div>
 
-        {/* URL input */}
         <label className="block text-xs font-medium text-zinc-500">
           Or paste URL
-          <Input
-            className="mt-1 font-mono text-[11px]"
-            placeholder="https://…"
+          <Input className="mt-1 font-mono text-[11px]" placeholder="https://…"
             value={bgImage ?? bgVideo ?? ""}
             onChange={(e) => {
               const v = e.target.value;
               const isVideo = /\.(mp4|webm|mov)($|\?)/i.test(v);
               if (isVideo) setPageBackground(activePage, { video: v || undefined, image: undefined });
               else setPageBackground(activePage, { image: v || undefined, video: undefined });
-            }}
-          />
+            }} />
         </label>
       </div>
 
       {!canvas.overlayMode && (
-        <ColorField
-          label="Background color"
+        <ColorField label="Background color"
           value={canvas.backgroundColor ?? "#ffffff"}
-          onChange={(value) => updateCanvas({ backgroundColor: value })}
-        />
+          onChange={(value) => updateCanvas({ backgroundColor: value })} />
       )}
-    </div>
+    </PanelSection>
   );
 }
 
@@ -1124,8 +1130,38 @@ export function VisualBuilder() {
   const panStartRef = useRef({ mx: 0, my: 0, px: 0, py: 0 });
   const spaceRef = useRef(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   const clampZoom = useCallback((z: number) => Math.min(4, Math.max(0.1, z)), []);
+
+  /** Fit canvas in viewport with padding — like Figma Shift+1 */
+  const fitToScreen = useCallback(() => {
+    const vp = viewportRef.current;
+    if (!vp) return;
+    const vpW = vp.clientWidth;
+    const vpH = vp.clientHeight;
+    const padding = 80;
+    const scaleX = (vpW - padding * 2) / canvas.width;
+    const scaleY = (vpH - padding * 2) / canvas.height;
+    const newZoom = clampZoom(Math.min(scaleX, scaleY));
+    setZoom(newZoom);
+    setPan({ x: 0, y: 0 }); // centered — transform origin is center center
+  }, [canvas.width, canvas.height, clampZoom]);
+
+  /** Center viewport on a node (pan only, no zoom change) */
+  const panToNode = useCallback((nodeId: string) => {
+    const vp = viewportRef.current;
+    if (!vp) return;
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    // Node center in canvas space → offset from canvas center
+    const nodeCxInCanvas = node.x + node.width / 2 - canvas.width / 2;
+    const nodeCyInCanvas = node.y + node.height / 2 - canvas.height / 2;
+    setPan({ x: -nodeCxInCanvas * zoom, y: -nodeCyInCanvas * zoom });
+  }, [nodes, canvas.width, canvas.height, zoom]);
+
+  // Fit canvas on first mount
+  useEffect(() => { fitToScreen(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -1144,12 +1180,31 @@ export function VisualBuilder() {
   }, [clampZoom]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.code === "Space" && !e.repeat) spaceRef.current = true; };
+    const onKey = (e: KeyboardEvent) => {
+      const isTyping = ["INPUT","TEXTAREA","SELECT"].includes((e.target as HTMLElement)?.tagName ?? "") || (e.target as HTMLElement)?.isContentEditable;
+      if (e.code === "Space" && !e.repeat && !isTyping) spaceRef.current = true;
+    };
     const offKey = (e: KeyboardEvent) => { if (e.code === "Space") spaceRef.current = false; };
     window.addEventListener("keydown", onKey);
     window.addEventListener("keyup", offKey);
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("keyup", offKey); };
   }, []);
+
+  // Keyboard shortcuts: Shift+1=fit, Shift+2=100%, F=pan to selection
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isTyping = ["INPUT","TEXTAREA","SELECT"].includes((e.target as HTMLElement)?.tagName ?? "") || (e.target as HTMLElement)?.isContentEditable;
+      if (isTyping) return;
+      if (e.shiftKey && e.key === "1") { e.preventDefault(); fitToScreen(); }
+      if (e.shiftKey && e.key === "2") { e.preventDefault(); setZoom(1); setPan({ x: 0, y: 0 }); }
+      if (e.key === "f" || e.key === "F") {
+        if (selectedId) { e.preventDefault(); panToNode(selectedId); }
+        else { e.preventDefault(); fitToScreen(); }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fitToScreen, panToNode, selectedId]);
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
     if (e.button === 1 || spaceRef.current) {
@@ -1168,6 +1223,53 @@ export function VisualBuilder() {
   const visibleNodes = nodes.filter((node) => node.page === activePage).sort((a, b) => a.zIndex - b.zIndex);
   const selectedNode = nodes.find((node) => node.id === selectedId);
   const contextNode = contextMenu?.nodeId ? nodes.find((node) => node.id === contextMenu.nodeId) : undefined;
+
+  // ── Smart guides (snap lines + magnetic ghost) ──────────────
+  const [guides, setGuides] = useState<Array<{ type: "h" | "v"; pos: number }>>([]);
+  const [snapPreview, setSnapPreview] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const SNAP_THRESH = 8; // canvas-space pixels
+
+  const computeGuides = (node: BuilderNode, rawX: number, rawY: number) => {
+    const result: Array<{ type: "h" | "v"; pos: number }> = [];
+    let sx = rawX, sy = rawY;
+    const ncx = rawX + node.width / 2, ncy = rawY + node.height / 2;
+    const cw = canvas.width, ch = canvas.height;
+    const cx = cw / 2, cy = ch / 2;
+
+    // Canvas center X
+    if (Math.abs(ncx - cx) < SNAP_THRESH) { sx = cx - node.width / 2; result.push({ type: "v", pos: cx }); }
+    // Canvas center Y
+    if (Math.abs(ncy - cy) < SNAP_THRESH) { sy = cy - node.height / 2; result.push({ type: "h", pos: cy }); }
+    // Canvas left/right/top/bottom edges
+    if (Math.abs(rawX) < SNAP_THRESH) { sx = 0; result.push({ type: "v", pos: 0 }); }
+    if (Math.abs(rawX + node.width - cw) < SNAP_THRESH) { sx = cw - node.width; result.push({ type: "v", pos: cw }); }
+    if (Math.abs(rawY) < SNAP_THRESH) { sy = 0; result.push({ type: "h", pos: 0 }); }
+    if (Math.abs(rawY + node.height - ch) < SNAP_THRESH) { sy = ch - node.height; result.push({ type: "h", pos: ch }); }
+
+    // Align with other nodes
+    visibleNodes.filter((n) => n.id !== node.id && n.visible).forEach((other) => {
+      const ocx = other.x + other.width / 2, ocy = other.y + other.height / 2;
+      // Center-to-center X
+      if (Math.abs(ncx - ocx) < SNAP_THRESH) { sx = ocx - node.width / 2; result.push({ type: "v", pos: ocx }); }
+      // Center-to-center Y
+      if (Math.abs(ncy - ocy) < SNAP_THRESH) { sy = ocy - node.height / 2; result.push({ type: "h", pos: ocy }); }
+      // Left edges
+      if (Math.abs(rawX - other.x) < SNAP_THRESH) { sx = other.x; result.push({ type: "v", pos: other.x }); }
+      // Right edges
+      if (Math.abs(rawX + node.width - (other.x + other.width)) < SNAP_THRESH) { sx = other.x + other.width - node.width; result.push({ type: "v", pos: other.x + other.width }); }
+      // Top edges
+      if (Math.abs(rawY - other.y) < SNAP_THRESH) { sy = other.y; result.push({ type: "h", pos: other.y }); }
+      // Bottom edges
+      if (Math.abs(rawY + node.height - (other.y + other.height)) < SNAP_THRESH) { sy = other.y + other.height - node.height; result.push({ type: "h", pos: other.y + other.height }); }
+    });
+
+    const snappedX = snap(sx), snappedY = snap(sy);
+    const isSnapping = result.length > 0;
+    return { sx: snappedX, sy: snappedY, guides: result, isSnapping, w: node.width, h: node.height };
+  };
+
+  const clearSnap = () => { setGuides([]); setSnapPreview(null); };
+  // ── end Smart guides ──────────────────────────────────────────
 
   useEffect(() => {
     if (!savedLayout || hydratedLayoutId.current === savedLayout.id) return;
@@ -1247,15 +1349,21 @@ export function VisualBuilder() {
         <div className="mx-2 h-4 w-px bg-zinc-200" />
 
         {/* Zoom */}
-        <button className={toolbarBtn} onClick={() => setZoom((z) => clampZoom(z - 0.1))}><ZoomOut className="size-3.5" /></button>
+        <button className={toolbarBtn} onClick={() => setZoom((z) => clampZoom(z - 0.1))} title="Zoom out"><ZoomOut className="size-3.5" /></button>
         <button
           className="w-14 rounded-md px-1 py-1 text-center text-xs font-mono text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-          onClick={() => { setZoom(0.72); setPan({ x: 0, y: 0 }); }}
-          title="Reset zoom"
+          onClick={fitToScreen}
+          title="Fit to screen (Shift+1)"
         >
           {Math.round(zoom * 100)}%
         </button>
-        <button className={toolbarBtn} onClick={() => setZoom((z) => clampZoom(z + 0.1))}><ZoomIn className="size-3.5" /></button>
+        <button className={toolbarBtn} onClick={() => setZoom((z) => clampZoom(z + 0.1))} title="Zoom in"><ZoomIn className="size-3.5" /></button>
+        <button className={toolbarBtn} onClick={fitToScreen} title="Fit to screen (Shift+1)"><Maximize2 className="size-3.5" /></button>
+        {selectedId && (
+          <button className={toolbarBtn} onClick={() => panToNode(selectedId)} title="Pan to selection (F)">
+            <Crosshair className="size-3.5" />
+          </button>
+        )}
 
         <div className="mx-2 h-4 w-px bg-zinc-200" />
 
@@ -1285,6 +1393,17 @@ export function VisualBuilder() {
             <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Layers</span>
             <Badge variant="secondary" className="h-4 px-1 text-[9px]">{visibleNodes.length}</Badge>
           </div>
+
+          {/* Payment page context hint */}
+          {activePage === "payment" && (
+            <div className="mx-2 mb-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] leading-snug text-amber-800">
+              <div className="font-semibold">📋 Bottom Sheet Modal</div>
+              <div className="mt-0.5 text-amber-700">
+                Payment renders as a Flutter bottom sheet covering ~65% of the screen. Place nodes inside the white card area.
+              </div>
+            </div>
+          )}
+
           <ScrollArea className="flex-1">
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
               <SortableContext items={visibleNodes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
@@ -1323,6 +1442,8 @@ export function VisualBuilder() {
           onMouseLeave={handleCanvasMouseUp}
           onContextMenu={(e) => { e.preventDefault(); selectNode(null); setContextMenu({ x: e.clientX, y: e.clientY, nodeId: null }); }}
         >
+          {/* Viewport ref — measure available space for fitToScreen */}
+          <div ref={viewportRef} className="pointer-events-none absolute inset-0" />
           {/* Dot grid */}
           <div
             className="pointer-events-none absolute inset-0"
@@ -1365,6 +1486,44 @@ export function VisualBuilder() {
               >
                 {/* Notch */}
                 <div className="absolute left-1/2 top-3 z-50 h-1 w-20 -translate-x-1/2 rounded-full bg-black/20" />
+
+                {/* Smart guide lines — rendered in canvas coordinate space */}
+                {guides.map((g, i) =>
+                  g.type === "v" ? (
+                    <div key={i} className="pointer-events-none absolute inset-y-0"
+                      style={{ left: g.pos, width: 1, background: "#F000A0", zIndex: 9999, opacity: 0.85 }} />
+                  ) : (
+                    <div key={i} className="pointer-events-none absolute inset-x-0"
+                      style={{ top: g.pos, height: 1, background: "#F000A0", zIndex: 9999, opacity: 0.85 }} />
+                  )
+                )}
+
+                {/* Magnetic snap ghost — destination rectangle */}
+                {snapPreview && (
+                  <div
+                    className="pointer-events-none absolute"
+                    style={{
+                      left: snapPreview.x,
+                      top: snapPreview.y,
+                      width: snapPreview.w,
+                      height: snapPreview.h,
+                      border: `${Math.max(2, canvas.width * 0.0012)}px dashed #F000A0`,
+                      background: "rgba(240,0,160,0.08)",
+                      borderRadius: 4,
+                      zIndex: 9998,
+                      boxShadow: "0 0 0 1px rgba(240,0,160,0.15)",
+                    }}
+                  >
+                    {/* Coordinate label */}
+                    <div
+                      className="absolute -top-6 left-0 whitespace-nowrap rounded bg-[#F000A0] px-1.5 py-0.5 font-mono font-semibold text-white"
+                      style={{ fontSize: Math.max(10, canvas.width * 0.010) }}
+                    >
+                      {snapPreview.x}, {snapPreview.y}
+                    </div>
+                  </div>
+                )}
+
                 {/* Per-page video background */}
                 {canvas.pageBackgrounds?.[activePage]?.video ? (
                   <video
@@ -1374,6 +1533,42 @@ export function VisualBuilder() {
                     style={{ zIndex: 0 }}
                   />
                 ) : null}
+
+                {/* Payment modal visual — matches Flutter bottom sheet */}
+                {activePage === "payment" && (
+                  <>
+                    {/* Scrim / backdrop */}
+                    <div
+                      className="pointer-events-none absolute inset-0"
+                      style={{ background: "rgba(0,0,0,0.52)", zIndex: 1 }}
+                    />
+                    {/* Bottom sheet card */}
+                    <div
+                      className="pointer-events-none absolute bottom-0 left-0 right-0 bg-white"
+                      style={{
+                        height: "65%",
+                        borderTopLeftRadius: Math.max(20, canvas.width * 0.018),
+                        borderTopRightRadius: Math.max(20, canvas.width * 0.018),
+                        zIndex: 2,
+                        boxShadow: "0 -8px 40px rgba(0,0,0,0.18)",
+                      }}
+                    >
+                      {/* Drag handle */}
+                      <div
+                        className="mx-auto mt-3 rounded-full bg-zinc-300"
+                        style={{ width: canvas.width * 0.08, height: Math.max(4, canvas.width * 0.004) }}
+                      />
+                      {/* Label */}
+                      <div
+                        className="absolute right-0 top-0 flex items-center gap-1 rounded-bl-lg bg-amber-400 px-2 py-1 text-amber-900"
+                        style={{ fontSize: Math.max(10, canvas.width * 0.012), fontWeight: 600 }}
+                      >
+                        ↑ Payment Modal (Bottom Sheet)
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 {visibleNodes.map((node) =>
                   node.visible ? (
                     <Rnd
@@ -1386,8 +1581,9 @@ export function VisualBuilder() {
                       size={{ width: node.width, height: node.height }}
                       onClick={(e: React.MouseEvent) => { e.stopPropagation(); selectNode(node.id); }}
                       onContextMenu={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); selectNode(node.id); setContextMenu({ x: e.clientX, y: e.clientY, nodeId: node.id }); }}
-                      onDragStop={(_, d) => updateNode(node.id, { x: snap(d.x), y: snap(d.y) })}
-                      onResizeStop={(_, __, ref, ___, pos) => updateNode(node.id, { width: snap(ref.offsetWidth), height: snap(ref.offsetHeight), x: snap(pos.x), y: snap(pos.y) })}
+                      onDrag={(_, d) => { const { guides: g, sx, sy, isSnapping, w, h } = computeGuides(node, d.x, d.y); setGuides(g); setSnapPreview(isSnapping ? { x: sx, y: sy, w, h } : null); }}
+                      onDragStop={(_, d) => { const { sx, sy } = computeGuides(node, d.x, d.y); updateNode(node.id, { x: sx, y: sy }); clearSnap(); }}
+                      onResizeStop={(_, __, ref, ___, pos) => { updateNode(node.id, { width: snap(ref.offsetWidth), height: snap(ref.offsetHeight), x: snap(pos.x), y: snap(pos.y) }); clearSnap(); }}
                       style={{ zIndex: node.zIndex, opacity: node.opacity, transform: `rotate(${node.rotation}deg)` }}
                       className={cn("group", selectedId === node.id && "outline outline-2 outline-offset-1 outline-zinc-950", node.locked && "cursor-not-allowed")}
                     >
@@ -1409,7 +1605,7 @@ export function VisualBuilder() {
 
           {/* Zoom hint */}
           <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/80 px-3 py-1 text-[10px] text-zinc-400 shadow-sm backdrop-blur-sm">
-            Ctrl+scroll to zoom · Space+drag to pan
+            Ctrl+scroll to zoom · Space+drag to pan · Shift+1 Fit · Shift+2 100% · F Pan to selection
           </div>
         </div>
 
