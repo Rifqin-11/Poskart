@@ -53,11 +53,14 @@ type ThemePresetRow = Omit<ThemePreset, "schema"> & {
   schema: ThemeSchema;
 };
 
-type LayoutSchemaRow = {
+export type LayoutSchemaRow = {
   id: string;
   name: string;
   status: "draft" | "published" | "archived";
   schema: LayoutSchema;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export type AssetItem = {
@@ -296,11 +299,69 @@ async function getAssets(): Promise<AssetItem[]> {
   return assertSupabaseResult(data as AssetItem[] | null, error, "Unable to load assets");
 }
 
+async function getLayoutSchemas(): Promise<LayoutSchemaRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("layout_schemas")
+    .select("id,name,status,schema,is_active,created_at,updated_at")
+    .order("updated_at", { ascending: false });
+
+  if (error) throw new Error(`Unable to load layout schemas: ${error.message}`);
+  return (data ?? []) as LayoutSchemaRow[];
+}
+
+async function saveLayoutAsTheme(name: string, schema: LayoutSchema, existingId?: string): Promise<string> {
+  const supabase = createClient();
+  const id = existingId ?? `LYT-${Date.now()}`;
+  const { error } = await supabase.from("layout_schemas").upsert({
+    id,
+    name,
+    status: "draft",
+    schema,
+    is_active: false,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw new Error(`Unable to save layout: ${error.message}`);
+  return id;
+}
+
+async function setActiveLayout(id: string): Promise<void> {
+  const supabase = createClient();
+  // Deactivate all
+  const { error: e1 } = await supabase
+    .from("layout_schemas")
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .neq("id", id);
+  if (e1) throw new Error(`Unable to deactivate layouts: ${e1.message}`);
+  // Activate the chosen one
+  const { error: e2 } = await supabase
+    .from("layout_schemas")
+    .update({ is_active: true, status: "published", updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (e2) throw new Error(`Unable to activate layout: ${e2.message}`);
+}
+
+async function deactivateLayout(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("layout_schemas")
+    .update({ is_active: false, status: "draft", updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(`Unable to deactivate layout: ${error.message}`);
+}
+
+async function deleteLayout(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("layout_schemas").delete().eq("id", id);
+  if (error) throw new Error(`Unable to delete layout: ${error.message}`);
+}
+
+
 async function getLayoutSchema(): Promise<LayoutSchemaRow | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("layout_schemas")
-    .select("id,name,status,schema")
+    .select("id,name,status,schema,is_active,created_at,updated_at")
     .eq("id", "default-photobooth")
     .maybeSingle();
 
@@ -366,6 +427,11 @@ export const adminService = {
   themes: getThemes,
   assets: getAssets,
   layoutSchema: getLayoutSchema,
+  layoutSchemas: getLayoutSchemas,
   publishLayoutSchema,
   publishThemeSchema,
+  saveLayoutAsTheme,
+  setActiveLayout,
+  deactivateLayout,
+  deleteLayout,
 };

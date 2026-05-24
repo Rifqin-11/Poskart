@@ -38,6 +38,7 @@ import {
   Plus,
   Redo2,
   RotateCw,
+  Save,
   SendToBack,
   Smartphone,
   Trash2,
@@ -60,7 +61,7 @@ import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
-import { useActiveLayoutSchema } from "@/hooks/use-admin-data";
+import { useActiveLayoutSchema, useSaveLayoutAsTheme } from "@/hooks/use-admin-data";
 import { adminService } from "@/lib/services/admin-service";
 import { uploadBuilderImage, uploadBuilderMedia } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
@@ -1118,7 +1119,10 @@ export function VisualBuilder() {
   const setSchema = useBuilderStore((state) => state.setSchema);
   const { data: savedLayout } = useActiveLayoutSchema();
   const hydratedLayoutId = useRef<string | null>(null);
-  const [isPublishing, setIsPublishing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [themeName, setThemeName] = useState("");
+  const saveLayoutMutation = useSaveLayoutAsTheme();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string | null } | null>(null);
@@ -1301,12 +1305,6 @@ export function VisualBuilder() {
     reorderNodes(arrayMove(visibleNodes, oldIndex, newIndex).map((n) => n.id));
   };
 
-  const handlePublish = async () => {
-    setIsPublishing(true);
-    try { await adminService.publishLayoutSchema(schema()); toast.success("Layout published to Supabase"); }
-    catch (e) { toast.error(e instanceof Error ? e.message : "Publish failed"); }
-    finally { setIsPublishing(false); }
-  };
 
   const startTextEdit = (node: BuilderNode) => {
     if (!isEditableTextNode(node) || node.locked) return;
@@ -1375,11 +1373,12 @@ export function VisualBuilder() {
           <span className="text-xs text-zinc-400"><Smartphone className="inline size-3.5" /> {canvas.width}×{canvas.height}</span>
           <button className={toolbarBtn}><Monitor className="size-3.5" />Preview</button>
           <button
-            onClick={handlePublish}
-            disabled={isPublishing}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
+            onClick={() => { setThemeName(""); setShowSaveDialog(true); }}
+            disabled={isSaving}
+            className="flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-700 disabled:opacity-60"
           >
-            {isPublishing ? "Publishing…" : "Publish"}
+            <Save className="size-3.5" />
+            {isSaving ? "Saving…" : "Save theme"}
           </button>
         </div>
       </div>
@@ -1645,6 +1644,62 @@ export function VisualBuilder() {
           onAddNode={(type) => runContextAction(() => addNode(type))}
         />
       ) : null}
+
+      {/* ── Save Theme Dialog ───────────────────────────────── */}
+      {showSaveDialog && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSaveDialog(false); }}
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="mb-1 text-lg font-semibold text-zinc-900">Save as Theme</h2>
+            <p className="mb-4 text-sm text-zinc-500">
+              Give this layout a name. It will appear on the Themes page where you can activate it for the kiosk.
+            </p>
+            <input
+              autoFocus
+              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200"
+              placeholder="e.g. Redmi Pad Landscape v1"
+              value={themeName}
+              onChange={(e) => setThemeName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && themeName.trim()) void handleSaveConfirm();
+                if (e.key === "Escape") setShowSaveDialog(false);
+              }}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowSaveDialog(false)}
+                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleSaveConfirm()}
+                disabled={!themeName.trim() || isSaving}
+                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50"
+              >
+                {isSaving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  async function handleSaveConfirm() {
+    if (!themeName.trim()) return;
+    setIsSaving(true);
+    try {
+      await saveLayoutMutation.mutateAsync({ name: themeName.trim(), schema: schema() });
+      setShowSaveDialog(false);
+      setThemeName("");
+      toast.success(`Theme "${themeName.trim()}" saved! Go to Themes to activate it.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save theme");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 }

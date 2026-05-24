@@ -1,5 +1,5 @@
-import { ThemeBuilder } from "@/components/theme-editor/theme-builder";
+import { BuilderThemesPage } from "@/components/builder/builder-themes-page";
 
 export default function ThemesPage() {
-  return <ThemeBuilder />;
+  return <BuilderThemesPage />;
 }
