@@ -4,15 +4,16 @@ export const businessProfile = {
   legalName: "POSKART Indonesia",
   description:
     "POSKART adalah SaaS dashboard dan visual builder untuk mengelola photobooth kiosk, template, QRIS transaction monitoring, booth devices, pricing, media assets, tenant, dan analytics.",
-  email: "support@poskart.id",
-  salesEmail: "sales@poskart.id",
-  phone: "+62 812-0000-0524",
-  whatsapp: "+62 812-0000-0524",
-  whatsappUrl: "https://wa.me/6281200000524",
-  address: "Bandung, Jawa Barat, Indonesia",
+  email: "rifqinaufal9009@gmail.com",
+  salesEmail: "rifqinaufal9009@gmail.com",
+  phone: "+62 82219262377",
+  whatsapp: "+62 82219262377",
+  whatsappUrl: "https://wa.me/6282219262377",
+  address: "Banjarnegara, Jawa Tengah, Indonesia",
   supportHours: "Monday-Friday, 09:00-18:00 WIB",
-  domain: "https://poskart.id",
-  taxNote: "Harga belum termasuk pajak yang berlaku, kecuali dinyatakan lain pada invoice atau kontrak.",
+  domain: "https://poskart.my.id",
+  taxNote:
+    "Harga belum termasuk pajak yang berlaku, kecuali dinyatakan lain pada invoice atau kontrak.",
   billingNote:
     "Subscription POSKART tersedia dalam pilihan 1 bulan, 3 bulan, dan 1 tahun. Paket 1 bulan ditagihkan Rp 50K, paket 3 bulan Rp 140K, dan paket 1 tahun Rp 500K.",
   purchaseFlow:
