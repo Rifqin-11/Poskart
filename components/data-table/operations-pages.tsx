@@ -1147,9 +1147,9 @@ function BoothFormDialog({
               <Input
                 className="mt-1"
                 type="number"
-                min={1}
-                max={60}
-                placeholder="e.g. 5 — leave empty to use global default"
+                min={30}
+                max={1800}
+                placeholder="e.g. 300 (5 min) — leave empty for global default"
                 value={form.sessionCountdownSeconds ?? ""}
                 onChange={(e) =>
                   setForm({
@@ -1159,6 +1159,9 @@ function BoothFormDialog({
                   })
                 }
               />
+              <span className="mt-1 block text-[10px] text-zinc-400">
+                30s – 30min · total time for template → thanks flow
+              </span>
             </label>
             <label className="block text-xs font-medium text-zinc-600">
               Payment countdown (seconds)

@@ -1,4 +1,10 @@
-export type BuilderPage = "landing" | "payment" | "template" | "camera" | "preview" | "thanks";
+export type BuilderPage =
+  | "landing"
+  | "payment"
+  | "template"
+  | "camera"
+  | "preview"
+  | "thanks";
 
 export type BuilderComponentType =
   | "text"
@@ -8,16 +14,18 @@ export type BuilderComponentType =
   | "qr"
   | "qr-placeholder"
   | "camera-view"
-  | "photo-result"         // Captured photo result slot on camera page
-  | "countdown-overlay"   // Full-screen countdown (3-2-1) before shutter
-  | "flash-overlay"       // Full-screen white flash after shutter
+  | "photo-result" // Captured photo result slot on camera page
+  | "countdown-overlay" // Full-screen countdown (3-2-1) before shutter
+  | "flash-overlay" // Full-screen white flash after shutter
   | "receipt-preview"
   | "frame-preview"
-  | "template-list"       // Grid of frame templates on the /template picker page
-  | "template-preview"    // Large single-template preview panel
+  | "template-list" // Grid of frame templates on the /template picker page
+  | "template-preview" // Large single-template preview panel
   | "social-handle"
   | "background-decoration"
-  | "return-countdown";    // Spinning loader + auto-return text on thanks page
+  | "return-countdown" // Spinning loader + auto-return text on thanks page
+  | "session-countdown" // Total-session countdown shown on template/camera/preview/thanks
+  | "payment-countdown"; // Payment QRIS countdown shown on the payment page
 
 export type BuilderNode = {
   id: string;
@@ -45,7 +53,9 @@ export type BuilderCanvas = {
   backgroundImage?: string;
   backgroundVideo?: string;
   /** Per-page background images/videos — keyed by BuilderPage */
-  pageBackgrounds?: Partial<Record<BuilderPage, { image?: string; video?: string }>>;
+  pageBackgrounds?: Partial<
+    Record<BuilderPage, { image?: string; video?: string }>
+  >;
   /** If true, nodes render as colored hotspot overlays instead of real UI components */
   overlayMode?: boolean;
   /** Pages omitted from this array will be hidden on the tablet app.

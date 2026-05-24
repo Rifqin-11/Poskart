@@ -18,6 +18,8 @@ const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
   "template-preview": { bg: "rgba(234,88,12,0.4)", border: "#fb923c" },
   "background-decoration": { bg: "rgba(100,116,139,0.35)", border: "#94a3b8" },
   "return-countdown": { bg: "rgba(99,102,241,0.4)", border: "#6366f1" },
+  "session-countdown": { bg: "rgba(244,63,94,0.4)", border: "#f43f5e" },
+  "payment-countdown": { bg: "rgba(34,197,94,0.4)", border: "#22c55e" },
   "camera-view": { bg: "rgba(15,23,42,0.7)", border: "#1e293b" },
   "photo-result": { bg: "rgba(15,23,42,0.55)", border: "#334155" },
   "countdown-overlay": { bg: "rgba(244,114,182,0.4)", border: "#db2777" },
@@ -42,7 +44,10 @@ function MiniNode({
   const top = (node.y / canvasHeight) * 100;
   const width = (node.width / canvasWidth) * 100;
   const height = (node.height / canvasHeight) * 100;
-  const color = TYPE_COLORS[node.type] ?? { bg: "rgba(113,113,122,0.4)", border: "#71717a" };
+  const color = TYPE_COLORS[node.type] ?? {
+    bg: "rgba(113,113,122,0.4)",
+    border: "#71717a",
+  };
   const imageUrl = readString(node.props?.imageUrl);
 
   const isMedia =
@@ -109,7 +114,9 @@ export function ThemeThumbnail({
   const canvas = schema.canvas;
   const isPortrait = canvas.orientation === "portrait";
   const aspect = isPortrait ? "aspect-[3/4]" : "aspect-[16/9]";
-  const nodes = (schema.pages?.[page] ?? []).slice().sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
+  const nodes = (schema.pages?.[page] ?? [])
+    .slice()
+    .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
   const pageBg = canvas.pageBackgrounds?.[page]?.image;
 
   return (
@@ -133,7 +140,9 @@ export function ThemeThumbnail({
         <div className="absolute inset-0 grid place-items-center text-zinc-200/60">
           <div className="flex flex-col items-center gap-1">
             <Layers className="size-4" />
-            <span className="text-[8px] uppercase tracking-wider">Empty page</span>
+            <span className="text-[8px] uppercase tracking-wider">
+              Empty page
+            </span>
           </div>
         </div>
       ) : (

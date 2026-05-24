@@ -1,8 +1,8 @@
 "use server";
 
 import { encodedRedirect } from "@/lib/auth/redirect";
+import { getSiteUrl } from "@/lib/auth/site-url";
 import { createClient } from "@/lib/supabase/server";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 function readField(formData: FormData, key: string) {
@@ -15,7 +15,11 @@ export async function signInAction(formData: FormData) {
   const password = readField(formData, "password");
 
   if (!email || !password) {
-    return encodedRedirect("error", "/login", "Email and password are required.");
+    return encodedRedirect(
+      "error",
+      "/login",
+      "Email and password are required.",
+    );
   }
 
   const supabase = await createClient();
@@ -37,15 +41,23 @@ export async function signUpAction(formData: FormData) {
   const fullName = readField(formData, "fullName");
 
   if (!email || !password || !fullName) {
-    return encodedRedirect("error", "/register", "Name, email, and password are required.");
+    return encodedRedirect(
+      "error",
+      "/register",
+      "Name, email, and password are required.",
+    );
   }
 
   if (password.length < 8) {
-    return encodedRedirect("error", "/register", "Password must be at least 8 characters.");
+    return encodedRedirect(
+      "error",
+      "/register",
+      "Password must be at least 8 characters.",
+    );
   }
 
   const supabase = await createClient();
-  const origin = (await headers()).get("origin") ?? "";
+  const siteUrl = await getSiteUrl();
   const { error } = await supabase.auth.signUp({
     email,
     password,
@@ -53,7 +65,7 @@ export async function signUpAction(formData: FormData) {
       data: {
         full_name: fullName,
       },
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${siteUrl}/auth/callback`,
     },
   });
 
@@ -76,11 +88,11 @@ export async function signOutAction() {
 
 export async function signInWithGoogleAction() {
   const supabase = await createClient();
-  const origin = (await headers()).get("origin") ?? "";
+  const siteUrl = await getSiteUrl();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${origin}/auth/callback?next=/dashboard`,
+      redirectTo: `${siteUrl}/auth/callback?next=/dashboard`,
     },
   });
 
@@ -92,5 +104,9 @@ export async function signInWithGoogleAction() {
     return redirect(data.url);
   }
 
-  return encodedRedirect("error", "/login", "Google sign in could not be started.");
+  return encodedRedirect(
+    "error",
+    "/login",
+    "Google sign in could not be started.",
+  );
 }
