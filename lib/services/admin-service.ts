@@ -35,6 +35,7 @@ type TemplateRow = Omit<Template, "assignedBooths" | "updatedAt"> & {
   photo_count: number;
   accent_color: string;
   frame_image_url: string | null;
+  frame_layout: Template["frameLayout"] | null;
   is_default: boolean;
 };
 
@@ -131,6 +132,7 @@ const mapTemplate = (row: TemplateRow): Template => ({
   photoCount: row.photo_count ?? 4,
   accentColor: row.accent_color ?? "#C4121A",
   frameImageUrl: row.frame_image_url ?? undefined,
+  frameLayout: row.frame_layout ?? null,
   isDefault: row.is_default ?? false,
 });
 
@@ -205,7 +207,7 @@ async function getTemplates(): Promise<Template[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("templates")
-    .select("id,name,category,status,assigned_booths,updated_at_label,tagline,photo_count,accent_color,frame_image_url,is_default")
+    .select("id,name,category,status,assigned_booths,updated_at_label,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default")
     .order("updated_at", { ascending: false });
 
   return assertSupabaseResult(data as TemplateRow[] | null, error, "Unable to load templates").map(mapTemplate);
@@ -226,6 +228,7 @@ async function createTemplate(values: TemplateFormValues): Promise<void> {
     photo_count: values.photoCount,
     accent_color: values.accentColor,
     frame_image_url: values.frameImageUrl || null,
+    frame_layout: values.frameLayout ?? null,
     is_default: values.isDefault,
     updated_at: now,
   });
@@ -247,6 +250,7 @@ async function updateTemplate(
   if (values.photoCount !== undefined) patch.photo_count = values.photoCount;
   if (values.accentColor !== undefined) patch.accent_color = values.accentColor;
   if (values.frameImageUrl !== undefined) patch.frame_image_url = values.frameImageUrl || null;
+  if (values.frameLayout !== undefined) patch.frame_layout = values.frameLayout ?? null;
   if (values.isDefault !== undefined) patch.is_default = values.isDefault;
 
   const { error } = await supabase.from("templates").update(patch).eq("id", id);

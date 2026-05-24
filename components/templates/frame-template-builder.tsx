@@ -1,0 +1,1447 @@
+"use client";
+
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  BringToFront,
+  CalendarDays,
+  Copy,
+  Crosshair,
+  Grid2X2,
+  Image as ImageIcon,
+  Lock,
+  Maximize2,
+  SendToBack,
+  Square,
+  Trash2,
+  Type,
+  Redo2,
+  Undo2,
+  Unlock,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
+import { Rnd } from "react-rnd";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { uploadBuilderImage } from "@/lib/services/storage-service";
+import { cn } from "@/lib/utils";
+import {
+  DEFAULT_FRAME_CANVAS,
+  type FrameLayout,
+  type FrameNode,
+  type FrameNodeType,
+} from "@/types/frame-template";
+
+const FRAME_NODE_TYPES: { type: FrameNodeType; label: string; icon: ReactNode }[] = [
+  { type: "text", label: "Text", icon: <Type className="size-3.5" /> },
+  { type: "image", label: "Image", icon: <ImageIcon className="size-3.5" /> },
+  { type: "border", label: "Border", icon: <Square className="size-3.5" /> },
+  { type: "date-stamp", label: "Date", icon: <CalendarDays className="size-3.5" /> },
+  { type: "background", label: "Bg", icon: <ImageIcon className="size-3.5" /> },
+];
+const FRAME_TEMPLATE_WIDTH_CM = 8;
+const FRAME_TEMPLATE_WIDTH_PX = DEFAULT_FRAME_CANVAS.width;
+const FRAME_SNAP_THRESHOLD = 8;
+
+function clampZoom(value: number) {
+  return Math.min(2, Math.max(0.25, Number(value.toFixed(2))));
+}
+
+function readString(value: unknown, fallback: string) {
+  return typeof value === "string" ? value : fallback;
+}
+
+function readNumber(value: unknown, fallback: number) {
+  return typeof value === "number" ? value : fallback;
+}
+
+function makePhotoSlots(photoCount: number, canvasWidth: number, canvasHeight: number): FrameNode[] {
+  const columns = photoCount <= 2 ? 1 : 2;
+  const rows = Math.ceil(photoCount / columns);
+  const gap = 18;
+  const outer = 34;
+  const slotWidth = (canvasWidth - outer * 2 - gap * (columns - 1)) / columns;
+  const slotHeight = Math.min(150, (canvasHeight - 150 - gap * (rows - 1)) / rows);
+
+  return Array.from({ length: photoCount }).map((_, index) => {
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+    return {
+      id: `photo-${index + 1}`,
+      type: "photo-slot",
+      x: outer + col * (slotWidth + gap),
+      y: 92 + row * (slotHeight + gap),
+      width: slotWidth,
+      height: slotHeight,
+      rotation: 0,
+      opacity: 1,
+      zIndex: index + 2,
+      locked: false,
+      props: { label: `Photo ${index + 1}`, background: "#f4f4f5", borderColor: "#d4d4d8", radius: 10 },
+    } satisfies FrameNode;
+  });
+}
+
+function enforceFixedCanvasWidth(layout: FrameLayout): FrameLayout {
+  if (layout.canvas.width === FRAME_TEMPLATE_WIDTH_PX) {
+    return layout;
+  }
+
+  const scale = FRAME_TEMPLATE_WIDTH_PX / Math.max(1, layout.canvas.width);
+
+  return {
+    ...layout,
+    canvas: {
+      ...layout.canvas,
+      width: FRAME_TEMPLATE_WIDTH_PX,
+    },
+    nodes: layout.nodes.map((node) => ({
+      ...node,
+      x: Math.round(node.x * scale),
+      width: Math.max(1, Math.round(node.width * scale)),
+    })),
+  };
+}
+
+function ensurePhotoSlotCount(layout: FrameLayout, photoCount: number): FrameLayout {
+  const existingSlots = layout.nodes
+    .filter((node) => node.type === "photo-slot")
+    .sort((a, b) => a.zIndex - b.zIndex);
+
+  if (existingSlots.length === photoCount) {
+    return layout;
+  }
+
+  const generatedSlots = makePhotoSlots(photoCount, layout.canvas.width, layout.canvas.height);
+  const nextSlots = generatedSlots.map((slot, index) => {
+    const existing = existingSlots[index];
+    return existing
+      ? {
+          ...slot,
+          props: { ...slot.props, ...existing.props, label: `Photo ${index + 1}` },
+        }
+      : slot;
+  });
+
+  return {
+    ...layout,
+    nodes: [
+      ...layout.nodes.filter((node) => node.type !== "photo-slot"),
+      ...nextSlots,
+    ],
+  };
+}
+
+function normalizeFrameLayout(layout: FrameLayout, photoCount: number): FrameLayout {
+  return ensurePhotoSlotCount(enforceFixedCanvasWidth(layout), photoCount);
+}
+
+function upsertFrameBackground(layout: FrameLayout, frameImageUrl?: string): FrameLayout {
+  const src = frameImageUrl?.trim();
+  const frameBackgroundId = "frame-background";
+
+  if (!src) {
+    return {
+      ...layout,
+      nodes: layout.nodes.filter((node) => node.id !== frameBackgroundId),
+    };
+  }
+
+  const backgroundNode: FrameNode = {
+    id: frameBackgroundId,
+    type: "background",
+    x: 0,
+    y: 0,
+    width: layout.canvas.width,
+    height: layout.canvas.height,
+    rotation: 0,
+    opacity: 1,
+    zIndex: 0,
+    locked: true,
+    props: { src, alt: "Frame background", objectFit: "cover", radius: 0 },
+  };
+
+  const hasBackground = layout.nodes.some((node) => node.id === frameBackgroundId);
+
+  return {
+    ...layout,
+    nodes: hasBackground
+      ? layout.nodes.map((node) =>
+          node.id === frameBackgroundId
+            ? {
+                ...node,
+                x: 0,
+                y: 0,
+                width: layout.canvas.width,
+                height: layout.canvas.height,
+                zIndex: 0,
+                locked: true,
+                props: { ...node.props, src, alt: "Frame background", objectFit: "cover", radius: 0 },
+              }
+            : node.zIndex <= 0
+              ? { ...node, zIndex: node.zIndex + 1 }
+              : node,
+        )
+      : [backgroundNode, ...layout.nodes.map((node) => (node.zIndex <= 0 ? { ...node, zIndex: node.zIndex + 1 } : node))],
+  };
+}
+
+function createDefaultFrameLayout({
+  templateName,
+  accentColor,
+  photoCount,
+  frameImageUrl,
+}: {
+  templateName: string;
+  accentColor: string;
+  photoCount: number;
+  frameImageUrl?: string;
+}): FrameLayout {
+  const canvas = { ...DEFAULT_FRAME_CANVAS };
+  const nodes: FrameNode[] = [
+    {
+      id: "frame-title",
+      type: "text",
+      x: 34,
+      y: 30,
+      width: 260,
+      height: 40,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 20,
+      locked: false,
+      props: { content: templateName || "POSKART", color: accentColor, fontSize: 26, fontWeight: 700 },
+    },
+    ...makePhotoSlots(photoCount, canvas.width, canvas.height),
+    {
+      id: "frame-date",
+      type: "date-stamp",
+      x: 34,
+      y: canvas.height - 70,
+      width: 160,
+      height: 26,
+      rotation: 0,
+      opacity: 0.8,
+      zIndex: 20,
+      locked: false,
+      props: { content: "DD.MM.YYYY", color: "#52525b", fontSize: 13 },
+    },
+    {
+      id: "frame-border",
+      type: "border",
+      x: 16,
+      y: 16,
+      width: canvas.width - 32,
+      height: canvas.height - 32,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 30,
+      locked: false,
+      props: { borderColor: accentColor, borderWidth: 2, radius: 18 },
+    },
+  ];
+
+  if (frameImageUrl) {
+    nodes.unshift({
+      id: "frame-background",
+      type: "background",
+      x: 0,
+      y: 0,
+      width: canvas.width,
+      height: canvas.height,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 0,
+      locked: true,
+      props: { src: frameImageUrl, objectFit: "cover", radius: 0 },
+    });
+  }
+
+  return { version: 1, canvas, nodes };
+}
+
+function createNode(type: FrameNodeType, layout: FrameLayout): FrameNode {
+  const zIndex = Math.max(0, ...layout.nodes.map((node) => node.zIndex)) + 1;
+  const base = {
+    id: `${type}-${Date.now()}`,
+    type,
+    x: 48,
+    y: 88,
+    width: type === "text" || type === "date-stamp" ? 180 : 132,
+    height: type === "text" || type === "date-stamp" ? 40 : 132,
+    rotation: 0,
+    opacity: 1,
+    zIndex,
+    locked: false,
+  };
+
+  if (type === "photo-slot") {
+    return { ...base, width: 160, height: 210, props: { label: "Photo", background: "#f4f4f5", borderColor: "#d4d4d8", radius: 10 } };
+  }
+
+  if (type === "image" || type === "background") {
+    return { ...base, props: { src: "", alt: type, objectFit: "cover", radius: type === "background" ? 0 : 8 } };
+  }
+
+  if (type === "border") {
+    return { ...base, width: 260, height: 360, props: { borderColor: "#18181b", borderWidth: 2, radius: 18 } };
+  }
+
+  return { ...base, props: { content: type === "date-stamp" ? "DD.MM.YYYY" : "Text", color: "#18181b", fontSize: 18, fontWeight: 600 } };
+}
+
+function FrameNodeRenderer({ node }: { node: FrameNode }) {
+  if (node.type === "photo-slot") {
+    return (
+      <div
+        className="grid h-full w-full place-items-center border-2 border-dashed text-center text-xs font-medium text-zinc-500"
+        style={{
+          background: readString(node.props.background, "#f4f4f5"),
+          borderColor: readString(node.props.borderColor, "#d4d4d8"),
+          borderRadius: readNumber(node.props.radius, 10),
+        }}
+      >
+        {readString(node.props.label, "Photo")}
+      </div>
+    );
+  }
+
+  if (node.type === "image" || node.type === "background") {
+    const src = readString(node.props.src, "");
+    const fit = readString(node.props.objectFit, "cover");
+    if (src) {
+      return (
+        <div
+          className="h-full w-full bg-center bg-no-repeat"
+          style={{
+            backgroundImage: `url(${src})`,
+            backgroundSize: fit === "fill" ? "100% 100%" : fit,
+            borderRadius: readNumber(node.props.radius, 8),
+          }}
+        />
+      );
+    }
+
+    return (
+      <div className="grid h-full w-full place-items-center rounded-md border border-dashed border-zinc-300 bg-zinc-100 text-xs font-medium text-zinc-500">
+        {node.type}
+      </div>
+    );
+  }
+
+  if (node.type === "border") {
+    return (
+      <div
+        className="h-full w-full"
+        style={{
+          border: `${readNumber(node.props.borderWidth, 2)}px solid ${readString(node.props.borderColor, "#18181b")}`,
+          borderRadius: readNumber(node.props.radius, 18),
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="flex h-full w-full items-center"
+      style={{
+        color: readString(node.props.color, "#18181b"),
+        fontSize: readNumber(node.props.fontSize, 18),
+        fontWeight: readNumber(node.props.fontWeight, 600),
+      }}
+    >
+      {readString(node.props.content, node.type === "date-stamp" ? "DD.MM.YYYY" : "Text")}
+    </div>
+  );
+}
+
+function SortableFrameLayer({
+  node,
+  selectedId,
+  onSelect,
+  onToggleLock,
+}: {
+  node: FrameNode;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onToggleLock: (id: string, locked: boolean) => void;
+}) {
+  const isFrameBackground = node.id === "frame-background";
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: node.id, disabled: isFrameBackground });
+  const isSelected = selectedId === node.id;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs transition-colors",
+        isSelected
+          ? "border-zinc-900 bg-zinc-950 text-white"
+          : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50",
+      )}
+    >
+      <button
+        className={cn("text-zinc-400", isFrameBackground ? "cursor-not-allowed opacity-40" : "cursor-grab active:cursor-grabbing", isSelected && "text-zinc-300")}
+        title={isFrameBackground ? "Frame background is pinned below all layers" : "Drag to reorder layer"}
+        disabled={isFrameBackground}
+        {...attributes}
+        {...listeners}
+      >
+        <Grid2X2 className="size-3" />
+      </button>
+      <button className="min-w-0 flex-1 text-left" onClick={() => onSelect(node.id)}>
+        <span className={cn("block font-medium", isSelected && "text-white")}>{node.type}</span>
+        <span className={cn("block truncate text-zinc-500", isSelected && "text-zinc-300")}>{node.id}</span>
+      </button>
+      <button
+        className={cn("text-zinc-400 hover:text-zinc-700", isSelected && "hover:text-white")}
+        title={node.locked ? "Unlock layer" : "Lock layer"}
+        onClick={() => onToggleLock(node.id, !node.locked)}
+      >
+        {node.locked ? <Lock className="size-3" /> : <Unlock className="size-3" />}
+      </button>
+    </div>
+  );
+}
+
+export function FrameTemplateBuilder({
+  open = true,
+  presentation = "modal",
+  resetKey = "default",
+  initialLayout,
+  templateName,
+  accentColor,
+  photoCount,
+  frameImageUrl,
+  onClose,
+  onSave,
+  saveLabel = "Save frame layout",
+  detailsPanel,
+}: {
+  open?: boolean;
+  presentation?: "modal" | "embedded";
+  resetKey?: string;
+  initialLayout: FrameLayout | null;
+  templateName: string;
+  accentColor: string;
+  photoCount: number;
+  frameImageUrl?: string;
+  onClose: () => void;
+  onSave: (layout: FrameLayout) => void;
+  saveLabel?: string;
+  detailsPanel?: ReactNode;
+}) {
+  const fallbackLayout = useMemo(
+    () => createDefaultFrameLayout({ templateName, accentColor, photoCount, frameImageUrl }),
+    [accentColor, frameImageUrl, photoCount, templateName],
+  );
+  const [layout, setLayout] = useState<FrameLayout>(normalizeFrameLayout(initialLayout ?? fallbackLayout, photoCount));
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [zoom, setZoom] = useState(0.9);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [spaceDown, setSpaceDown] = useState(false);
+  const [guides, setGuides] = useState<Array<{ type: "h" | "v"; pos: number }>>([]);
+  const [snapPreview, setSnapPreview] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [history, setHistory] = useState<{ past: FrameLayout[]; future: FrameLayout[] }>({ past: [], future: [] });
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string | null } | null>(null);
+  const hydratedKeyRef = useRef<string | null>(null);
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ mx: 0, my: 0, px: 0, py: 0 });
+  const spaceRef = useRef(false);
+  const canvasViewportRef = useRef<HTMLDivElement>(null);
+  const canvasSurfaceRef = useRef<HTMLDivElement>(null);
+  const selectedNode = layout.nodes.find((node) => node.id === selectedId);
+  const contextNode = contextMenu?.nodeId ? layout.nodes.find((node) => node.id === contextMenu.nodeId) : undefined;
+  const layers = layout.nodes.slice().sort((a, b) => b.zIndex - a.zIndex);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const fitToScreen = useCallback(() => {
+    const viewport = canvasViewportRef.current;
+    if (!viewport) return;
+    const padding = 88;
+    const scaleX = (viewport.clientWidth - padding * 2) / layout.canvas.width;
+    const scaleY = (viewport.clientHeight - padding * 2) / layout.canvas.height;
+    setZoom(clampZoom(Math.min(scaleX, scaleY)));
+    setPan({ x: 0, y: 0 });
+  }, [layout.canvas.height, layout.canvas.width]);
+
+  const panToNode = useCallback((nodeId: string) => {
+    const node = layout.nodes.find((item) => item.id === nodeId);
+    if (!node) return;
+    const nodeCenterX = node.x + node.width / 2 - layout.canvas.width / 2;
+    const nodeCenterY = node.y + node.height / 2 - layout.canvas.height / 2;
+    setPan({ x: -nodeCenterX * zoom, y: -nodeCenterY * zoom });
+  }, [layout.canvas.height, layout.canvas.width, layout.nodes, zoom]);
+
+  const commitLayout = useCallback((updater: (current: FrameLayout) => FrameLayout) => {
+    const nextLayout = updater(layout);
+    if (nextLayout === layout) return;
+
+    setHistory((current) => ({
+      past: [...current.past.slice(-49), layout],
+      future: [],
+    }));
+    setLayout(nextLayout);
+  }, [layout]);
+
+  const undo = useCallback(() => {
+    const previous = history.past.at(-1);
+    if (!previous) return;
+
+    setLayout(previous);
+    setHistory({
+      past: history.past.slice(0, -1),
+      future: [layout, ...history.future].slice(0, 50),
+    });
+    setSelectedId(null);
+    setGuides([]);
+    setSnapPreview(null);
+  }, [history.future, history.past, layout]);
+
+  const redo = useCallback(() => {
+    const next = history.future[0];
+    if (!next) return;
+
+    setLayout(next);
+    setHistory({
+      past: [...history.past.slice(-49), layout],
+      future: history.future.slice(1),
+    });
+    setSelectedId(null);
+    setGuides([]);
+    setSnapPreview(null);
+  }, [history.future, history.past, layout]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (hydratedKeyRef.current === resetKey) return;
+    hydratedKeyRef.current = resetKey;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setLayout(normalizeFrameLayout(initialLayout ?? fallbackLayout, photoCount));
+      setSelectedId(null);
+      setHistory({ past: [], future: [] });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fallbackLayout, initialLayout, open, photoCount, resetKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setLayout((current) => normalizeFrameLayout(current, photoCount));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, photoCount]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setLayout((current) => upsertFrameBackground(current, frameImageUrl));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [frameImageUrl, open]);
+
+  useEffect(() => {
+    const closeMenu = () => setContextMenu(null);
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("blur", closeMenu);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("blur", closeMenu);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    fitToScreen();
+  }, [fitToScreen, open, resetKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    const surface = canvasSurfaceRef.current;
+    if (!surface) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      if (event.ctrlKey || event.metaKey) {
+        const factor = event.deltaY < 0 ? 1.08 : 0.93;
+        setZoom((value) => clampZoom(value * factor));
+        return;
+      }
+      setPan((value) => ({ x: value.x - event.deltaX, y: value.y - event.deltaY }));
+    };
+
+    surface.addEventListener("wheel", handleWheel, { passive: false });
+    return () => surface.removeEventListener("wheel", handleWheel);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT" || target?.isContentEditable;
+      if (isTyping) return;
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+        return;
+      }
+      if (event.code === "Space" && !event.repeat) {
+        spaceRef.current = true;
+        setSpaceDown(true);
+      }
+      if (event.shiftKey && event.key === "1") {
+        event.preventDefault();
+        fitToScreen();
+      }
+      if (event.shiftKey && event.key === "2") {
+        event.preventDefault();
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      }
+      if (event.key === "f" || event.key === "F") {
+        event.preventDefault();
+        if (selectedId) {
+          panToNode(selectedId);
+        } else {
+          fitToScreen();
+        }
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code === "Space") {
+        spaceRef.current = false;
+        setSpaceDown(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [fitToScreen, open, panToNode, redo, selectedId, undo]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT";
+      if (isTyping || !selectedNode || selectedNode.locked) return;
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        if (selectedNode.type === "photo-slot") {
+          toast.error("Photo slots follow the Photos field and cannot be deleted.");
+          return;
+        }
+        commitLayout((current) => ({ ...current, nodes: current.nodes.filter((node) => node.id !== selectedNode.id) }));
+        setSelectedId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [commitLayout, open, selectedNode]);
+
+  if (!open) return null;
+
+  const updateCanvas = (patch: Partial<FrameLayout["canvas"]>) =>
+    commitLayout((current) => {
+      const canvas = { ...current.canvas, ...patch, width: FRAME_TEMPLATE_WIDTH_PX };
+      return {
+        ...current,
+        canvas,
+        nodes: current.nodes.map((node) =>
+          node.id === "frame-background"
+            ? { ...node, x: 0, y: 0, width: canvas.width, height: canvas.height }
+            : node,
+        ),
+      };
+    });
+
+  const updateNode = (id: string, patch: Partial<FrameNode>) =>
+    commitLayout((current) => ({
+      ...current,
+      nodes: current.nodes.map((node) => (node.id === id ? { ...node, ...patch } : node)),
+    }));
+
+  const updateNodeProps = (id: string, props: Record<string, unknown>) =>
+    commitLayout((current) => ({
+      ...current,
+      nodes: current.nodes.map((node) => (node.id === id ? { ...node, props: { ...node.props, ...props } } : node)),
+    }));
+
+  const computeGuides = (node: FrameNode, rawX: number, rawY: number, width = node.width, height = node.height) => {
+    const nextGuides: Array<{ type: "h" | "v"; pos: number }> = [];
+    const nodeCenterX = rawX + width / 2;
+    const nodeCenterY = rawY + height / 2;
+    const canvasCenterX = layout.canvas.width / 2;
+    const canvasCenterY = layout.canvas.height / 2;
+
+    if (Math.abs(nodeCenterX - canvasCenterX) < FRAME_SNAP_THRESHOLD) {
+      nextGuides.push({ type: "v", pos: canvasCenterX });
+    }
+    if (Math.abs(nodeCenterY - canvasCenterY) < FRAME_SNAP_THRESHOLD) {
+      nextGuides.push({ type: "h", pos: canvasCenterY });
+    }
+    if (Math.abs(rawX) < FRAME_SNAP_THRESHOLD) {
+      nextGuides.push({ type: "v", pos: 0 });
+    }
+    if (Math.abs(rawX + width - layout.canvas.width) < FRAME_SNAP_THRESHOLD) {
+      nextGuides.push({ type: "v", pos: layout.canvas.width });
+    }
+    if (Math.abs(rawY) < FRAME_SNAP_THRESHOLD) {
+      nextGuides.push({ type: "h", pos: 0 });
+    }
+    if (Math.abs(rawY + height - layout.canvas.height) < FRAME_SNAP_THRESHOLD) {
+      nextGuides.push({ type: "h", pos: layout.canvas.height });
+    }
+
+    layout.nodes
+      .filter((item) => item.id !== node.id && item.id !== "frame-background")
+      .forEach((other) => {
+        const otherCenterX = other.x + other.width / 2;
+        const otherCenterY = other.y + other.height / 2;
+
+        if (Math.abs(nodeCenterX - otherCenterX) < FRAME_SNAP_THRESHOLD) {
+          nextGuides.push({ type: "v", pos: otherCenterX });
+        }
+        if (Math.abs(nodeCenterY - otherCenterY) < FRAME_SNAP_THRESHOLD) {
+          nextGuides.push({ type: "h", pos: otherCenterY });
+        }
+        if (Math.abs(rawX - other.x) < FRAME_SNAP_THRESHOLD) {
+          nextGuides.push({ type: "v", pos: other.x });
+        }
+        if (Math.abs(rawX + width - (other.x + other.width)) < FRAME_SNAP_THRESHOLD) {
+          nextGuides.push({ type: "v", pos: other.x + other.width });
+        }
+        if (Math.abs(rawY - other.y) < FRAME_SNAP_THRESHOLD) {
+          nextGuides.push({ type: "h", pos: other.y });
+        }
+        if (Math.abs(rawY + height - (other.y + other.height)) < FRAME_SNAP_THRESHOLD) {
+          nextGuides.push({ type: "h", pos: other.y + other.height });
+        }
+      });
+
+    return {
+      guides: nextGuides,
+      sx: rawX,
+      sy: rawY,
+      w: width,
+      h: height,
+      isSnapping: nextGuides.length > 0,
+    };
+  };
+
+  const clearSnap = () => {
+    setGuides([]);
+    setSnapPreview(null);
+  };
+
+  const addNode = (type: FrameNodeType) => {
+    if (type === "photo-slot") {
+      toast.error("Photo slots are controlled by the Photos field.");
+      return;
+    }
+
+    const node = createNode(type, layout);
+    commitLayout((current) => ({ ...current, nodes: [...current.nodes, node] }));
+    setSelectedId(node.id);
+  };
+
+  const duplicateNode = (node: FrameNode) => {
+    if (node.type === "photo-slot") {
+      toast.error("Photo slots follow the Photos field and cannot be duplicated.");
+      return;
+    }
+    if (node.id === "frame-background") {
+      toast.error("Frame background follows the Frame image URL field.");
+      return;
+    }
+
+    const clone = { ...node, id: `${node.id}-copy-${Date.now()}`, x: node.x + 18, y: node.y + 18, locked: false };
+    commitLayout((current) => ({ ...current, nodes: [...current.nodes, clone] }));
+    setSelectedId(clone.id);
+  };
+
+  const deleteNode = (node: FrameNode) => {
+    if (node.type === "photo-slot") {
+      toast.error("Photo slots follow the Photos field and cannot be deleted.");
+      return;
+    }
+    if (node.id === "frame-background") {
+      toast.error("Clear the Frame image URL field to remove the background.");
+      return;
+    }
+
+    commitLayout((current) => ({ ...current, nodes: current.nodes.filter((item) => item.id !== node.id) }));
+    setSelectedId(null);
+  };
+
+  const moveLayer = (id: string, direction: "up" | "down") => {
+    if (id === "frame-background") return;
+    commitLayout((current) => {
+      const ordered = current.nodes
+        .filter((node) => node.id !== "frame-background")
+        .slice()
+        .sort((a, b) => a.zIndex - b.zIndex)
+        .map((node, index) => ({ ...node, zIndex: index + 1 }));
+      const index = ordered.findIndex((node) => node.id === id);
+      const targetIndex = direction === "up" ? index + 1 : index - 1;
+
+      if (index < 0 || targetIndex < 0 || targetIndex >= ordered.length) {
+        return current;
+      }
+
+      const moved = ordered.slice();
+      [moved[index], moved[targetIndex]] = [moved[targetIndex], moved[index]];
+      const byId = new Map(moved.map((node, nextIndex) => [node.id, { ...node, zIndex: nextIndex + 1 }]));
+
+      return {
+        ...current,
+        nodes: current.nodes.map((node) => (node.id === "frame-background" ? { ...node, zIndex: 0 } : byId.get(node.id) ?? node)),
+      };
+    });
+  };
+
+  const bringNodeToFront = (node: FrameNode) => {
+    if (node.id === "frame-background") return;
+    const maxZIndex = Math.max(...layout.nodes.map((item) => item.zIndex));
+    updateNode(node.id, { zIndex: maxZIndex + 1 });
+  };
+
+  const sendNodeToBack = (node: FrameNode) => {
+    if (node.id === "frame-background") return;
+    const backgroundZIndex = layout.nodes.find((item) => item.id === "frame-background")?.zIndex;
+    const minZIndex = Math.min(...layout.nodes.map((item) => item.zIndex));
+    updateNode(node.id, { zIndex: backgroundZIndex != null ? backgroundZIndex + 1 : minZIndex - 1 });
+  };
+
+  const reorderLayers = (topToBottomIds: string[]) => {
+    if (topToBottomIds.includes("frame-background")) {
+      topToBottomIds = topToBottomIds.filter((id) => id !== "frame-background");
+    }
+    commitLayout((current) => {
+      const bottomToTopIds = topToBottomIds.slice().reverse();
+      const nextZIndexById = new Map(bottomToTopIds.map((id, index) => [id, index + 1]));
+
+      return {
+        ...current,
+        nodes: current.nodes.map((node) => {
+          const nextZIndex = nextZIndexById.get(node.id);
+          if (node.id === "frame-background") {
+            return { ...node, zIndex: 0 };
+          }
+          return nextZIndex ? { ...node, zIndex: nextZIndex } : node;
+        }),
+      };
+    });
+  };
+
+  const handleLayerDragEnd = (event: DragEndEvent) => {
+    if (!event.over || event.active.id === event.over.id) return;
+    if (event.active.id === "frame-background" || event.over.id === "frame-background") return;
+    const oldIndex = layers.findIndex((node) => node.id === event.active.id);
+    const newIndex = layers.findIndex((node) => node.id === event.over?.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    reorderLayers(arrayMove(layers, oldIndex, newIndex).map((node) => node.id));
+  };
+
+  const runContextAction = (action: () => void) => {
+    action();
+    setContextMenu(null);
+  };
+
+  const handleCanvasMouseDown = (event: React.MouseEvent) => {
+    if (event.button === 1 || spaceRef.current) {
+      event.preventDefault();
+      isPanningRef.current = true;
+      setIsPanning(true);
+      panStartRef.current = { mx: event.clientX, my: event.clientY, px: pan.x, py: pan.y };
+      return;
+    }
+
+    if (!(event.target as HTMLElement).closest(".frame-rnd-node")) {
+      setSelectedId(null);
+    }
+  };
+
+  const handleCanvasMouseMove = (event: React.MouseEvent) => {
+    if (!isPanningRef.current) return;
+    setPan({
+      x: panStartRef.current.px + (event.clientX - panStartRef.current.mx),
+      y: panStartRef.current.py + (event.clientY - panStartRef.current.my),
+    });
+  };
+
+  const handleCanvasMouseUp = () => {
+    isPanningRef.current = false;
+    setIsPanning(false);
+  };
+
+  const uploadToNode = async (file?: File) => {
+    if (!selectedNode || !file) return;
+
+    setUploading(true);
+    try {
+      const image = await uploadBuilderImage(file);
+      updateNodeProps(selectedNode.id, { src: image.url, alt: file.name });
+      toast.success("Image uploaded");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const builder = (
+    <>
+      <div
+        className={cn(
+          "flex flex-col overflow-hidden border border-zinc-200 bg-white shadow-2xl",
+          presentation === "modal"
+            ? "mx-auto h-full max-w-7xl rounded-xl"
+            : "h-full w-full rounded-none border-0 shadow-none",
+        )}
+      >
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-100 px-5">
+          <div>
+            <div className="text-sm font-semibold">Frame Template Builder</div>
+            <div className="text-xs text-zinc-500">{templateName}</div>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => setZoom((value) => clampZoom(value - 0.1))} title="Zoom out">
+              <ZoomOut />
+            </Button>
+            <button
+              className="h-9 w-16 rounded-md text-center text-xs font-mono text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+              onClick={fitToScreen}
+              title="Fit to screen"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <Button variant="ghost" size="icon" onClick={() => setZoom((value) => clampZoom(value + 0.1))} title="Zoom in">
+              <ZoomIn />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} title="Actual size">
+              <Maximize2 />
+            </Button>
+            {selectedId ? (
+              <Button variant="ghost" size="icon" onClick={() => panToNode(selectedId)} title="Pan to selection">
+                <Crosshair />
+              </Button>
+            ) : null}
+            <div className="mx-2 h-5 w-px bg-zinc-200" />
+            <Button variant="ghost" size="icon" onClick={undo} disabled={history.past.length === 0} title="Undo">
+              <Undo2 />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={redo} disabled={history.future.length === 0} title="Redo">
+              <Redo2 />
+            </Button>
+            <div className="mx-2 h-5 w-px bg-zinc-200" />
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={() => onSave(normalizeFrameLayout(layout, photoCount))}>{saveLabel}</Button>
+            <Button variant="ghost" size="icon" onClick={onClose}><X /></Button>
+          </div>
+        </div>
+
+        <div className="grid min-h-0 flex-1 grid-cols-[240px_minmax(0,1fr)_360px]">
+          <aside className="flex min-h-0 flex-col overflow-hidden border-r border-zinc-100">
+            <div className="shrink-0 p-4">
+              <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">Add layer</div>
+              <div className="grid grid-cols-2 gap-2">
+              {FRAME_NODE_TYPES.map((item) => (
+                <Button key={item.type} variant="outline" size="sm" onClick={() => addNode(item.type)}>
+                  {item.icon}
+                  {item.label}
+                </Button>
+              ))}
+              </div>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col border-t border-zinc-100">
+              <div className="flex shrink-0 items-center justify-between px-4 py-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Layers</div>
+                <div className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">{layers.length}</div>
+              </div>
+              <ScrollArea className="min-h-0 flex-1 px-2 pb-3">
+                <DndContext sensors={sensors} onDragEnd={handleLayerDragEnd}>
+                  <SortableContext items={layers.map((node) => node.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-1">
+                      {layers.map((node) => (
+                        <SortableFrameLayer
+                          key={node.id}
+                          node={node}
+                          selectedId={selectedId}
+                          onSelect={setSelectedId}
+                          onToggleLock={(id, locked) => updateNode(id, { locked })}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              </ScrollArea>
+            </div>
+          </aside>
+
+          <main
+            ref={canvasSurfaceRef}
+            className="relative min-w-0 overflow-hidden bg-zinc-100"
+            style={{ cursor: isPanning ? "grabbing" : spaceDown ? "grab" : "default" }}
+            onMouseDown={handleCanvasMouseDown}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseUp={handleCanvasMouseUp}
+            onMouseLeave={handleCanvasMouseUp}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              setSelectedId(null);
+              setContextMenu({ x: event.clientX, y: event.clientY, nodeId: null });
+            }}
+          >
+            <div ref={canvasViewportRef} className="pointer-events-none absolute inset-0" />
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.10) 1px, transparent 1px)",
+                backgroundPosition: `${pan.x % (22 * zoom)}px ${pan.y % (22 * zoom)}px`,
+                backgroundSize: `${22 * zoom}px ${22 * zoom}px`,
+              }}
+            />
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div
+                className="pointer-events-auto relative"
+                style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "center center" }}
+              >
+                <div className="absolute -top-7 left-0 select-none whitespace-nowrap text-[11px] font-medium text-zinc-400">
+                  Frame template — {FRAME_TEMPLATE_WIDTH_CM}cm × variable length · {layout.canvas.width} × {layout.canvas.height}px
+                </div>
+                <div
+                  className="relative overflow-hidden rounded-lg shadow-2xl"
+                  style={{
+                    width: layout.canvas.width,
+                    height: layout.canvas.height,
+                    background: layout.canvas.backgroundColor,
+                  }}
+                  onClick={(event) => event.stopPropagation()}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setSelectedId(null);
+                    setContextMenu({ x: event.clientX, y: event.clientY, nodeId: null });
+                  }}
+                >
+                  {guides.map((guide, index) =>
+                    guide.type === "v" ? (
+                      <div
+                        key={`${guide.type}-${guide.pos}-${index}`}
+                        className="pointer-events-none absolute inset-y-0"
+                        style={{ left: guide.pos, width: 1, background: "#f000a0", zIndex: 9999, opacity: 0.85 }}
+                      />
+                    ) : (
+                      <div
+                        key={`${guide.type}-${guide.pos}-${index}`}
+                        className="pointer-events-none absolute inset-x-0"
+                        style={{ top: guide.pos, height: 1, background: "#f000a0", zIndex: 9999, opacity: 0.85 }}
+                      />
+                    ),
+                  )}
+                  {snapPreview ? (
+                    <div
+                      className="pointer-events-none absolute"
+                      style={{
+                        left: snapPreview.x,
+                        top: snapPreview.y,
+                        width: snapPreview.w,
+                        height: snapPreview.h,
+                        border: "2px dashed #f000a0",
+                        background: "rgba(240,0,160,0.08)",
+                        borderRadius: 4,
+                        zIndex: 9998,
+                      }}
+                    />
+                  ) : null}
+                  {layout.nodes.slice().sort((a, b) => a.zIndex - b.zIndex).map((node) => (
+                    <Rnd
+                      key={node.id}
+                      bounds="parent"
+                      scale={zoom}
+                      disableDragging={node.locked}
+                      enableResizing={!node.locked}
+                      position={{ x: node.x, y: node.y }}
+                      size={{ width: node.width, height: node.height }}
+                      onClick={(event: React.MouseEvent) => {
+                        event.stopPropagation();
+                        setSelectedId(node.id);
+                      }}
+                      onContextMenu={(event: React.MouseEvent) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setSelectedId(node.id);
+                        setContextMenu({ x: event.clientX, y: event.clientY, nodeId: node.id });
+                      }}
+                      onDrag={(_, data) => {
+                        const snapState = computeGuides(node, data.x, data.y);
+                        setGuides(snapState.guides);
+                        setSnapPreview(snapState.isSnapping ? { x: snapState.sx, y: snapState.sy, w: node.width, h: node.height } : null);
+                      }}
+                      onDragStop={(_, data) => {
+                        const snapState = computeGuides(node, data.x, data.y);
+                        updateNode(node.id, { x: snapState.sx, y: snapState.sy });
+                        clearSnap();
+                      }}
+                      onResize={(_, __, ref, ___, position) => {
+                        const snapState = computeGuides(node, position.x, position.y, ref.offsetWidth, ref.offsetHeight);
+                        setGuides(snapState.guides);
+                        setSnapPreview(snapState.isSnapping ? { x: snapState.sx, y: snapState.sy, w: snapState.w, h: snapState.h } : null);
+                      }}
+                      onResizeStop={(_, __, ref, ___, position) => {
+                        const snapState = computeGuides(node, position.x, position.y, ref.offsetWidth, ref.offsetHeight);
+                        updateNode(node.id, {
+                          width: snapState.w,
+                          height: snapState.h,
+                          x: snapState.sx,
+                          y: snapState.sy,
+                        });
+                        clearSnap();
+                      }}
+                      style={{ zIndex: node.zIndex, opacity: node.opacity, transform: `rotate(${node.rotation}deg)` }}
+                      className={cn(
+                        "frame-rnd-node group",
+                        selectedId === node.id && "outline outline-2 outline-offset-2 outline-zinc-950",
+                        node.locked && "cursor-not-allowed",
+                      )}
+                    >
+                      <FrameNodeRenderer node={node} />
+                    </Rnd>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/80 px-3 py-1 text-[10px] text-zinc-400 shadow-sm backdrop-blur-sm">
+              Ctrl+scroll to zoom · Scroll to pan · Space+drag to pan · Shift+1 Fit · Shift+2 100% · F Pan to selection
+            </div>
+          </main>
+
+          <aside className="min-h-0 overflow-hidden border-l border-zinc-100">
+            <ScrollArea className="h-full p-4">
+              <div className="space-y-4">
+                {detailsPanel}
+                <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
+                  <div className="text-sm font-semibold">Canvas</div>
+                  <div className="rounded-md border border-zinc-100 bg-zinc-50 px-3 py-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Template width</div>
+                    <div className="mt-1 text-sm font-semibold text-zinc-900">
+                      {FRAME_TEMPLATE_WIDTH_CM}cm
+                      <span className="ml-2 font-mono text-xs font-normal text-zinc-400">
+                        {FRAME_TEMPLATE_WIDTH_PX}px design width
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    <label className="text-xs font-medium text-zinc-500">
+                      Length / height (px)
+                      <Input className="mt-1" type="number" min={280} max={1800} value={layout.canvas.height} onChange={(event) => updateCanvas({ height: Number(event.target.value) })} />
+                    </label>
+                  </div>
+                  <label className="text-xs font-medium text-zinc-500">
+                    Background
+                    <div className="mt-1 grid grid-cols-[42px_1fr] gap-2">
+                      <Input className="h-9 p-1" type="color" value={layout.canvas.backgroundColor} onChange={(event) => updateCanvas({ backgroundColor: event.target.value })} />
+                      <Input value={layout.canvas.backgroundColor} onChange={(event) => updateCanvas({ backgroundColor: event.target.value })} />
+                    </div>
+                  </label>
+                </section>
+
+                {selectedNode ? (
+                  <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-semibold">{selectedNode.type}</div>
+                        <div className="text-xs text-zinc-500">{selectedNode.id}</div>
+                      </div>
+                      <div className="flex gap-1">
+	                        <Button
+	                          variant="ghost"
+	                          size="icon"
+	                          disabled={selectedNode.type === "photo-slot" || selectedNode.id === "frame-background"}
+	                          onClick={() => duplicateNode(selectedNode)}
+	                        >
+                          <Copy />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => updateNode(selectedNode.id, { locked: !selectedNode.locked })}>
+                          {selectedNode.locked ? <Unlock /> : <Lock />}
+                        </Button>
+	                        <Button
+	                          variant="ghost"
+	                          size="icon"
+	                          disabled={selectedNode.type === "photo-slot" || selectedNode.id === "frame-background"}
+	                          onClick={() => {
+	                            deleteNode(selectedNode);
+                          }}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["x", "y", "width", "height"] as const).map((key) => (
+                        <label key={key} className="text-xs font-medium text-zinc-500">
+                          {key.toUpperCase()}
+                          <Input className="mt-1" type="number" value={Math.round(selectedNode[key])} onChange={(event) => updateNode(selectedNode.id, { [key]: Number(event.target.value) })} />
+                        </label>
+                      ))}
+                    </div>
+
+                    <label className="block text-xs font-medium text-zinc-500">
+                      Opacity
+                      <Slider min={0.1} max={1} step={0.05} value={selectedNode.opacity} onChange={(event) => updateNode(selectedNode.id, { opacity: Number(event.target.value) })} />
+                    </label>
+
+                    <label className="block text-xs font-medium text-zinc-500">
+                      Rotation
+                      <Input className="mt-1" type="number" value={selectedNode.rotation} onChange={(event) => updateNode(selectedNode.id, { rotation: Number(event.target.value) })} />
+                    </label>
+
+                    {selectedNode.type === "text" || selectedNode.type === "date-stamp" ? (
+                      <>
+                        <label className="block text-xs font-medium text-zinc-500">
+                          Text
+                          <Input className="mt-1" value={readString(selectedNode.props.content, "")} onChange={(event) => updateNodeProps(selectedNode.id, { content: event.target.value })} />
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="text-xs font-medium text-zinc-500">
+                            Font size
+                            <Input className="mt-1" type="number" value={readNumber(selectedNode.props.fontSize, 18)} onChange={(event) => updateNodeProps(selectedNode.id, { fontSize: Number(event.target.value) })} />
+                          </label>
+                          <label className="text-xs font-medium text-zinc-500">
+                            Weight
+                            <Input className="mt-1" type="number" step={100} value={readNumber(selectedNode.props.fontWeight, 600)} onChange={(event) => updateNodeProps(selectedNode.id, { fontWeight: Number(event.target.value) })} />
+                          </label>
+                        </div>
+                        <label className="block text-xs font-medium text-zinc-500">
+                          Color
+                          <div className="mt-1 grid grid-cols-[42px_1fr] gap-2">
+                            <Input className="h-9 p-1" type="color" value={readString(selectedNode.props.color, "#18181b")} onChange={(event) => updateNodeProps(selectedNode.id, { color: event.target.value })} />
+                            <Input value={readString(selectedNode.props.color, "#18181b")} onChange={(event) => updateNodeProps(selectedNode.id, { color: event.target.value })} />
+                          </div>
+                        </label>
+                      </>
+                    ) : null}
+
+                    {selectedNode.type === "image" || selectedNode.type === "background" ? (
+                      <>
+                        <label className="block text-xs font-medium text-zinc-500">
+                          Image URL
+                          <Input className="mt-1" value={readString(selectedNode.props.src, "")} onChange={(event) => updateNodeProps(selectedNode.id, { src: event.target.value })} />
+                        </label>
+                        <label className="block text-xs font-medium text-zinc-500">
+                          Upload image
+                          <Input className="mt-1" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" disabled={uploading} onChange={(event) => uploadToNode(event.target.files?.[0])} />
+                        </label>
+                        <label className="block text-xs font-medium text-zinc-500">
+                          Fit
+                          <Select className="mt-1" value={readString(selectedNode.props.objectFit, "cover")} onChange={(event) => updateNodeProps(selectedNode.id, { objectFit: event.target.value })}>
+                            <option value="cover">Cover</option>
+                            <option value="contain">Contain</option>
+                            <option value="fill">Fill</option>
+                          </Select>
+                        </label>
+                      </>
+                    ) : null}
+
+                    {selectedNode.type === "photo-slot" || selectedNode.type === "border" ? (
+                      <>
+                        <label className="block text-xs font-medium text-zinc-500">
+                          Border color
+                          <Input className="mt-1" value={readString(selectedNode.props.borderColor, "#d4d4d8")} onChange={(event) => updateNodeProps(selectedNode.id, { borderColor: event.target.value })} />
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="text-xs font-medium text-zinc-500">
+                            Radius
+                            <Input className="mt-1" type="number" value={readNumber(selectedNode.props.radius, 10)} onChange={(event) => updateNodeProps(selectedNode.id, { radius: Number(event.target.value) })} />
+                          </label>
+                          <label className="text-xs font-medium text-zinc-500">
+                            Border
+                            <Input className="mt-1" type="number" value={readNumber(selectedNode.props.borderWidth, selectedNode.type === "border" ? 2 : 0)} onChange={(event) => updateNodeProps(selectedNode.id, { borderWidth: Number(event.target.value) })} />
+                          </label>
+                        </div>
+                      </>
+                    ) : null}
+                  </section>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
+                    Select a layer to edit its size, position, media, text, and frame styling.
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </aside>
+        </div>
+      </div>
+      {contextMenu ? (
+        <div
+          className="fixed z-[9999] w-56 rounded-lg border border-zinc-200 bg-white p-1 shadow-2xl"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onMouseDown={(event) => event.stopPropagation()}
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          {contextNode ? (
+            <>
+              <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                {contextNode.type}
+              </div>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
+                onClick={() => runContextAction(() => bringNodeToFront(contextNode))}
+              >
+                <BringToFront className="size-3.5" />
+                Bring to front
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
+                onClick={() => runContextAction(() => sendNodeToBack(contextNode))}
+                disabled={contextNode.id === "frame-background"}
+              >
+                <SendToBack className="size-3.5" />
+                Send to back
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
+                onClick={() => runContextAction(() => moveLayer(contextNode.id, "up"))}
+              >
+                <ArrowUp className="size-3.5" />
+                Move layer up
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
+                onClick={() => runContextAction(() => moveLayer(contextNode.id, "down"))}
+              >
+                <ArrowDown className="size-3.5" />
+                Move layer down
+              </button>
+              {contextNode.type !== "photo-slot" ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
+                  onClick={() => runContextAction(() => duplicateNode(contextNode))}
+                  disabled={contextNode.id === "frame-background"}
+                >
+                  <Copy className="size-3.5" />
+                  Duplicate
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
+                onClick={() => runContextAction(() => updateNode(contextNode.id, { locked: !contextNode.locked }))}
+              >
+                {contextNode.locked ? <Unlock className="size-3.5" /> : <Lock className="size-3.5" />}
+                {contextNode.locked ? "Unlock" : "Lock"}
+              </button>
+              {contextNode.type !== "photo-slot" ? (
+                <>
+                  <div className="my-1 h-px bg-zinc-100" />
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-red-600 hover:bg-red-50"
+                    onClick={() => runContextAction(() => deleteNode(contextNode))}
+                    disabled={contextNode.id === "frame-background"}
+                  >
+                    <Trash2 className="size-3.5" />
+                    Delete
+                  </button>
+                </>
+              ) : (
+                <div className="px-2 py-2 text-[11px] leading-4 text-zinc-400">
+                  Photo slots are controlled by the Photos field.
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-400">Add layer</div>
+              {FRAME_NODE_TYPES.map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
+                  onClick={() => runContextAction(() => addNode(item.type))}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ))}
+            </>
+          )}
+          <button
+            type="button"
+            className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-zinc-500 hover:bg-zinc-100"
+            onClick={() => setContextMenu(null)}
+          >
+            Close
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
+
+  if (presentation === "embedded") {
+    return builder;
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] bg-zinc-950/40 p-4 backdrop-blur-sm">
+      {builder}
+    </div>
+  );
+}

@@ -1709,11 +1709,6 @@ export function VisualBuilder() {
   const [currentThemeId, setCurrentThemeId] = useState<string | null>(null);
   const [currentThemeName, setCurrentThemeName] = useState<string | null>(null);
 
-  // Refresh local drafts list when load dialog opens
-  useEffect(() => {
-    if (showLoadDialog) setLocalDrafts(getDrafts());
-  }, [showLoadDialog]);
-
   // Re-inject custom font <link> tags whenever canvas.customFonts changes
   useEffect(() => {
     (canvas.customFonts ?? []).forEach(({ name, url }) => {
@@ -2135,7 +2130,10 @@ export function VisualBuilder() {
           {/* Load button */}
           <button
             className={toolbarBtn}
-            onClick={() => setShowLoadDialog(true)}
+            onClick={() => {
+              setLocalDrafts(getDrafts());
+              setShowLoadDialog(true);
+            }}
             title="Load template"
           >
             <FolderOpen className="size-3.5" />Load
@@ -2660,7 +2658,7 @@ export function VisualBuilder() {
                   {dbThemes.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <p className="text-sm font-medium text-zinc-400">No themes in database</p>
-                      <p className="mt-1 text-xs text-zinc-300">Click "Save theme" to publish a theme to the database.</p>
+                      <p className="mt-1 text-xs text-zinc-300">Click &quot;Save theme&quot; to publish a theme to the database.</p>
                     </div>
                   )}
                   {dbThemes

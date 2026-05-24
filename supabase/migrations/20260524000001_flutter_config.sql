@@ -29,6 +29,7 @@ alter table public.templates
   add column if not exists photo_count integer not null default 4 check (photo_count between 1 and 8),
   add column if not exists accent_color text not null default '#C4121A',
   add column if not exists frame_image_url text,
+  add column if not exists frame_layout jsonb,
   add column if not exists is_default boolean not null default false;
 
 -- ============================================================

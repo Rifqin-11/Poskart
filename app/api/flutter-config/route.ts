@@ -35,7 +35,7 @@ export async function GET() {
         .maybeSingle(),
       supabase
         .from("templates")
-        .select("id,name,category,status,tagline,photo_count,accent_color,frame_image_url,is_default")
+        .select("id,name,category,status,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default")
         .eq("status", "published")
         .order("is_default", { ascending: false }),
     ]);
@@ -77,6 +77,7 @@ export async function GET() {
         photoCount: t.photo_count,
         accentColor: t.accent_color,
         frameImageUrl: t.frame_image_url ?? null,
+        frameLayout: t.frame_layout ?? null,
         isDefault: t.is_default,
       })),
     };

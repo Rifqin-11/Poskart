@@ -11,7 +11,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useSyncExternalStore, useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   BadgeCheck,
   Battery,
@@ -46,12 +47,10 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TemplateFormSheet } from "@/components/templates/template-form-sheet";
 import {
   useAppConfig,
   useAssets,
   useBooths,
-  useCreateTemplate,
   useDeleteTemplate,
   useDashboardData,
   usePricing,
@@ -62,7 +61,7 @@ import {
   useUpdateTemplate,
 } from "@/hooks/use-admin-data";
 import { formatCurrency } from "@/lib/utils";
-import type { Template, TemplateFormValues } from "@/types/template";
+import type { Template } from "@/types/template";
 
 function useClientMounted() {
   return useSyncExternalStore(
@@ -93,26 +92,13 @@ function PageHeader({
 }
 
 export function TemplateManagement() {
+  const router = useRouter();
   const { data = [] } = useTemplates();
-  const createTemplate = useCreateTemplate();
   const updateTemplate = useUpdateTemplate();
   const deleteTemplate = useDeleteTemplate();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editing, setEditing] = useState<Template | null>(null);
 
-  const openAdd = () => { setEditing(null); setSheetOpen(true); };
-  const openEdit = (t: Template) => { setEditing(t); setSheetOpen(true); };
-  const closeSheet = () => { setSheetOpen(false); setEditing(null); };
-
-  const handleSave = async (values: TemplateFormValues) => {
-    if (editing) {
-      await updateTemplate.mutateAsync({ id: editing.id, patch: values });
-      toast.success("Template updated");
-    } else {
-      await createTemplate.mutateAsync(values);
-      toast.success("Template created");
-    }
-  };
+  const openAdd = () => router.push("/templates/builder/new");
+  const openEdit = (template: Template) => router.push(`/templates/builder/${template.id}`);
 
   const handleDelete = (t: Template) => {
     if (!confirm(`Delete "${t.name}"? This cannot be undone.`)) return;
@@ -142,13 +128,6 @@ export function TemplateManagement() {
             <CloudUpload className="size-4" /> Add template
           </Button>
         }
-      />
-
-      <TemplateFormSheet
-        open={sheetOpen}
-        template={editing}
-        onClose={closeSheet}
-        onSave={handleSave}
       />
 
       {data.length === 0 ? (
@@ -555,7 +534,10 @@ export function SettingsPanel() {
 
   // Populate form when config loads from Supabase
   useEffect(() => {
-    if (config) {
+    if (!config) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
       setForm({
         merchant_name: config.merchant_name,
         qris_payload_prefix: config.qris_payload_prefix,
@@ -565,7 +547,10 @@ export function SettingsPanel() {
         auto_return_duration_seconds: config.auto_return_duration_seconds,
         default_template_id: config.default_template_id ?? "",
       });
-    }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [config]);
 
   const handleSaveFlutterConfig = async () => {
