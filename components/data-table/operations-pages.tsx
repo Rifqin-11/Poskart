@@ -140,85 +140,78 @@ export function TemplateManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="max-w-xl space-y-3">
           {data.map((template) => (
-            <Card key={template.id} className="group relative overflow-hidden">
-              {/* Frame image or placeholder */}
-              <div
-                className="relative flex h-40 items-center justify-center overflow-hidden"
-                style={{ background: `${template.accentColor}18` }}
-              >
-                {template.frameImageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={template.frameImageUrl}
-                    alt={template.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <Boxes className="size-10" style={{ color: template.accentColor }} />
-                )}
-                {template.isDefault && (
-                  <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-700 shadow">
-                    <Star className="size-2.5 fill-yellow-400 text-yellow-400" /> Default
-                  </span>
-                )}
-                {/* Action buttons on hover */}
-                <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    onClick={() => openEdit(template)}
-                    className="rounded-md bg-white/90 p-1.5 shadow hover:bg-white"
-                    title="Edit"
-                  >
-                    <Edit2 className="size-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(template)}
-                    className="rounded-md bg-white/90 p-1.5 text-red-600 shadow hover:bg-white"
-                    title="Delete"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
+            <Card key={template.id} className="group overflow-hidden">
+              <CardContent className="grid gap-4 p-4 md:grid-cols-[112px_minmax(0,1fr)_150px] md:items-center">
+                <div
+                  className="relative mx-auto flex aspect-[8/12] h-40 w-[106px] shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm md:mx-0"
+                  style={{ backgroundColor: `${template.accentColor}14` }}
+                >
+                  {template.frameImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={template.frameImageUrl}
+                      alt={template.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Boxes className="size-10" style={{ color: template.accentColor }} />
+                  )}
+                  {template.isDefault ? (
+                    <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-700 shadow">
+                      <Star className="size-2.5 fill-yellow-400 text-yellow-400" /> Default
+                    </span>
+                  ) : null}
                 </div>
-              </div>
 
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <CardTitle className="truncate text-sm">{template.name}</CardTitle>
-                    {template.tagline && (
-                      <CardDescription className="truncate text-xs">{template.tagline}</CardDescription>
-                    )}
+                <div className="min-w-0 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="truncate text-base font-semibold text-zinc-950">{template.name}</h2>
+                    <Badge variant={template.status === "published" ? "success" : "secondary"}>
+                      {template.status}
+                    </Badge>
                   </div>
-                  <Badge variant={template.status === "published" ? "success" : "secondary"}>
-                    {template.status}
-                  </Badge>
+                  {template.tagline ? (
+                    <p className="line-clamp-2 text-sm text-zinc-500">{template.tagline}</p>
+                  ) : (
+                    <p className="text-sm text-zinc-400">No tagline configured.</p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className="size-3 rounded-full border border-zinc-200"
+                        style={{ background: template.accentColor }}
+                      />
+                      {template.accentColor}
+                    </span>
+                    <span>{template.photoCount} photos</span>
+                    <span className="capitalize">{template.category}</span>
+                    <span>{template.frameLayout ? "Custom layout" : "Default layout"}</span>
+                  </div>
                 </div>
-              </CardHeader>
 
-              <CardContent className="pt-0">
-                <div className="mb-3 flex items-center gap-3">
-                  <div
-                    className="size-4 shrink-0 rounded-full border border-zinc-200"
-                    style={{ background: template.accentColor }}
-                    title={template.accentColor}
-                  />
-                  <span className="text-xs text-zinc-500">{template.photoCount} photos</span>
-                  <span className="text-xs text-zinc-400">{template.category}</span>
-                </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row md:flex-col">
                   {!template.isDefault && (
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
+                      className="justify-center px-2"
                       onClick={() => handleSetDefault(template)}
                     >
                       <Check className="size-3.5" /> Set default
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(template)}>
+                  <Button variant="outline" size="sm" className="justify-center px-2" onClick={() => openEdit(template)}>
                     <Edit2 className="size-3.5" /> Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="justify-center px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    onClick={() => handleDelete(template)}
+                  >
+                    <Trash2 className="size-3.5" /> Delete
                   </Button>
                 </div>
               </CardContent>
