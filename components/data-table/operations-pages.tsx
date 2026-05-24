@@ -140,12 +140,12 @@ export function TemplateManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="max-w-xl space-y-3">
+        <div className="grid max-w-5xl gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.map((template) => (
             <Card key={template.id} className="group overflow-hidden">
-              <CardContent className="grid gap-4 p-4 md:grid-cols-[112px_minmax(0,1fr)_150px] md:items-center">
+              <CardContent className="space-y-4 p-4">
                 <div
-                  className="relative mx-auto flex aspect-[8/12] h-40 w-[106px] shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm md:mx-0"
+                  className="relative mx-auto flex aspect-[8/12] h-48 w-32 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm"
                   style={{ backgroundColor: `${template.accentColor}14` }}
                 >
                   {template.frameImageUrl ? (
@@ -191,18 +191,18 @@ export function TemplateManagement() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row md:flex-col">
+                <div className="flex gap-2">
                   {!template.isDefault && (
                     <Button
                       variant="outline"
                       size="sm"
-                      className="justify-center px-2"
+                      className="flex-1 justify-center px-2"
                       onClick={() => handleSetDefault(template)}
                     >
                       <Check className="size-3.5" /> Set default
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" className="justify-center px-2" onClick={() => openEdit(template)}>
+                  <Button variant="outline" size="sm" className="flex-1 justify-center px-2" onClick={() => openEdit(template)}>
                     <Edit2 className="size-3.5" /> Edit
                   </Button>
                   <Button
