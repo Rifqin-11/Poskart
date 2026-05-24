@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, CreditCard, LockKeyhole, ReceiptText } from "lucide-react";
-import { toast } from "sonner";
+import { createSubscriptionOrderAction } from "@/app/checkout/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { businessProfile, pricingPlans } from "@/lib/constants/business";
@@ -12,10 +12,16 @@ import { formatCurrency } from "@/lib/utils";
 export function CheckoutContent() {
   const searchParams = useSearchParams();
   const selectedPlanId = searchParams.get("plan") ?? "yearly";
+  const successMessage = searchParams.get("success");
+  const errorMessage = searchParams.get("error");
   const plan = pricingPlans.find((item) => item.id === selectedPlanId) ?? pricingPlans[2];
 
   return (
-    <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_420px] lg:px-8">
+    <form
+      action={createSubscriptionOrderAction}
+      className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_420px] lg:px-8"
+    >
+      <input type="hidden" name="planId" value={plan.id} />
       <div className="space-y-6">
         <div>
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600">
@@ -28,24 +34,35 @@ export function CheckoutContent() {
           </p>
         </div>
 
+        {successMessage ? (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+            {successMessage}
+          </div>
+        ) : null}
+        {errorMessage ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+            {errorMessage}
+          </div>
+        ) : null}
+
         <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold">Customer information</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <label className="text-xs font-medium text-zinc-500">
               Business or customer name
-              <Input className="mt-1" placeholder="Nama bisnis / pelanggan" />
+              <Input className="mt-1" name="customerName" placeholder="Nama bisnis / pelanggan" required />
             </label>
             <label className="text-xs font-medium text-zinc-500">
               Email
-              <Input className="mt-1" type="email" placeholder="billing@example.com" />
+              <Input className="mt-1" name="email" type="email" placeholder="billing@example.com" required />
             </label>
             <label className="text-xs font-medium text-zinc-500">
               WhatsApp number
-              <Input className="mt-1" placeholder="+62..." />
+              <Input className="mt-1" name="whatsapp" placeholder="+62..." required />
             </label>
             <label className="text-xs font-medium text-zinc-500">
               Booth or company name
-              <Input className="mt-1" placeholder="Nama booth / perusahaan" />
+              <Input className="mt-1" name="companyName" placeholder="Nama booth / perusahaan" />
             </label>
           </div>
         </div>
@@ -103,9 +120,9 @@ export function CheckoutContent() {
         </div>
 
         <Button
+          type="submit"
           className="mt-6 w-full"
           size="lg"
-          onClick={() => toast.success("Checkout ready. Connect this button to your payment gateway payment link/API.")}
         >
           Continue to Payment
           <CreditCard className="size-4" />
@@ -130,6 +147,6 @@ export function CheckoutContent() {
           . For help, contact {businessProfile.email}.
         </p>
       </aside>
-    </section>
+    </form>
   );
 }

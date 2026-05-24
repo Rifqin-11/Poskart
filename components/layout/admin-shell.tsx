@@ -17,9 +17,11 @@ import {
   Settings,
   Sparkles,
   Store,
+  LogOut,
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import { signOutAction } from "@/app/auth/actions";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CommandSearch } from "@/components/ui/command";
@@ -99,8 +101,15 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({
+  children,
+  userEmail,
+}: {
+  children: React.ReactNode;
+  userEmail?: string;
+}) {
   const [open, setOpen] = useState(false);
+  const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -122,10 +131,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <CommandSearch />
             </div>
             <div className="ml-auto flex items-center gap-3">
+              <div className="hidden text-right md:block">
+                <div className="text-xs text-zinc-500">Signed in as</div>
+                <div className="max-w-48 truncate text-sm font-medium">{userEmail ?? "POSKART Admin"}</div>
+              </div>
               <Button variant="outline" size="sm">
                 Publish
               </Button>
-              <Avatar name="PK" />
+              <form action={signOutAction}>
+                <Button variant="ghost" size="icon" type="submit" aria-label="Sign out">
+                  <LogOut />
+                </Button>
+              </form>
+              <Avatar name={initials} />
             </div>
           </div>
         </header>

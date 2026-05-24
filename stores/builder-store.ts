@@ -100,6 +100,7 @@ type BuilderState = {
   reorderNodes: (ids: string[]) => void;
   undo: () => void;
   redo: () => void;
+  setSchema: (schema: LayoutSchema) => void;
   schema: () => LayoutSchema;
 };
 
@@ -191,6 +192,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       const next = state.future[0];
       if (!next) return state;
       return { nodes: next, history: [...state.history, state.nodes], future: state.future.slice(1) };
+    }),
+  setSchema: (schema) =>
+    set({
+      nodes: pages.flatMap((page) => schema.pages[page] ?? []),
+      selectedId: null,
+      history: [],
+      future: [],
     }),
   schema: () => {
     const state = get();

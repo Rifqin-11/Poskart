@@ -34,3 +34,7 @@ export function useThemes() {
 export function useAssets() {
   return useQuery({ queryKey: ["assets"], queryFn: adminService.assets });
 }
+
+export function useActiveLayoutSchema() {
+  return useQuery({ queryKey: ["layout-schema", "default-photobooth"], queryFn: adminService.layoutSchema });
+}

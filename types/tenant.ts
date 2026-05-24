@@ -1,7 +1,7 @@
 export type Tenant = {
   id: string;
   name: string;
-  plan: "Starter" | "Growth" | "Enterprise";
+  plan: "Monthly" | "3 Months" | "1 Year" | "Starter" | "Growth" | "Enterprise";
   status: "active" | "trial" | "paused";
   booths: number;
   users: number;

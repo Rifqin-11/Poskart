@@ -1,12 +1,22 @@
 "use client";
 
 import { create } from "zustand";
-import { themePresets } from "@/lib/mock-data/admin-data";
 import type { ThemeSchema } from "@/types/theme";
+
+const defaultThemeSchema: ThemeSchema = {
+  version: 1,
+  colors: { background: "#ffffff", foreground: "#18181b", accent: "#ef4444", muted: "#f4f4f5" },
+  typography: { heading: "Geist", body: "Geist", receipt: "Geist Mono" },
+  radius: { card: 8, button: 6, receipt: 2 },
+  shadows: { card: "0 12px 35px rgba(24,24,27,0.08)" },
+  assets: {},
+  animationPreset: "premium",
+};
 
 type ThemeState = {
   schema: ThemeSchema;
   published: boolean;
+  setSchema: (schema: ThemeSchema) => void;
   setColor: (key: string, value: string) => void;
   setRadius: (key: string, value: number) => void;
   setAnimationPreset: (value: ThemeSchema["animationPreset"]) => void;
@@ -14,8 +24,9 @@ type ThemeState = {
 };
 
 export const useThemeStore = create<ThemeState>((set) => ({
-  schema: themePresets[0].schema,
+  schema: defaultThemeSchema,
   published: false,
+  setSchema: (schema) => set({ schema, published: false }),
   setColor: (key, value) =>
     set((state) => ({
       schema: { ...state.schema, colors: { ...state.schema.colors, [key]: value } },

@@ -128,7 +128,7 @@ export function PricingManagement() {
       <Card>
         <CardHeader>
           <CardTitle>Pricing profiles</CardTitle>
-          <CardDescription>Mock-first editable products for POSKART kiosk packages.</CardDescription>
+          <CardDescription>Supabase-backed products for POSKART kiosk packages.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>

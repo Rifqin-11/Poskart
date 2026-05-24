@@ -31,7 +31,9 @@ import {
   Undo2,
   Unlock,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Rnd } from "react-rnd";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -41,6 +43,8 @@ import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useActiveLayoutSchema } from "@/hooks/use-admin-data";
+import { adminService } from "@/lib/services/admin-service";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { BuilderComponentType, BuilderNode, BuilderPage } from "@/types/builder";
@@ -269,14 +273,36 @@ export function VisualBuilder() {
   const redo = useBuilderStore((state) => state.redo);
   const reorderNodes = useBuilderStore((state) => state.reorderNodes);
   const schema = useBuilderStore((state) => state.schema);
+  const setSchema = useBuilderStore((state) => state.setSchema);
+  const { data: savedLayout } = useActiveLayoutSchema();
+  const hydratedLayoutId = useRef<string | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
   const visibleNodes = nodes.filter((node) => node.page === activePage).sort((a, b) => a.zIndex - b.zIndex);
   const selectedNode = nodes.find((node) => node.id === selectedId);
+
+  useEffect(() => {
+    if (!savedLayout || hydratedLayoutId.current === savedLayout.id) return;
+    setSchema(savedLayout.schema);
+    hydratedLayoutId.current = savedLayout.id;
+  }, [savedLayout, setSchema]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     if (!event.over || event.active.id === event.over.id) return;
     const oldIndex = visibleNodes.findIndex((node) => node.id === event.active.id);
     const newIndex = visibleNodes.findIndex((node) => node.id === event.over?.id);
     reorderNodes(arrayMove(visibleNodes, oldIndex, newIndex).map((node) => node.id));
+  };
+
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    try {
+      await adminService.publishLayoutSchema(schema());
+      toast.success("Layout schema published to Supabase");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to publish layout schema");
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   return (
@@ -290,7 +316,9 @@ export function VisualBuilder() {
           <Tooltip label="Undo"><Button variant="outline" size="icon" onClick={undo}><Undo2 /></Button></Tooltip>
           <Tooltip label="Redo"><Button variant="outline" size="icon" onClick={redo}><Redo2 /></Button></Tooltip>
           <Button variant="outline"><Monitor className="size-4" /> Preview</Button>
-          <Button>Publish changes</Button>
+          <Button onClick={handlePublish} disabled={isPublishing}>
+            {isPublishing ? "Publishing..." : "Publish changes"}
+          </Button>
         </div>
       </div>
 

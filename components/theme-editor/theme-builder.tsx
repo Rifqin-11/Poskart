@@ -8,11 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useThemes } from "@/hooks/use-admin-data";
+import { adminService } from "@/lib/services/admin-service";
 import { useThemeStore } from "@/stores/theme-store";
 
 export function ThemeBuilder() {
   const { data: presets = [] } = useThemes();
-  const { schema, published, setColor, setRadius, setAnimationPreset, publish } = useThemeStore();
+  const { schema, published, setSchema, setColor, setRadius, setAnimationPreset, publish } = useThemeStore();
 
   return (
     <div className="space-y-6">
@@ -24,9 +25,14 @@ export function ThemeBuilder() {
         <div className="flex gap-2">
           <Badge variant={published ? "success" : "warning"}>{published ? "Published" : "Draft mode"}</Badge>
           <Button
-            onClick={() => {
-              publish();
-              toast.success("Theme published to active booths");
+            onClick={async () => {
+              try {
+                await adminService.publishThemeSchema(schema);
+                publish();
+                toast.success("Theme schema published to Supabase");
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Unable to publish theme schema");
+              }
             }}
           >
             Save & publish
@@ -53,6 +59,9 @@ export function ThemeBuilder() {
                       <span key={color} className="size-5 rounded-full border" style={{ background: color }} />
                     ))}
                   </div>
+                  <Button className="mt-3 w-full" variant="outline" size="sm" onClick={() => setSchema(preset.schema)}>
+                    Use preset
+                  </Button>
                 </div>
               ))}
             </CardContent>
