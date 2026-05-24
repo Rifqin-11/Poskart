@@ -54,7 +54,7 @@ export function PublicHeader() {
         </nav>
 
         <Link href="/dashboard" className={buttonVariants({ size: "sm" })}>
-          Admin
+          Login
           <ArrowRight className="size-4" />
         </Link>
       </div>

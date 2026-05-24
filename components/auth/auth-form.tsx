@@ -30,7 +30,7 @@ export function AuthForm({
           </div>
           <div>
             <div className="text-sm font-semibold tracking-tight">POSKART</div>
-            <div className="text-xs text-zinc-500">Admin authentication</div>
+            <div className="text-xs text-zinc-500">Login authentication</div>
           </div>
         </Link>
 
@@ -43,7 +43,7 @@ export function AuthForm({
             <CardDescription>
               {isLogin
                 ? "Access dashboard, builder, transactions, and booth operations."
-                : "Create an admin account for POSKART dashboard access."}
+                : "Create an account for POSKART dashboard access."}
             </CardDescription>
           </CardHeader>
           <CardContent>

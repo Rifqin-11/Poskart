@@ -32,7 +32,7 @@ export const pricingPlans = [
     cta: "Subscribe Monthly",
     highlighted: false,
     features: [
-      "POSKART admin dashboard",
+      "POSKART dashboard",
       "Visual layout builder",
       "Theme and template CMS",
       "QRIS transaction monitoring",
@@ -51,7 +51,7 @@ export const pricingPlans = [
     cta: "Subscribe 3 Months",
     highlighted: false,
     features: [
-      "POSKART admin dashboard",
+      "POSKART  dashboard",
       "Visual layout builder",
       "Theme and template CMS",
       "QRIS transaction monitoring",
@@ -70,7 +70,7 @@ export const pricingPlans = [
     cta: "Subscribe Yearly",
     highlighted: true,
     features: [
-      "POSKART admin dashboard",
+      "POSKART dashboard",
       "Visual layout builder",
       "Theme and template CMS",
       "QRIS transaction monitoring",
