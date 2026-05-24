@@ -9,6 +9,13 @@ export type FlutterAppConfig = {
     flashDurationMs: number;
     autoReturnDurationSeconds: number;
     defaultTemplateId: string | null;
+    // Extended operational settings (admin Settings tabs)
+    printerName: string;
+    boothTimeoutSeconds: number;
+    downloadExpiryHours: number;
+    watermarkEnabled: boolean;
+    maintenanceMode: boolean;
+    qrisAutoRetry: boolean;
   };
 };
 
@@ -22,5 +29,18 @@ export type AppConfigRow = {
   flash_duration_ms: number;
   auto_return_duration_seconds: number;
   default_template_id: string | null;
+  // Payment
+  qris_provider_merchant_id: string;
+  qris_webhook_secret: string;
+  qris_auto_retry: boolean;
+  // Booth
+  printer_name: string;
+  booth_timeout_seconds: number;
+  // Media
+  download_expiry_hours: number;
+  storage_provider: string;
+  watermark_enabled: boolean;
+  // System
+  maintenance_mode: boolean;
   updated_at: string;
 };

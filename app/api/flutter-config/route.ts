@@ -15,30 +15,33 @@ export async function GET() {
   try {
     const supabase = await createClient();
 
-    const [configResult, layoutResult, themeResult, templatesResult] = await Promise.all([
-      supabase
-        .from("app_configs")
-        .select("*")
-        .eq("id", "default")
-        .maybeSingle(),
-      supabase
-        .from("layout_schemas")
-        .select("id,schema")
-        .eq("id", "default-photobooth")
-        .maybeSingle(),
-      supabase
-        .from("theme_presets")
-        .select("id,schema")
-        .eq("status", "published")
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("templates")
-        .select("id,name,category,status,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default")
-        .eq("status", "published")
-        .order("is_default", { ascending: false }),
-    ]);
+    const [configResult, layoutResult, themeResult, templatesResult] =
+      await Promise.all([
+        supabase
+          .from("app_configs")
+          .select("*")
+          .eq("id", "default")
+          .maybeSingle(),
+        supabase
+          .from("layout_schemas")
+          .select("id,schema")
+          .eq("id", "default-photobooth")
+          .maybeSingle(),
+        supabase
+          .from("theme_presets")
+          .select("id,schema")
+          .eq("status", "published")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("templates")
+          .select(
+            "id,name,category,status,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default",
+          )
+          .eq("status", "published")
+          .order("is_default", { ascending: false }),
+      ]);
 
     const config = configResult.data;
     const layout = layoutResult.data;
@@ -59,6 +62,13 @@ export async function GET() {
             flashDurationMs: config.flash_duration_ms,
             autoReturnDurationSeconds: config.auto_return_duration_seconds,
             defaultTemplateId: config.default_template_id ?? null,
+            // Extended settings (admin Settings tabs)
+            printerName: config.printer_name ?? null,
+            boothTimeoutSeconds: config.booth_timeout_seconds ?? null,
+            downloadExpiryHours: config.download_expiry_hours ?? null,
+            watermarkEnabled: config.watermark_enabled ?? null,
+            maintenanceMode: config.maintenance_mode ?? false,
+            qrisAutoRetry: config.qris_auto_retry ?? null,
           }
         : null,
 
@@ -89,7 +99,10 @@ export async function GET() {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to load Flutter config", detail: error instanceof Error ? error.message : String(error) },
+      {
+        error: "Failed to load Flutter config",
+        detail: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }

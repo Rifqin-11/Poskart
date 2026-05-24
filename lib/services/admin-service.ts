@@ -16,16 +16,35 @@ type ChartPointRow = ChartPoint & {
   sort_order: number;
 };
 
-type TransactionRow = Omit<Transaction, "packageName" | "createdAt"> & {
+type TransactionRow = Omit<
+  Transaction,
+  | "packageName"
+  | "createdAt"
+  | "printStatus"
+  | "printAttempts"
+  | "printLastError"
+> & {
   package_name: string;
   created_at_label: string;
   created_at: string;
+  print_status: Transaction["printStatus"];
+  print_attempts: number;
+  print_last_error: string | null;
 };
 
-type BoothRow = Omit<Booth, "appVersion" | "lastSync" | "pricingProfile"> & {
+type BoothRow = Omit<
+  Booth,
+  | "appVersion"
+  | "lastSync"
+  | "pricingProfile"
+  | "sessionCountdownSeconds"
+  | "paymentCountdownSeconds"
+> & {
   app_version: string;
   last_sync: string;
   pricing_profile: string;
+  session_countdown_seconds: number | null;
+  payment_countdown_seconds: number | null;
 };
 
 type TemplateRow = Omit<Template, "assignedBooths" | "updatedAt"> & {
@@ -39,7 +58,10 @@ type TemplateRow = Omit<Template, "assignedBooths" | "updatedAt"> & {
   is_default: boolean;
 };
 
-type PricingProductRow = Omit<PricingProduct, "promoPrice" | "printLimit" | "qrisDownload" | "gifEnabled"> & {
+type PricingProductRow = Omit<
+  PricingProduct,
+  "promoPrice" | "printLimit" | "qrisDownload" | "gifEnabled"
+> & {
   promo_price: number | null;
   print_limit: number;
   qris_download: boolean;
@@ -71,7 +93,25 @@ export type AssetItem = {
   tag: string;
   version: string;
   size: string;
+  url?: string | null;
+  storage_path?: string | null;
 };
+
+export type AssetInput = {
+  name: string;
+  folder: string;
+  tag: string;
+  version: string;
+  size: string;
+  url?: string | null;
+  storage_path?: string | null;
+};
+
+export type PricingProductInput = Omit<PricingProduct, "id">;
+
+export type BoothInput = Omit<Booth, "id">;
+
+export type TenantInput = Omit<Tenant, "id">;
 
 export type DashboardData = {
   kpiMetrics: KpiMetric[];
@@ -81,7 +121,11 @@ export type DashboardData = {
   booths: Booth[];
 };
 
-function assertSupabaseResult<T>(data: T | null, error: { message: string } | null, label: string): T {
+function assertSupabaseResult<T>(
+  data: T | null,
+  error: { message: string } | null,
+  label: string,
+): T {
   if (error) {
     throw new Error(`${label}: ${error.message}`);
   }
@@ -89,7 +133,12 @@ function assertSupabaseResult<T>(data: T | null, error: { message: string } | nu
   return data ?? ([] as T);
 }
 
-const mapChartPoint = ({ label, revenue, transactions, downloads }: ChartPointRow): ChartPoint => ({
+const mapChartPoint = ({
+  label,
+  revenue,
+  transactions,
+  downloads,
+}: ChartPointRow): ChartPoint => ({
   label,
   revenue,
   transactions,
@@ -106,6 +155,9 @@ const mapTransaction = (row: TransactionRow): Transaction => ({
   status: row.status,
   provider: row.provider,
   createdAt: row.created_at_label,
+  printStatus: row.print_status ?? "pending",
+  printAttempts: row.print_attempts ?? 0,
+  printLastError: row.print_last_error ?? null,
 });
 
 const mapBooth = (row: BoothRow): Booth => ({
@@ -119,6 +171,8 @@ const mapBooth = (row: BoothRow): Booth => ({
   theme: row.theme,
   template: row.template,
   pricingProfile: row.pricing_profile,
+  sessionCountdownSeconds: row.session_countdown_seconds ?? null,
+  paymentCountdownSeconds: row.payment_countdown_seconds ?? null,
 });
 
 const mapTemplate = (row: TemplateRow): Template => ({
@@ -164,7 +218,11 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
     .select("label,value,delta,tone,sort_order")
     .order("sort_order", { ascending: true });
 
-  return assertSupabaseResult(data as KpiMetricRow[] | null, error, "Unable to load KPI metrics").map(({ label, value, delta, tone }) => ({
+  return assertSupabaseResult(
+    data as KpiMetricRow[] | null,
+    error,
+    "Unable to load KPI metrics",
+  ).map(({ label, value, delta, tone }) => ({
     label,
     value,
     delta,
@@ -172,7 +230,9 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
   }));
 }
 
-async function getChartPoints(period: "weekly" | "monthly"): Promise<ChartPoint[]> {
+async function getChartPoints(
+  period: "weekly" | "monthly",
+): Promise<ChartPoint[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("chart_points")
@@ -180,37 +240,108 @@ async function getChartPoints(period: "weekly" | "monthly"): Promise<ChartPoint[
     .eq("period", period)
     .order("sort_order", { ascending: true });
 
-  return assertSupabaseResult(data as ChartPointRow[] | null, error, `Unable to load ${period} chart`).map(mapChartPoint);
+  return assertSupabaseResult(
+    data as ChartPointRow[] | null,
+    error,
+    `Unable to load ${period} chart`,
+  ).map(mapChartPoint);
 }
+
+const TRANSACTION_COLUMNS =
+  "id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_status,print_attempts,print_last_error";
+
+const BOOTH_COLUMNS =
+  "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,session_countdown_seconds,payment_countdown_seconds";
 
 async function getTransactions(): Promise<Transaction[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("transactions")
-    .select("id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at")
+    .select(TRANSACTION_COLUMNS)
     .order("created_at", { ascending: false });
 
-  return assertSupabaseResult(data as TransactionRow[] | null, error, "Unable to load transactions").map(mapTransaction);
+  return assertSupabaseResult(
+    data as TransactionRow[] | null,
+    error,
+    "Unable to load transactions",
+  ).map(mapTransaction);
+}
+
+async function getFailedPrintsByBooth(
+  boothName: string,
+): Promise<Transaction[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(TRANSACTION_COLUMNS)
+    .eq("booth", boothName)
+    .in("print_status", ["failed", "pending"])
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  return assertSupabaseResult(
+    data as TransactionRow[] | null,
+    error,
+    "Unable to load failed prints",
+  ).map(mapTransaction);
+}
+
+async function retryPrint(transactionId: string): Promise<void> {
+  const supabase = createClient();
+  // Mark the row as reprinting + bump attempt counter. The Flutter kiosk is
+  // expected to poll for `reprinting` rows and flip them to `printed` or
+  // `failed` after attempting the physical reprint.
+  const { data: current, error: readError } = await supabase
+    .from("transactions")
+    .select("print_attempts")
+    .eq("id", transactionId)
+    .maybeSingle();
+  if (readError) {
+    throw new Error(`Unable to load transaction: ${readError.message}`);
+  }
+  const attempts =
+    ((current as { print_attempts?: number } | null)?.print_attempts ?? 0) + 1;
+
+  const { error } = await supabase
+    .from("transactions")
+    .update({
+      print_status: "reprinting",
+      print_attempts: attempts,
+      print_last_attempt_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", transactionId);
+  if (error) throw new Error(`Unable to queue reprint: ${error.message}`);
 }
 
 async function getBooths(): Promise<Booth[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("booths")
-    .select("id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile")
+    .select(BOOTH_COLUMNS)
     .order("name", { ascending: true });
 
-  return assertSupabaseResult(data as BoothRow[] | null, error, "Unable to load booths").map(mapBooth);
+  return assertSupabaseResult(
+    data as BoothRow[] | null,
+    error,
+    "Unable to load booths",
+  ).map(mapBooth);
 }
 
 async function getTemplates(): Promise<Template[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("templates")
-    .select("id,name,category,status,assigned_booths,updated_at_label,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default")
+    .select(
+      "id,name,category,status,assigned_booths,updated_at_label,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default",
+    )
     .order("updated_at", { ascending: false });
 
-  return assertSupabaseResult(data as TemplateRow[] | null, error, "Unable to load templates").map(mapTemplate);
+  return assertSupabaseResult(
+    data as TemplateRow[] | null,
+    error,
+    "Unable to load templates",
+  ).map(mapTemplate);
 }
 
 async function createTemplate(values: TemplateFormValues): Promise<void> {
@@ -241,7 +372,10 @@ async function updateTemplate(
   values: Partial<TemplateFormValues>,
 ): Promise<void> {
   const supabase = createClient();
-  const patch: Record<string, unknown> = { updated_at: new Date().toISOString(), updated_at_label: "just now" };
+  const patch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+    updated_at_label: "just now",
+  };
 
   if (values.name !== undefined) patch.name = values.name;
   if (values.category !== undefined) patch.category = values.category;
@@ -249,8 +383,10 @@ async function updateTemplate(
   if (values.tagline !== undefined) patch.tagline = values.tagline || null;
   if (values.photoCount !== undefined) patch.photo_count = values.photoCount;
   if (values.accentColor !== undefined) patch.accent_color = values.accentColor;
-  if (values.frameImageUrl !== undefined) patch.frame_image_url = values.frameImageUrl || null;
-  if (values.frameLayout !== undefined) patch.frame_layout = values.frameLayout ?? null;
+  if (values.frameImageUrl !== undefined)
+    patch.frame_image_url = values.frameImageUrl || null;
+  if (values.frameLayout !== undefined)
+    patch.frame_layout = values.frameLayout ?? null;
   if (values.isDefault !== undefined) patch.is_default = values.isDefault;
 
   const { error } = await supabase.from("templates").update(patch).eq("id", id);
@@ -267,10 +403,16 @@ async function getPricingProducts(): Promise<PricingProduct[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("pricing_products")
-    .select("id,name,price,promo_price,print_limit,qris_download,gif_enabled,active")
+    .select(
+      "id,name,price,promo_price,print_limit,qris_download,gif_enabled,active",
+    )
     .order("price", { ascending: true });
 
-  return assertSupabaseResult(data as PricingProductRow[] | null, error, "Unable to load pricing products").map(mapPricingProduct);
+  return assertSupabaseResult(
+    data as PricingProductRow[] | null,
+    error,
+    "Unable to load pricing products",
+  ).map(mapPricingProduct);
 }
 
 async function getTenants(): Promise<Tenant[]> {
@@ -280,7 +422,11 @@ async function getTenants(): Promise<Tenant[]> {
     .select("id,name,plan,status,booths,users,renewal_date")
     .order("name", { ascending: true });
 
-  return assertSupabaseResult(data as TenantRow[] | null, error, "Unable to load tenants").map(mapTenant);
+  return assertSupabaseResult(
+    data as TenantRow[] | null,
+    error,
+    "Unable to load tenants",
+  ).map(mapTenant);
 }
 
 async function getThemes(): Promise<ThemePreset[]> {
@@ -290,17 +436,218 @@ async function getThemes(): Promise<ThemePreset[]> {
     .select("id,name,status,schema")
     .order("name", { ascending: true });
 
-  return assertSupabaseResult(data as ThemePresetRow[] | null, error, "Unable to load theme presets");
+  return assertSupabaseResult(
+    data as ThemePresetRow[] | null,
+    error,
+    "Unable to load theme presets",
+  );
 }
 
 async function getAssets(): Promise<AssetItem[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("assets")
-    .select("id,name,folder,tag,version,size")
+    .select("id,name,folder,tag,version,size,url,storage_path")
     .order("folder", { ascending: true });
 
-  return assertSupabaseResult(data as AssetItem[] | null, error, "Unable to load assets");
+  return assertSupabaseResult(
+    data as AssetItem[] | null,
+    error,
+    "Unable to load assets",
+  );
+}
+
+async function createAsset(values: AssetInput): Promise<void> {
+  const supabase = createClient();
+  const id = `AST-${crypto.randomUUID()}`;
+  const { error } = await supabase.from("assets").insert({
+    id,
+    name: values.name,
+    folder: values.folder,
+    tag: values.tag,
+    version: values.version || "v1",
+    size: values.size,
+    url: values.url ?? null,
+    storage_path: values.storage_path ?? null,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw new Error(`Unable to create asset: ${error.message}`);
+}
+
+async function updateAsset(
+  id: string,
+  patch: Partial<AssetInput>,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("assets")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(`Unable to update asset: ${error.message}`);
+}
+
+async function deleteAsset(
+  id: string,
+  storagePath?: string | null,
+): Promise<void> {
+  const supabase = createClient();
+  if (storagePath) {
+    // best-effort — storage delete failure shouldn't block row deletion
+    await supabase.storage.from("builder-assets").remove([storagePath]);
+  }
+  const { error } = await supabase.from("assets").delete().eq("id", id);
+  if (error) throw new Error(`Unable to delete asset: ${error.message}`);
+}
+
+async function createPricingProduct(
+  values: PricingProductInput,
+): Promise<void> {
+  const supabase = createClient();
+  const id = `PRC-${Date.now()}`;
+  const { error } = await supabase.from("pricing_products").insert({
+    id,
+    name: values.name,
+    price: values.price,
+    promo_price: values.promoPrice ?? null,
+    print_limit: values.printLimit,
+    qris_download: values.qrisDownload,
+    gif_enabled: values.gifEnabled,
+    active: values.active,
+    updated_at: new Date().toISOString(),
+  });
+  if (error)
+    throw new Error(`Unable to create pricing product: ${error.message}`);
+}
+
+async function updatePricingProduct(
+  id: string,
+  patch: Partial<PricingProductInput>,
+): Promise<void> {
+  const supabase = createClient();
+  const dbPatch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (patch.name !== undefined) dbPatch.name = patch.name;
+  if (patch.price !== undefined) dbPatch.price = patch.price;
+  if (patch.promoPrice !== undefined)
+    dbPatch.promo_price = patch.promoPrice ?? null;
+  if (patch.printLimit !== undefined) dbPatch.print_limit = patch.printLimit;
+  if (patch.qrisDownload !== undefined)
+    dbPatch.qris_download = patch.qrisDownload;
+  if (patch.gifEnabled !== undefined) dbPatch.gif_enabled = patch.gifEnabled;
+  if (patch.active !== undefined) dbPatch.active = patch.active;
+
+  const { error } = await supabase
+    .from("pricing_products")
+    .update(dbPatch)
+    .eq("id", id);
+  if (error)
+    throw new Error(`Unable to update pricing product: ${error.message}`);
+}
+
+async function deletePricingProduct(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("pricing_products")
+    .delete()
+    .eq("id", id);
+  if (error)
+    throw new Error(`Unable to delete pricing product: ${error.message}`);
+}
+
+async function createBooth(values: BoothInput): Promise<void> {
+  const supabase = createClient();
+  const id = `BTH-${Date.now()}`;
+  const { error } = await supabase.from("booths").insert({
+    id,
+    name: values.name,
+    location: values.location,
+    status: values.status,
+    battery: values.battery,
+    app_version: values.appVersion,
+    last_sync: values.lastSync,
+    theme: values.theme,
+    template: values.template,
+    pricing_profile: values.pricingProfile,
+    session_countdown_seconds: values.sessionCountdownSeconds ?? null,
+    payment_countdown_seconds: values.paymentCountdownSeconds ?? null,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw new Error(`Unable to create booth: ${error.message}`);
+}
+
+async function updateBooth(
+  id: string,
+  patch: Partial<BoothInput>,
+): Promise<void> {
+  const supabase = createClient();
+  const dbPatch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (patch.name !== undefined) dbPatch.name = patch.name;
+  if (patch.location !== undefined) dbPatch.location = patch.location;
+  if (patch.status !== undefined) dbPatch.status = patch.status;
+  if (patch.battery !== undefined) dbPatch.battery = patch.battery;
+  if (patch.appVersion !== undefined) dbPatch.app_version = patch.appVersion;
+  if (patch.lastSync !== undefined) dbPatch.last_sync = patch.lastSync;
+  if (patch.theme !== undefined) dbPatch.theme = patch.theme;
+  if (patch.template !== undefined) dbPatch.template = patch.template;
+  if (patch.pricingProfile !== undefined)
+    dbPatch.pricing_profile = patch.pricingProfile;
+  if (patch.sessionCountdownSeconds !== undefined)
+    dbPatch.session_countdown_seconds = patch.sessionCountdownSeconds ?? null;
+  if (patch.paymentCountdownSeconds !== undefined)
+    dbPatch.payment_countdown_seconds = patch.paymentCountdownSeconds ?? null;
+
+  const { error } = await supabase.from("booths").update(dbPatch).eq("id", id);
+  if (error) throw new Error(`Unable to update booth: ${error.message}`);
+}
+
+async function deleteBooth(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("booths").delete().eq("id", id);
+  if (error) throw new Error(`Unable to delete booth: ${error.message}`);
+}
+
+async function createTenant(values: TenantInput): Promise<void> {
+  const supabase = createClient();
+  const id = `TNT-${Date.now()}`;
+  const { error } = await supabase.from("tenants").insert({
+    id,
+    name: values.name,
+    plan: values.plan,
+    status: values.status,
+    booths: values.booths,
+    users: values.users,
+    renewal_date: values.renewalDate,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw new Error(`Unable to create tenant: ${error.message}`);
+}
+
+async function updateTenant(
+  id: string,
+  patch: Partial<TenantInput>,
+): Promise<void> {
+  const supabase = createClient();
+  const dbPatch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (patch.name !== undefined) dbPatch.name = patch.name;
+  if (patch.plan !== undefined) dbPatch.plan = patch.plan;
+  if (patch.status !== undefined) dbPatch.status = patch.status;
+  if (patch.booths !== undefined) dbPatch.booths = patch.booths;
+  if (patch.users !== undefined) dbPatch.users = patch.users;
+  if (patch.renewalDate !== undefined) dbPatch.renewal_date = patch.renewalDate;
+
+  const { error } = await supabase.from("tenants").update(dbPatch).eq("id", id);
+  if (error) throw new Error(`Unable to update tenant: ${error.message}`);
+}
+
+async function deleteTenant(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("tenants").delete().eq("id", id);
+  if (error) throw new Error(`Unable to delete tenant: ${error.message}`);
 }
 
 async function getLayoutSchemas(): Promise<LayoutSchemaRow[]> {
@@ -314,7 +661,11 @@ async function getLayoutSchemas(): Promise<LayoutSchemaRow[]> {
   return (data ?? []) as LayoutSchemaRow[];
 }
 
-async function saveLayoutAsTheme(name: string, schema: LayoutSchema, existingId?: string): Promise<string> {
+async function saveLayoutAsTheme(
+  name: string,
+  schema: LayoutSchema,
+  existingId?: string,
+): Promise<string> {
   const supabase = createClient();
   const id = existingId ?? `LYT-${Date.now()}`;
   const { error } = await supabase.from("layout_schemas").upsert({
@@ -340,7 +691,11 @@ async function setActiveLayout(id: string): Promise<void> {
   // Activate the chosen one
   const { error: e2 } = await supabase
     .from("layout_schemas")
-    .update({ is_active: true, status: "published", updated_at: new Date().toISOString() })
+    .update({
+      is_active: true,
+      status: "published",
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", id);
   if (e2) throw new Error(`Unable to activate layout: ${e2.message}`);
 }
@@ -349,7 +704,11 @@ async function deactivateLayout(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("layout_schemas")
-    .update({ is_active: false, status: "draft", updated_at: new Date().toISOString() })
+    .update({
+      is_active: false,
+      status: "draft",
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", id);
   if (error) throw new Error(`Unable to deactivate layout: ${error.message}`);
 }
@@ -359,7 +718,6 @@ async function deleteLayout(id: string): Promise<void> {
   const { error } = await supabase.from("layout_schemas").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete layout: ${error.message}`);
 }
-
 
 async function getLayoutSchema(): Promise<LayoutSchemaRow | null> {
   const supabase = createClient();
@@ -407,13 +765,14 @@ async function publishThemeSchema(schema: ThemeSchema): Promise<void> {
 }
 
 async function getDashboard(): Promise<DashboardData> {
-  const [kpiMetrics, weeklyChart, monthlyChart, transactions, booths] = await Promise.all([
-    getKpiMetrics(),
-    getChartPoints("weekly"),
-    getChartPoints("monthly"),
-    getTransactions(),
-    getBooths(),
-  ]);
+  const [kpiMetrics, weeklyChart, monthlyChart, transactions, booths] =
+    await Promise.all([
+      getKpiMetrics(),
+      getChartPoints("weekly"),
+      getChartPoints("monthly"),
+      getTransactions(),
+      getBooths(),
+    ]);
 
   return { kpiMetrics, weeklyChart, monthlyChart, transactions, booths };
 }
@@ -421,15 +780,29 @@ async function getDashboard(): Promise<DashboardData> {
 export const adminService = {
   dashboard: getDashboard,
   transactions: getTransactions,
+  failedPrintsByBooth: getFailedPrintsByBooth,
+  retryPrint,
   booths: getBooths,
   templates: getTemplates,
   createTemplate,
   updateTemplate,
   deleteTemplate,
   pricing: getPricingProducts,
+  createPricingProduct,
+  updatePricingProduct,
+  deletePricingProduct,
+  createBooth,
+  updateBooth,
+  deleteBooth,
   tenants: getTenants,
+  createTenant,
+  updateTenant,
+  deleteTenant,
   themes: getThemes,
   assets: getAssets,
+  createAsset,
+  updateAsset,
+  deleteAsset,
   layoutSchema: getLayoutSchema,
   layoutSchemas: getLayoutSchemas,
   publishLayoutSchema,
