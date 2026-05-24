@@ -23,6 +23,7 @@ import {
   Download,
   Edit2,
   Folder,
+  ImagePlus,
   MoreHorizontal,
   Power,
   RefreshCw,
@@ -47,6 +48,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FrameTemplateTester } from "@/components/templates/frame-template-tester";
 import {
   useAppConfig,
   useAssets,
@@ -96,6 +98,7 @@ export function TemplateManagement() {
   const { data = [] } = useTemplates();
   const updateTemplate = useUpdateTemplate();
   const deleteTemplate = useDeleteTemplate();
+  const [testTemplate, setTestTemplate] = useState<Template | null>(null);
 
   const openAdd = () => router.push("/templates/builder/new");
   const openEdit = (template: Template) => router.push(`/templates/builder/${template.id}`);
@@ -191,7 +194,7 @@ export function TemplateManagement() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {!template.isDefault && (
                     <Button
                       variant="outline"
@@ -202,6 +205,9 @@ export function TemplateManagement() {
                       <Check className="size-3.5" /> Set default
                     </Button>
                   )}
+                  <Button variant="outline" size="sm" className="flex-1 justify-center px-2" onClick={() => setTestTemplate(template)}>
+                    <ImagePlus className="size-3.5" /> Test
+                  </Button>
                   <Button variant="outline" size="sm" className="flex-1 justify-center px-2" onClick={() => openEdit(template)}>
                     <Edit2 className="size-3.5" /> Edit
                   </Button>
@@ -217,6 +223,15 @@ export function TemplateManagement() {
               </CardContent>
             </Card>
           ))}
+          {testTemplate ? (
+            <FrameTemplateTester
+              template={testTemplate}
+              open
+              onOpenChange={(open) => {
+                if (!open) setTestTemplate(null);
+              }}
+            />
+          ) : null}
         </div>
       )}
     </div>
