@@ -66,7 +66,20 @@ export async function createSubscriptionOrderAction(formData: FormData) {
 
   const merchantOrderId = createMerchantOrderId();
   const duitkuConfig = getDuitkuConfig();
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (!membership?.organization_id) {
+    redirectWithStatus(plan.id, "error", "Please create or join an organization before subscribing.");
+  }
+
   const { error } = await supabase.from("subscription_orders").insert({
+    organization_id: membership.organization_id,
+    profile_id: user.id,
     plan_id: plan.id,
     plan_name: plan.name,
     duration_months: plan.durationMonths,
