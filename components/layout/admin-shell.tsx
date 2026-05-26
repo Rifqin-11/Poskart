@@ -27,6 +27,7 @@ import {
 import { useState } from "react";
 import { useSubscriptionStatus } from "@/hooks/use-admin-data";
 import { signOutAction } from "@/app/auth/actions";
+import { SubscriptionDialog } from "@/components/billing/subscription-dialog";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CommandSearch } from "@/components/ui/command";
@@ -36,7 +37,6 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/organization", label: "Organization", icon: Building },
-  { href: "/billing", label: "Billing", icon: ReceiptText },
   { href: "/themes", label: "Themes", icon: Palette, requiresSubscription: true },
   { href: "/builder", label: "Builder", icon: Blocks, requiresSubscription: true },
   { href: "/templates", label: "Templates", icon: LayoutTemplate, requiresSubscription: true },
@@ -58,9 +58,11 @@ function isSuperAdmin(email?: string | null): boolean {
 function SidebarContent({
   userEmail,
   onNavigate,
+  onOpenSubscription,
 }: {
   userEmail?: string;
   onNavigate?: () => void;
+  onOpenSubscription?: () => void;
 }) {
   const pathname = usePathname();
 
@@ -130,14 +132,17 @@ function SidebarContent({
                 Expires: <span className="font-medium text-zinc-700">{expiry}</span>
               </div>
             ) : (
-              <Link
-                href="/billing"
-                onClick={onNavigate}
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenSubscription?.();
+                  onNavigate?.();
+                }}
                 className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-red-600 hover:text-red-700 transition-colors"
               >
                 Activate subscription
                 <ArrowRight className="size-3" />
-              </Link>
+              </button>
             )
           )}
         </div>
@@ -203,6 +208,7 @@ export function AdminShell({
 }) {
   const [open, setOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
   const { data: subscription } = useSubscriptionStatus();
   const adminMode = isSuperAdmin(userEmail);
@@ -211,11 +217,15 @@ export function AdminShell({
   return (
     <div className="min-h-screen bg-zinc-50">
       <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-zinc-200 bg-zinc-50 p-4 lg:block">
-        <SidebarContent userEmail={userEmail} />
+        <SidebarContent userEmail={userEmail} onOpenSubscription={() => setSubscriptionDialogOpen(true)} />
       </aside>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SidebarContent userEmail={userEmail} onNavigate={() => setOpen(false)} />
+        <SidebarContent
+          userEmail={userEmail}
+          onNavigate={() => setOpen(false)}
+          onOpenSubscription={() => setSubscriptionDialogOpen(true)}
+        />
       </Sheet>
 
       <div className="lg:pl-72">
@@ -269,15 +279,18 @@ export function AdminShell({
                         <UserRound className="size-4" />
                         Account preference
                       </Link>
-                      <Link
-                        href="/billing"
+                      <button
+                        type="button"
                         role="menuitem"
-                        className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
-                        onClick={() => setAccountMenuOpen(false)}
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          setSubscriptionDialogOpen(true);
+                        }}
                       >
                         <ReceiptText className="size-4" />
                         Change subscription
-                      </Link>
+                      </button>
                     </div>
                     <div className="border-t border-zinc-100 pt-1">
                       <form action={signOutAction}>
@@ -299,6 +312,7 @@ export function AdminShell({
         </header>
         <main className="px-4 py-6 lg:px-8">{children}</main>
       </div>
+      <SubscriptionDialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen} />
     </div>
   );
 }

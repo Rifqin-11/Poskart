@@ -17,6 +17,16 @@ function safeNextPath(value: string) {
   return value;
 }
 
+function getSignUpErrorMessage(message: string) {
+  const lowerMessage = message.toLowerCase();
+
+  if (lowerMessage.includes("rate limit") || lowerMessage.includes("email rate")) {
+    return "Supabase email confirmation sedang rate limited. Tunggu beberapa menit sebelum register lagi, atau gunakan Google sign in / akun testing yang sudah tersedia.";
+  }
+
+  return message;
+}
+
 export async function signInAction(formData: FormData) {
   const email = readField(formData, "email");
   const password = readField(formData, "password");
@@ -79,7 +89,7 @@ export async function signUpAction(formData: FormData) {
   });
 
   if (error) {
-    return encodedRedirect("error", "/register", error.message);
+    return encodedRedirect("error", "/register", getSignUpErrorMessage(error.message));
   }
 
   return encodedRedirect(

@@ -14,13 +14,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Activity, ArrowUpRight, CircleDollarSign, Download, LayoutTemplate, MonitorCheck, Plus } from "lucide-react";
+import { Activity, AlertCircle, ArrowUpRight, CircleDollarSign, Download, LayoutTemplate, MonitorCheck, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData, useSubscriptionStatus } from "@/hooks/use-admin-data";
+import type { DashboardData } from "@/lib/services/admin-service";
 import { formatCurrency } from "@/lib/utils";
 
 const icons = [CircleDollarSign, CircleDollarSign, Activity, Download];
@@ -32,6 +33,14 @@ const emptyMetrics = [
   { label: "Downloads", value: "0", delta: "No media downloads yet", tone: "neutral" as const },
 ];
 
+const emptyDashboardData: DashboardData = {
+  kpiMetrics: [],
+  weeklyChart: [],
+  monthlyChart: [],
+  transactions: [],
+  devices: [],
+};
+
 function useClientMounted() {
   return useSyncExternalStore(
     () => () => undefined,
@@ -41,20 +50,21 @@ function useClientMounted() {
 }
 
 export function DashboardOverview() {
-  const { data, isLoading } = useDashboardData();
+  const { data, isError, isLoading } = useDashboardData();
   const { data: subscription } = useSubscriptionStatus();
   const chartsMounted = useClientMounted();
 
-  if (isLoading || !data) {
-    return <Skeleton className="h-[620px]" />;
+  if (isLoading) {
+    return <DashboardLoadingState />;
   }
 
-  const activeBooths = data.devices.filter((device) => device.status === "online").length;
-  const metrics = data.kpiMetrics.length > 0 ? data.kpiMetrics : emptyMetrics;
-  const hasWeeklyChart = data.weeklyChart.length > 0;
-  const hasMonthlyChart = data.monthlyChart.length > 0;
-  const hasDevices = data.devices.length > 0;
-  const hasTransactions = data.transactions.length > 0;
+  const dashboardData = data ?? emptyDashboardData;
+  const activeBooths = dashboardData.devices.filter((device) => device.status === "online").length;
+  const metrics = dashboardData.kpiMetrics.length > 0 ? dashboardData.kpiMetrics : emptyMetrics;
+  const hasWeeklyChart = dashboardData.weeklyChart.length > 0;
+  const hasMonthlyChart = dashboardData.monthlyChart.length > 0;
+  const hasDevices = dashboardData.devices.length > 0;
+  const hasTransactions = dashboardData.transactions.length > 0;
   const isEmptyWorkspace =
     !hasDevices && !hasTransactions && !hasWeeklyChart && !hasMonthlyChart;
   const canUseOperatingTools = subscription?.tier === "Pro";
@@ -73,6 +83,20 @@ export function DashboardOverview() {
           <Button disabled={!canUseOperatingTools}>New campaign</Button>
         </div>
       </div>
+
+      {isError ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            <div>
+              <div className="font-semibold">Dashboard data is temporarily unavailable</div>
+              <p className="mt-1 leading-6">
+                POSKART will keep showing the workspace overview while the data source is being refreshed.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isEmptyWorkspace ? (
         <Card className="border-dashed">
@@ -105,7 +129,7 @@ export function DashboardOverview() {
                   </Link>
                 </>
               ) : (
-                <Link href="/billing" className={buttonVariants()}>
+                <Link href="/organization?subscription=required" className={buttonVariants()}>
                   <Plus className="size-4" />
                   Activate subscription
                 </Link>
@@ -152,7 +176,7 @@ export function DashboardOverview() {
           <CardContent className="h-80">
             {chartsMounted && hasWeeklyChart ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data.weeklyChart}>
+                <AreaChart data={dashboardData.weeklyChart}>
                   <defs>
                     <linearGradient id="revenue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#18181b" stopOpacity={0.18} />
@@ -180,11 +204,11 @@ export function DashboardOverview() {
         <Card>
           <CardHeader>
             <CardTitle>Device network</CardTitle>
-            <CardDescription>{activeBooths} of {data.devices.length} devices online now.</CardDescription>
+            <CardDescription>{activeBooths} of {dashboardData.devices.length} devices online now.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {hasDevices ? (
-              data.devices.map((device) => (
+              dashboardData.devices.map((device) => (
                 <div key={device.id} className="rounded-lg border border-zinc-100 p-3">
                   <div className="flex items-center justify-between">
                     <div>
@@ -214,7 +238,7 @@ export function DashboardOverview() {
               <EmptyPanelState
                 title="No devices connected"
                 description="Add a POSKART device to monitor battery, sync, template, and pricing status."
-                href={canUseOperatingTools ? "/devices" : "/billing"}
+                href={canUseOperatingTools ? "/devices" : "/organization?subscription=required"}
                 action={canUseOperatingTools ? "Add device" : "Activate subscription"}
               />
             )}
@@ -231,7 +255,7 @@ export function DashboardOverview() {
           <CardContent className="h-72">
             {chartsMounted && hasMonthlyChart ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.monthlyChart}>
+                <BarChart data={dashboardData.monthlyChart}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
                   <XAxis dataKey="label" tickLine={false} axisLine={false} />
                   <YAxis hide />
@@ -260,7 +284,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent className="space-y-3">
             {hasTransactions ? (
-              data.transactions.map((transaction) => (
+              dashboardData.transactions.map((transaction) => (
                 <div key={transaction.id} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
                   <div>
                     <div className="text-sm font-medium">{transaction.packageName}</div>
@@ -288,10 +312,64 @@ export function DashboardOverview() {
               <EmptyPanelState
                 title="No transactions yet"
                 description="QRIS payment activity and failed payment monitoring appear here after the first booth session."
-                href={canUseOperatingTools ? "/devices" : "/billing"}
+                href={canUseOperatingTools ? "/devices" : "/organization?subscription=required"}
                 action={canUseOperatingTools ? "Connect device" : "Activate subscription"}
               />
             )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function DashboardLoadingState() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="h-9 w-28" />
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Card key={index}>
+            <CardHeader className="space-y-2 pb-2">
+              <Skeleton className="h-4 w-28" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-7 w-24" />
+              <Skeleton className="h-3 w-32" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-36" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-80" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-48" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className="h-20" />
+            ))}
           </CardContent>
         </Card>
       </div>

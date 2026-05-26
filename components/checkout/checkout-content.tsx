@@ -152,7 +152,7 @@ export function CheckoutContent() {
           Continue to Payment
           <CreditCard className="size-4" />
         </Button>
-        <Link href="/billing" className={buttonVariants({ variant: "outline", size: "lg", className: "mt-3 w-full" })}>
+        <Link href="/organization?subscription=required" className={buttonVariants({ variant: "outline", size: "lg", className: "mt-3 w-full" })}>
           Change plan
         </Link>
 

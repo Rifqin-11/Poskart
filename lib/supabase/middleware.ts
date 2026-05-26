@@ -37,7 +37,6 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims;
   const protectedRoutes = [
     "/dashboard",
-    "/billing",
     "/organization",
     "/pricing",
     "/onboarding",

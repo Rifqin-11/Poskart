@@ -67,6 +67,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FrameTemplateTester } from "@/components/templates/frame-template-tester";
+import { SubscriptionDialog } from "@/components/billing/subscription-dialog";
 import {
   useAppConfig,
   useAssets,
@@ -2968,22 +2969,63 @@ export function SettingsPanel() {
   };
 
   return (
-    <div>
-      <PageHeader
-        title="Settings & Configuration"
-        description="Global controls for QRIS, printer, timers, watermark, and Flutter kiosk behavior."
-        action={
-          <Button
-            onClick={() => void handleSave()}
-            disabled={saveConfig.isPending}
-          >
-            <ShieldCheck className="size-4" />
-            {saveConfig.isPending ? "Saving…" : "Save settings"}
-          </Button>
-        }
-      />
+    <div className="space-y-6">
+      <Card className="overflow-hidden">
+        <CardContent className="grid gap-0 p-0 lg:grid-cols-[1fr_360px]">
+          <div className="p-6">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600">
+              <ShieldCheck className="size-3.5 text-red-500" />
+              Settings & Configuration
+            </div>
+            <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-950">
+              Control kiosk runtime, payment, media, and system behavior.
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-600">
+              Global settings are stored in Supabase and consumed by POSKART dashboard, QRIS/payment flows, and Flutter kiosk startup config.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Button onClick={() => void handleSave()} disabled={saveConfig.isPending}>
+                <ShieldCheck className="size-4" />
+                {saveConfig.isPending ? "Saving..." : "Save settings"}
+              </Button>
+              <Button variant="outline" disabled>
+                API: /api/flutter-config
+              </Button>
+            </div>
+          </div>
+          <div className="grid gap-3 border-t border-zinc-200 bg-zinc-50 p-5 sm:grid-cols-2 lg:border-l lg:border-t-0">
+            <div className="rounded-lg border border-zinc-200 bg-white p-4">
+              <CreditCard className="mb-3 size-4 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Payment retry</div>
+              <div className="mt-1 text-sm font-semibold text-zinc-950">
+                {form.qris_auto_retry ? "Enabled" : "Disabled"}
+              </div>
+            </div>
+            <div className="rounded-lg border border-zinc-200 bg-white p-4">
+              <Printer className="mb-3 size-4 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Printer</div>
+              <div className="mt-1 truncate text-sm font-semibold text-zinc-950">{form.printer_name}</div>
+            </div>
+            <div className="rounded-lg border border-zinc-200 bg-white p-4">
+              <Timer className="mb-3 size-4 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Auto-return</div>
+              <div className="mt-1 text-sm font-semibold text-zinc-950">
+                {form.auto_return_duration_seconds}s
+              </div>
+            </div>
+            <div className="rounded-lg border border-zinc-200 bg-white p-4">
+              <Wrench className="mb-3 size-4 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Maintenance</div>
+              <div className="mt-1 text-sm font-semibold text-zinc-950">
+                {form.maintenance_mode ? "Enabled" : "Disabled"}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="payment">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap">
           <TabsTrigger value="payment">Payment</TabsTrigger>
           <TabsTrigger value="device">Device</TabsTrigger>
           <TabsTrigger value="media">Media</TabsTrigger>
@@ -3374,6 +3416,7 @@ function OrganizationSettings({
   const [editedName, setEditedName] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [myEmail, setMyEmail] = useState("");
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(subscriptionRequired);
 
   const supabase = createClient();
   useEffect(() => {
@@ -3381,6 +3424,12 @@ function OrganizationSettings({
       if (res.data?.user?.email) setMyEmail(res.data.user.email);
     });
   }, [supabase]);
+
+  useEffect(() => {
+    if (subscriptionRequired) {
+      setSubscriptionDialogOpen(true);
+    }
+  }, [subscriptionRequired]);
 
   if (isLoadingTenant) return <div className="p-8 text-center text-zinc-500">Loading organization details...</div>;
 
@@ -3414,19 +3463,77 @@ function OrganizationSettings({
         </div>
       ) : null}
 
-      <Card>
-        <CardContent className="grid gap-6 p-5 lg:grid-cols-[1fr_320px]">
-          <div>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <CardTitle>Organization Details</CardTitle>
-                <CardDescription className="mt-1">
-                  Update your organization&apos;s name and review subscription access.
-                </CardDescription>
-              </div>
+      <Card className="overflow-hidden">
+        <CardContent className="grid gap-0 p-0 lg:grid-cols-[1fr_380px]">
+          <div className="p-6">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
               <Badge variant={isFreeAccount ? "warning" : "success"}>
                 {isFreeAccount ? "Free Account" : "Active subscription"}
               </Badge>
+              <Badge variant="secondary">{deviceLimit} device{deviceLimit > 1 ? "s" : ""} allowed</Badge>
+            </div>
+            <h2 className="text-3xl font-semibold tracking-tight text-zinc-950">
+              {organizationName || "POSKART Workspace"}
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-600">
+              Manage workspace identity, subscription access, and team permissions from one place.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => setSubscriptionDialogOpen(true)}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+              >
+                <CreditCard className="size-4" />
+                {isFreeAccount ? "View subscription plans" : "Manage billing"}
+              </button>
+              <div className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-600">
+                Join code
+                <span className="font-mono font-semibold tracking-[0.2em] text-zinc-950">
+                  {tenant?.join_code ?? "PENDING"}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-3 border-t border-zinc-200 bg-zinc-50 p-5 sm:grid-cols-2 lg:border-l lg:border-t-0">
+            <div className="rounded-lg border border-zinc-200 bg-white p-4">
+              <CreditCard className="mb-3 size-4 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Plan</div>
+              <div className="mt-1 text-sm font-semibold text-zinc-950">{planName}</div>
+            </div>
+            <div className="rounded-lg border border-zinc-200 bg-white p-4">
+              <ShieldCheck className="mb-3 size-4 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Status</div>
+              <div className="mt-1 text-sm font-semibold capitalize text-zinc-950">{subscriptionStatus}</div>
+            </div>
+            <div className="rounded-lg border border-zinc-200 bg-white p-4">
+              <Store className="mb-3 size-4 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Device limit</div>
+              <div className="mt-1 text-sm font-semibold text-zinc-950">
+                {deviceLimit} device{deviceLimit > 1 ? "s" : ""}
+              </div>
+            </div>
+            <div className="rounded-lg border border-zinc-200 bg-white p-4">
+              <Timer className="mb-3 size-4 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Expiry</div>
+              <div className="mt-1 text-sm font-semibold text-zinc-950">
+                {expiresAt ? expiresAt.toLocaleDateString() : "Not active"}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="grid gap-6 p-5 lg:grid-cols-[1fr_280px]">
+          <div>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <CardTitle>Workspace settings</CardTitle>
+                <CardDescription className="mt-1">
+                  Update organization identity and keep the join code ready for staff onboarding.
+                </CardDescription>
+              </div>
             </div>
 
             <div className="mt-6 flex max-w-xl items-end gap-3">
@@ -3450,33 +3557,6 @@ function OrganizationSettings({
               </Button>
             </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-                <CreditCard className="mb-2 size-4 text-zinc-500" />
-                <div className="text-xs text-zinc-500">Plan</div>
-                <div className="mt-1 text-sm font-semibold text-zinc-900">{planName}</div>
-              </div>
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-                <ShieldCheck className="mb-2 size-4 text-zinc-500" />
-                <div className="text-xs text-zinc-500">Status</div>
-                <div className="mt-1 text-sm font-semibold capitalize text-zinc-900">{subscriptionStatus}</div>
-              </div>
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-                <Store className="mb-2 size-4 text-zinc-500" />
-                <div className="text-xs text-zinc-500">Device Limit</div>
-                <div className="mt-1 text-sm font-semibold text-zinc-900">
-                  {deviceLimit} device{deviceLimit > 1 ? "s" : ""}
-                </div>
-              </div>
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-                <Timer className="mb-2 size-4 text-zinc-500" />
-                <div className="text-xs text-zinc-500">Expiry</div>
-                <div className="mt-1 text-sm font-semibold text-zinc-900">
-                  {expiresAt ? expiresAt.toLocaleDateString() : "Not active"}
-                </div>
-              </div>
-            </div>
-
             <div className="mt-4 rounded-lg border border-zinc-200 bg-white p-3">
               <div className="text-xs font-medium text-zinc-500">Organization join code</div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -3490,13 +3570,7 @@ function OrganizationSettings({
             </div>
           </div>
 
-          <div
-            className={
-              isFreeAccount
-                ? "rounded-lg border border-amber-200 bg-amber-50 p-4"
-                : "rounded-lg border border-emerald-200 bg-emerald-50 p-4"
-            }
-          >
+          <div className={isFreeAccount ? "rounded-lg border border-amber-200 bg-amber-50 p-4" : "rounded-lg border border-zinc-200 bg-zinc-50 p-4"}>
             <div className="flex items-center gap-2 text-sm font-semibold">
               {isFreeAccount ? (
                 <LockKeyhole className="size-4 text-amber-700" />
@@ -3510,12 +3584,13 @@ function OrganizationSettings({
                 ? "Free Account can view dashboard and organization settings only. Activate a subscription to unlock builder, themes, templates, devices, assets, analytics, transactions, and settings."
                 : "This organization can use the POSKART operating tools according to the active subscription and paid device limit."}
             </p>
-            <Link
-              href="/billing"
+            <button
+              type="button"
+              onClick={() => setSubscriptionDialogOpen(true)}
               className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-zinc-950 px-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
             >
               {isFreeAccount ? "View subscription plans" : "Manage billing"}
-            </Link>
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -3643,6 +3718,7 @@ function OrganizationSettings({
           )}
         </CardContent>
       </Card>
+      <SubscriptionDialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen} />
     </div>
   );
 }
