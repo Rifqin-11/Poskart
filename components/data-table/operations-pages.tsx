@@ -791,6 +791,7 @@ type DeviceFormOptions = {
 
 export function BoothManagement() {
   const { data = [], refetch } = useBooths();
+  const { data: subscriptionStatus } = useSubscriptionStatus();
   const { data: layouts = [] } = useLayoutSchemas();
   const { data: templates = [] } = useTemplates();
   const { data: pricingProducts = [] } = usePricing();
@@ -801,6 +802,11 @@ export function BoothManagement() {
   const [creating, setCreating] = useState(false);
   const [assignFor, setAssignFor] = useState<Device | null>(null);
   const [failedFor, setFailedFor] = useState<Device | null>(null);
+  const deviceLimit = subscriptionStatus?.deviceLimit ?? 1;
+  const usedDevices = data.length;
+  const remainingDevices = Math.max(0, deviceLimit - usedDevices);
+  const deviceUsagePercent = deviceLimit > 0 ? Math.min(100, (usedDevices / deviceLimit) * 100) : 0;
+  const deviceLimitReached = remainingDevices <= 0;
 
   const deviceFormOptions = useMemo<DeviceFormOptions>(
     () => ({
@@ -876,12 +882,49 @@ export function BoothManagement() {
             >
               <RefreshCw className="size-4" /> Refresh network
             </Button>
-            <Button onClick={() => setCreating(true)}>
+            <Button
+              onClick={() => setCreating(true)}
+              disabled={deviceLimitReached}
+              title={deviceLimitReached ? "Device limit reached" : "Add device"}
+            >
               <Plus className="size-4" /> Add device
             </Button>
           </div>
         }
       />
+      <Card className="mb-6">
+        <CardContent className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center">
+          <div>
+            <div className="text-sm font-semibold text-zinc-950">Device capacity</div>
+            <p className="mt-1 text-sm text-zinc-500">
+              {usedDevices} of {deviceLimit} device{deviceLimit > 1 ? "s" : ""} used.
+              {" "}
+              <span className={deviceLimitReached ? "font-medium text-red-600" : "font-medium text-emerald-700"}>
+                {deviceLimitReached
+                  ? "No device slots remaining."
+                  : `${remainingDevices} device${remainingDevices > 1 ? "s" : ""} available.`}
+              </span>
+            </p>
+            <Progress value={deviceUsagePercent} className="mt-4" />
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+              <div className="text-lg font-semibold text-zinc-950">{usedDevices}</div>
+              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">Used</div>
+            </div>
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+              <div className="text-lg font-semibold text-zinc-950">{deviceLimit}</div>
+              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">Allowed</div>
+            </div>
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+              <div className={cn("text-lg font-semibold", deviceLimitReached ? "text-red-600" : "text-emerald-700")}>
+                {remainingDevices}
+              </div>
+              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">Available</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       <div className="grid gap-4 xl:grid-cols-2">
         {data.map((device) => (
           <Card key={device.id}>
@@ -3468,7 +3511,7 @@ function OrganizationSettings({
                 : "This organization can use the POSKART operating tools according to the active subscription and paid device limit."}
             </p>
             <Link
-              href="/pricing"
+              href="/billing"
               className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-zinc-950 px-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
             >
               {isFreeAccount ? "View subscription plans" : "Manage billing"}

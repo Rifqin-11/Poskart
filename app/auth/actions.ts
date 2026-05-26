@@ -10,14 +10,23 @@ function readField(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function safeNextPath(value: string) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/onboarding";
+  }
+  return value;
+}
+
 export async function signInAction(formData: FormData) {
   const email = readField(formData, "email");
   const password = readField(formData, "password");
+  const next = safeNextPath(readField(formData, "next"));
+  const loginPath = next === "/onboarding" ? "/login" : `/login?next=${encodeURIComponent(next)}`;
 
   if (!email || !password) {
     return encodedRedirect(
       "error",
-      "/login",
+      loginPath,
       "Email and password are required.",
     );
   }
@@ -29,10 +38,10 @@ export async function signInAction(formData: FormData) {
   });
 
   if (error) {
-    return encodedRedirect("error", "/login", error.message);
+    return encodedRedirect("error", loginPath, error.message);
   }
 
-  return encodedRedirect("success", "/onboarding", "Signed in successfully.");
+  return encodedRedirect("success", next, "Signed in successfully.");
 }
 
 export async function signUpAction(formData: FormData) {
@@ -86,18 +95,20 @@ export async function signOutAction() {
   return encodedRedirect("success", "/login", "Signed out successfully.");
 }
 
-export async function signInWithGoogleAction() {
+export async function signInWithGoogleAction(formData: FormData) {
   const supabase = await createClient();
   const siteUrl = await getSiteUrl();
+  const next = safeNextPath(readField(formData, "next"));
+  const loginPath = next === "/onboarding" ? "/login" : `/login?next=${encodeURIComponent(next)}`;
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${siteUrl}/auth/callback?next=/onboarding`,
+      redirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });
 
   if (error) {
-    return encodedRedirect("error", "/login", error.message);
+    return encodedRedirect("error", loginPath, error.message);
   }
 
   if (data.url) {
@@ -106,7 +117,7 @@ export async function signInWithGoogleAction() {
 
   return encodedRedirect(
     "error",
-    "/login",
+    loginPath,
     "Google sign in could not be started.",
   );
 }

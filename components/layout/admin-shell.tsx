@@ -6,6 +6,7 @@ import {
   ArrowRight,
   BarChart3,
   Blocks,
+  ChevronDown,
   CreditCard,
   Gauge,
   ImageIcon,
@@ -14,12 +15,14 @@ import {
   Menu,
   MonitorSmartphone,
   Palette,
+  ReceiptText,
   Settings,
   Sparkles,
   Store,
   LogOut,
   Building,
   Shield,
+  UserRound,
 } from "lucide-react";
 import { useState } from "react";
 import { useSubscriptionStatus } from "@/hooks/use-admin-data";
@@ -33,15 +36,16 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/organization", label: "Organization", icon: Building },
+  { href: "/billing", label: "Billing", icon: ReceiptText },
   { href: "/themes", label: "Themes", icon: Palette, requiresSubscription: true },
   { href: "/builder", label: "Builder", icon: Blocks, requiresSubscription: true },
   { href: "/templates", label: "Templates", icon: LayoutTemplate, requiresSubscription: true },
-  { href: "/admin/pricing", label: "Pricing", icon: CreditCard, superAdminOnly: true },
+  { href: "/pricing", label: "Pricing", icon: CreditCard, requiresSubscription: true },
   { href: "/transactions", label: "Transactions", icon: Store, requiresSubscription: true },
   { href: "/devices", label: "Devices", icon: MonitorSmartphone, requiresSubscription: true },
   { href: "/assets", label: "Assets", icon: ImageIcon, requiresSubscription: true },
   { href: "/analytics", label: "Analytics", icon: BarChart3, requiresSubscription: true },
-  { href: "/organizations", label: "Super Admin", icon: Shield, superAdminOnly: true },
+  { href: "/superadmin", label: "Super Admin", icon: Shield, superAdminOnly: true },
   { href: "/settings", label: "Settings", icon: Settings, requiresSubscription: true },
 ];
 
@@ -127,7 +131,7 @@ function SidebarContent({
               </div>
             ) : (
               <Link
-                href="/pricing"
+                href="/billing"
                 onClick={onNavigate}
                 className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-red-600 hover:text-red-700 transition-colors"
               >
@@ -198,6 +202,7 @@ export function AdminShell({
   userEmail?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
   const { data: subscription } = useSubscriptionStatus();
   const adminMode = isSuperAdmin(userEmail);
@@ -231,12 +236,64 @@ export function AdminShell({
                 {!canPublish ? <LockKeyhole className="size-3.5" /> : null}
                 Publish
               </Button>
-              <form action={signOutAction}>
-                <Button variant="ghost" size="icon" type="submit" aria-label="Sign out">
-                  <LogOut />
-                </Button>
-              </form>
-              <Avatar name={initials} />
+              <div className="relative">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 rounded-full p-0.5 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+                  onClick={() => setAccountMenuOpen((value) => !value)}
+                  aria-expanded={accountMenuOpen}
+                  aria-haspopup="menu"
+                  aria-label="Open account menu"
+                >
+                  <Avatar name={initials} />
+                  <ChevronDown className="size-3.5 text-zinc-500" />
+                </button>
+                {accountMenuOpen ? (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-12 z-50 w-64 rounded-lg border border-zinc-200 bg-white p-2 shadow-xl"
+                  >
+                    <div className="border-b border-zinc-100 px-3 py-2">
+                      <div className="text-xs text-zinc-500">Signed in as</div>
+                      <div className="truncate text-sm font-medium text-zinc-950">
+                        {userEmail ?? "POSKART Photobooth"}
+                      </div>
+                    </div>
+                    <div className="py-1">
+                      <Link
+                        href="/organization"
+                        role="menuitem"
+                        className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
+                        onClick={() => setAccountMenuOpen(false)}
+                      >
+                        <UserRound className="size-4" />
+                        Account preference
+                      </Link>
+                      <Link
+                        href="/billing"
+                        role="menuitem"
+                        className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
+                        onClick={() => setAccountMenuOpen(false)}
+                      >
+                        <ReceiptText className="size-4" />
+                        Change subscription
+                      </Link>
+                    </div>
+                    <div className="border-t border-zinc-100 pt-1">
+                      <form action={signOutAction}>
+                        <button
+                          type="submit"
+                          role="menuitem"
+                          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                        >
+                          <LogOut className="size-4" />
+                          Logout
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </header>

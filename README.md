@@ -16,6 +16,34 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Duitku Sandbox Checkout
+
+POSKART checkout uses Duitku for subscription payments from POSKART customers to POSKART. Configure these environment variables before testing the payment redirect:
+
+```bash
+DUITKU_SANDBOX=true
+DUITKU_MERCHANT_CODE=DSXXXX
+DUITKU_API_KEY=your-duitku-sandbox-api-key
+DUITKU_PAYMENT_METHOD=NQ
+NEXT_PUBLIC_SITE_URL=https://www.poskart.my.id
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+```
+
+The checkout flow is:
+
+```text
+/subscriptions -> /checkout?plan=... -> Duitku Sandbox payment page -> /checkout/return
+                                         |
+                                         -> /api/payments/duitku/callback
+```
+
+Sandbox reviewer login:
+
+```text
+Email: reviewer@poskart.my.id
+Password: ReviewPOSKART123!
+```
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

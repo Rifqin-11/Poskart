@@ -17,7 +17,13 @@ export const businessProfile = {
   billingNote:
     "Subscription POSKART tersedia dalam pilihan 1 bulan dan 3 bulan dengan 1 device, 6 bulan dengan 3 devices, serta 1 tahun dengan 5 devices. Device tambahan ditagihkan Rp 50K per device per bulan.",
   purchaseFlow:
-    "Untuk berlangganan, pelanggan dapat memilih paket, lanjut ke halaman checkout, lalu menyelesaikan pembayaran melalui payment link resmi setelah payment gateway production aktif.",
+    "Untuk berlangganan, pelanggan dapat memilih paket, lanjut ke halaman checkout, lalu menyelesaikan pembayaran melalui Duitku Sandbox sebelum payment gateway production diaktifkan.",
+};
+
+export const reviewTestAccount = {
+  email: "reviewer@poskart.my.id",
+  password: "ReviewPOSKART123!",
+  role: "Customer reviewer",
 };
 
 export const ADDITIONAL_DEVICE_PRICE_MONTHLY = 50000;
@@ -148,7 +154,7 @@ export function calculateSubscriptionTotal(plan: PricingPlan, deviceCount: numbe
 
 export const legalLinks = [
   { href: "/about", label: "About" },
-  { href: "/pricing", label: "Pricing" },
+  { href: "/subscriptions", label: "Pricing" },
   { href: "/contact", label: "Contact" },
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy Policy" },

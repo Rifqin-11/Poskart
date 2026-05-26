@@ -2,6 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  if (request.nextUrl.pathname === "/" && request.nextUrl.searchParams.has("code")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    return NextResponse.redirect(url);
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -31,17 +37,19 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims;
   const protectedRoutes = [
     "/dashboard",
+    "/billing",
     "/organization",
+    "/pricing",
     "/onboarding",
     "/builder",
     "/themes",
     "/templates",
     "/admin",
+    "/superadmin",
     "/transactions",
     "/devices",
     "/assets",
     "/analytics",
-    "/organizations",
     "/settings",
   ];
   const authRoutes = ["/login", "/register"];
@@ -51,6 +59,7 @@ export async function updateSession(request: NextRequest) {
     "/templates",
     "/transactions",
     "/devices",
+    "/pricing",
     "/assets",
     "/analytics",
     "/settings",
@@ -58,14 +67,17 @@ export async function updateSession(request: NextRequest) {
   const adminEmails = ["rifqinaufal9009@gmail.com", "admin@poskart.id", "admin@poskart.my.id"];
   const pathname = request.nextUrl.pathname;
 
-  const isProtectedRoute = protectedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  const isProtectedCheckoutRoute = pathname === "/checkout";
+  const isProtectedRoute =
+    isProtectedCheckoutRoute ||
+    protectedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const isAuthRoute = authRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const isSubscriptionRoute = subscriptionRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("next", pathname);
+    url.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(url);
   }
 

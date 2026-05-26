@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; next?: string }>;
 }) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
@@ -15,5 +15,5 @@ export default async function LoginPage({
   }
 
   const params = await searchParams;
-  return <AuthForm mode="login" error={params.error} success={params.success} />;
+  return <AuthForm mode="login" error={params.error} success={params.success} next={params.next} />;
 }

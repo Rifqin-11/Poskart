@@ -4,15 +4,18 @@ import { signInAction, signInWithGoogleAction, signUpAction } from "@/app/auth/a
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { reviewTestAccount } from "@/lib/constants/business";
 
 export function AuthForm({
   mode,
   error,
   success,
+  next,
 }: {
   mode: "login" | "register";
   error?: string;
   success?: string;
+  next?: string;
 }) {
   const isLogin = mode === "login";
 
@@ -59,6 +62,7 @@ export function AuthForm({
             ) : null}
 
             <form action={signInWithGoogleAction}>
+              {next ? <input type="hidden" name="next" value={next} /> : null}
               <Button className="w-full" size="lg" type="submit" variant="outline">
                 <span className="grid size-4 place-items-center rounded-full bg-white text-[11px] font-bold text-[#4285F4]">
                   G
@@ -74,6 +78,7 @@ export function AuthForm({
             </div>
 
             <form action={isLogin ? signInAction : signUpAction} className="space-y-4">
+              {next ? <input type="hidden" name="next" value={next} /> : null}
               {!isLogin ? (
                 <label className="block text-xs font-medium text-zinc-500">
                   Full name
@@ -99,6 +104,15 @@ export function AuthForm({
                 {isLogin ? "Create one" : "Sign in"}
               </Link>
             </div>
+
+            {isLogin ? (
+              <div className="mt-5 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-xs leading-6 text-zinc-600">
+                <div className="mb-2 font-semibold text-zinc-950">Sandbox review account</div>
+                <div>Email: {reviewTestAccount.email}</div>
+                <div>Password: {reviewTestAccount.password}</div>
+                <div>Role: {reviewTestAccount.role}</div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>

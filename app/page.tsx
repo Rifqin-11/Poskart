@@ -204,7 +204,7 @@ export default function Home() {
                 <ArrowRight className="size-4" />
               </Link>
               <Link
-                href="/pricing"
+                href="/subscriptions"
                 className={buttonVariants({ variant: "outline", size: "lg" })}
               >
                 View Pricing
@@ -536,7 +536,7 @@ export default function Home() {
             <div className="grid gap-3">
               {[
                 ["/", "Public POSKART landing page"],
-                ["/pricing", "Public package and billing information"],
+                ["/subscriptions", "Public package and billing information"],
                 ["/contact", "Customer service and sales contact"],
                 ["/terms", "Terms and Conditions"],
                 ["/refund-policy", "Refund and cancellation policy"],
@@ -777,7 +777,7 @@ export default function Home() {
               <ArrowRight className="size-4" />
             </Link>
             <Link
-              href="/pricing"
+              href="/subscriptions"
               className={buttonVariants({
                 variant: "outline",
                 size: "lg",

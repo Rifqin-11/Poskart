@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { CheckCircle2, CreditCard, LockKeyhole, ReceiptText } from "lucide-react";
-import { createSubscriptionOrderAction } from "@/app/checkout/actions";
+import { createSubscriptionOrderAction } from "@/app/(admin)/checkout/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { businessProfile, calculateSubscriptionTotal, pricingPlans } from "@/lib/constants/business";
@@ -33,7 +33,7 @@ export function CheckoutContent() {
           </div>
           <h1 className="text-4xl font-semibold tracking-tight">Complete your POSKART subscription.</h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600">
-            Review your selected subscription, enter customer details, then continue to the official payment flow.
+            Review your selected subscription, set the device quantity, then continue to the official payment flow.
           </p>
         </div>
 
@@ -47,28 +47,6 @@ export function CheckoutContent() {
             {errorMessage}
           </div>
         ) : null}
-
-        <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold">Customer information</h2>
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <label className="text-xs font-medium text-zinc-500">
-              Business or customer name
-              <Input className="mt-1" name="customerName" placeholder="Nama bisnis / pelanggan" required />
-            </label>
-            <label className="text-xs font-medium text-zinc-500">
-              Email
-              <Input className="mt-1" name="email" type="email" placeholder="billing@example.com" required />
-            </label>
-            <label className="text-xs font-medium text-zinc-500">
-              WhatsApp number
-              <Input className="mt-1" name="whatsapp" placeholder="+62..." required />
-            </label>
-            <label className="text-xs font-medium text-zinc-500">
-              Device or company name
-              <Input className="mt-1" name="companyName" placeholder="Nama device / perusahaan" />
-            </label>
-          </div>
-        </div>
 
         <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold">Subscription devices</h2>
@@ -97,10 +75,10 @@ export function CheckoutContent() {
         <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-5 text-sm leading-7 text-zinc-600">
           <div className="mb-2 flex items-center gap-2 font-medium text-zinc-950">
             <LockKeyhole className="size-4" />
-            Payment gateway note
+            Duitku Sandbox payment
           </div>
-          Halaman ini disiapkan sebagai checkout publik untuk review payment gateway. Setelah payment gateway production aktif,
-          tombol pembayaran dapat dihubungkan ke payment link resmi atau API payment gateway.
+          Checkout ini membuat order subscription POSKART dan mengarahkan pelanggan ke halaman pembayaran Duitku Sandbox.
+          Setelah pembayaran selesai, status order diperbarui melalui callback resmi Duitku.
         </div>
       </div>
 
@@ -155,6 +133,9 @@ export function CheckoutContent() {
         </div>
 
         <div className="mt-5 space-y-3">
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+            Payment gateway: <span className="font-medium text-zinc-950">Duitku Sandbox</span>
+          </div>
           {plan.features.map((feature) => (
             <div key={feature} className="flex items-start gap-2 text-sm text-zinc-600">
               <CheckCircle2 className="mt-0.5 size-4 text-emerald-600" />
@@ -171,7 +152,7 @@ export function CheckoutContent() {
           Continue to Payment
           <CreditCard className="size-4" />
         </Button>
-        <Link href="/pricing" className={buttonVariants({ variant: "outline", size: "lg", className: "mt-3 w-full" })}>
+        <Link href="/billing" className={buttonVariants({ variant: "outline", size: "lg", className: "mt-3 w-full" })}>
           Change plan
         </Link>
 

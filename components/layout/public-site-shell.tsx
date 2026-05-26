@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ArrowRight, Camera } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { businessProfile, legalLinks } from "@/lib/constants/business";
+import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 const Instagram = (props: React.SVGProps<SVGSVGElement>) => (
@@ -21,12 +23,22 @@ const Tiktok = (props: React.SVGProps<SVGSVGElement>) => (
 const navLinks = [
   { href: "/#platform", label: "Platform" },
   { href: "/#builder", label: "Builder" },
-  { href: "/pricing", label: "Pricing" },
+  { href: "/subscriptions", label: "Pricing" },
   { href: "/contact", label: "Contact" },
   { href: "/terms", label: "Terms" },
 ];
 
-export function PublicHeader() {
+export async function PublicHeader() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const userEmail = typeof data?.claims?.email === "string" ? data.claims.email : null;
+  const initials = userEmail
+    ? userEmail
+        .split("@")[0]
+        .slice(0, 2)
+        .toUpperCase()
+    : "PK";
+
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -53,10 +65,22 @@ export function PublicHeader() {
           ))}
         </nav>
 
-        <Link href="/dashboard" className={buttonVariants({ size: "sm" })}>
-          Login
-          <ArrowRight className="size-4" />
-        </Link>
+        {userEmail ? (
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className={buttonVariants({ size: "sm" })}>
+              Dashboard
+              <ArrowRight className="size-4" />
+            </Link>
+            <Link href="/dashboard" aria-label={`Open dashboard as ${userEmail}`} title={userEmail}>
+              <Avatar name={initials} />
+            </Link>
+          </div>
+        ) : (
+          <Link href="/login" className={buttonVariants({ size: "sm" })}>
+            Login
+            <ArrowRight className="size-4" />
+          </Link>
+        )}
       </div>
     </header>
   );
@@ -104,6 +128,16 @@ export function PublicFooter({ className }: { className?: string }) {
               </p>
               <p>
                 <a
+                  href={businessProfile.whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-zinc-950 transition-colors"
+                >
+                  {businessProfile.phone}
+                </a>
+              </p>
+              <p>
+                <a
                   href={businessProfile.domain}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -139,7 +173,7 @@ export function PublicFooter({ className }: { className?: string }) {
               </li>
               <li>
                 <Link
-                  href="/pricing"
+                  href="/subscriptions"
                   className="hover:text-zinc-950 transition-colors"
                 >
                   Pricing
