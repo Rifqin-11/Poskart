@@ -16,6 +16,9 @@ const defaultCanvas: BuilderCanvas = {
   backgroundColor: "#F5F1E8",   // AirmailBorder scaffold cream
   // Flutter payment dialog: maxWidth 520 → 520/1280 = 0.406; height ~600/800 = 0.75
   paymentModal: { widthRatio: 0.406, heightRatio: 0.75, borderRadius: 20, barrierColor: "#1B1B1B", backgroundColor: "#FAF8F2" },
+  transitionType: "fade",
+  transitionDurationMs: 300,
+  transitionCurve: "easeInOut",
 };
 
 const initialNodes: BuilderNode[] = [
@@ -88,6 +91,11 @@ type BuilderState = {
   /** When true, AdminShell hides the sidebar + topbar so the builder fills the full viewport */
   builderFullView: boolean;
   setBuilderFullView: (value: boolean) => void;
+  /** Node stored by copy/cut for later paste */
+  clipboard: BuilderNode | null;
+  copyNode: (id: string) => void;
+  cutNode: (id: string) => void;
+  pasteNode: () => void;
   setActivePage: (page: BuilderPage) => void;
   /** Select a node. Pass multi=true (Shift+click) to toggle membership in selectedIds. */
   selectNode: (id: string | null, multi?: boolean) => void;
@@ -104,6 +112,10 @@ type BuilderState = {
   deleteNode: (id: string) => void;
   toggleNode: (id: string, key: "visible" | "locked") => void;
   reorderNodes: (ids: string[]) => void;
+  /** Step one layer forward (swap zIndex with next higher sibling) */
+  bringForward: (id: string) => void;
+  /** Step one layer backward (swap zIndex with next lower sibling) */
+  sendBackward: (id: string) => void;
   undo: () => void;
   redo: () => void;
   setSchema: (schema: LayoutSchema) => void;
@@ -154,6 +166,83 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   future: [],
   builderFullView: false,
   setBuilderFullView: (value) => set({ builderFullView: value }),
+  clipboard: null,
+  copyNode: (id) =>
+    set((state) => {
+      const node = state.nodes.find((n) => n.id === id);
+      if (!node) return state;
+      return { clipboard: { ...node } };
+    }),
+  cutNode: (id) =>
+    set((state) => {
+      const node = state.nodes.find((n) => n.id === id);
+      if (!node) return state;
+      return {
+        ...pushHistory(state, {
+          nodes: state.nodes.filter((n) => n.id !== id),
+          selectedId: null,
+        }),
+        selectedIds: [],
+        clipboard: { ...node },
+      };
+    }),
+  pasteNode: () =>
+    set((state) => {
+      const src = state.clipboard;
+      if (!src) return state;
+      const newId = `${src.id}-paste-${Date.now()}`;
+      const clone: BuilderNode = {
+        ...src,
+        id: newId,
+        page: state.activePage,
+        x: src.x + 24,
+        y: src.y + 24,
+        locked: false,
+        zIndex: Math.max(0, ...state.nodes.filter((n) => n.page === state.activePage).map((n) => n.zIndex)) + 1,
+      };
+      return {
+        ...pushHistory(state, { nodes: [...state.nodes, clone], selectedId: newId }),
+        // Keep clipboard so user can paste multiple times
+      };
+    }),
+  bringForward: (id) =>
+    set((state) => {
+      const node = state.nodes.find((n) => n.id === id);
+      if (!node) return state;
+      const pageNodes = state.nodes.filter((n) => n.page === node.page);
+      // Find the node with the next higher zIndex
+      const above = pageNodes
+        .filter((n) => n.id !== id && n.zIndex > node.zIndex)
+        .sort((a, b) => a.zIndex - b.zIndex)[0];
+      if (!above) return state; // already on top
+      // Swap zIndexes
+      return pushHistory(state, {
+        nodes: state.nodes.map((n) => {
+          if (n.id === id) return { ...n, zIndex: above.zIndex };
+          if (n.id === above.id) return { ...n, zIndex: node.zIndex };
+          return n;
+        }),
+      });
+    }),
+  sendBackward: (id) =>
+    set((state) => {
+      const node = state.nodes.find((n) => n.id === id);
+      if (!node) return state;
+      const pageNodes = state.nodes.filter((n) => n.page === node.page);
+      // Find the node with the next lower zIndex
+      const below = pageNodes
+        .filter((n) => n.id !== id && n.zIndex < node.zIndex)
+        .sort((a, b) => b.zIndex - a.zIndex)[0];
+      if (!below) return state; // already at bottom
+      // Swap zIndexes
+      return pushHistory(state, {
+        nodes: state.nodes.map((n) => {
+          if (n.id === id) return { ...n, zIndex: below.zIndex };
+          if (n.id === below.id) return { ...n, zIndex: node.zIndex };
+          return n;
+        }),
+      });
+    }),
   setActivePage: (page) => set({ activePage: page, selectedId: null, selectedIds: [] }),
   selectNode: (id, multi) =>
     set((state) => {

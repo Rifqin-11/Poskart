@@ -21,8 +21,12 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
+  ArrowDownToLine,
+  ArrowUpToLine,
   BringToFront,
   Camera,
+  ChevronRight,
+  Clipboard,
   Copy,
   Crosshair,
   Eye,
@@ -31,6 +35,7 @@ import {
   FolderOpen,
   Grid2X2,
   Image as ImageIcon,
+  Layers,
   Link2,
   Lock,
   Maximize2,
@@ -41,6 +46,7 @@ import {
   Redo2,
   RotateCw,
   Save,
+  Scissors,
   SendToBack,
   Smartphone,
   Trash2,
@@ -2125,6 +2131,65 @@ function CanvasControls() {
         </label>
       </div>
 
+      {/* Page Transitions */}
+      <div className="space-y-2 border-t border-zinc-100 pt-3 mt-1">
+        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          <Film className="size-3.5" /> Page Transitions
+        </div>
+        
+        <label className="block text-xs font-medium text-zinc-500">
+          Transition Effect
+          <Select
+            className="mt-1"
+            value={canvas.transitionType ?? "fade"}
+            onChange={(e) =>
+              updateCanvas({
+                transitionType: e.target.value as any,
+              })
+            }
+          >
+            <option value="fade">Fade Dissolve</option>
+            <option value="slide-horizontal">Slide Horizontal (Push)</option>
+            <option value="slide-vertical">Slide Vertical (Stack)</option>
+            <option value="zoom">Zoom Scale</option>
+            <option value="none">No Transition (Instant)</option>
+          </Select>
+        </label>
+
+        <label className="block text-xs font-medium text-zinc-500">
+          Duration: {canvas.transitionDurationMs ?? 300}ms
+          <Slider
+            className="mt-1"
+            min={100}
+            max={2000}
+            step={50}
+            value={canvas.transitionDurationMs ?? 300}
+            onChange={(e) =>
+              updateCanvas({ transitionDurationMs: Number(e.target.value) })
+            }
+          />
+        </label>
+
+        <label className="block text-xs font-medium text-zinc-500">
+          Animation Curve
+          <Select
+            className="mt-1"
+            value={canvas.transitionCurve ?? "easeInOut"}
+            onChange={(e) =>
+              updateCanvas({
+                transitionCurve: e.target.value as any,
+              })
+            }
+          >
+            <option value="easeInOut">Ease In Out (Smooth)</option>
+            <option value="easeIn">Ease In (Accelerate)</option>
+            <option value="easeOut">Ease Out (Decelerate)</option>
+            <option value="linear">Linear (Constant)</option>
+            <option value="bounce">Bounce Physics (Elastic)</option>
+          </Select>
+        </label>
+      </div>
+
       {/* App background */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -2351,78 +2416,155 @@ function BuilderContextMenu({
   x,
   y,
   node,
+  hasClipboard,
   onClose,
+  onCopy,
+  onCut,
+  onPaste,
   onEditText,
   onDuplicate,
   onDelete,
   onToggleLock,
   onToggleVisible,
   onBringToFront,
+  onBringForward,
+  onSendBackward,
   onSendToBack,
   onAddNode,
 }: {
   x: number;
   y: number;
   node?: BuilderNode;
+  hasClipboard: boolean;
   onClose: () => void;
+  onCopy: () => void;
+  onCut: () => void;
+  onPaste: () => void;
   onEditText: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onToggleLock: () => void;
   onToggleVisible: () => void;
   onBringToFront: () => void;
+  onBringForward: () => void;
+  onSendBackward: () => void;
   onSendToBack: () => void;
   onAddNode: (type: BuilderComponentType) => void;
 }) {
+  const [layerHover, setLayerHover] = useState(false);
+
+  // Clamp position so menu never goes off-screen
+  const menuW = 224;
+  const safeX = Math.min(x, window.innerWidth - menuW - 8);
+  const safeY = Math.min(y, window.innerHeight - 340);
+
   const itemClass =
-    "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100";
+    "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-zinc-700 hover:bg-zinc-100 transition-colors";
+  const kbdClass = "ml-auto text-[10px] font-mono text-zinc-400";
 
   return (
     <div
-      className="fixed z-50 w-56 rounded-lg border border-zinc-200 bg-white p-1 shadow-2xl"
-      style={{ left: x, top: y }}
-      onContextMenu={(event) => event.preventDefault()}
+      className="fixed z-50 w-56 rounded-xl border border-zinc-200 bg-white py-1 shadow-2xl"
+      style={{ left: safeX, top: safeY }}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {node ? (
         <>
-          <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+          {/* Header */}
+          <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
             {node.type}
           </div>
-          {isEditableTextNode(node) ? (
+
+          {isEditableTextNode(node) && (
             <button type="button" className={itemClass} onClick={onEditText}>
               <Type className="size-3.5" />
               Edit text
             </button>
-          ) : null}
-          <button type="button" className={itemClass} onClick={onDuplicate}>
+          )}
+
+          <div className="mx-2 my-1 h-px bg-zinc-100" />
+
+          {/* Clipboard actions */}
+          <button type="button" className={itemClass} onClick={onCopy}>
             <Copy className="size-3.5" />
+            Copy
+            <span className={kbdClass}>⌘C</span>
+          </button>
+          <button type="button" className={itemClass} onClick={onCut}>
+            <Scissors className="size-3.5" />
+            Cut
+            <span className={kbdClass}>⌘X</span>
+          </button>
+          <button type="button" className={itemClass} onClick={onDuplicate}>
+            <Copy className="size-3.5 opacity-50" />
             Duplicate
+            <span className={kbdClass}>⌘D</span>
           </button>
-          <button type="button" className={itemClass} onClick={onBringToFront}>
-            <BringToFront className="size-3.5" />
-            Bring to front
-          </button>
-          <button type="button" className={itemClass} onClick={onSendToBack}>
-            <SendToBack className="size-3.5" />
-            Send to back
-          </button>
-          <button type="button" className={itemClass} onClick={onToggleVisible}>
-            {node.visible ? (
-              <EyeOff className="size-3.5" />
-            ) : (
-              <Eye className="size-3.5" />
+
+          <div className="mx-2 my-1 h-px bg-zinc-100" />
+
+          {/* Layer order — hover submenu */}
+          <div
+            className="relative"
+            onMouseEnter={() => setLayerHover(true)}
+            onMouseLeave={() => setLayerHover(false)}
+          >
+            <button
+              type="button"
+              className={cn(
+                itemClass,
+                layerHover && "bg-zinc-100",
+              )}
+            >
+              <Layers className="size-3.5" />
+              Layer order
+              <ChevronRight className="ml-auto size-3.5 text-zinc-400" />
+            </button>
+
+            {/* Flyout submenu */}
+            {layerHover && (
+              <div className="absolute left-full top-0 ml-1 w-48 rounded-xl border border-zinc-200 bg-white py-1 shadow-2xl">
+                <div className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+                  Layer order
+                </div>
+                <button type="button" className={itemClass} onClick={onBringToFront}>
+                  <BringToFront className="size-3.5" />
+                  Bring to front
+                </button>
+                <button type="button" className={itemClass} onClick={onBringForward}>
+                  <ArrowUpToLine className="size-3.5" />
+                  Bring forward
+                </button>
+                <button type="button" className={itemClass} onClick={onSendBackward}>
+                  <ArrowDownToLine className="size-3.5" />
+                  Send backward
+                </button>
+                <button type="button" className={itemClass} onClick={onSendToBack}>
+                  <SendToBack className="size-3.5" />
+                  Send to back
+                </button>
+              </div>
             )}
+          </div>
+
+          <div className="mx-2 my-1 h-px bg-zinc-100" />
+
+          {/* Visibility / Lock */}
+          <button type="button" className={itemClass} onClick={onToggleVisible}>
+            {node.visible
+              ? <EyeOff className="size-3.5" />
+              : <Eye className="size-3.5" />}
             {node.visible ? "Hide" : "Show"}
           </button>
           <button type="button" className={itemClass} onClick={onToggleLock}>
-            {node.locked ? (
-              <Unlock className="size-3.5" />
-            ) : (
-              <Lock className="size-3.5" />
-            )}
+            {node.locked
+              ? <Unlock className="size-3.5" />
+              : <Lock className="size-3.5" />}
             {node.locked ? "Unlock" : "Lock"}
           </button>
-          <div className="my-1 h-px bg-zinc-100" />
+
+          <div className="mx-2 my-1 h-px bg-zinc-100" />
+
           <button
             type="button"
             className={cn(itemClass, "text-red-600 hover:bg-red-50")}
@@ -2434,39 +2576,49 @@ function BuilderContextMenu({
         </>
       ) : (
         <>
-          <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+          <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+            Canvas
+          </div>
+          {hasClipboard && (
+            <button type="button" className={itemClass} onClick={onPaste}>
+              <Clipboard className="size-3.5" />
+              Paste
+              <span className={kbdClass}>⌘V</span>
+            </button>
+          )}
+          {hasClipboard && <div className="mx-2 my-1 h-px bg-zinc-100" />}
+          <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
             Add component
           </div>
-          {(
-            [
-              "text",
-              "button",
-              "image",
-              "background-decoration",
-            ] as BuilderComponentType[]
-          ).map((type) => (
-            <button
-              key={type}
-              type="button"
-              className={itemClass}
-              onClick={() => onAddNode(type)}
-            >
-              <Plus className="size-3.5" />
-              {type}
-            </button>
-          ))}
+          {(["text", "button", "image", "background-decoration"] as BuilderComponentType[]).map(
+            (type) => (
+              <button
+                key={type}
+                type="button"
+                className={itemClass}
+                onClick={() => onAddNode(type)}
+              >
+                <Plus className="size-3.5" />
+                {type}
+              </button>
+            ),
+          )}
         </>
       )}
+
+      <div className="mx-2 my-1 h-px bg-zinc-100" />
       <button
         type="button"
-        className={cn(itemClass, "mt-1 text-zinc-500")}
+        className={cn(itemClass, "text-zinc-400 hover:text-zinc-600")}
         onClick={onClose}
       >
+        <X className="size-3.5" />
         Close
       </button>
     </div>
   );
 }
+
 
 export function VisualBuilder() {
   const sensors = useSensors(useSensor(PointerSensor));
@@ -2491,6 +2643,12 @@ export function VisualBuilder() {
   const reorderNodes = useBuilderStore((state) => state.reorderNodes);
   const schema = useBuilderStore((state) => state.schema);
   const setSchema = useBuilderStore((state) => state.setSchema);
+  const clipboard = useBuilderStore((state) => state.clipboard);
+  const copyNode = useBuilderStore((state) => state.copyNode);
+  const cutNode = useBuilderStore((state) => state.cutNode);
+  const pasteNode = useBuilderStore((state) => state.pasteNode);
+  const bringForward = useBuilderStore((state) => state.bringForward);
+  const sendBackward = useBuilderStore((state) => state.sendBackward);
   const { data: savedLayout } = useActiveLayoutSchema();
   const hydratedLayoutId = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -2964,16 +3122,40 @@ export function VisualBuilder() {
           (e.target as HTMLElement)?.tagName ?? "",
         ) || (e.target as HTMLElement)?.isContentEditable;
       if (isTyping) return;
+
+      const cmd = e.metaKey || e.ctrlKey;
+
       if (e.key === "Delete" || e.key === "Backspace") {
-        // Block delete if the single selected node is locked, but allow multi-delete
         if (selectedIds.length <= 1 && selectedNode?.locked) return;
         e.preventDefault();
         deleteSelected();
+        return;
+      }
+
+      if (cmd && e.key === "c") {
+        e.preventDefault();
+        if (selectedId) copyNode(selectedId);
+        return;
+      }
+      if (cmd && e.key === "x") {
+        e.preventDefault();
+        if (selectedId && !selectedNode?.locked) cutNode(selectedId);
+        return;
+      }
+      if (cmd && e.key === "v") {
+        e.preventDefault();
+        pasteNode();
+        return;
+      }
+      if (cmd && e.key === "d") {
+        e.preventDefault();
+        if (selectedId) duplicateNode(selectedId);
+        return;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [deleteSelected, deleteNode, selectedNode, selectedIds]);
+  }, [deleteSelected, deleteNode, selectedNode, selectedIds, selectedId, copyNode, cutNode, pasteNode, duplicateNode]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     if (!event.over || event.active.id === event.over.id) return;
@@ -3779,7 +3961,15 @@ export function VisualBuilder() {
           x={contextMenu.x}
           y={contextMenu.y}
           node={contextNode}
+          hasClipboard={!!clipboard}
           onClose={() => setContextMenu(null)}
+          onCopy={() =>
+            contextNode && runContextAction(() => copyNode(contextNode.id))
+          }
+          onCut={() =>
+            contextNode && !contextNode.locked && runContextAction(() => cutNode(contextNode.id))
+          }
+          onPaste={() => runContextAction(() => pasteNode())}
           onEditText={() =>
             contextNode && runContextAction(() => startTextEdit(contextNode))
           }
@@ -3799,6 +3989,12 @@ export function VisualBuilder() {
           }
           onBringToFront={() =>
             contextNode && runContextAction(() => bringNodeToFront(contextNode))
+          }
+          onBringForward={() =>
+            contextNode && runContextAction(() => bringForward(contextNode.id))
+          }
+          onSendBackward={() =>
+            contextNode && runContextAction(() => sendBackward(contextNode.id))
           }
           onSendToBack={() =>
             contextNode && runContextAction(() => sendNodeToBack(contextNode))

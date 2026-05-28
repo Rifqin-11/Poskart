@@ -16,16 +16,21 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  ArrowDown,
-  ArrowUp,
+  ArrowDownToLine,
+  ArrowUpToLine,
   BringToFront,
   CalendarDays,
+  ChevronRight,
+  Clipboard,
   Copy,
   Crosshair,
   Grid2X2,
   Image as ImageIcon,
+  Layers,
   Lock,
   Maximize2,
+  Minimize2,
+  Scissors,
   SendToBack,
   Square,
   Trash2,
@@ -46,6 +51,7 @@ import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { uploadBuilderImage } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
+import { useBuilderStore } from "@/stores/builder-store";
 import {
   DEFAULT_FRAME_CANVAS,
   type FrameLayout,
@@ -59,6 +65,7 @@ const FRAME_NODE_TYPES: { type: FrameNodeType; label: string; icon: ReactNode }[
   { type: "border", label: "Border", icon: <Square className="size-3.5" /> },
   { type: "date-stamp", label: "Date", icon: <CalendarDays className="size-3.5" /> },
   { type: "background", label: "Bg", icon: <ImageIcon className="size-3.5" /> },
+  { type: "photo-slot", label: "Photo slot", icon: <Grid2X2 className="size-3.5" /> },
 ];
 const FRAME_TEMPLATE_WIDTH_CM = 8;
 const FRAME_TEMPLATE_WIDTH_PX = DEFAULT_FRAME_CANVAS.width;
@@ -426,6 +433,121 @@ function SortableFrameLayer({
   );
 }
 
+function FrameContextMenu({
+  x, y, node, hasClipboard,
+  onClose, onCopy, onCut, onPaste, onDuplicate, onDelete,
+  onBringToFront, onBringForward, onSendBackward, onSendToBack,
+  onToggleLock, onAddNode,
+}: {
+  x: number; y: number;
+  node?: FrameNode;
+  hasClipboard: boolean;
+  onClose: () => void;
+  onCopy: () => void;
+  onCut: () => void;
+  onPaste: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onBringToFront: () => void;
+  onBringForward: () => void;
+  onSendBackward: () => void;
+  onSendToBack: () => void;
+  onToggleLock: () => void;
+  onAddNode: (type: FrameNodeType) => void;
+}) {
+  const [layerHover, setLayerHover] = useState(false);
+  const menuW = 224;
+  const safeX = Math.min(x, window.innerWidth - menuW - 8);
+  const safeY = Math.min(y, window.innerHeight - 360);
+  const item = "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-zinc-700 hover:bg-zinc-100 transition-colors";
+  const kbd = "ml-auto text-[10px] font-mono text-zinc-400";
+
+  return (
+    <div
+      className="fixed z-[9999] w-56 rounded-xl border border-zinc-200 bg-white py-1 shadow-2xl"
+      style={{ left: safeX, top: safeY }}
+      onMouseDown={(e) => e.stopPropagation()}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {node ? (
+        <>
+          <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">{node.type}</div>
+
+          {/* Clipboard */}
+          <button type="button" className={item} onClick={onCopy}>
+            <Copy className="size-3.5" />Copy<span className={kbd}>⌘C</span>
+          </button>
+          {node.type !== "photo-slot" && node.id !== "frame-background" && (
+            <button type="button" className={item} onClick={onCut}>
+              <Scissors className="size-3.5" />Cut<span className={kbd}>⌘X</span>
+            </button>
+          )}
+          {node.id !== "frame-background" && (
+            <button type="button" className={item} onClick={onDuplicate}>
+              <Copy className="size-3.5 opacity-50" />Duplicate<span className={kbd}>⌘D</span>
+            </button>
+          )}
+
+          <div className="mx-2 my-1 h-px bg-zinc-100" />
+
+          {/* Layer order submenu */}
+          <div className="relative" onMouseEnter={() => setLayerHover(true)} onMouseLeave={() => setLayerHover(false)}>
+            <button type="button" className={cn(item, layerHover && "bg-zinc-100")}>
+              <Layers className="size-3.5" />Layer order
+              <ChevronRight className="ml-auto size-3.5 text-zinc-400" />
+            </button>
+            {layerHover && (
+              <div className="absolute left-full top-0 ml-1 w-48 rounded-xl border border-zinc-200 bg-white py-1 shadow-2xl">
+                <div className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Layer order</div>
+                <button type="button" className={item} onClick={onBringToFront}><BringToFront className="size-3.5" />Bring to front</button>
+                <button type="button" className={item} onClick={onBringForward}><ArrowUpToLine className="size-3.5" />Bring forward</button>
+                <button type="button" className={item} onClick={onSendBackward}><ArrowDownToLine className="size-3.5" />Send backward</button>
+                <button type="button" className={item} onClick={onSendToBack} disabled={node.id === "frame-background"}><SendToBack className="size-3.5" />Send to back</button>
+              </div>
+            )}
+          </div>
+
+          <div className="mx-2 my-1 h-px bg-zinc-100" />
+
+          <button type="button" className={item} onClick={onToggleLock}>
+            {node.locked ? <Unlock className="size-3.5" /> : <Lock className="size-3.5" />}
+            {node.locked ? "Unlock" : "Lock"}
+          </button>
+
+          {node.id !== "frame-background" ? (
+            <>
+              <div className="mx-2 my-1 h-px bg-zinc-100" />
+              <button type="button" className={cn(item, "text-red-600 hover:bg-red-50")} onClick={onDelete} disabled={node.id === "frame-background"}>
+                <Trash2 className="size-3.5" />Delete
+              </button>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Canvas</div>
+          {hasClipboard && (
+            <button type="button" className={item} onClick={onPaste}>
+              <Clipboard className="size-3.5" />Paste<span className={kbd}>⌘V</span>
+            </button>
+          )}
+          {hasClipboard && <div className="mx-2 my-1 h-px bg-zinc-100" />}
+          <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Add layer</div>
+          {FRAME_NODE_TYPES.map((t) => (
+            <button key={t.type} type="button" className={item} onClick={() => onAddNode(t.type)}>
+              {t.icon}{t.label}
+            </button>
+          ))}
+        </>
+      )}
+      <div className="mx-2 my-1 h-px bg-zinc-100" />
+      <button type="button" className={cn(item, "text-zinc-400 hover:text-zinc-600")} onClick={onClose}>
+        <X className="size-3.5" />Close
+      </button>
+    </div>
+  );
+}
+
 export function FrameTemplateBuilder({
   open = true,
   presentation = "modal",
@@ -468,6 +590,9 @@ export function FrameTemplateBuilder({
   const [snapPreview, setSnapPreview] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [history, setHistory] = useState<{ past: FrameLayout[]; future: FrameLayout[] }>({ past: [], future: [] });
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string | null } | null>(null);
+  const [clipboard, setClipboard] = useState<FrameNode | null>(null);
+  const fullView = useBuilderStore((s) => s.builderFullView);
+  const setFullView = useBuilderStore((s) => s.setBuilderFullView);
   const hydratedKeyRef = useRef<string | null>(null);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ mx: 0, my: 0, px: 0, py: 0 });
@@ -618,12 +743,54 @@ export function FrameTemplateBuilder({
       const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT" || target?.isContentEditable;
       if (isTyping) return;
 
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+      const cmd = event.metaKey || event.ctrlKey;
+
+      if (cmd && event.key.toLowerCase() === "z") {
         event.preventDefault();
-        if (event.shiftKey) {
-          redo();
-        } else {
-          undo();
+        event.shiftKey ? redo() : undo();
+        return;
+      }
+      if (cmd && event.key === "c") {
+        event.preventDefault();
+        const node = layout.nodes.find((n) => n.id === selectedId);
+        if (node) setClipboard({ ...node });
+        return;
+      }
+      if (cmd && event.key === "x") {
+        event.preventDefault();
+        const node = layout.nodes.find((n) => n.id === selectedId);
+        if (node && !node.locked && node.type !== "photo-slot" && node.id !== "frame-background") {
+          setClipboard({ ...node });
+          commitLayout((c) => ({ ...c, nodes: c.nodes.filter((n) => n.id !== node.id) }));
+          setSelectedId(null);
+        }
+        return;
+      }
+      if (cmd && event.key === "v") {
+        event.preventDefault();
+        setClipboard((cb) => {
+          if (!cb) return cb;
+          const clone: FrameNode = {
+            ...cb,
+            id: `${cb.id}-paste-${Date.now()}`,
+            x: cb.x + 18,
+            y: cb.y + 18,
+            locked: false,
+            zIndex: Math.max(0, ...layout.nodes.map((n) => n.zIndex)) + 1,
+          };
+          commitLayout((c) => ({ ...c, nodes: [...c.nodes, clone] }));
+          setSelectedId(clone.id);
+          return cb; // keep clipboard
+        });
+        return;
+      }
+      if (cmd && event.key === "d") {
+        event.preventDefault();
+        const node = layout.nodes.find((n) => n.id === selectedId);
+        if (node && node.type !== "photo-slot" && node.id !== "frame-background") {
+          const clone = { ...node, id: `${node.id}-copy-${Date.now()}`, x: node.x + 18, y: node.y + 18, locked: false };
+          commitLayout((c) => ({ ...c, nodes: [...c.nodes, clone] }));
+          setSelectedId(clone.id);
         }
         return;
       }
@@ -631,30 +798,16 @@ export function FrameTemplateBuilder({
         spaceRef.current = true;
         setSpaceDown(true);
       }
-      if (event.shiftKey && event.key === "1") {
+      if (event.shiftKey && event.key === "1") { event.preventDefault(); fitToScreen(); }
+      if (event.shiftKey && event.key === "2") { event.preventDefault(); setZoom(1); setPan({ x: 0, y: 0 }); }
+      if ((event.key === "f" || event.key === "F") && !cmd) {
         event.preventDefault();
-        fitToScreen();
-      }
-      if (event.shiftKey && event.key === "2") {
-        event.preventDefault();
-        setZoom(1);
-        setPan({ x: 0, y: 0 });
-      }
-      if (event.key === "f" || event.key === "F") {
-        event.preventDefault();
-        if (selectedId) {
-          panToNode(selectedId);
-        } else {
-          fitToScreen();
-        }
+        selectedId ? panToNode(selectedId) : fitToScreen();
       }
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.code === "Space") {
-        spaceRef.current = false;
-        setSpaceDown(false);
-      }
+      if (event.code === "Space") { spaceRef.current = false; setSpaceDown(false); }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -663,7 +816,8 @@ export function FrameTemplateBuilder({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [fitToScreen, open, panToNode, redo, selectedId, undo]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitToScreen, open, panToNode, redo, selectedId, undo, layout.nodes, commitLayout]);
 
   useEffect(() => {
     if (!open) return;
@@ -675,10 +829,7 @@ export function FrameTemplateBuilder({
 
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
-        if (selectedNode.type === "photo-slot") {
-          toast.error("Photo slots follow the Photos field and cannot be deleted.");
-          return;
-        }
+        if (selectedNode.id === "frame-background") return;
         commitLayout((current) => ({ ...current, nodes: current.nodes.filter((node) => node.id !== selectedNode.id) }));
         setSelectedId(null);
       }
@@ -784,21 +935,12 @@ export function FrameTemplateBuilder({
   };
 
   const addNode = (type: FrameNodeType) => {
-    if (type === "photo-slot") {
-      toast.error("Photo slots are controlled by the Photos field.");
-      return;
-    }
-
     const node = createNode(type, layout);
     commitLayout((current) => ({ ...current, nodes: [...current.nodes, node] }));
     setSelectedId(node.id);
   };
 
   const duplicateNode = (node: FrameNode) => {
-    if (node.type === "photo-slot") {
-      toast.error("Photo slots follow the Photos field and cannot be duplicated.");
-      return;
-    }
     if (node.id === "frame-background") {
       toast.error("Frame background follows the Frame image URL field.");
       return;
@@ -810,10 +952,6 @@ export function FrameTemplateBuilder({
   };
 
   const deleteNode = (node: FrameNode) => {
-    if (node.type === "photo-slot") {
-      toast.error("Photo slots follow the Photos field and cannot be deleted.");
-      return;
-    }
     if (node.id === "frame-background") {
       toast.error("Clear the Frame image URL field to remove the background.");
       return;
@@ -984,9 +1122,18 @@ export function FrameTemplateBuilder({
               <Redo2 />
             </Button>
             <div className="mx-2 h-5 w-px bg-zinc-200" />
+            {/* Full view toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              title={fullView ? "Exit full view" : "Full view"}
+              className={cn(fullView && "bg-zinc-900 text-white hover:bg-zinc-700 hover:text-white")}
+              onClick={() => setFullView(!fullView)}
+            >
+              {fullView ? <Minimize2 /> : <Maximize2 className="opacity-60" />}
+            </Button>
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button onClick={() => onSave(normalizeFrameLayout(layout, photoCount))}>{saveLabel}</Button>
-            <Button variant="ghost" size="icon" onClick={onClose}><X /></Button>
           </div>
         </div>
 
@@ -1325,112 +1472,45 @@ export function FrameTemplateBuilder({
         </div>
       </div>
       {contextMenu ? (
-        <div
-          className="fixed z-[9999] w-56 rounded-lg border border-zinc-200 bg-white p-1 shadow-2xl"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onMouseDown={(event) => event.stopPropagation()}
-          onContextMenu={(event) => event.preventDefault()}
-        >
-          {contextNode ? (
-            <>
-              <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
-                {contextNode.type}
-              </div>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
-                onClick={() => runContextAction(() => bringNodeToFront(contextNode))}
-              >
-                <BringToFront className="size-3.5" />
-                Bring to front
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
-                onClick={() => runContextAction(() => sendNodeToBack(contextNode))}
-                disabled={contextNode.id === "frame-background"}
-              >
-                <SendToBack className="size-3.5" />
-                Send to back
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
-                onClick={() => runContextAction(() => moveLayer(contextNode.id, "up"))}
-              >
-                <ArrowUp className="size-3.5" />
-                Move layer up
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
-                onClick={() => runContextAction(() => moveLayer(contextNode.id, "down"))}
-              >
-                <ArrowDown className="size-3.5" />
-                Move layer down
-              </button>
-              {contextNode.type !== "photo-slot" ? (
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
-                  onClick={() => runContextAction(() => duplicateNode(contextNode))}
-                  disabled={contextNode.id === "frame-background"}
-                >
-                  <Copy className="size-3.5" />
-                  Duplicate
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
-                onClick={() => runContextAction(() => updateNode(contextNode.id, { locked: !contextNode.locked }))}
-              >
-                {contextNode.locked ? <Unlock className="size-3.5" /> : <Lock className="size-3.5" />}
-                {contextNode.locked ? "Unlock" : "Lock"}
-              </button>
-              {contextNode.type !== "photo-slot" ? (
-                <>
-                  <div className="my-1 h-px bg-zinc-100" />
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-red-600 hover:bg-red-50"
-                    onClick={() => runContextAction(() => deleteNode(contextNode))}
-                    disabled={contextNode.id === "frame-background"}
-                  >
-                    <Trash2 className="size-3.5" />
-                    Delete
-                  </button>
-                </>
-              ) : (
-                <div className="px-2 py-2 text-[11px] leading-4 text-zinc-400">
-                  Photo slots are controlled by the Photos field.
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-400">Add layer</div>
-              {FRAME_NODE_TYPES.map((item) => (
-                <button
-                  key={item.type}
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs hover:bg-zinc-100"
-                  onClick={() => runContextAction(() => addNode(item.type))}
-                >
-                  {item.icon}
-                  {item.label}
-                </button>
-              ))}
-            </>
-          )}
-          <button
-            type="button"
-            className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-zinc-500 hover:bg-zinc-100"
-            onClick={() => setContextMenu(null)}
-          >
-            Close
-          </button>
-        </div>
+        <FrameContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          node={contextNode}
+          hasClipboard={!!clipboard}
+          onClose={() => setContextMenu(null)}
+          onCopy={() => contextNode && runContextAction(() => setClipboard({ ...contextNode }))}
+          onCut={() => {
+            if (!contextNode || contextNode.locked || contextNode.type === "photo-slot" || contextNode.id === "frame-background") return;
+            setClipboard({ ...contextNode });
+            runContextAction(() => {
+              commitLayout((c) => ({ ...c, nodes: c.nodes.filter((n) => n.id !== contextNode.id) }));
+              setSelectedId(null);
+            });
+          }}
+          onPaste={() => {
+            if (!clipboard) return;
+            const clone: FrameNode = {
+              ...clipboard,
+              id: `${clipboard.id}-paste-${Date.now()}`,
+              x: clipboard.x + 18,
+              y: clipboard.y + 18,
+              locked: false,
+              zIndex: Math.max(0, ...layout.nodes.map((n) => n.zIndex)) + 1,
+            };
+            runContextAction(() => {
+              commitLayout((c) => ({ ...c, nodes: [...c.nodes, clone] }));
+              setSelectedId(clone.id);
+            });
+          }}
+          onDuplicate={() => contextNode && runContextAction(() => duplicateNode(contextNode))}
+          onBringToFront={() => contextNode && runContextAction(() => bringNodeToFront(contextNode))}
+          onBringForward={() => contextNode && runContextAction(() => moveLayer(contextNode.id, "up"))}
+          onSendBackward={() => contextNode && runContextAction(() => moveLayer(contextNode.id, "down"))}
+          onSendToBack={() => contextNode && runContextAction(() => sendNodeToBack(contextNode))}
+          onToggleLock={() => contextNode && runContextAction(() => updateNode(contextNode.id, { locked: !contextNode.locked }))}
+          onDelete={() => contextNode && runContextAction(() => deleteNode(contextNode))}
+          onAddNode={(type) => runContextAction(() => addNode(type))}
+        />
       ) : null}
     </>
   );

@@ -70,6 +70,12 @@ export type BuilderCanvas = {
   };
   /** User-imported custom fonts. Saved alongside theme so they can be re-injected on load. */
   customFonts?: { name: string; url: string }[];
+  /** Global page transition effect used by the tablet app */
+  transitionType?: "fade" | "slide-horizontal" | "slide-vertical" | "zoom" | "none";
+  /** Transition duration in milliseconds (default: 300) */
+  transitionDurationMs?: number;
+  /** Transition animation curve */
+  transitionCurve?: "linear" | "easeIn" | "easeOut" | "easeInOut" | "bounce";
 };
 
 export type LayoutSchema = {

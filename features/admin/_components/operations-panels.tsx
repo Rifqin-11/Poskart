@@ -33,7 +33,6 @@ import {
   RotateCcw,
   ShieldCheck,
   SlidersHorizontal,
-  Star,
   Store,
   Trash2,
   Users,
@@ -87,7 +86,6 @@ import {
 import {
   useDeleteTemplate,
   useTemplates,
-  useUpdateTemplate,
 } from "@/features/admin/templates/use-templates";
 import {
   useTransactions,
@@ -198,7 +196,6 @@ function PageHeader({
 export function TemplateManagement() {
   const router = useRouter();
   const { data = [] } = useTemplates();
-  const updateTemplate = useUpdateTemplate();
   const deleteTemplate = useDeleteTemplate();
   const [testTemplate, setTestTemplate] = useState<Template | null>(null);
 
@@ -213,17 +210,6 @@ export function TemplateManagement() {
       onError: (err) =>
         toast.error(err instanceof Error ? err.message : "Delete failed"),
     });
-  };
-
-  const handleSetDefault = (t: Template) => {
-    updateTemplate.mutate(
-      { id: t.id, patch: { isDefault: true } },
-      {
-        onSuccess: () => toast.success(`"${t.name}" set as default template`),
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : "Failed"),
-      },
-    );
   };
 
   return (
@@ -275,12 +261,6 @@ export function TemplateManagement() {
                       style={{ color: template.accentColor }}
                     />
                   )}
-                  {template.isDefault ? (
-                    <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-700 shadow">
-                      <Star className="size-2.5 fill-yellow-400 text-yellow-400" />{" "}
-                      Default
-                    </span>
-                  ) : null}
                 </div>
 
                 <div className="min-w-0 space-y-3">
@@ -288,15 +268,6 @@ export function TemplateManagement() {
                     <h2 className="truncate text-base font-semibold text-zinc-950">
                       {template.name}
                     </h2>
-                    <Badge
-                      variant={
-                        template.status === "published"
-                          ? "success"
-                          : "secondary"
-                      }
-                    >
-                      {template.status}
-                    </Badge>
                   </div>
                   {template.tagline ? (
                     <p className="line-clamp-2 text-sm text-zinc-500">
@@ -316,7 +287,6 @@ export function TemplateManagement() {
                       {template.accentColor}
                     </span>
                     <span>{template.photoCount} photos</span>
-                    <span className="capitalize">{template.category}</span>
                     <span>
                       {template.frameLayout
                         ? "Custom layout"
@@ -326,16 +296,6 @@ export function TemplateManagement() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {!template.isDefault && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 justify-center px-2"
-                      onClick={() => handleSetDefault(template)}
-                    >
-                      <Check className="size-3.5" /> Set default
-                    </Button>
-                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -1239,10 +1199,20 @@ function BoothFormDialog({
     } as BoothInput;
   });
 
+  // Modern Hardware & Printer State Mockups
+  const [printerConn, setPrinterConn] = useState("usb");
+  const [paperWidth, setPaperWidth] = useState("80mm");
+  const [brightness, setBrightness] = useState(0);
+  const [contrast, setContrast] = useState(0);
+  const [density, setDensity] = useState(8);
+  const [sharpness, setSharpness] = useState(5);
+  const [mirrorCamera, setMirrorCamera] = useState(true);
+  const [resolution, setResolution] = useState("1080p");
+  const [debugLogs, setDebugLogs] = useState(false);
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} title={title}>
       <form
-        className="grid gap-3 md:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
           if (!form.name.trim() || !form.location.trim()) {
@@ -1252,170 +1222,279 @@ function BoothFormDialog({
           onSubmit(form);
         }}
       >
-        <label className="block text-xs font-medium text-zinc-600">
-          Name
-          <Input
-            className="mt-1"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Device 01"
-          />
-        </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Location
-          <Input
-            className="mt-1"
-            value={form.location}
-            onChange={(e) => setForm({ ...form, location: e.target.value })}
-            placeholder="PVJ Bandung"
-          />
-        </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Status
-          <Select
-            className="mt-1"
-            value={form.status}
-            onChange={(e) =>
-              setForm({ ...form, status: e.target.value as Device["status"] })
-            }
-          >
-            <option value="online">online</option>
-            <option value="offline">offline</option>
-            <option value="maintenance">maintenance</option>
-          </Select>
-        </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Battery: {form.battery}%
-          <Slider
-            min={0}
-            max={100}
-            value={form.battery}
-            onChange={(e) =>
-              setForm({ ...form, battery: Number(e.target.value) })
-            }
-          />
-        </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          App version
-          <Input
-            className="mt-1"
-            value={form.appVersion}
-            onChange={(e) => setForm({ ...form, appVersion: e.target.value })}
-          />
-        </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Last sync
-          <Input
-            className="mt-1"
-            value={form.lastSync}
-            onChange={(e) => setForm({ ...form, lastSync: e.target.value })}
-            placeholder="5 minutes ago"
-          />
-        </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Theme
-          <Select
-            className="mt-1"
-            value={form.theme}
-            onChange={(e) => setForm({ ...form, theme: e.target.value })}
-          >
-            <option value="">Use default theme</option>
-            {includeCurrentOption(options.themes, form.theme).map((theme) => (
-              <option key={theme} value={theme}>
-                {theme}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <div className="block text-xs font-medium text-zinc-600">
-          Frame templates
-          <DeviceMultiSelect
-            className="mt-1"
-            values={form.frameTemplates}
-            emptyLabel="No frame templates yet"
-            options={includeCurrentOptions(options.frameTemplates, form.frameTemplates)}
-            onChange={(values) =>
-              setForm({
-                ...form,
-                frameTemplates: values,
-                template: values[0] ?? "",
-              })
-            }
-          />
-          {options.frameTemplates.length === 0 ? (
-            <span className="mt-1 block text-[10px] text-zinc-400">
-              Create frame templates from the Templates page first.
-            </span>
-          ) : null}
-        </div>
-        <div className="md:col-span-2 block text-xs font-medium text-zinc-600">
-          Pricing packages
-          <DeviceMultiSelect
-            className="mt-1"
-            values={form.pricingProfiles}
-            emptyLabel="No active pricing packages yet"
-            options={includeCurrentOptions(options.pricingProfiles, form.pricingProfiles)}
-            onChange={(values) =>
-              setForm({
-                ...form,
-                pricingProfiles: values,
-                pricingProfile: values[0] ?? "",
-              })
-            }
-          />
-          {options.pricingProfiles.length === 0 ? (
-            <span className="mt-1 block text-[10px] text-zinc-400">
-              Add active pricing packages from Pricing first.
-            </span>
-          ) : null}
-        </div>
-        <div className="md:col-span-2 mt-1 rounded-md border border-dashed border-zinc-200 p-3">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            <Timer className="size-3.5" /> Countdown overrides (optional)
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
+        <Tabs defaultValue="general" className="w-full">
+          <TabsList className="mb-4 grid w-full grid-cols-3">
+            <TabsTrigger value="general">General & Content</TabsTrigger>
+            <TabsTrigger value="timers">Session & Timers</TabsTrigger>
+            <TabsTrigger value="hardware">Hardware & Printer</TabsTrigger>
+          </TabsList>
+
+          {/* TAB 1: GENERAL & CONTENT */}
+          <TabsContent value="general" className="grid gap-3 md:grid-cols-2 min-h-[340px]">
             <label className="block text-xs font-medium text-zinc-600">
-              Session countdown (seconds)
+              Name
               <Input
                 className="mt-1"
-                type="number"
-                min={30}
-                max={1800}
-                placeholder="e.g. 300 (5 min) — leave empty for global default"
-                value={form.sessionCountdownSeconds ?? ""}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    sessionCountdownSeconds:
-                      e.target.value === "" ? null : Number(e.target.value),
-                  })
-                }
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Device 01"
               />
-              <span className="mt-1 block text-[10px] text-zinc-400">
-                30s – 30min · total time for template → thanks flow
-              </span>
             </label>
             <label className="block text-xs font-medium text-zinc-600">
-              Payment countdown (seconds)
+              Location
               <Input
                 className="mt-1"
-                type="number"
-                min={10}
-                max={600}
-                placeholder="e.g. 60 — leave empty to use global default"
-                value={form.paymentCountdownSeconds ?? ""}
+                value={form.location}
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
+                placeholder="PVJ Bandung"
+              />
+            </label>
+            <label className="block text-xs font-medium text-zinc-600">
+              Status
+              <Select
+                className="mt-1"
+                value={form.status}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    paymentCountdownSeconds:
-                      e.target.value === "" ? null : Number(e.target.value),
-                  })
+                  setForm({ ...form, status: e.target.value as Device["status"] })
+                }
+              >
+                <option value="online">online</option>
+                <option value="offline">offline</option>
+                <option value="maintenance">maintenance</option>
+              </Select>
+            </label>
+            <label className="block text-xs font-medium text-zinc-600">
+              Battery: {form.battery}%
+              <Slider
+                min={0}
+                max={100}
+                value={form.battery}
+                onChange={(e) =>
+                  setForm({ ...form, battery: Number(e.target.value) })
                 }
               />
             </label>
-          </div>
-        </div>
-        <div className="md:col-span-2 flex justify-end gap-2 pt-2">
+            <label className="block text-xs font-medium text-zinc-600">
+              App version
+              <Input
+                className="mt-1"
+                value={form.appVersion}
+                onChange={(e) => setForm({ ...form, appVersion: e.target.value })}
+              />
+            </label>
+            <label className="block text-xs font-medium text-zinc-600">
+              Last sync
+              <Input
+                className="mt-1"
+                value={form.lastSync}
+                onChange={(e) => setForm({ ...form, lastSync: e.target.value })}
+                placeholder="5 minutes ago"
+              />
+            </label>
+            <label className="block text-xs font-medium text-zinc-600">
+              Theme
+              <Select
+                className="mt-1"
+                value={form.theme}
+                onChange={(e) => setForm({ ...form, theme: e.target.value })}
+              >
+                <option value="">Use default theme</option>
+                {includeCurrentOption(options.themes, form.theme).map((theme) => (
+                  <option key={theme} value={theme}>
+                    {theme}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <div className="block text-xs font-medium text-zinc-600">
+              Frame templates
+              <DeviceMultiSelect
+                className="mt-1"
+                values={form.frameTemplates}
+                emptyLabel="No frame templates yet"
+                options={includeCurrentOptions(options.frameTemplates, form.frameTemplates)}
+                onChange={(values) =>
+                  setForm({
+                    ...form,
+                    frameTemplates: values,
+                    template: values[0] ?? "",
+                  })
+                }
+              />
+            </div>
+            <div className="md:col-span-2 block text-xs font-medium text-zinc-600">
+              Pricing packages
+              <DeviceMultiSelect
+                className="mt-1"
+                values={form.pricingProfiles}
+                emptyLabel="No active pricing packages yet"
+                options={includeCurrentOptions(options.pricingProfiles, form.pricingProfiles)}
+                onChange={(values) =>
+                  setForm({
+                    ...form,
+                    pricingProfiles: values,
+                    pricingProfile: values[0] ?? "",
+                  })
+                }
+              />
+            </div>
+          </TabsContent>
+
+          {/* TAB 2: SESSION & TIMERS */}
+          <TabsContent value="timers" className="space-y-4 min-h-[340px]">
+            <div className="rounded-md border border-dashed border-zinc-200 p-3 bg-zinc-50/50">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                <Timer className="size-3.5" /> Countdown overrides (optional)
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block text-xs font-medium text-zinc-600">
+                  Session countdown (seconds)
+                  <Input
+                    className="mt-1 bg-white"
+                    type="number"
+                    min={30}
+                    max={1800}
+                    placeholder="e.g. 300 (5 min) — leave empty for default"
+                    value={form.sessionCountdownSeconds ?? ""}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        sessionCountdownSeconds:
+                          e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                  />
+                  <span className="mt-1 block text-[10px] text-zinc-400">
+                    30s – 30min · total time for template → thanks flow
+                  </span>
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Payment countdown (seconds)
+                  <Input
+                    className="mt-1 bg-white"
+                    type="number"
+                    min={10}
+                    max={600}
+                    placeholder="e.g. 60 — leave empty to use default"
+                    value={form.paymentCountdownSeconds ?? ""}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        paymentCountdownSeconds:
+                          e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* TAB 3: HARDWARE & PRINTER */}
+          <TabsContent value="hardware" className="space-y-4 min-h-[340px] max-h-[420px] overflow-y-auto pr-1">
+            {/* PRINTER SETTINGS SECTION */}
+            <div className="rounded-lg border border-zinc-200 p-3 bg-zinc-50/30">
+              <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-600">
+                <Printer className="size-3.5" /> Printer Parameters
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block text-xs font-medium text-zinc-600">
+                  Connection Mode
+                  <Select className="mt-1" value={printerConn} onChange={(e) => setPrinterConn(e.target.value)}>
+                    <option value="usb">USB OTG Cable (Direct)</option>
+                    <option value="bluetooth">Bluetooth (Wireless)</option>
+                    <option value="wifi">Network (TCP/IP socket)</option>
+                  </Select>
+                </label>
+
+                <label className="block text-xs font-medium text-zinc-600">
+                  Paper Size Width
+                  <Select className="mt-1" value={paperWidth} onChange={(e) => setPaperWidth(e.target.value)}>
+                    <option value="80mm">80mm Paper width (Premium)</option>
+                    <option value="58mm">58mm Paper width (Standard)</option>
+                  </Select>
+                </label>
+
+                <div className="md:col-span-2 grid gap-3 md:grid-cols-2 border-t border-zinc-100 pt-3 mt-1">
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Brightness: {brightness > 0 ? `+${brightness}` : brightness}%
+                    <Slider
+                      min={-50}
+                      max={50}
+                      value={brightness}
+                      onChange={(e) => setBrightness(Number(e.target.value))}
+                    />
+                  </label>
+
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Contrast: {contrast > 0 ? `+${contrast}` : contrast}%
+                    <Slider
+                      min={-50}
+                      max={50}
+                      value={contrast}
+                      onChange={(e) => setContrast(Number(e.target.value))}
+                    />
+                  </label>
+
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Density (Darkness): {density}
+                    <Slider
+                      min={1}
+                      max={15}
+                      value={density}
+                      onChange={(e) => setDensity(Number(e.target.value))}
+                    />
+                  </label>
+
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Sharpness: {sharpness}
+                    <Slider
+                      min={0}
+                      max={10}
+                      value={sharpness}
+                      onChange={(e) => setSharpness(Number(e.target.value))}
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* CAMERA OPTIONS SECTION */}
+            <div className="rounded-lg border border-zinc-200 p-3 bg-zinc-50/30">
+              <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-600">
+                <SlidersHorizontal className="size-3.5" /> Camera & Diagnostics
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-100 bg-white p-2.5">
+                  <div>
+                    <span className="block text-xs font-medium text-zinc-700">Mirror Camera Feed</span>
+                    <span className="block text-[10px] text-zinc-400">Flips user selfie live view</span>
+                  </div>
+                  <Switch checked={mirrorCamera} onCheckedChange={setMirrorCamera} />
+                </label>
+
+                <label className="block text-xs font-medium text-zinc-600">
+                  Target Live View Resolution
+                  <Select className="mt-1" value={resolution} onChange={(e) => setResolution(e.target.value)}>
+                    <option value="720p">HD (720p @ 30fps)</option>
+                    <option value="1080p">Full HD (1080p @ 30fps)</option>
+                    <option value="4k">Ultra HD (4K @ 15fps)</option>
+                  </Select>
+                </label>
+
+                <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-100 bg-white p-2.5 md:col-span-2">
+                  <div>
+                    <span className="block text-xs font-medium text-zinc-700">Enable Diagnostics Debug Mode</span>
+                    <span className="block text-[10px] text-zinc-400">Prints verbose connection errors on Kiosk UI</span>
+                  </div>
+                  <Switch checked={debugLogs} onCheckedChange={setDebugLogs} />
+                </label>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex justify-end gap-2 pt-4 border-t border-zinc-100 mt-4">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>

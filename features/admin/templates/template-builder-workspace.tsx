@@ -4,13 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CloudUpload } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import { FrameTemplateBuilder } from "@/features/admin/templates/frame-template-builder";
 import {
   useCreateTemplate,
@@ -19,11 +17,11 @@ import {
 } from "@/features/admin/templates/use-templates";
 import { uploadBuilderImage } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
+import { useBuilderStore } from "@/stores/builder-store";
 import type { FrameLayout } from "@/types/frame-template";
 import type { TemplateFormValues } from "@/types/template";
 
 const PHOTO_COUNTS = [1, 2, 3, 4, 6, 8] as const;
-const CATEGORIES: TemplateFormValues["category"][] = ["frame", "postcard", "receipt", "seasonal", "event"];
 const ACCENT_PRESETS = ["#C4121A", "#2D3F8F", "#F5F1E8", "#1B1B1B", "#F6C9C9", "#B8C7E5"];
 
 const DEFAULT_FORM: TemplateFormValues = {
@@ -48,6 +46,8 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
   const [form, setForm] = useState<TemplateFormValues>(DEFAULT_FORM);
   const [hydratedTemplateId, setHydratedTemplateId] = useState(isNew ? "new" : "");
   const [uploading, setUploading] = useState(false);
+  const builderFullView = useBuilderStore((s) => s.builderFullView);
+  const setBuilderFullView = useBuilderStore((s) => s.setBuilderFullView);
 
   useEffect(() => {
     if (isNew) return;
@@ -128,6 +128,7 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
         await updateTemplate.mutateAsync({ id: templateId, patch: payload });
         toast.success("Template updated");
       }
+      setBuilderFullView(false);
       router.push("/templates");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Save failed");
@@ -137,14 +138,18 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
   const saving = createTemplate.isPending || updateTemplate.isPending;
   const detailsPanel = (
     <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold">Template details</div>
-          <div className="text-xs text-zinc-500">{isNew ? "Create frame template" : `Edit ${template?.name}`}</div>
-        </div>
-        <Badge variant={form.status === "published" ? "success" : "secondary"}>{form.status}</Badge>
+      <div>
+        <div className="text-sm font-semibold">Template details</div>
+        <div className="text-xs text-zinc-500">{isNew ? "Create frame template" : `Edit ${template?.name}`}</div>
       </div>
-      <Button variant="ghost" className="-ml-2 h-8" onClick={() => router.push("/templates")}>
+      <Button
+        variant="ghost"
+        className="-ml-2 h-8"
+        onClick={() => {
+          setBuilderFullView(false);
+          router.push("/templates");
+        }}
+      >
         <ArrowLeft className="size-4" />
         Back
       </Button>
@@ -157,32 +162,6 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
           onChange={(event) => patch("name", event.target.value)}
         />
       </label>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs font-medium text-zinc-600">
-          Category
-          <Select
-            className="mt-1"
-            value={form.category}
-            onChange={(event) => patch("category", event.target.value as TemplateFormValues["category"])}
-          >
-            {CATEGORIES.map((category) => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </Select>
-        </label>
-        <label className="text-xs font-medium text-zinc-600">
-          Status
-          <Select
-            className="mt-1"
-            value={form.status}
-            onChange={(event) => patch("status", event.target.value as TemplateFormValues["status"])}
-          >
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-            <option value="archived">Archived</option>
-          </Select>
-        </label>
-      </div>
       <label className="block text-xs font-medium text-zinc-600">
         Photos
         <Select
@@ -225,13 +204,7 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
           <Input value={form.accentColor} onChange={(event) => patch("accentColor", event.target.value)} />
         </div>
       </div>
-      <label className="flex items-center justify-between gap-3 rounded-lg border border-zinc-100 p-3">
-        <span>
-          <span className="block text-sm font-medium">Default</span>
-          <span className="block text-xs text-zinc-500">Pre-selected in kiosk</span>
-        </span>
-        <Switch checked={form.isDefault} onCheckedChange={(checked) => patch("isDefault", checked)} />
-      </label>
+
       <label className="block text-xs font-medium text-zinc-600">
         Frame image URL
         <Input
@@ -256,7 +229,15 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
   );
 
   return (
-    <div className="-mx-4 -my-6 overflow-hidden lg:-mx-8" style={{ height: "calc(100vh - 4rem)" }}>
+    <div
+      className={cn(
+        "overflow-hidden",
+        builderFullView
+          ? "fixed inset-0 z-[100]"
+          : "-mx-4 -my-6 lg:-mx-8",
+      )}
+      style={{ height: builderFullView ? "100vh" : "calc(100vh - 4rem)" }}
+    >
       <FrameTemplateBuilder
         presentation="embedded"
         resetKey={templateId}
@@ -265,7 +246,10 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
         accentColor={form.accentColor}
         photoCount={form.photoCount}
         frameImageUrl={form.frameImageUrl}
-        onClose={() => router.push("/templates")}
+        onClose={() => {
+          setBuilderFullView(false);
+          router.push("/templates");
+        }}
         onSave={handleSave}
         saveLabel={saving ? "Saving..." : isNew ? "Create template" : "Save template"}
         detailsPanel={detailsPanel}
