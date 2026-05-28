@@ -14,7 +14,7 @@ type SubscriptionPlanRow = {
   is_public: boolean;
 };
 
-const PLAN_ORDER = ["monthly", "quarterly", "semiannual", "yearly"];
+const PLAN_ORDER = ["monthly", "quarterly", "semiannual", "yearly", "business"];
 
 export async function getPublicSubscriptionPricingPlans(
   supabaseClient?: SupabaseClient,
@@ -29,13 +29,21 @@ export async function getPublicSubscriptionPricingPlans(
     .eq("is_public", true)
     .order("duration_months", { ascending: true });
 
+  const staticBusinessPlan = pricingPlans.find((p) => p.id === "business")!;
+
   if (error || !data?.length) {
     return pricingPlans;
   }
 
-  return (data as SubscriptionPlanRow[])
+  const mapped = (data as SubscriptionPlanRow[])
     .sort((left, right) => PLAN_ORDER.indexOf(left.id) - PLAN_ORDER.indexOf(right.id))
     .map(mapDbPlanToPricingPlan);
+
+  if (!mapped.some((p) => p.id === "business")) {
+    mapped.push(staticBusinessPlan);
+  }
+
+  return mapped;
 }
 
 function mapDbPlanToPricingPlan(row: SubscriptionPlanRow): PricingPlan {
@@ -49,19 +57,19 @@ function mapDbPlanToPricingPlan(row: SubscriptionPlanRow): PricingPlan {
   return {
     id: row.id,
     name: row.name,
-    price: formatCompactCurrency(row.base_price),
+    price: row.id === "business" ? "Contact sales" : formatCompactCurrency(row.base_price),
     amount: row.base_price,
     durationMonths: row.duration_months,
     includedDevices: row.included_devices,
     additionalDevicePriceMonthly: row.additional_device_price_monthly,
-    period: periodLabel(row.duration_months),
+    period: row.id === "business" ? "" : periodLabel(row.duration_months),
     duration: `${durationLabel} access`,
     description:
       fallback?.description ??
       `Subscription package for ${durationLabel} POSKART access.`,
     cta: fallback?.cta ?? `Subscribe ${row.name}`,
     highlighted: row.id === "yearly",
-    features: [
+    features: fallback?.features ?? [
       "POSKART dashboard",
       "Visual layout builder",
       "Theme and template CMS",
@@ -69,7 +77,7 @@ function mapDbPlanToPricingPlan(row: SubscriptionPlanRow): PricingPlan {
       `${deviceLabel} included`,
       `Additional device ${addOnLabel}`,
     ],
-    limits: [`${durationLabel} access`, `${deviceLabel} included`, `Add-on ${addOnLabel}`],
+    limits: fallback?.limits ?? [`${durationLabel} access`, `${deviceLabel} included`, `Add-on ${addOnLabel}`],
   };
 }
 

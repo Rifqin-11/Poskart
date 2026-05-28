@@ -146,6 +146,29 @@ export const pricingPlans: PricingPlan[] = [
     ],
     limits: ["12 months access", "5 devices included", "Best value subscription"],
   },
+  {
+    id: "business",
+    name: "Business",
+    price: "Contact sales",
+    amount: 0,
+    durationMonths: 12,
+    includedDevices: 9999,
+    additionalDevicePriceMonthly: 0,
+    period: "",
+    duration: "Custom billing",
+    description: "For large enterprise operations and high-volume custom features.",
+    cta: "Contact Sales",
+    highlighted: false,
+    features: [
+      "Custom organization dashboard",
+      "Visual builder & premium templates",
+      "Dedicated multi-tenant servers",
+      "Uncapped devices configuration",
+      "SLA support 24/7",
+      "Hardware setup consultation",
+    ],
+    limits: ["Enterprise access", "Unlimited devices", "Custom service contracts"],
+  },
 ];
 
 export function calculateSubscriptionTotal(plan: PricingPlan, deviceCount: number) {

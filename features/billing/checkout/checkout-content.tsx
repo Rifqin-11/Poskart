@@ -44,6 +44,49 @@ export function CheckoutContent({
   const showDuitku = gatewayMode === "duitku" || gatewayMode === "both";
   const showMidtrans = gatewayMode === "midtrans" || gatewayMode === "both";
 
+  if (plan.id === "business") {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-lg md:p-12">
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+            POSKART Enterprise Plan
+          </h1>
+          <p className="mt-4 text-sm leading-7 text-zinc-600">
+            Terima kasih atas ketertarikan Anda pada paket Business/Enterprise POSKART. Paket ini dirancang khusus untuk jaringan photobooth berskala besar dengan kebutuhan custom.
+          </p>
+          <div className="mt-6 space-y-3 text-left max-w-md mx-auto">
+            {[
+              "Uncapped devices configuration & deployment",
+              "Custom organization dashboard & multi-tenant permissions",
+              "SLA support 24/7 & priority assistance",
+              "Custom visual builder features & themes development",
+              "Hardware setup & printer diagnostic consultations",
+            ].map((feat) => (
+              <div key={feat} className="flex items-start gap-2.5 text-sm text-zinc-600">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                <span>{feat}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
+            <Link
+              href={`mailto:${businessProfile.salesEmail}?subject=POSKART Enterprise Subscription Request`}
+              className={buttonVariants({ size: "lg" })}
+            >
+              Contact Sales Team
+            </Link>
+            <Link
+              href="/subscriptions"
+              className={buttonVariants({ variant: "outline", size: "lg" })}
+            >
+              View standard plans
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form
       action={createSubscriptionOrderAction}
