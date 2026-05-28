@@ -12,7 +12,6 @@ const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
   qr: { bg: "rgba(245,158,11,0.55)", border: "#b45309" },
   "receipt-preview": { bg: "rgba(168,85,247,0.5)", border: "#7e22ce" },
   image: { bg: "rgba(16,185,129,0.45)", border: "#065f46" },
-  stamp: { bg: "rgba(16,185,129,0.35)", border: "#10b981" },
   "frame-preview": { bg: "rgba(16,185,129,0.35)", border: "#34d399" },
   "template-list": { bg: "rgba(234,88,12,0.5)", border: "#9a3412" },
   "template-preview": { bg: "rgba(234,88,12,0.4)", border: "#fb923c" },
@@ -22,8 +21,6 @@ const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
   "payment-countdown": { bg: "rgba(34,197,94,0.4)", border: "#22c55e" },
   "camera-view": { bg: "rgba(15,23,42,0.7)", border: "#1e293b" },
   "photo-result": { bg: "rgba(15,23,42,0.55)", border: "#334155" },
-  "countdown-overlay": { bg: "rgba(244,114,182,0.4)", border: "#db2777" },
-  "flash-overlay": { bg: "rgba(255,255,255,0.55)", border: "#fafafa" },
 };
 
 function readString(value: unknown, fallback = ""): string {
@@ -53,7 +50,6 @@ function MiniNode({
   const isMedia =
     node.type === "image" ||
     node.type === "frame-preview" ||
-    node.type === "stamp" ||
     node.type === "background-decoration";
 
   return (

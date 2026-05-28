@@ -34,6 +34,7 @@ import {
   Link2,
   Lock,
   Maximize2,
+  Minimize2,
   Move,
   PaintBucket,
   Plus,
@@ -379,47 +380,6 @@ function NodeRenderer({
     );
   }
 
-  if (node.type === "countdown-overlay") {
-    return (
-      <div className="relative h-full w-full overflow-hidden rounded-lg border-2 border-dashed border-red-300 bg-zinc-900/70">
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
-          {/* Pulsing ring */}
-          <div className="relative flex h-20 w-20 items-center justify-center rounded-full border-4 border-red-400/60">
-            <div className="absolute inset-0 animate-ping rounded-full border-2 border-red-400/30" />
-            <span className="font-mono text-4xl font-black text-white/90">
-              3
-            </span>
-          </div>
-          <span className="text-[9px] font-bold uppercase tracking-widest text-red-300">
-            ⏱ Countdown Overlay
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  if (node.type === "flash-overlay") {
-    return (
-      <div
-        className="relative h-full w-full overflow-hidden rounded-lg border-2 border-dashed border-yellow-300"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, rgba(255,255,220,0.95) 0%, rgba(255,250,150,0.7) 60%, rgba(234,179,8,0.3) 100%)",
-        }}
-      >
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1">
-          <span className="text-5xl">⚡</span>
-          <span className="text-[9px] font-bold uppercase tracking-widest text-yellow-700">
-            Flash Overlay
-          </span>
-          <span className="text-[8px] text-yellow-600/70">
-            Fullscreen white flash on shutter
-          </span>
-        </div>
-      </div>
-    );
-  }
-
   if (node.type === "return-countdown") {
     const cdText =
       typeof node.props.countdownText === "string"
@@ -532,8 +492,11 @@ function NodeRenderer({
   }
 
   if (node.type === "template-list") {
-    const columns =
-      typeof node.props.columns === "number" ? node.props.columns : 2;
+    const minTileWidth = readNumber(node.props.minTileWidth, 280);
+    const estimatedColumns = Math.max(
+      1,
+      Math.floor((node.width - 24) / minTileWidth),
+    );
     const tileCount =
       typeof node.props.tileCount === "number" ? node.props.tileCount : 4;
     const tiles = Array.from({ length: tileCount });
@@ -544,7 +507,7 @@ function NodeRenderer({
           {/* Grid header */}
           <div className="mb-2 flex items-center justify-between px-1">
             <span className="text-[9px] font-bold uppercase tracking-widest text-orange-500">
-              Template Grid ({columns} cols)
+              Template Grid (auto · {estimatedColumns} cols)
             </span>
             <span className="rounded bg-orange-200 px-1.5 py-0.5 text-[8px] font-semibold text-orange-700">
               template.select
@@ -553,7 +516,9 @@ function NodeRenderer({
           {/* Template tiles */}
           <div
             className="grid h-[calc(100%-28px)] gap-2"
-            style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
+            style={{
+              gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${minTileWidth}px), 1fr))`,
+            }}
           >
             {tiles.map((_, i) => (
               <div
@@ -795,7 +760,6 @@ function SortableLayer({ node }: { node: BuilderNode }) {
     "qr-placeholder": "bg-amber-100 text-amber-700",
     qr: "bg-amber-100 text-amber-700",
     image: "bg-emerald-100 text-emerald-700",
-    stamp: "bg-emerald-100 text-emerald-700",
     "frame-preview": "bg-emerald-100 text-emerald-700",
     "receipt-preview": "bg-violet-100 text-violet-700",
     "template-list": "bg-orange-100 text-orange-700",
@@ -2643,6 +2607,12 @@ export function VisualBuilder() {
   }
   // ── end Auto-save & Load ─────────────────────────────
 
+  // ── Full-view mode ────────────────────────────────────────
+  const fullView = useBuilderStore((s) => s.builderFullView);
+  const setFullView = useBuilderStore((s) => s.setBuilderFullView);
+
+  // Reset full-view when leaving the builder page
+  useEffect(() => () => { setFullView(false); }, [setFullView]);
   // ── Zoom / Pan ────────────────────────────────────────────
   const [zoom, setZoom] = useState(0.35);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -2690,6 +2660,13 @@ export function VisualBuilder() {
   useEffect(() => {
     fitToScreen();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-fit whenever full-view is toggled (sidebars appear/disappear)
+  useEffect(() => {
+    // Small delay so the DOM has time to remove/add the sidebars before measuring
+    const t = setTimeout(() => fitToScreen(), 50);
+    return () => clearTimeout(t);
+  }, [fullView, fitToScreen]);
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -3048,8 +3025,13 @@ export function VisualBuilder() {
 
   return (
     <div
-      className="-mx-4 -my-6 flex flex-col overflow-hidden lg:-mx-8"
-      style={{ height: "calc(100vh - 4rem)" }}
+      className={cn(
+        "flex flex-col overflow-hidden",
+        fullView
+          ? "fixed inset-0 z-[100]"  /* cover everything — shell is hidden */
+          : "-mx-4 -my-6 lg:-mx-8",  /* cancel main padding as before */
+      )}
+      style={{ height: fullView ? "100vh" : "calc(100vh - 4rem)" }}
     >
       {/* ── Top toolbar ──────────────────────────────── */}
       <div className="flex h-11 shrink-0 items-center gap-1 border-b border-zinc-200 bg-white px-3">
@@ -3114,25 +3096,11 @@ export function VisualBuilder() {
           <ZoomOut className="size-3.5" />
         </button>
         <button
-          className="w-14 rounded-md px-1 py-1 text-center text-xs font-mono text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-          onClick={fitToScreen}
-          title="Fit to screen (Shift+1)"
-        >
-          {Math.round(zoom * 100)}%
-        </button>
-        <button
           className={toolbarBtn}
           onClick={() => setZoom((z) => clampZoom(z + 0.1))}
           title="Zoom in"
         >
           <ZoomIn className="size-3.5" />
-        </button>
-        <button
-          className={toolbarBtn}
-          onClick={fitToScreen}
-          title="Fit to screen (Shift+1)"
-        >
-          <Maximize2 className="size-3.5" />
         </button>
         {selectedId && (
           <button
@@ -3143,6 +3111,25 @@ export function VisualBuilder() {
             <Crosshair className="size-3.5" />
           </button>
         )}
+
+        <div className="mx-2 h-4 w-px bg-zinc-200" />
+
+        {/* Full-view toggle */}
+        <button
+          className={cn(
+            toolbarBtn,
+            fullView && "bg-zinc-900 text-white hover:bg-zinc-700 hover:text-white",
+          )}
+          onClick={() => setFullView(!fullView)}
+          title={fullView ? "Exit full view (Esc)" : "Full view — hide sidebars"}
+        >
+          {fullView ? (
+            <Minimize2 className="size-3.5" />
+          ) : (
+            <Maximize2 className="size-3.5" />
+          )}
+          {!fullView && <span className="text-[11px]">Full view</span>}
+        </button>
 
         <div className="mx-2 h-4 w-px bg-zinc-200" />
 
@@ -3744,6 +3731,18 @@ export function VisualBuilder() {
             Ctrl+scroll to zoom · Space+drag to pan · Shift+1 Fit · Shift+2 100%
             · F Pan to selection
           </div>
+
+          {/* Full-view floating exit pill */}
+          {fullView && (
+            <button
+              onClick={() => setFullView(false)}
+              className="pointer-events-auto absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-zinc-900/90 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-zinc-700"
+              title="Exit full view"
+            >
+              <Minimize2 className="size-3.5" />
+              Exit full view
+            </button>
+          )}
         </div>
 
         {/* ── Right sidebar — Properties ─────────────── */}

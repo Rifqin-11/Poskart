@@ -10,13 +10,10 @@ export type BuilderComponentType =
   | "text"
   | "image"
   | "button"
-  | "stamp"
   | "qr"
   | "qr-placeholder"
   | "camera-view"
   | "photo-result" // Captured photo result slot on camera page
-  | "countdown-overlay" // Full-screen countdown (3-2-1) before shutter
-  | "flash-overlay" // Full-screen white flash after shutter
   | "receipt-preview"
   | "frame-preview"
   | "template-list" // Grid of frame templates on the /template picker page

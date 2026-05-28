@@ -16,7 +16,6 @@ export function isMediaNode(node: BuilderNode) {
   return (
     node.type === "image" ||
     node.type === "frame-preview" ||
-    node.type === "stamp" ||
     node.type === "background-decoration"
   );
 }

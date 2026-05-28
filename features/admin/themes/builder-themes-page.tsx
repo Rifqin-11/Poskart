@@ -8,9 +8,12 @@ import {
   Layers,
   Loader2,
   MoreVertical,
+  Monitor,
   Power,
   PowerOff,
+  Smartphone,
   Trash2,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -21,8 +24,231 @@ import {
   useDeactivateLayout,
   useDeleteLayout,
 } from "@/features/admin/layout/use-layout";
+import { useBooths, useUpdateBooth } from "@/features/admin/devices/use-devices";
 import type { LayoutSchemaRow } from "@/server/admin/_shared/admin-repository";
+import type { Device } from "@/types/device";
 import { cn } from "@/lib/utils";
+
+// ── Assign Devices Modal ─────────────────────────────────────────────────────
+
+function AssignDevicesModal({
+  layout,
+  onClose,
+  onDone,
+}: {
+  layout: LayoutSchemaRow;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { data: devices = [], isLoading: devicesLoading } = useBooths();
+  const updateBooth = useUpdateBooth();
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [activating, setActivating] = useState(false);
+
+  const toggleDevice = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === devices.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(devices.map((d) => d.id)));
+    }
+  };
+
+
+
+  const statusColor: Record<Device["status"], string> = {
+    online: "bg-emerald-400",
+    offline: "bg-zinc-300",
+    maintenance: "bg-amber-400",
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold text-zinc-900">Assign to Devices</h2>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              Select which kiosks will use{" "}
+              <span className="font-medium text-zinc-700">{layout.name}</span>
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Device list */}
+        <div className="max-h-72 overflow-y-auto">
+          {devicesLoading && (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="size-5 animate-spin text-zinc-400" />
+            </div>
+          )}
+          {!devicesLoading && devices.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Monitor className="mb-2 size-8 text-zinc-300" />
+              <p className="text-sm text-zinc-500">No devices registered yet</p>
+            </div>
+          )}
+          {!devicesLoading && devices.length > 0 && (
+            <>
+              {/* Select all row */}
+              <button
+                onClick={toggleAll}
+                className="flex w-full items-center gap-3 border-b border-zinc-100 px-4 py-2.5 hover:bg-zinc-50 text-left"
+              >
+                <div
+                  className={cn(
+                    "flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
+                    selected.size === devices.length
+                      ? "border-zinc-900 bg-zinc-900"
+                      : "border-zinc-300",
+                  )}
+                >
+                  {selected.size === devices.length && (
+                    <Check className="size-2.5 text-white stroke-[3]" />
+                  )}
+                </div>
+                <span className="text-xs font-semibold text-zinc-600">
+                  {selected.size === devices.length ? "Deselect all" : "Select all"}
+                </span>
+                <Badge variant="secondary" className="ml-auto text-[10px]">
+                  {devices.length}
+                </Badge>
+              </button>
+              {devices.map((device) => {
+                const isSelected = selected.has(device.id);
+                const hasCurrentTheme = device.theme === layout.name;
+                return (
+                  <button
+                    key={device.id}
+                    onClick={() => toggleDevice(device.id)}
+                    className={cn(
+                      "flex w-full items-center gap-3 border-b border-zinc-50 px-4 py-3 text-left transition-colors hover:bg-zinc-50",
+                      isSelected && "bg-zinc-50",
+                    )}
+                  >
+                    {/* Checkbox */}
+                    <div
+                      className={cn(
+                        "flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
+                        isSelected ? "border-zinc-900 bg-zinc-900" : "border-zinc-300",
+                      )}
+                    >
+                      {isSelected && (
+                        <Check className="size-2.5 text-white stroke-[3]" />
+                      )}
+                    </div>
+                    {/* Icon */}
+                    <div className="relative shrink-0">
+                      <Smartphone className="size-5 text-zinc-400" />
+                      <span
+                        className={cn(
+                          "absolute -bottom-0.5 -right-0.5 size-2 rounded-full border border-white",
+                          statusColor[device.status],
+                        )}
+                      />
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-sm font-medium text-zinc-800">
+                          {device.name}
+                        </p>
+                        {hasCurrentTheme && (
+                          <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
+                            current
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 truncate text-[11px] text-zinc-400">
+                        {device.location} · {device.theme || "no theme assigned"}
+                      </p>
+                    </div>
+                    {/* Status badge */}
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize",
+                        device.status === "online"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : device.status === "offline"
+                            ? "bg-zinc-100 text-zinc-500"
+                            : "bg-amber-100 text-amber-700",
+                      )}
+                    >
+                      {device.status}
+                    </span>
+                  </button>
+                );
+              })}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-zinc-100 px-5 py-4 flex items-center gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-lg border border-zinc-200 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => void handleConfirm()}
+            disabled={activating}
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-zinc-900 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50"
+          >
+            {activating ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Power className="size-3.5" />
+            )}
+            {activating ? "Activating…" : `Activate${selected.size > 0 ? ` & assign (${selected.size})` : ""}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  async function handleConfirm() {
+    setActivating(true);
+    try {
+      await Promise.all(
+        Array.from(selected).map((deviceId) =>
+          updateBooth.mutateAsync({ id: deviceId, patch: { theme: layout.name } }),
+        ),
+      );
+      toast.success(
+        selected.size > 0
+          ? `Theme "${layout.name}" assigned to ${selected.size} device${selected.size > 1 ? "s" : ""}.`
+          : `Theme "${layout.name}" activated.`,
+      );
+      onDone();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Assignment failed");
+    } finally {
+      setActivating(false);
+    }
+  }
+}
+
+// ── BuilderThemesPage ────────────────────────────────────────────────────────
 
 export function BuilderThemesPage() {
   const { data: layouts = [], isLoading } = useLayoutSchemas();
@@ -31,14 +257,16 @@ export function BuilderThemesPage() {
   const deleteLayout = useDeleteLayout();
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  /** Layout pending activation — opens the assign-to-devices modal */
+  const [assignModal, setAssignModal] = useState<LayoutSchemaRow | null>(null);
 
   const activeLayout = layouts.find((l) => l.is_active);
 
+  /** Activate theme in DB (sets is_active = true) */
   const handleActivate = async (id: string) => {
     setLoadingId(id);
     try {
       await setActive.mutateAsync(id);
-      toast.success("Theme activated — kiosk will use this layout.");
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to activate theme",
@@ -46,6 +274,12 @@ export function BuilderThemesPage() {
     } finally {
       setLoadingId(null);
     }
+  };
+
+  /** Called after modal confirms — activate then close modal */
+  const handleActivateWithAssign = async (layout: LayoutSchemaRow) => {
+    await handleActivate(layout.id);
+    setAssignModal(null);
   };
 
   const handleDeactivate = async (id: string) => {
@@ -153,7 +387,7 @@ export function BuilderThemesPage() {
             layout={layout}
             isLoading={loadingId === layout.id}
             confirmingDelete={confirmDelete === layout.id}
-            onActivate={() => void handleActivate(layout.id)}
+            onActivate={() => setAssignModal(layout)}
             onDeactivate={() => void handleDeactivate(layout.id)}
             onRequestDelete={() => setConfirmDelete(layout.id)}
             onCancelDelete={() => setConfirmDelete(null)}
@@ -161,11 +395,20 @@ export function BuilderThemesPage() {
           />
         ))}
       </div>
+
+      {/* Assign to devices modal */}
+      {assignModal && (
+        <AssignDevicesModal
+          layout={assignModal}
+          onClose={() => setAssignModal(null)}
+          onDone={() => void handleActivateWithAssign(assignModal)}
+        />
+      )}
     </div>
   );
 }
 
-// ── ThemeCard ────────────────────────────────────────────────
+// ── ThemeCard ────────────────────────────────────────────────────────────────
 
 interface ThemeCardProps {
   layout: LayoutSchemaRow;

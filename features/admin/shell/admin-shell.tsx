@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { CommandSearch } from "@/components/ui/command";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useBuilderStore } from "@/stores/builder-store";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
@@ -213,12 +214,16 @@ export function AdminShell({
   const { data: subscription } = useSubscriptionStatus();
   const adminMode = isSuperAdmin(userEmail);
   const canPublish = adminMode || subscription?.tier === "Pro";
+  const builderFullView = useBuilderStore((s) => s.builderFullView);
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-zinc-200 bg-zinc-50 p-4 lg:block">
-        <SidebarContent userEmail={userEmail} onOpenSubscription={() => setSubscriptionDialogOpen(true)} />
-      </aside>
+      {/* App sidebar — hidden in builder full-view */}
+      {!builderFullView && (
+        <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-zinc-200 bg-zinc-50 p-4 lg:block">
+          <SidebarContent userEmail={userEmail} onOpenSubscription={() => setSubscriptionDialogOpen(true)} />
+        </aside>
+      )}
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SidebarContent
@@ -228,89 +233,92 @@ export function AdminShell({
         />
       </Sheet>
 
-      <div className="lg:pl-72">
-        <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/85 px-4 backdrop-blur-xl lg:px-8">
-          <div className="flex h-16 items-center gap-4">
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(true)}>
-              <Menu />
-            </Button>
-            <div className="hidden w-full max-w-md md:block">
-              <CommandSearch />
-            </div>
-            <div className="ml-auto flex items-center gap-3">
-              <div className="hidden text-right md:block">
-                <div className="text-xs text-zinc-500">Signed in as</div>
-                <div className="max-w-48 truncate text-sm font-medium">{userEmail ?? "POSKART Photobooth"}</div>
-              </div>
-              <Button variant="outline" size="sm" disabled={!canPublish}>
-                {!canPublish ? <LockKeyhole className="size-3.5" /> : null}
-                Publish
+      <div className={cn("transition-all duration-200", builderFullView ? "lg:pl-0" : "lg:pl-72")}>
+        {/* Topbar — hidden in builder full-view */}
+        {!builderFullView && (
+          <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/85 px-4 backdrop-blur-xl lg:px-8">
+            <div className="flex h-16 items-center gap-4">
+              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(true)}>
+                <Menu />
               </Button>
-              <div className="relative">
-                <button
-                  type="button"
-                  className="flex items-center gap-1 rounded-full p-0.5 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
-                  onClick={() => setAccountMenuOpen((value) => !value)}
-                  aria-expanded={accountMenuOpen}
-                  aria-haspopup="menu"
-                  aria-label="Open account menu"
-                >
-                  <Avatar name={initials} />
-                  <ChevronDown className="size-3.5 text-zinc-500" />
-                </button>
-                {accountMenuOpen ? (
-                  <div
-                    role="menu"
-                    className="absolute right-0 top-12 z-50 w-64 rounded-lg border border-zinc-200 bg-white p-2 shadow-xl"
+              <div className="hidden w-full max-w-md md:block">
+                <CommandSearch />
+              </div>
+              <div className="ml-auto flex items-center gap-3">
+                <div className="hidden text-right md:block">
+                  <div className="text-xs text-zinc-500">Signed in as</div>
+                  <div className="max-w-48 truncate text-sm font-medium">{userEmail ?? "POSKART Photobooth"}</div>
+                </div>
+                <Button variant="outline" size="sm" disabled={!canPublish}>
+                  {!canPublish ? <LockKeyhole className="size-3.5" /> : null}
+                  Publish
+                </Button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 rounded-full p-0.5 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+                    onClick={() => setAccountMenuOpen((value) => !value)}
+                    aria-expanded={accountMenuOpen}
+                    aria-haspopup="menu"
+                    aria-label="Open account menu"
                   >
-                    <div className="border-b border-zinc-100 px-3 py-2">
-                      <div className="text-xs text-zinc-500">Signed in as</div>
-                      <div className="truncate text-sm font-medium text-zinc-950">
-                        {userEmail ?? "POSKART Photobooth"}
+                    <Avatar name={initials} />
+                    <ChevronDown className="size-3.5 text-zinc-500" />
+                  </button>
+                  {accountMenuOpen ? (
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-12 z-50 w-64 rounded-lg border border-zinc-200 bg-white p-2 shadow-xl"
+                    >
+                      <div className="border-b border-zinc-100 px-3 py-2">
+                        <div className="text-xs text-zinc-500">Signed in as</div>
+                        <div className="truncate text-sm font-medium text-zinc-950">
+                          {userEmail ?? "POSKART Photobooth"}
+                        </div>
+                      </div>
+                      <div className="py-1">
+                        <Link
+                          href="/organization"
+                          role="menuitem"
+                          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
+                          onClick={() => setAccountMenuOpen(false)}
+                        >
+                          <UserRound className="size-4" />
+                          Account preference
+                        </Link>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
+                          onClick={() => {
+                            setAccountMenuOpen(false);
+                            setSubscriptionDialogOpen(true);
+                          }}
+                        >
+                          <ReceiptText className="size-4" />
+                          Change subscription
+                        </button>
+                      </div>
+                      <div className="border-t border-zinc-100 pt-1">
+                        <form action={signOutAction}>
+                          <button
+                            type="submit"
+                            role="menuitem"
+                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                          >
+                            <LogOut className="size-4" />
+                            Logout
+                          </button>
+                        </form>
                       </div>
                     </div>
-                    <div className="py-1">
-                      <Link
-                        href="/organization"
-                        role="menuitem"
-                        className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
-                        onClick={() => setAccountMenuOpen(false)}
-                      >
-                        <UserRound className="size-4" />
-                        Account preference
-                      </Link>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
-                        onClick={() => {
-                          setAccountMenuOpen(false);
-                          setSubscriptionDialogOpen(true);
-                        }}
-                      >
-                        <ReceiptText className="size-4" />
-                        Change subscription
-                      </button>
-                    </div>
-                    <div className="border-t border-zinc-100 pt-1">
-                      <form action={signOutAction}>
-                        <button
-                          type="submit"
-                          role="menuitem"
-                          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                        >
-                          <LogOut className="size-4" />
-                          Logout
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-                ) : null}
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
-        </header>
-        <main className="px-4 py-6 lg:px-8">{children}</main>
+          </header>
+        )}
+        <main className={cn(builderFullView ? "p-0" : "px-4 py-6 lg:px-8")}>{children}</main>
       </div>
       <SubscriptionDialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen} />
     </div>
