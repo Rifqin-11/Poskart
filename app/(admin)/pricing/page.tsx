@@ -1,4 +1,4 @@
-import { PricingManagement } from "@/components/data-table/operations-pages";
+import { PricingManagement } from "@/features/admin/pricing";
 
 export default async function AdminPricingPage() {
   return <PricingManagement />;

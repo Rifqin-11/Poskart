@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { TenantManagement } from "@/components/data-table/operations-pages";
+import { TenantManagement } from "@/features/admin/superadmin";
 import { isSuperAdminEmail } from "@/lib/auth/admin";
 
 export default async function TenantsPage() {

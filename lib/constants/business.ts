@@ -9,7 +9,8 @@ export const businessProfile = {
   phone: "+62 82219262377",
   whatsapp: "+62 82219262377",
   whatsappUrl: "https://wa.me/6282219262377",
-  address: "Banjarnegara, Jawa Tengah, Indonesia",
+  address:
+    "Perumahan Gayam Permai, Kutabanjarnegara, Banjarnegara, Jawa Tengah",
   supportHours: "Monday-Friday, 09:00-18:00 WIB",
   domain: "https://poskart.my.id",
   taxNote:

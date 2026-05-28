@@ -2,9 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { businessProfile, calculateSubscriptionTotal } from "@/lib/constants/business";
-import { createDuitkuPayment, createMerchantOrderId, getDuitkuConfig } from "@/lib/duitku";
-import { createMidtransPayment } from "@/lib/midtrans";
-import { getPublicSubscriptionPricingPlans } from "@/lib/subscription-pricing";
+import { createDuitkuPayment, createMerchantOrderId, getDuitkuConfig } from "@/server/payments/duitku";
+import { createMidtransPayment } from "@/server/payments/midtrans";
+import { getPublicSubscriptionPricingPlans } from "@/server/subscription/pricing";
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { createClient } from "@/lib/supabase/server";
 

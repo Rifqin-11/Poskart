@@ -1,4 +1,4 @@
-import { AdminShell } from "@/components/layout/admin-shell";
+import { AdminShell } from "@/features/admin/shell/admin-shell";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

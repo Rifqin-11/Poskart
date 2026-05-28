@@ -1,4 +1,4 @@
-import { AssetLibrary } from "@/components/data-table/operations-pages";
+import { AssetLibrary } from "@/features/admin/assets";
 
 export default function AssetsPage() {
   return <AssetLibrary />;

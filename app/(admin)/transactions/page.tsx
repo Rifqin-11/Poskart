@@ -1,4 +1,4 @@
-import { TransactionsMonitoring } from "@/components/data-table/operations-pages";
+import { TransactionsMonitoring } from "@/features/admin/transactions";
 
 export default function TransactionsPage() {
   return <TransactionsMonitoring />;

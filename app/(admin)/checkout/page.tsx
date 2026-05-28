@@ -1,8 +1,8 @@
 import { Suspense } from "react";
-import { CheckoutContent } from "@/components/checkout/checkout-content";
+import { CheckoutContent } from "@/features/billing/checkout/checkout-content";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/server";
-import { getPublicSubscriptionPricingPlans } from "@/lib/subscription-pricing";
+import { getPublicSubscriptionPricingPlans } from "@/server/subscription/pricing";
 
 type GatewayMode = "duitku" | "midtrans" | "both";
 

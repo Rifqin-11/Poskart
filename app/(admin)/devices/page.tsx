@@ -1,4 +1,4 @@
-import { BoothManagement } from "@/components/data-table/operations-pages";
+import { BoothManagement } from "@/features/admin/devices";
 
 export default function BoothsPage() {
   return <BoothManagement />;

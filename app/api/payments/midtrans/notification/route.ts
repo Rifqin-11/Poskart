@@ -5,8 +5,8 @@ import {
   mapMidtransTransactionStatus,
   type MidtransNotificationPayload,
   verifyMidtransNotificationSignature,
-} from "@/lib/midtrans";
-import { activatePaidSubscription } from "@/lib/payments/subscription-activation";
+} from "@/server/payments/midtrans";
+import { activatePaidSubscription } from "@/server/subscription/activation";
 
 export async function POST(request: NextRequest) {
   const payload = (await request.json().catch(() => null)) as MidtransNotificationPayload | null;

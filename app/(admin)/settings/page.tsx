@@ -1,4 +1,4 @@
-import { SettingsPanel } from "@/components/data-table/operations-pages";
+import { SettingsPanel } from "@/features/admin/settings";
 
 export default function SettingsPage() {
   return <SettingsPanel />;

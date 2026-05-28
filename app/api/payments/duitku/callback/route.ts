@@ -5,8 +5,8 @@ import {
   mapDuitkuResultCode,
   type DuitkuCallbackPayload,
   verifyDuitkuCallbackSignature,
-} from "@/lib/duitku";
-import { activatePaidSubscription } from "@/lib/payments/subscription-activation";
+} from "@/server/payments/duitku";
+import { activatePaidSubscription } from "@/server/subscription/activation";
 
 export async function POST(request: NextRequest) {
   const payload = await readDuitkuPayload(request);

@@ -1,0 +1,137 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { buttonVariants } from "@/components/ui/button";
+import { pricingPlans as fallbackPricingPlans, type PricingPlan } from "@/lib/constants/business";
+import { cn, formatCurrency } from "@/lib/utils";
+
+export function PricingCards({
+  defaultPlanId = "yearly",
+  plans = fallbackPricingPlans,
+}: {
+  defaultPlanId?: string;
+  plans?: PricingPlan[];
+}) {
+  const [activePlanId, setActivePlanId] = useState(defaultPlanId);
+  const visiblePlans = plans.length > 0 ? plans : fallbackPricingPlans;
+  const monthlyPlan = visiblePlans.find((plan) => plan.durationMonths === 1);
+  const monthlyBenchmark = monthlyPlan ? getMonthlyDevicePrice(monthlyPlan) : null;
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {visiblePlans.map((plan) => {
+        const active = activePlanId === plan.id;
+        const monthlyDevicePrice = getMonthlyDevicePrice(plan);
+        const savingsPercent =
+          monthlyBenchmark && plan.durationMonths > 1
+            ? Math.max(
+                0,
+                Math.round((1 - monthlyDevicePrice / monthlyBenchmark) * 100),
+              )
+            : 0;
+
+        return (
+          <article
+            key={plan.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => setActivePlanId(plan.id)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setActivePlanId(plan.id);
+              }
+            }}
+            className={cn(
+              "cursor-pointer rounded-lg border p-6 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950",
+              active
+                ? "border-zinc-950 bg-zinc-950 text-white shadow-xl"
+                : "border-zinc-200 bg-white text-zinc-950 hover:border-zinc-400 hover:bg-zinc-50",
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">{plan.name}</h3>
+              {active ? (
+                <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-zinc-950">
+                  Active
+                </span>
+              ) : plan.highlighted ? (
+                <span className="rounded-full bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700">
+                  Best value
+                </span>
+              ) : null}
+            </div>
+            <div className="mt-5 flex items-end gap-2">
+              <span className="text-4xl font-semibold tracking-tight">{plan.price}</span>
+              <span className={active ? "pb-1 text-sm text-zinc-300" : "pb-1 text-sm text-zinc-500"}>
+                {plan.period}
+              </span>
+            </div>
+            <div
+              className={cn(
+                "mt-3 rounded-md border px-3 py-2 text-xs leading-5",
+                active
+                  ? "border-white/15 bg-white/10 text-zinc-100"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-800",
+              )}
+            >
+              <div className="font-semibold">
+                {plan.durationMonths === 1 ? "Harga normal" : "Setara hanya"}{" "}
+                {formatCurrency(monthlyDevicePrice)}/bulan/device
+              </div>
+              {savingsPercent > 0 ? (
+                <div className={active ? "text-zinc-300" : "text-emerald-700"}>
+                  Hemat hingga {savingsPercent}% dibanding bayar bulanan.
+                </div>
+              ) : (
+                <div className={active ? "text-zinc-300" : "text-emerald-700"}>
+                  Cocok untuk mulai dengan fleksibel.
+                </div>
+              )}
+            </div>
+            <p className={active ? "mt-4 text-sm leading-6 text-zinc-300" : "mt-4 text-sm leading-6 text-zinc-500"}>
+              {plan.description}
+            </p>
+            <Link
+              href={`/checkout?plan=${plan.id}`}
+              onClick={(event) => event.stopPropagation()}
+              className={buttonVariants({
+                variant: active ? "secondary" : "default",
+                size: "lg",
+                className: "mt-6 w-full",
+              })}
+            >
+              {plan.cta}
+              <ArrowRight className="size-4" />
+            </Link>
+            <div className={active ? "mt-6 border-t border-white/15 pt-6" : "mt-6 border-t border-zinc-200 pt-6"}>
+              <div className={active ? "mb-3 text-xs font-medium text-zinc-300" : "mb-3 text-xs font-medium text-zinc-500"}>
+                Included
+              </div>
+              <div className="space-y-3">
+                {plan.features.map((feature) => (
+                  <div key={feature} className="flex items-start gap-2 text-sm">
+                    <CheckCircle2 className={active ? "mt-0.5 size-4 text-emerald-300" : "mt-0.5 size-4 text-emerald-600"} />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className={active ? "mt-6 text-xs leading-5 text-zinc-300" : "mt-6 text-xs leading-5 text-zinc-500"}>
+              Limits: {plan.limits.join(", ")}.
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function getMonthlyDevicePrice(plan: PricingPlan) {
+  const durationMonths = Math.max(1, plan.durationMonths);
+  const includedDevices = Math.max(1, plan.includedDevices);
+
+  return Math.round(plan.amount / durationMonths / includedDevices);
+}

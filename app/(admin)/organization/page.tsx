@@ -1,4 +1,4 @@
-import { OrganizationPanel } from "@/components/data-table/operations-pages";
+import { OrganizationPanel } from "@/features/admin/organization";
 
 export default function OrganizationPage() {
   return <OrganizationPanel />;

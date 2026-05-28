@@ -1,4 +1,4 @@
-import { TemplateBuilderWorkspace } from "@/components/templates/template-builder-workspace";
+import { TemplateBuilderWorkspace } from "@/features/admin/templates/template-builder-workspace";
 
 export default async function TemplateBuilderPage({
   params,

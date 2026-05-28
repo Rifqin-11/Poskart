@@ -1,4 +1,4 @@
-import { TemplateManagement } from "@/components/data-table/operations-pages";
+import { TemplateManagement } from "@/features/admin/templates";
 
 export default function TemplatesPage() {
   return <TemplateManagement />;
