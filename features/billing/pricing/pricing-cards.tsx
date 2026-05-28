@@ -69,28 +69,10 @@ export function PricingCards({
                 {plan.period}
               </span>
             </div>
-            <div
-              className={cn(
-                "mt-3 rounded-md border px-3 py-2 text-xs leading-5",
-                active
-                  ? "border-white/15 bg-white/10 text-zinc-100"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-800",
-              )}
-            >
-              <div className="font-semibold">
-                {plan.durationMonths === 1 ? "Harga normal" : "Setara hanya"}{" "}
-                {formatCurrency(monthlyDevicePrice)}/bulan/device
-              </div>
-              {savingsPercent > 0 ? (
-                <div className={active ? "text-zinc-300" : "text-emerald-700"}>
-                  Hemat hingga {savingsPercent}% dibanding bayar bulanan.
-                </div>
-              ) : (
-                <div className={active ? "text-zinc-300" : "text-emerald-700"}>
-                  Cocok untuk mulai dengan fleksibel.
-                </div>
-              )}
-            </div>
+            <p className={active ? "mt-2 text-xs text-zinc-400" : "mt-2 text-xs text-zinc-500"}>
+              {formatCurrency(monthlyDevicePrice)}/bulan/device
+              {savingsPercent > 0 ? ` · hemat ${savingsPercent}%` : ""}
+            </p>
             <p className={active ? "mt-4 text-sm leading-6 text-zinc-300" : "mt-4 text-sm leading-6 text-zinc-500"}>
               {plan.description}
             </p>
