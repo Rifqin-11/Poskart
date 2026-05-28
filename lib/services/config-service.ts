@@ -5,7 +5,7 @@ const CONFIG_ID = "default";
 
 const SELECT_COLUMNS =
   "id,merchant_name,qris_payload_prefix,share_base_url,countdown_duration_seconds,flash_duration_ms,auto_return_duration_seconds,default_template_id," +
-  "qris_provider_merchant_id,qris_webhook_secret,qris_auto_retry," +
+  "qris_provider_merchant_id,qris_webhook_secret,qris_auto_retry,subscription_payment_gateway," +
   "printer_name,booth_timeout_seconds," +
   "download_expiry_hours,storage_provider,watermark_enabled," +
   "maintenance_mode,updated_at";
@@ -58,6 +58,7 @@ function buildFlutterConfig(row: AppConfigRow): FlutterAppConfig {
       watermarkEnabled: row.watermark_enabled,
       maintenanceMode: row.maintenance_mode,
       qrisAutoRetry: row.qris_auto_retry,
+      subscriptionPaymentGateway: row.subscription_payment_gateway,
     },
   };
 }

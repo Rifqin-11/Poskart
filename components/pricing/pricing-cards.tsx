@@ -4,15 +4,22 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
-import { pricingPlans } from "@/lib/constants/business";
+import { pricingPlans as fallbackPricingPlans, type PricingPlan } from "@/lib/constants/business";
 import { cn } from "@/lib/utils";
 
-export function PricingCards({ defaultPlanId = "yearly" }: { defaultPlanId?: string }) {
+export function PricingCards({
+  defaultPlanId = "yearly",
+  plans = fallbackPricingPlans,
+}: {
+  defaultPlanId?: string;
+  plans?: PricingPlan[];
+}) {
   const [activePlanId, setActivePlanId] = useState(defaultPlanId);
+  const visiblePlans = plans.length > 0 ? plans : fallbackPricingPlans;
 
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {pricingPlans.map((plan) => {
+      {visiblePlans.map((plan) => {
         const active = activePlanId === plan.id;
 
         return (

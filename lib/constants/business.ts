@@ -35,7 +35,24 @@ export const SUBSCRIPTION_INCLUDED_DEVICES = {
   yearly: 5,
 } as const;
 
-export const pricingPlans = [
+export type PricingPlan = {
+  id: string;
+  name: string;
+  price: string;
+  amount: number;
+  durationMonths: number;
+  includedDevices: number;
+  additionalDevicePriceMonthly: number;
+  period: string;
+  duration: string;
+  description: string;
+  cta: string;
+  highlighted: boolean;
+  features: string[];
+  limits: string[];
+};
+
+export const pricingPlans: PricingPlan[] = [
   {
     id: "monthly",
     name: "1 Month",
@@ -129,8 +146,6 @@ export const pricingPlans = [
     limits: ["12 months access", "5 devices included", "Best value subscription"],
   },
 ];
-
-export type PricingPlan = (typeof pricingPlans)[number];
 
 export function calculateSubscriptionTotal(plan: PricingPlan, deviceCount: number) {
   const normalizedDeviceCount = Math.max(

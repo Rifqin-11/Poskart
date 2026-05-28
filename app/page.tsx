@@ -26,6 +26,7 @@ import {
 import { PricingCards } from "@/components/pricing/pricing-cards";
 import { buttonVariants } from "@/components/ui/button";
 import { businessProfile } from "@/lib/constants/business";
+import { getPublicSubscriptionPricingPlans } from "@/lib/subscription-pricing";
 
 const features = [
   {
@@ -156,7 +157,9 @@ const playbooks: [string, string][] = [
   ],
 ];
 
-export default function Home() {
+export default async function Home() {
+  const plans = await getPublicSubscriptionPricingPlans();
+
   return (
     <main className="min-h-screen overflow-hidden bg-white text-zinc-950">
       <PublicHeader />
@@ -577,7 +580,7 @@ export default function Home() {
           </div>
         </div>
 
-        <PricingCards />
+        <PricingCards plans={plans} />
         <div className="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm leading-6 text-zinc-600">
           <p>{businessProfile.taxNote}</p>
           <p className="mt-1">{businessProfile.billingNote}</p>

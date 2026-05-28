@@ -10,14 +10,26 @@ export default async function CheckoutReturnPage({
   searchParams: Promise<{
     order?: string;
     merchantOrderId?: string;
+    order_id?: string;
     resultCode?: string;
     reference?: string;
+    transaction_status?: string;
+    status_code?: string;
   }>;
 }) {
   const params = await searchParams;
-  const orderId = params.order ?? params.merchantOrderId;
-  const paid = params.resultCode === "00";
-  const failed = params.resultCode === "01";
+  const orderId = params.order ?? params.merchantOrderId ?? params.order_id;
+  const paid =
+    params.resultCode === "00" ||
+    params.transaction_status === "settlement" ||
+    params.transaction_status === "capture" ||
+    params.status_code === "200";
+  const failed =
+    params.resultCode === "01" ||
+    params.transaction_status === "deny" ||
+    params.transaction_status === "expire" ||
+    params.transaction_status === "cancel" ||
+    params.transaction_status === "failure";
 
   return (
     <main className="min-h-screen bg-white text-zinc-950">
@@ -40,8 +52,8 @@ export default async function CheckoutReturnPage({
             {paid
               ? "Pembayaran subscription POSKART berhasil diterima. Sistem akan memproses aktivasi paket."
               : failed
-                ? "Pembayaran dibatalkan atau gagal diproses oleh Duitku. Anda dapat kembali ke checkout untuk mencoba metode pembayaran lain."
-                : "Jika pembayaran sudah dilakukan, status order akan diperbarui setelah Duitku mengirim callback pembayaran."}
+                ? "Pembayaran dibatalkan atau gagal diproses. Anda dapat kembali ke checkout untuk mencoba metode pembayaran lain."
+                : "Jika pembayaran sudah dilakukan, status order akan diperbarui setelah Payment Gateway mengirim callback pembayaran."}
           </p>
           {orderId ? (
             <div className="mt-5 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">

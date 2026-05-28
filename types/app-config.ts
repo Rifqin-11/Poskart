@@ -16,6 +16,7 @@ export type FlutterAppConfig = {
     watermarkEnabled: boolean;
     maintenanceMode: boolean;
     qrisAutoRetry: boolean;
+    subscriptionPaymentGateway: "duitku" | "midtrans" | "both";
   };
 };
 
@@ -33,6 +34,7 @@ export type AppConfigRow = {
   qris_provider_merchant_id: string;
   qris_webhook_secret: string;
   qris_auto_retry: boolean;
+  subscription_payment_gateway: "duitku" | "midtrans" | "both";
   // Device
   printer_name: string;
   booth_timeout_seconds: number;

@@ -1,8 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { businessProfile, calculateSubscriptionTotal, pricingPlans } from "@/lib/constants/business";
+import { businessProfile, calculateSubscriptionTotal } from "@/lib/constants/business";
 import { createDuitkuPayment, createMerchantOrderId, getDuitkuConfig } from "@/lib/duitku";
+import { createMidtransPayment } from "@/lib/midtrans";
+import { getPublicSubscriptionPricingPlans } from "@/lib/subscription-pricing";
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,6 +23,22 @@ function numberFromForm(formData: FormData, key: string, fallback: number) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function normalizePaymentGateway(value: string) {
+  return value === "midtrans" ? "midtrans" : "duitku";
+}
+
+function normalizeGatewayMode(value: unknown): "duitku" | "midtrans" | "both" {
+  return value === "midtrans" || value === "both" ? value : "duitku";
+}
+
+function resolveAllowedPaymentGateway(
+  requestedGateway: "duitku" | "midtrans",
+  gatewayMode: "duitku" | "midtrans" | "both",
+) {
+  if (gatewayMode === "both") return requestedGateway;
+  return gatewayMode;
+}
+
 function stringFromMetadata(metadata: Record<string, unknown> | undefined, keys: string[]) {
   for (const key of keys) {
     const value = metadata?.[key];
@@ -33,19 +51,31 @@ function stringFromMetadata(metadata: Record<string, unknown> | undefined, keys:
 
 export async function createSubscriptionOrderAction(formData: FormData) {
   const planId = valueFromForm(formData, "planId") || "yearly";
-  const plan = pricingPlans.find((item) => item.id === planId);
+  const requestedPaymentGateway = normalizePaymentGateway(valueFromForm(formData, "paymentGateway"));
+  const supabase = await createClient();
+  const plans = await getPublicSubscriptionPricingPlans(supabase);
+  const plan = plans.find((item) => item.id === planId);
 
   if (!plan) {
     redirectWithStatus("yearly", "error", "Selected subscription plan is invalid.");
   }
 
-  const supabase = await createClient();
   const { data: authData, error: authError } = await supabase.auth.getUser();
   const user = authData.user;
 
   if (authError || !user?.email) {
     redirect(`/login?next=${encodeURIComponent(`/checkout?plan=${plan.id}`)}`);
   }
+
+  const { data: gatewayConfig } = await supabase
+    .from("app_configs")
+    .select("subscription_payment_gateway")
+    .eq("id", "default")
+    .maybeSingle();
+  const paymentGateway = resolveAllowedPaymentGateway(
+    requestedPaymentGateway,
+    normalizeGatewayMode(gatewayConfig?.subscription_payment_gateway),
+  );
 
   const metadata = user.user_metadata as Record<string, unknown> | undefined;
   const email = user.email;
@@ -95,8 +125,8 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     whatsapp: whatsapp || businessProfile.phone,
     company_name: companyName || null,
     status: "pending",
-    payment_gateway: "duitku",
-    payment_method: duitkuConfig?.paymentMethod ?? "VC",
+    payment_gateway: paymentGateway,
+    payment_method: paymentGateway === "midtrans" ? "snap" : duitkuConfig?.paymentMethod ?? "VC",
     merchant_order_id: merchantOrderId,
   });
 
@@ -109,29 +139,55 @@ export async function createSubscriptionOrderAction(formData: FormData) {
   let paymentUrl = "";
 
   try {
-    const payment = await createDuitkuPayment({
-      merchantOrderId,
-      amount: quote.totalAmount,
-      plan,
-      customerName,
-      email,
-      phoneNumber: whatsapp || undefined,
-      deviceCount: quote.deviceCount,
-      returnUrl: `${siteUrl}/checkout/return?order=${encodeURIComponent(merchantOrderId)}`,
-      callbackUrl: `${siteUrl}/api/payments/duitku/callback`,
-    });
-    paymentUrl = payment.paymentUrl ?? "";
-    await supabase
-      .from("subscription_orders")
-      .update({
-        payment_url: payment.paymentUrl,
-        payment_reference: payment.reference ?? null,
-        gateway_response: payment.raw,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("merchant_order_id", merchantOrderId);
+    const returnUrl = `${siteUrl}/checkout/return?order=${encodeURIComponent(merchantOrderId)}`;
+
+    if (paymentGateway === "midtrans") {
+      const payment = await createMidtransPayment({
+        merchantOrderId,
+        amount: quote.totalAmount,
+        plan,
+        customerName,
+        email,
+        phoneNumber: whatsapp || undefined,
+        deviceCount: quote.deviceCount,
+        returnUrl,
+      });
+      paymentUrl = payment.paymentUrl;
+      await supabase
+        .from("subscription_orders")
+        .update({
+          payment_url: payment.paymentUrl,
+          payment_reference: payment.token ?? null,
+          gateway_response: payment.raw,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("merchant_order_id", merchantOrderId);
+    } else {
+      const payment = await createDuitkuPayment({
+        merchantOrderId,
+        amount: quote.totalAmount,
+        plan,
+        customerName,
+        email,
+        phoneNumber: whatsapp || undefined,
+        deviceCount: quote.deviceCount,
+        returnUrl,
+        callbackUrl: `${siteUrl}/api/payments/duitku/callback`,
+      });
+      paymentUrl = payment.paymentUrl ?? "";
+      await supabase
+        .from("subscription_orders")
+        .update({
+          payment_url: payment.paymentUrl,
+          payment_reference: payment.reference ?? null,
+          gateway_response: payment.raw,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("merchant_order_id", merchantOrderId);
+    }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Duitku payment could not be started.";
+    const message =
+      error instanceof Error ? error.message : "Payment gateway could not be started.";
     redirectWithStatus(plan.id, "error", message);
   }
 
