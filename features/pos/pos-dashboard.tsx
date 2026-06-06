@@ -217,7 +217,7 @@ export function PosDashboard({ sales }: { sales: PosSale[] }) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:px-0 md:pb-0">
         <MetricCard
           title="Total pendapatan"
           value={formatCurrency(metrics.revenue)}
@@ -466,14 +466,14 @@ function MetricCard({
   icon: typeof Banknote;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="min-w-[78vw] snap-start sm:min-w-[280px] md:min-w-0">
+      <CardHeader className="flex-row items-center justify-between space-y-0 p-4 pb-1 md:p-5 md:pb-2">
         <CardTitle className="text-xs font-medium text-zinc-500">{title}</CardTitle>
         <div className="grid size-8 place-items-center rounded-lg bg-zinc-100">
           <Icon className="size-4 text-zinc-600" />
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 pt-0 md:p-5 md:pt-0">
         <div className="text-2xl font-semibold tracking-tight">{value}</div>
         <p className="mt-1 text-xs text-zinc-500">{description}</p>
       </CardContent>
