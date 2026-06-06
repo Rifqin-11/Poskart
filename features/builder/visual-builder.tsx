@@ -101,9 +101,23 @@ import {
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import type {
+  BuilderCanvas,
   BuilderComponentType,
   BuilderNode,
 } from "@/types/builder";
+
+function sanitizeSvgMarkup(markup: string): string {
+  if (!markup.trim().startsWith("<svg")) return "";
+
+  return markup
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "")
+    .replace(/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject\s*>/gi, "")
+    .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(
+      /\s+(?:href|xlink:href)\s*=\s*(?:"\s*javascript:[^"]*"|'\s*javascript:[^']*')/gi,
+      "",
+    );
+}
 
 /** Hotspot overlay — shown when canvas has a background image/video */
 function HotspotOverlay({ node }: { node: BuilderNode }) {
@@ -196,7 +210,9 @@ function NodeRenderer({
     );
     const roleLabel = SEMANTIC_ROLES.find((r) => r.value === role)?.label;
     const iconSvg =
-      typeof node.props.iconSvg === "string" ? node.props.iconSvg : "";
+      typeof node.props.iconSvg === "string"
+        ? sanitizeSvgMarkup(node.props.iconSvg)
+        : "";
     const iconPos =
       typeof node.props.iconPosition === "string"
         ? node.props.iconPosition
@@ -1545,7 +1561,9 @@ function PropertiesPanel({
                       color: readString(selectedNode.props.color, "#ffffff"),
                     }}
                     dangerouslySetInnerHTML={{
-                      __html: selectedNode.props.iconSvg as string,
+                      __html: sanitizeSvgMarkup(
+                        selectedNode.props.iconSvg as string,
+                      ),
                     }}
                   />
                   <span className="flex-1 truncate font-mono text-[10px] text-zinc-400">
@@ -1570,9 +1588,8 @@ function PropertiesPanel({
                 placeholder='<svg xmlns="http://www.w3.org/2000/svg" ...>...</svg>'
                 className="mt-0.5 w-full resize-none rounded border border-zinc-200 bg-white px-1.5 py-1 font-mono text-[10px] text-zinc-700 outline-none focus:border-zinc-400"
                 onChange={(e) => {
-                  const val = e.target.value.trim();
-                  if (val.startsWith("<svg"))
-                    updateNodeProps(selectedNode.id, { iconSvg: val });
+                  const val = sanitizeSvgMarkup(e.target.value.trim());
+                  if (val) updateNodeProps(selectedNode.id, { iconSvg: val });
                 }}
               />
             </label>
@@ -1589,10 +1606,12 @@ function PropertiesPanel({
                   if (!file) return;
                   const reader = new FileReader();
                   reader.onload = (ev) => {
-                    const text = ev.target?.result as string;
-                    if (text?.trim().startsWith("<svg")) {
+                    const text = sanitizeSvgMarkup(
+                      String(ev.target?.result ?? "").trim(),
+                    );
+                    if (text) {
                       updateNodeProps(selectedNode.id, {
-                        iconSvg: text.trim(),
+                        iconSvg: text,
                       });
                     }
                   };
@@ -2144,7 +2163,9 @@ function CanvasControls() {
             value={canvas.transitionType ?? "fade"}
             onChange={(e) =>
               updateCanvas({
-                transitionType: e.target.value as any,
+                transitionType: e.target.value as NonNullable<
+                  BuilderCanvas["transitionType"]
+                >,
               })
             }
           >
@@ -2177,7 +2198,9 @@ function CanvasControls() {
             value={canvas.transitionCurve ?? "easeInOut"}
             onChange={(e) =>
               updateCanvas({
-                transitionCurve: e.target.value as any,
+                transitionCurve: e.target.value as NonNullable<
+                  BuilderCanvas["transitionCurve"]
+                >,
               })
             }
           >

@@ -15,6 +15,7 @@ import {
   Menu,
   MonitorSmartphone,
   Palette,
+  PanelsTopLeft,
   ReceiptText,
   Settings,
   Sparkles,
@@ -37,6 +38,7 @@ import { useBuilderStore } from "@/stores/builder-store";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
+  { href: "/pos", label: "POS Kasir", icon: PanelsTopLeft, requiresSubscription: true },
   { href: "/organization", label: "Organization", icon: Building },
   { href: "/themes", label: "Themes", icon: Palette, requiresSubscription: true },
   { href: "/builder", label: "Builder", icon: Blocks, requiresSubscription: true },
