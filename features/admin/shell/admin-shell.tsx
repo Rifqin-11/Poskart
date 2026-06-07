@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
   Blocks,
   ChevronDown,
   CreditCard,
@@ -43,7 +42,6 @@ const navItems = [
   { href: "/pricing", label: "Pricing", icon: CreditCard, requiresSubscription: true },
   { href: "/transactions", label: "Transactions", icon: Store, requiresSubscription: true },
   { href: "/devices", label: "Devices", icon: MonitorSmartphone, requiresSubscription: true },
-  { href: "/analytics", label: "Analytics", icon: BarChart3, requiresSubscription: true },
   { href: "/superadmin", label: "Super Admin", icon: Shield, superAdminOnly: true },
   { href: "/settings", label: "Settings", icon: Settings, requiresSubscription: true },
 ];

@@ -87,6 +87,8 @@ import {
 } from "@/features/admin/templates/use-templates";
 import {
   useTransactions,
+  useUpdateTransaction,
+  useDeleteTransaction,
 } from "@/features/admin/transactions/use-transactions";
 import {
   useLayoutSchemas,
@@ -644,8 +646,82 @@ function PricingFormDialog({
   );
 }
 
+type TransactionEditForm = {
+  booth: string;
+  location: string;
+  customer: string;
+  package_name: string;
+  amount: string;
+  status: "paid" | "pending" | "failed" | "refunded";
+  provider: "QRIS" | "Cash";
+};
+
 export function TransactionsMonitoring() {
   const { data = [] } = useTransactions();
+  const updateTransaction = useUpdateTransaction();
+  const deleteTransaction = useDeleteTransaction();
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [editing, setEditing] = useState<Transaction | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<TransactionEditForm>({
+    booth: "",
+    location: "",
+    customer: "",
+    package_name: "",
+    amount: "0",
+    status: "paid",
+    provider: "QRIS",
+  });
+
+  const filtered = data.filter((t: Transaction) => {
+    const matchSearch =
+      !search ||
+      t.id.toLowerCase().includes(search.toLowerCase()) ||
+      t.device.toLowerCase().includes(search.toLowerCase()) ||
+      t.customer.toLowerCase().includes(search.toLowerCase()) ||
+      t.packageName.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === "all" || t.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  function openEdit(t: Transaction) {
+    setEditing(t);
+    setEditForm({
+      booth: t.device,
+      location: t.location,
+      customer: t.customer,
+      package_name: t.packageName,
+      amount: String(t.amount),
+      status: t.status,
+      provider: t.provider,
+    });
+  }
+
+  async function handleSaveEdit() {
+    if (!editing) return;
+    await updateTransaction.mutateAsync({
+      id: editing.id,
+      patch: {
+        booth: editForm.booth,
+        location: editForm.location,
+        customer: editForm.customer,
+        package_name: editForm.package_name,
+        amount: Number(editForm.amount),
+        status: editForm.status,
+        provider: editForm.provider,
+      },
+    });
+    toast.success("Transaction updated");
+    setEditing(null);
+  }
+
+  async function handleDelete(id: string) {
+    await deleteTransaction.mutateAsync(id);
+    toast.success("Transaction deleted");
+    setDeletingId(null);
+  }
 
   return (
     <div>
@@ -658,23 +734,121 @@ export function TransactionsMonitoring() {
           </Button>
         }
       />
+
+      {/* Edit Dialog */}
+      <Dialog open={Boolean(editing)} title="Edit Transaction" onOpenChange={(open) => !open && setEditing(null)}>
+        <div className="space-y-4">
+          <p className="text-xs text-zinc-500 font-mono">{editing?.id}</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="block text-xs font-medium text-zinc-600">
+              Device / Booth
+              <Input
+                className="mt-1"
+                value={editForm.booth}
+                onChange={(e) => setEditForm((f) => ({ ...f, booth: e.target.value }))}
+              />
+            </label>
+            <label className="block text-xs font-medium text-zinc-600">
+              Location
+              <Input
+                className="mt-1"
+                value={editForm.location}
+                onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))}
+              />
+            </label>
+            <label className="block text-xs font-medium text-zinc-600">
+              Customer
+              <Input
+                className="mt-1"
+                value={editForm.customer}
+                onChange={(e) => setEditForm((f) => ({ ...f, customer: e.target.value }))}
+              />
+            </label>
+            <label className="block text-xs font-medium text-zinc-600">
+              Package name
+              <Input
+                className="mt-1"
+                value={editForm.package_name}
+                onChange={(e) => setEditForm((f) => ({ ...f, package_name: e.target.value }))}
+              />
+            </label>
+            <label className="block text-xs font-medium text-zinc-600">
+              Amount (Rp)
+              <Input
+                className="mt-1"
+                type="number"
+                min={0}
+                value={editForm.amount}
+                onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))}
+              />
+            </label>
+            <label className="block text-xs font-medium text-zinc-600">
+              Provider
+              <select
+                className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm"
+                value={editForm.provider}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, provider: e.target.value as "QRIS" | "Cash" }))
+                }
+              >
+                <option value="QRIS">QRIS</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-zinc-600 md:col-span-2">
+              Status
+              <select
+                className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm"
+                value={editForm.status}
+                onChange={(e) =>
+                  setEditForm((f) => ({
+                    ...f,
+                    status: e.target.value as "paid" | "pending" | "failed" | "refunded",
+                  }))
+                }
+              >
+                <option value="paid">Paid</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+                <option value="refunded">Refunded</option>
+              </select>
+            </label>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setEditing(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleSaveEdit()}
+              disabled={updateTransaction.isPending}
+            >
+              {updateTransaction.isPending ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
       <Card>
         <CardHeader>
-          <div className="grid gap-3 md:grid-cols-4">
-            <Input placeholder="Search transaction" />
-            <Select defaultValue="all">
-              <option value="all">All devices</option>
-              <option>Device 01</option>
-            </Select>
-            <Select defaultValue="all">
-              <option value="all">All locations</option>
-              <option>PVJ Bandung</option>
-            </Select>
-            <Select defaultValue="all">
+          <div className="grid gap-3 md:grid-cols-3">
+            <Input
+              placeholder="Search by ID, device, customer…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
               <option value="all">All status</option>
-              <option>Paid</option>
-              <option>Failed</option>
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="failed">Failed</option>
+              <option value="refunded">Refunded</option>
             </Select>
+            <div className="text-xs text-zinc-500 flex items-center">
+              {filtered.length} of {data.length} transactions
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -687,11 +861,11 @@ export function TransactionsMonitoring() {
                 <TableHead>Package</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Action</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((transaction: Transaction) => (
+              {filtered.map((transaction: Transaction) => (
                 <TableRow key={transaction.id}>
                   <TableCell className="font-mono text-xs">
                     {transaction.id}
@@ -714,26 +888,71 @@ export function TransactionsMonitoring() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu
-                      items={[
-                        {
-                          label: "Manual verify",
-                          onClick: () => toast.success("Payment verified"),
-                        },
-                        {
-                          label: "Retry QRIS",
-                          onClick: () => toast.message("Retry sent"),
-                        },
-                        {
-                          label: "Refund",
-                          destructive: true,
-                          onClick: () => toast.error("Refund queued"),
-                        },
-                      ]}
-                    />
+                    {deletingId === transaction.id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-zinc-500">Delete?</span>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={deleteTransaction.isPending}
+                          onClick={() => void handleDelete(transaction.id)}
+                        >
+                          {deleteTransaction.isPending ? "…" : "Yes"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setDeletingId(null)}
+                        >
+                          No
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => openEdit(transaction)}
+                        >
+                          <Edit2 className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => setDeletingId(transaction.id)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                        <DropdownMenu
+                          items={[
+                            {
+                              label: "Manual verify",
+                              onClick: () => toast.success("Payment verified"),
+                            },
+                            {
+                              label: "Retry QRIS",
+                              onClick: () => toast.message("Retry sent"),
+                            },
+                            {
+                              label: "Refund",
+                              destructive: true,
+                              onClick: () => toast.error("Refund queued"),
+                            },
+                          ]}
+                        />
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-10 text-center text-sm text-zinc-400">
+                    No transactions found.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -3362,7 +3581,6 @@ export function SettingsPanel() {
       <Tabs defaultValue="payment">
         <TabsList className="h-auto flex-wrap">
           <TabsTrigger value="payment">Payment</TabsTrigger>
-          <TabsTrigger value="device">Device</TabsTrigger>
           <TabsTrigger value="media">Media</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
           <TabsTrigger value="flutter">Flutter Config</TabsTrigger>
@@ -3417,60 +3635,7 @@ export function SettingsPanel() {
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="device">
-          <Card>
-            <CardHeader>
-              <CardTitle>Device behavior</CardTitle>
-              <CardDescription>
-                Timeouts, printers, and return timers.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-3">
-              <label className="block text-xs font-medium text-zinc-600">
-                Printer name
-                <Input
-                  className="mt-1"
-                  value={form.printer_name}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, printer_name: e.target.value }))
-                  }
-                />
-              </label>
-              <label className="block text-xs font-medium text-zinc-600">
-                Device timeout (seconds)
-                <Input
-                  className="mt-1"
-                  type="number"
-                  min={10}
-                  max={600}
-                  value={form.booth_timeout_seconds}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      booth_timeout_seconds: Number(e.target.value),
-                    }))
-                  }
-                />
-              </label>
-              <label className="block text-xs font-medium text-zinc-600">
-                Auto-return (seconds)
-                <Input
-                  className="mt-1"
-                  type="number"
-                  min={3}
-                  max={60}
-                  value={form.auto_return_duration_seconds}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      auto_return_duration_seconds: Number(e.target.value),
-                    }))
-                  }
-                />
-              </label>
-            </CardContent>
-          </Card>
-        </TabsContent>
+
         <TabsContent value="media">
           <Card>
             <CardHeader>

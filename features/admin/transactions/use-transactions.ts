@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { transactionService } from "@/server/admin/transaction-service";
+import type { TransactionPatch } from "@/server/admin/transaction-service";
 
 export function useTransactions() {
   return useQuery({
@@ -26,6 +27,28 @@ export function useRetryPrint() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
       queryClient.invalidateQueries({ queryKey: ["failed-prints"] });
+    },
+  });
+}
+
+export function useUpdateTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: transactionService.updateTransaction,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
+    },
+  });
+}
+
+export function useDeleteTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: transactionService.deleteTransaction,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
     },
   });
 }
