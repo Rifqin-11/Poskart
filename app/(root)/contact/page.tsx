@@ -25,7 +25,7 @@ export default function ContactPage() {
             Contact POSKART support and sales.
           </h1>
           <p className="mt-5 max-w-3xl text-sm leading-7 text-zinc-600">
-            Hubungi POSKART untuk demo, onboarding, billing, QRIS operation, konfigurasi booth,
+            Hubungi POSKART untuk onboarding, billing, QRIS operation, konfigurasi booth,
             dan pertanyaan teknis terkait platform SaaS POSKART.
           </p>
         </div>

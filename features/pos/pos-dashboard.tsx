@@ -33,32 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn, formatCurrency } from "@/lib/utils";
-import type { PosPackageCode, PosSale } from "@/types/pos";
-
-const packages = [
-  {
-    code: "print_1" as const,
-    name: "1 Print",
-    description: "Satu hasil cetak untuk pelanggan",
-    printCount: 1,
-    amount: 6000,
-  },
-  {
-    code: "print_2" as const,
-    name: "2 Print",
-    description: "Dua hasil cetak, lebih hemat",
-    printCount: 2,
-    amount: 10000,
-    popular: true,
-  },
-  {
-    code: "print_3" as const,
-    name: "3 Print",
-    description: "Tiga hasil cetak untuk grup",
-    printCount: 3,
-    amount: 14000,
-  },
-];
+import type { PosPackageCode, PosPackageOption, PosPaymentMethod, PosSale } from "@/types/pos";
 
 function csvCell(value: string | number) {
   return `"${String(value).replaceAll('"', '""')}"`;
@@ -79,18 +54,26 @@ function getLocalDateKey(value: string) {
   return `${year}-${month}-${day}`;
 }
 
-export function PosDashboard({ sales }: { sales: PosSale[] }) {
+export function PosDashboard({
+  packages,
+  sales,
+}: {
+  packages: PosPackageOption[];
+  sales: PosSale[];
+}) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const [selectedPackage, setSelectedPackage] =
-    useState<PosPackageCode>("print_1");
+    useState<PosPackageCode>(packages[0]?.code ?? "");
   const [search, setSearch] = useState("");
   const [packageFilter, setPackageFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState<"all" | PosPaymentMethod>("all");
   const [dateMode, setDateMode] = useState<"all" | "date">("all");
   const [selectedDate, setSelectedDate] = useState(
     () => getLocalDateKey(new Date().toISOString()),
   );
+  const hasPackages = packages.length > 0;
 
   const filteredSales = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -102,12 +85,14 @@ export function PosDashboard({ sales }: { sales: PosSale[] }) {
         sale.notes?.toLowerCase().includes(normalizedSearch);
       const matchesPackage =
         packageFilter === "all" || sale.packageCode === packageFilter;
+      const matchesPayment =
+        paymentFilter === "all" || sale.paymentMethod === paymentFilter;
       const matchesDate =
         dateMode === "all" || getLocalDateKey(sale.createdAt) === selectedDate;
 
-      return matchesSearch && matchesPackage && matchesDate;
+      return matchesSearch && matchesPackage && matchesPayment && matchesDate;
     });
-  }, [dateMode, packageFilter, sales, search, selectedDate]);
+  }, [dateMode, packageFilter, paymentFilter, sales, search, selectedDate]);
 
   const metrics = useMemo(
     () => ({
@@ -128,7 +113,7 @@ export function PosDashboard({ sales }: { sales: PosSale[] }) {
 
       toast.success("Transaksi POS berhasil disimpan.");
       formRef.current?.reset();
-      setSelectedPackage("print_1");
+      setSelectedPackage(packages[0]?.code ?? "");
       router.refresh();
     });
   }
@@ -250,66 +235,72 @@ export function PosDashboard({ sales }: { sales: PosSale[] }) {
             <form ref={formRef} action={handleSubmit} className="space-y-5">
               <input type="hidden" name="packageCode" value={selectedPackage} />
 
-              <div className="grid gap-3 md:grid-cols-3">
-                {packages.map((item) => {
-                  const active = selectedPackage === item.code;
-                  return (
-                    <button
-                      key={item.code}
-                      type="button"
-                      onClick={() => setSelectedPackage(item.code)}
-                      className={cn(
-                        "relative rounded-xl border p-4 text-left transition-all",
-                        active
-                          ? "border-zinc-950 bg-zinc-950 text-white shadow-md"
-                          : "border-zinc-200 bg-white hover:border-zinc-400 hover:bg-zinc-50",
-                      )}
-                    >
-                      {item.popular ? (
-                        <span
-                          className={cn(
-                            "absolute right-3 top-3 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                            active
-                              ? "bg-white/15 text-white"
-                              : "bg-red-50 text-red-700",
-                          )}
-                        >
-                          Favorit
-                        </span>
-                      ) : null}
-                      <div className="flex items-center gap-2">
+              {hasPackages ? (
+                <div className="grid gap-3 md:grid-cols-3">
+                  {packages.map((item) => {
+                    const active = selectedPackage === item.code;
+                    return (
+                      <button
+                        key={item.code}
+                        type="button"
+                        onClick={() => setSelectedPackage(item.code)}
+                        className={cn(
+                          "relative rounded-xl border p-4 text-left transition-all",
+                          active
+                            ? "border-zinc-950 bg-zinc-950 text-white shadow-md"
+                            : "border-zinc-200 bg-white hover:border-zinc-400 hover:bg-zinc-50",
+                        )}
+                      >
+                        {item.popular ? (
+                          <span
+                            className={cn(
+                              "absolute right-3 top-3 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                              active
+                                ? "bg-white/15 text-white"
+                                : "bg-red-50 text-red-700",
+                            )}
+                          >
+                            Promo
+                          </span>
+                        ) : null}
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              "grid size-7 place-items-center rounded-full border",
+                              active
+                                ? "border-white/30 bg-white/10"
+                                : "border-zinc-200 bg-zinc-50",
+                            )}
+                          >
+                            {active ? <Check className="size-4" /> : item.printCount}
+                          </div>
+                          <div className="font-semibold">{item.name}</div>
+                        </div>
                         <div
                           className={cn(
-                            "grid size-7 place-items-center rounded-full border",
-                            active
-                              ? "border-white/30 bg-white/10"
-                              : "border-zinc-200 bg-zinc-50",
+                            "mt-4 text-xl font-semibold",
+                            active ? "text-white" : "text-zinc-950",
                           )}
                         >
-                          {active ? <Check className="size-4" /> : item.printCount}
+                          {formatCurrency(item.amount)}
                         </div>
-                        <div className="font-semibold">{item.name}</div>
-                      </div>
-                      <div
-                        className={cn(
-                          "mt-4 text-xl font-semibold",
-                          active ? "text-white" : "text-zinc-950",
-                        )}
-                      >
-                        {formatCurrency(item.amount)}
-                      </div>
-                      <p
-                        className={cn(
-                          "mt-1 text-xs leading-5",
-                          active ? "text-zinc-300" : "text-zinc-500",
-                        )}
-                      >
-                        {item.description}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
+                        <p
+                          className={cn(
+                            "mt-1 text-xs leading-5",
+                            active ? "text-zinc-300" : "text-zinc-500",
+                          )}
+                        >
+                          {item.description}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-6 text-sm text-zinc-500">
+                  Belum ada paket aktif. Tambahkan atau aktifkan paket dari halaman Pricing.
+                </div>
+              )}
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -335,7 +326,7 @@ export function PosDashboard({ sales }: { sales: PosSale[] }) {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full md:w-auto" size="lg" disabled={isPending}>
+              <Button type="submit" className="w-full md:w-auto" size="lg" disabled={isPending || !hasPackages}>
                 <ReceiptText className="size-4" />
                 {isPending ? "Menyimpan transaksi..." : "Simpan transaksi"}
               </Button>
@@ -352,7 +343,7 @@ export function PosDashboard({ sales }: { sales: PosSale[] }) {
                   Data terbaru ditampilkan paling atas.
                 </CardDescription>
               </div>
-              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px]">
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px_150px]">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
                   <Input
@@ -365,11 +356,25 @@ export function PosDashboard({ sales }: { sales: PosSale[] }) {
                 <Select
                   value={packageFilter}
                   onChange={(event) => setPackageFilter(event.target.value)}
+                  aria-label="Filter paket"
                 >
                   <option value="all">Semua paket</option>
-                  <option value="print_1">1 Print</option>
-                  <option value="print_2">2 Print</option>
-                  <option value="print_3">3 Print</option>
+                  {packages.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  value={paymentFilter}
+                  onChange={(event) =>
+                    setPaymentFilter(event.target.value as "all" | PosPaymentMethod)
+                  }
+                  aria-label="Filter metode pembayaran"
+                >
+                  <option value="all">Semua bayar</option>
+                  <option value="Cash">Cash</option>
+                  <option value="QRIS">QRIS</option>
                 </Select>
               </div>
             </div>

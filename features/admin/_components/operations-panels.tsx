@@ -4,8 +4,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -2172,27 +2170,35 @@ function AssetEditDialog({
 
 export function AnalyticsDashboard() {
   const { data } = useDashboardData();
+  const router = useRouter();
   const chartsMounted = useClientMounted();
-  const weekly = data?.weeklyChart ?? [];
-  const monthly = data?.monthlyChart ?? [];
+  const posSummary = data?.posSummary;
+  const dailySales = posSummary?.dailySales ?? [];
+  const topPackages = posSummary?.topPackages ?? [];
+  const paymentBreakdown = posSummary?.paymentBreakdown ?? [];
+  const recentSales = posSummary?.recentSales ?? [];
+  const totalRevenue = posSummary?.totalRevenue ?? 0;
+  const totalTransactions = posSummary?.totalTransactions ?? 0;
+  const totalPrints = posSummary?.totalPrints ?? 0;
+  const averageTransaction = posSummary?.averageTransaction ?? 0;
 
   return (
     <div>
       <PageHeader
-        title="Analytics & Statistics"
-        description="Revenue, growth, device performance, downloads, peak hours, and conversion."
+        title="POS Kasir Insights"
+        description="Ringkasan penjualan, paket, metode pembayaran, dan print dari transaksi POS Kasir."
         action={
-          <Button variant="outline">
-            <Download className="size-4" /> Download CSV
+          <Button variant="outline" onClick={() => router.push("/pos")}>
+            <Download className="size-4" /> Buka POS Kasir
           </Button>
         }
       />
       <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
-          ["Monthly growth", "+22.1%"],
-          ["Best location", "PVJ Bandung"],
-          ["Conversion rate", "71.8%"],
-          ["Average transaction", "Rp 9.8K"],
+          ["Total pendapatan", formatCurrency(totalRevenue)],
+          ["Total transaksi", totalTransactions.toLocaleString("id-ID")],
+          ["Total print", totalPrints.toLocaleString("id-ID")],
+          ["Rata-rata transaksi", formatCurrency(averageTransaction)],
         ].map(([label, value]) => (
           <Card key={label}>
             <CardHeader>
@@ -2204,58 +2210,115 @@ export function AnalyticsDashboard() {
           </Card>
         ))}
       </div>
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Transaction growth</CardTitle>
-            <CardDescription>Weekly volume.</CardDescription>
+            <CardTitle>Penjualan 7 hari</CardTitle>
+            <CardDescription>Omzet harian dari transaksi POS Kasir.</CardDescription>
           </CardHeader>
           <CardContent className="h-80">
-            {chartsMounted ? (
+            {chartsMounted && dailySales.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={weekly}>
+                <BarChart data={dailySales}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
                   <XAxis dataKey="label" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="transactions"
-                    stroke="#18181b"
-                    strokeWidth={2}
+                  <YAxis
+                    tickFormatter={(value) => `${Number(value) / 1000}rb`}
                   />
-                  <Line
-                    type="monotone"
-                    dataKey="downloads"
-                    stroke="#ef4444"
-                    strokeWidth={2}
-                  />
-                </LineChart>
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Bar dataKey="revenue" fill="#18181b" radius={[6, 6, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
-            ) : null}
+            ) : (
+              <div className="grid h-full place-items-center rounded-lg border border-dashed border-zinc-200 bg-zinc-50 text-center text-sm text-zinc-500">
+                Belum ada data penjualan POS.
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Revenue chart</CardTitle>
-            <CardDescription>Monthly performance.</CardDescription>
+            <CardTitle>Metode pembayaran</CardTitle>
+            <CardDescription>Cash dan QRIS dari transaksi POS.</CardDescription>
           </CardHeader>
-          <CardContent className="h-80">
-            {chartsMounted ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthly}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
-                  <XAxis dataKey="label" />
-                  <YAxis
-                    tickFormatter={(value) => `${Number(value) / 1000000}jt`}
-                  />
-                  <Tooltip
-                    formatter={(value) => formatCurrency(Number(value))}
-                  />
-                  <Bar dataKey="revenue" fill="#18181b" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : null}
+          <CardContent className="space-y-3">
+            {paymentBreakdown.length > 0 ? (
+              paymentBreakdown.map((payment) => (
+                <div key={payment.method} className="rounded-lg border border-zinc-100 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">{payment.method}</div>
+                    <Badge variant="outline">
+                      {payment.transactions} transaksi
+                    </Badge>
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold">
+                    {formatCurrency(payment.revenue)}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center text-sm text-zinc-500">
+                Belum ada metode pembayaran tercatat.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Paket terlaris</CardTitle>
+            <CardDescription>Paket print dengan kontribusi pendapatan terbesar.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {topPackages.length > 0 ? (
+              topPackages.map((item) => (
+                <div key={item.name} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
+                  <div>
+                    <div className="text-sm font-medium">{item.name}</div>
+                    <div className="text-xs text-zinc-500">
+                      {item.transactions} transaksi · {item.prints} print
+                    </div>
+                  </div>
+                  <div className="text-right text-sm font-semibold">
+                    {formatCurrency(item.revenue)}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center text-sm text-zinc-500">
+                Paket akan muncul setelah transaksi POS tersimpan.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Transaksi terbaru</CardTitle>
+            <CardDescription>Data terakhir yang masuk dari POS Kasir.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentSales.length > 0 ? (
+              recentSales.map((sale) => (
+                <div key={sale.id} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
+                  <div>
+                    <div className="text-sm font-medium">{sale.packageName}</div>
+                    <div className="text-xs text-zinc-500">
+                      {sale.printCount} print · {sale.paymentMethod} · {sale.createdAt}
+                    </div>
+                  </div>
+                  <div className="text-right text-sm font-semibold">
+                    {formatCurrency(sale.amount)}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center text-sm text-zinc-500">
+                Belum ada transaksi POS.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -2623,14 +2686,14 @@ function PaymentGatewayManagement() {
     {
       value: "duitku",
       title: "Duitku only",
-      description: "Checkout hanya menampilkan dan memakai Duitku Sandbox.",
-      badge: "Recommended for Duitku review",
+      description: "Checkout hanya menampilkan dan memakai Duitku.",
+      badge: "Active gateway",
     },
     {
       value: "midtrans",
       title: "Midtrans only",
-      description: "Checkout hanya menampilkan dan memakai Midtrans Snap Sandbox.",
-      badge: "Midtrans review",
+      description: "Checkout hanya menampilkan dan memakai Midtrans Snap.",
+      badge: "Alternative gateway",
     },
     {
       value: "both",
@@ -3309,7 +3372,7 @@ export function SettingsPanel() {
             <CardHeader>
               <CardTitle>QRIS provider</CardTitle>
               <CardDescription>
-                Sandbox-ready provider keys and callbacks.
+                Provider keys and callbacks for QRIS payment operations.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-2">
@@ -3720,7 +3783,7 @@ function OrganizationSettings({
             <div>
               <div className="font-semibold">Active subscription required</div>
               <p className="mt-1 leading-6">
-                Theme, builder, template, devices, assets, analytics, settings,
+                Theme, builder, template, devices, analytics, settings,
                 and transaction tools are locked while this organization is on
                 Free Account.
               </p>
@@ -3847,7 +3910,7 @@ function OrganizationSettings({
             </div>
             <p className="mt-3 text-sm leading-6 text-zinc-600">
               {isFreeAccount
-                ? "Free Account can view dashboard and organization settings only. Activate a subscription to unlock builder, themes, templates, devices, assets, analytics, transactions, and settings."
+                ? "Free Account can view dashboard and organization settings only. Activate a subscription to unlock builder, themes, templates, devices, analytics, transactions, and settings."
                 : "This organization can use the POSKART operating tools according to the active subscription and paid device limit."}
             </p>
             <button

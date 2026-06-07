@@ -5,7 +5,7 @@ const sections = [
   {
     title: "1. Layanan POSKART",
     body: [
-      `${businessProfile.brandName} menyediakan platform SaaS untuk membantu operator photobooth mengelola kiosk, visual layout, template, pricing, media assets, QRIS transaction monitoring, booth device management, analytics, dan tenant management.`,
+      `${businessProfile.brandName} menyediakan platform SaaS untuk membantu operator photobooth mengelola kiosk, visual layout, template, pricing, QRIS transaction monitoring, booth device management, analytics, dan tenant management.`,
       "Layanan POSKART ditujukan untuk pengguna bisnis seperti operator photobooth, event organizer, franchise, brand activation team, dan pihak lain yang membutuhkan sistem operasional booth.",
     ],
   },

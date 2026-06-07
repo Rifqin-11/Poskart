@@ -1,5 +1,14 @@
-export type PosPackageCode = "print_1" | "print_2" | "print_3";
+export type PosPackageCode = string;
 export type PosPaymentMethod = "Cash" | "QRIS";
+
+export type PosPackageOption = {
+  code: PosPackageCode;
+  name: string;
+  description: string;
+  printCount: number;
+  amount: number;
+  popular?: boolean;
+};
 
 export type PosSale = {
   id: string;

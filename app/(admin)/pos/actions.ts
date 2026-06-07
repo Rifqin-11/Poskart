@@ -4,15 +4,6 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { PosActionState, PosPackageCode, PosPaymentMethod } from "@/types/pos";
 
-const POS_PACKAGES = {
-  print_1: { name: "1 Print", printCount: 1, amount: 6000 },
-  print_2: { name: "2 Print", printCount: 2, amount: 10000 },
-  print_3: { name: "3 Print", printCount: 3, amount: 14000 },
-} satisfies Record<
-  PosPackageCode,
-  { name: string; printCount: number; amount: number }
->;
-
 export async function createPosSale(
   formData: FormData,
 ): Promise<PosActionState> {
@@ -21,11 +12,6 @@ export async function createPosSale(
     formData.get("paymentMethod") ?? "",
   ) as PosPaymentMethod;
   const notes = String(formData.get("notes") ?? "").trim();
-  const selectedPackage = POS_PACKAGES[packageCode];
-
-  if (!selectedPackage) {
-    return { success: false, error: "Pilih paket print yang valid." };
-  }
 
   if (!["Cash", "QRIS"].includes(paymentMethod)) {
     return { success: false, error: "Pilih metode pembayaran yang valid." };
@@ -56,12 +42,27 @@ export async function createPosSale(
     return { success: false, error: "Akun belum terhubung ke organisasi." };
   }
 
+  const { data: selectedPackage, error: packageError } = await supabase
+    .from("pricing_products")
+    .select("id,name,price,promo_price,print_limit,active")
+    .eq("id", packageCode)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (packageError) {
+    return { success: false, error: `Gagal memuat paket: ${packageError.message}` };
+  }
+
+  if (!selectedPackage) {
+    return { success: false, error: "Pilih paket print yang valid." };
+  }
+
   const { error } = await supabase.from("pos_sales").insert({
     organization_id: membership.organization_id,
     package_code: packageCode,
     package_name: selectedPackage.name,
-    print_count: selectedPackage.printCount,
-    amount: selectedPackage.amount,
+    print_count: Math.max(1, Number(selectedPackage.print_limit) || 1),
+    amount: Number(selectedPackage.promo_price ?? selectedPackage.price) || 0,
     payment_method: paymentMethod,
     notes: notes || null,
     created_by: user.id,

@@ -40,7 +40,7 @@ export function CheckoutContent({
     gatewayMode === "midtrans" ? "midtrans" : "duitku",
   );
   const quote = calculateSubscriptionTotal(plan, deviceCount);
-  const selectedGatewayLabel = paymentGateway === "midtrans" ? "Midtrans Sandbox" : "Duitku Sandbox";
+  const selectedGatewayLabel = paymentGateway === "midtrans" ? "Midtrans" : "Duitku";
   const showDuitku = gatewayMode === "duitku" || gatewayMode === "both";
   const showMidtrans = gatewayMode === "midtrans" || gatewayMode === "both";
 
@@ -154,7 +154,7 @@ export function CheckoutContent({
             <div>
               <h2 className="text-lg font-semibold">Payment gateway</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-                Choose the sandbox gateway for this subscription checkout.
+                Choose the payment gateway for this subscription checkout.
               </p>
             </div>
             {gatewayMode === "both" ? (
@@ -212,7 +212,7 @@ export function CheckoutContent({
                         paymentGateway === "duitku" ? "text-zinc-300" : "text-zinc-500",
                       ].join(" ")}
                     >
-                      Sandbox checkout with Duitku payment page and callback.
+                      Checkout through the configured Duitku payment page and callback.
                     </span>
                   </span>
                 </div>
@@ -254,7 +254,7 @@ export function CheckoutContent({
                       </span>
                     </span>
                     <span className="mt-1 block text-xs leading-5 text-zinc-500">
-                      Alternative sandbox checkout with Midtrans Snap redirect.
+                      Alternative checkout through Midtrans Snap redirect.
                     </span>
                   </span>
                 </div>
@@ -269,7 +269,7 @@ export function CheckoutContent({
             Payment Gateway
           </div>
           Checkout ini membuat order subscription POSKART dan mengarahkan
-          pelanggan ke halaman pembayaran Sandbox. Gateway pembayaran aktif
+          pelanggan ke halaman pembayaran resmi. Gateway pembayaran aktif
           dikendalikan dari Super Admin.
         </div>
       </div>
@@ -337,8 +337,8 @@ export function CheckoutContent({
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
             <span>
               {paymentGateway === "duitku"
-                ? "Payments are processed through the configured Duitku Sandbox flow."
-                : "Payments are processed through Midtrans Snap Sandbox and updated via notification webhook."}
+                ? "Payments are processed through the configured Duitku flow."
+                : "Payments are processed through Midtrans Snap and updated via notification webhook."}
             </span>
           </div>
           {plan.features.map((feature) => (

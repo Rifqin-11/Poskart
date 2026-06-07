@@ -47,7 +47,6 @@ export async function updateSession(request: NextRequest) {
     "/superadmin",
     "/transactions",
     "/devices",
-    "/assets",
     "/analytics",
     "/settings",
   ];
@@ -59,7 +58,6 @@ export async function updateSession(request: NextRequest) {
     "/transactions",
     "/devices",
     "/pricing",
-    "/assets",
     "/analytics",
     "/settings",
   ];

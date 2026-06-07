@@ -3,13 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowRight,
   BarChart3,
   Blocks,
   ChevronDown,
   CreditCard,
   Gauge,
-  ImageIcon,
   LayoutTemplate,
   LockKeyhole,
   Menu,
@@ -18,7 +16,6 @@ import {
   PanelsTopLeft,
   ReceiptText,
   Settings,
-  Sparkles,
   Store,
   LogOut,
   Building,
@@ -46,7 +43,6 @@ const navItems = [
   { href: "/pricing", label: "Pricing", icon: CreditCard, requiresSubscription: true },
   { href: "/transactions", label: "Transactions", icon: Store, requiresSubscription: true },
   { href: "/devices", label: "Devices", icon: MonitorSmartphone, requiresSubscription: true },
-  { href: "/assets", label: "Assets", icon: ImageIcon, requiresSubscription: true },
   { href: "/analytics", label: "Analytics", icon: BarChart3, requiresSubscription: true },
   { href: "/superadmin", label: "Super Admin", icon: Shield, superAdminOnly: true },
   { href: "/settings", label: "Settings", icon: Settings, requiresSubscription: true },
@@ -61,11 +57,9 @@ function isSuperAdmin(email?: string | null): boolean {
 function SidebarContent({
   userEmail,
   onNavigate,
-  onOpenSubscription,
 }: {
   userEmail?: string;
   onNavigate?: () => void;
-  onOpenSubscription?: () => void;
 }) {
   const pathname = usePathname();
 
@@ -80,7 +74,7 @@ function SidebarContent({
   const filteredNavItems = navItems.filter((item) => !item.superAdminOnly || adminMode);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <Link href="/dashboard" className="mb-6 flex items-center gap-3" onClick={onNavigate}>
         <div className="grid size-9 place-items-center overflow-hidden rounded-lg">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -96,62 +90,7 @@ function SidebarContent({
         </div>
       </Link>
 
-      <div
-        className={cn(
-          "mb-4 rounded-lg border bg-white p-3 shadow-sm",
-          hasActiveSubscription ? "border-emerald-200" : "border-amber-200 bg-amber-50/50",
-        )}
-      >
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Subscription</div>
-            {!isLoading && !hasActiveSubscription ? (
-              <LockKeyhole className="size-3.5 text-amber-600" />
-            ) : null}
-          </div>
-          {isLoading ? (
-            <div className="h-5 w-24 animate-pulse rounded bg-zinc-100" />
-          ) : (
-            <div className="space-y-1.5">
-              <span
-                className={cn(
-                  "inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-xs font-semibold shadow-xs",
-                  hasActiveSubscription
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : "border-amber-200 bg-white text-amber-800",
-                )}
-              >
-                {tier === "Pro" ? planName : "Free"} Account
-              </span>
-              <div className="text-[11px] leading-4 text-zinc-500">
-                {deviceLimit} device{deviceLimit > 1 ? "s" : ""} allowed
-                {!hasActiveSubscription ? " · Builder locked" : ""}
-              </div>
-            </div>
-          )}
-          {!isLoading && (
-            expiry ? (
-              <div className="text-[11px] text-zinc-500">
-                Expires: <span className="font-medium text-zinc-700">{expiry}</span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenSubscription?.();
-                  onNavigate?.();
-                }}
-                className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-red-600 hover:text-red-700 transition-colors"
-              >
-                Activate subscription
-                <ArrowRight className="size-3" />
-              </button>
-            )
-          )}
-        </div>
-      </div>
-
-      <nav className="flex flex-1 flex-col gap-1">
+      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]">
         {filteredNavItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href;
@@ -189,13 +128,63 @@ function SidebarContent({
         })}
       </nav>
 
-      <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-3">
-        <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-          <Sparkles className="size-4 text-red-500" />
-          Live network
-        </div>
-        <div className="text-xs leading-5 text-zinc-500">
-          18 devices connected, 326 sessions today, QRIS latency stable.
+      <div
+        className={cn(
+          "mt-3 shrink-0 rounded-xl border bg-white p-3 shadow-sm",
+          hasActiveSubscription
+            ? "border-emerald-200"
+            : "border-amber-200 bg-amber-50/40",
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={cn(
+              "grid size-8 shrink-0 place-items-center rounded-lg",
+              hasActiveSubscription
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-amber-100 text-amber-700",
+            )}
+          >
+            {hasActiveSubscription ? (
+              <CreditCard className="size-4" />
+            ) : (
+              <LockKeyhole className="size-4" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+              Subscription
+            </div>
+            {isLoading ? (
+              <div className="mt-2 h-4 w-28 animate-pulse rounded bg-zinc-100" />
+            ) : (
+              <>
+                <div className="mt-0.5 truncate text-sm font-semibold text-zinc-950">
+                  {hasActiveSubscription
+                    ? `${tier === "Pro" ? planName : "Admin"} Account`
+                    : "Free Account"}
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-4 text-zinc-500">
+                  <span>
+                    {deviceLimit} device{deviceLimit > 1 ? "s" : ""}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-medium",
+                      hasActiveSubscription ? "text-emerald-700" : "text-amber-700",
+                    )}
+                  >
+                    {hasActiveSubscription ? "Active" : "Locked"}
+                  </span>
+                </div>
+                {expiry ? (
+                  <div className="mt-1 truncate text-[11px] text-zinc-500">
+                    Expires {expiry}
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -222,8 +211,8 @@ export function AdminShell({
     <div className="min-h-screen bg-zinc-50">
       {/* App sidebar — hidden in builder full-view */}
       {!builderFullView && (
-        <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-zinc-200 bg-zinc-50 p-4 lg:block">
-          <SidebarContent userEmail={userEmail} onOpenSubscription={() => setSubscriptionDialogOpen(true)} />
+        <aside className="fixed inset-y-0 left-0 hidden w-72 overflow-hidden border-r border-zinc-200 bg-zinc-50 p-4 lg:block">
+          <SidebarContent userEmail={userEmail} />
         </aside>
       )}
 
@@ -231,7 +220,6 @@ export function AdminShell({
         <SidebarContent
           userEmail={userEmail}
           onNavigate={() => setOpen(false)}
-          onOpenSubscription={() => setSubscriptionDialogOpen(true)}
         />
       </Sheet>
 

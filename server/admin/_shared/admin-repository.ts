@@ -36,6 +36,51 @@ type TransactionRow = Omit<
   print_last_error: string | null;
 };
 
+type PosDashboardSaleRow = {
+  id: string;
+  package_name: string;
+  print_count: number;
+  amount: number;
+  payment_method: "Cash" | "QRIS";
+  notes: string | null;
+  created_at: string;
+};
+
+export type PosDashboardSummary = {
+  totalRevenue: number;
+  todayRevenue: number;
+  monthlyRevenue: number;
+  totalTransactions: number;
+  todayTransactions: number;
+  totalPrints: number;
+  averageTransaction: number;
+  topPackages: Array<{
+    name: string;
+    transactions: number;
+    revenue: number;
+    prints: number;
+  }>;
+  paymentBreakdown: Array<{
+    method: "Cash" | "QRIS";
+    transactions: number;
+    revenue: number;
+  }>;
+  dailySales: Array<{
+    label: string;
+    revenue: number;
+    transactions: number;
+  }>;
+  recentSales: Array<{
+    id: string;
+    packageName: string;
+    printCount: number;
+    amount: number;
+    paymentMethod: "Cash" | "QRIS";
+    notes: string | null;
+    createdAt: string;
+  }>;
+};
+
 type BoothRow = Omit<
   Device,
   | "appVersion"
@@ -127,6 +172,27 @@ type ProfileWithOrganization = {
   }> | null;
 };
 
+type OrganizationMemberWithProfile = {
+  id: string;
+  role: string;
+  created_at: string;
+  profile_id: string;
+  profiles:
+    | {
+        id: string;
+        email: string;
+        role: string;
+        created_at: string;
+      }
+    | {
+        id: string;
+        email: string;
+        role: string;
+        created_at: string;
+      }[]
+    | null;
+};
+
 export type LayoutSchemaRow = {
   id: string;
   name: string;
@@ -172,6 +238,7 @@ export type DashboardData = {
   monthlyChart: ChartPoint[];
   transactions: Transaction[];
   devices: Device[];
+  posSummary: PosDashboardSummary;
 };
 
 function assertSupabaseResult<T>(
@@ -328,6 +395,105 @@ async function getTransactions(): Promise<Transaction[]> {
     error,
     "Unable to load transactions",
   ).map(mapTransaction);
+}
+
+async function getPosDashboardSummary(): Promise<PosDashboardSummary> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("pos_sales")
+    .select("id,package_name,print_count,amount,payment_method,notes,created_at")
+    .order("created_at", { ascending: false })
+    .limit(1000);
+
+  const sales = assertSupabaseResult(
+    data as PosDashboardSaleRow[] | null,
+    error,
+    "Unable to load POS sales summary",
+  );
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const currencyDateFormatter = new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  const weekdayFormatter = new Intl.DateTimeFormat("id-ID", { weekday: "short" });
+
+  const totalRevenue = sales.reduce((sum, sale) => sum + sale.amount, 0);
+  const totalPrints = sales.reduce((sum, sale) => sum + sale.print_count, 0);
+  const todaySales = sales.filter((sale) => new Date(sale.created_at) >= startOfToday);
+  const monthlySales = sales.filter((sale) => new Date(sale.created_at) >= startOfMonth);
+
+  const packageTotals = new Map<string, { transactions: number; revenue: number; prints: number }>();
+  const paymentTotals = new Map<"Cash" | "QRIS", { transactions: number; revenue: number }>();
+
+  for (const sale of sales) {
+    const packageTotal = packageTotals.get(sale.package_name) ?? {
+      transactions: 0,
+      revenue: 0,
+      prints: 0,
+    };
+    packageTotal.transactions += 1;
+    packageTotal.revenue += sale.amount;
+    packageTotal.prints += sale.print_count;
+    packageTotals.set(sale.package_name, packageTotal);
+
+    const paymentTotal = paymentTotals.get(sale.payment_method) ?? {
+      transactions: 0,
+      revenue: 0,
+    };
+    paymentTotal.transactions += 1;
+    paymentTotal.revenue += sale.amount;
+    paymentTotals.set(sale.payment_method, paymentTotal);
+  }
+
+  const dailySales = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now);
+    date.setDate(now.getDate() - (6 - index));
+    const nextDate = new Date(date);
+    nextDate.setDate(date.getDate() + 1);
+    const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dayEnd = new Date(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
+    const daySales = sales.filter((sale) => {
+      const createdAt = new Date(sale.created_at);
+      return createdAt >= dayStart && createdAt < dayEnd;
+    });
+
+    return {
+      label: weekdayFormatter.format(dayStart),
+      revenue: daySales.reduce((sum, sale) => sum + sale.amount, 0),
+      transactions: daySales.length,
+    };
+  });
+
+  return {
+    totalRevenue,
+    todayRevenue: todaySales.reduce((sum, sale) => sum + sale.amount, 0),
+    monthlyRevenue: monthlySales.reduce((sum, sale) => sum + sale.amount, 0),
+    totalTransactions: sales.length,
+    todayTransactions: todaySales.length,
+    totalPrints,
+    averageTransaction: sales.length > 0 ? Math.round(totalRevenue / sales.length) : 0,
+    topPackages: Array.from(packageTotals.entries())
+      .map(([name, total]) => ({ name, ...total }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5),
+    paymentBreakdown: Array.from(paymentTotals.entries()).map(([method, total]) => ({
+      method,
+      ...total,
+    })),
+    dailySales,
+    recentSales: sales.slice(0, 5).map((sale) => ({
+      id: sale.id,
+      packageName: sale.package_name,
+      printCount: sale.print_count,
+      amount: sale.amount,
+      paymentMethod: sale.payment_method,
+      notes: sale.notes,
+      createdAt: currencyDateFormatter.format(new Date(sale.created_at)),
+    })),
+  };
 }
 
 async function getFailedPrintsByBooth(
@@ -977,16 +1143,17 @@ async function publishThemeSchema(schema: ThemeSchema): Promise<void> {
 }
 
 async function getDashboard(): Promise<DashboardData> {
-  const [kpiMetrics, weeklyChart, monthlyChart, transactions, devices] =
+  const [kpiMetrics, weeklyChart, monthlyChart, transactions, devices, posSummary] =
     await Promise.all([
       getKpiMetrics(),
       getChartPoints("weekly"),
       getChartPoints("monthly"),
       getTransactions(),
       getBooths(),
+      getPosDashboardSummary(),
     ]);
 
-  return { kpiMetrics, weeklyChart, monthlyChart, transactions, devices };
+  return { kpiMetrics, weeklyChart, monthlyChart, transactions, devices, posSummary };
 }
 
 async function getSubscriptionStatus(): Promise<{ tier: "Free" | "Pro"; expiry: string | null; planId: string | null; planName: string; deviceLimit: number }> {
@@ -1319,12 +1486,25 @@ async function getMyTenantMembers() {
   if (!profile?.organization_id) throw new Error("No organization associated");
 
   const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
+    .from("organization_members")
+    .select("id, role, created_at, profile_id, profiles(id, email, role, created_at)")
     .eq("organization_id", profile.organization_id)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return data;
+
+  return ((data ?? []) as OrganizationMemberWithProfile[]).map((member) => {
+    const memberProfile = Array.isArray(member.profiles)
+      ? member.profiles[0]
+      : member.profiles;
+
+    return {
+      id: member.id,
+      email: memberProfile?.email ?? "Unknown user",
+      role: member.role,
+      created_at: member.created_at,
+      profile_id: member.profile_id,
+    };
+  });
 }
 
 async function getMyTenantInvitations() {
@@ -1341,7 +1521,7 @@ async function getMyTenantInvitations() {
   if (!profile?.organization_id) throw new Error("No organization associated");
 
   const { data, error } = await supabase
-    .from("tenant_invitations")
+    .from("organization_invitations")
     .select("*")
     .eq("organization_id", profile.organization_id)
     .order("created_at", { ascending: false });
@@ -1362,14 +1542,6 @@ async function inviteUserToTenant(email: string) {
     .single();
   if (!profile?.organization_id) throw new Error("No organization associated");
 
-  const { data: existingMember } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("email", email)
-    .eq("organization_id", profile.organization_id)
-    .maybeSingle();
-  if (existingMember) throw new Error("User is already a member of this organization");
-
   const { data: existingProfile } = await supabase
     .from("profiles")
     .select("id")
@@ -1377,31 +1549,56 @@ async function inviteUserToTenant(email: string) {
     .maybeSingle();
 
   if (existingProfile) {
-    const { error: updateErr } = await supabase
-      .from("profiles")
-      .update({ organization_id: profile.organization_id })
-      .eq("id", existingProfile.id);
-    if (updateErr) throw updateErr;
-    return { status: "joined" };
-  } else {
-    const { data, error } = await supabase
-      .from("tenant_invitations")
+    const { data: existingMember } = await supabase
+      .from("organization_members")
+      .select("id")
+      .eq("organization_id", profile.organization_id)
+      .eq("profile_id", existingProfile.id)
+      .maybeSingle();
+
+    if (existingMember) {
+      throw new Error("User is already a member of this organization");
+    }
+
+    const { error: memberErr } = await supabase
+      .from("organization_members")
       .insert({
-        email: email,
         organization_id: profile.organization_id,
-        invited_by: user.email ?? "Admin",
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return { status: "invited", data };
+        profile_id: existingProfile.id,
+        role: "staff",
+      });
+    if (memberErr) throw memberErr;
+    return { status: "joined" };
   }
+
+  const { data: existingInvitation } = await supabase
+    .from("organization_invitations")
+    .select("id")
+    .eq("organization_id", profile.organization_id)
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existingInvitation) {
+    throw new Error("Invitation already exists for this email");
+  }
+
+  const { data, error } = await supabase
+    .from("organization_invitations")
+    .insert({
+      email: email,
+      organization_id: profile.organization_id,
+      invited_by: user.email ?? "Admin",
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return { status: "invited", data };
 }
 
 async function deleteTenantInvitation(id: string) {
   const supabase = createClient();
   const { error } = await supabase
-    .from("tenant_invitations")
+    .from("organization_invitations")
     .delete()
     .eq("id", id);
   if (error) throw error;
@@ -1413,28 +1610,33 @@ async function removeMemberFromTenant(memberId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  if (memberId === user.id) {
+  const { data: currentMembership } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+  if (!currentMembership?.organization_id) {
+    throw new Error("No organization associated");
+  }
+
+  const { data: member, error: memberErr } = await supabase
+    .from("organization_members")
+    .select("id, profile_id, organization_id")
+    .eq("id", memberId)
+    .eq("organization_id", currentMembership.organization_id)
+    .maybeSingle();
+  if (memberErr) throw memberErr;
+  if (!member) throw new Error("Member not found");
+
+  if (member.profile_id === user.id) {
     throw new Error("You cannot remove yourself from your own organization");
   }
 
-  const newTenantId = 'tnt_' + Math.random().toString(36).substring(2, 15);
-  const { error: tErr } = await supabase
-    .from("organizations")
-    .insert({
-      id: newTenantId,
-      name: "Personal Org",
-      plan: "Free",
-      status: "active",
-      devices: 0,
-      users: 1,
-      renewal_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-    });
-  if (tErr) throw tErr;
-
-  const { error: pErr } = await supabase
-    .from("profiles")
-    .update({ organization_id: newTenantId })
-    .eq("id", memberId);
-  if (pErr) throw pErr;
+  const { error: deleteErr } = await supabase
+    .from("organization_members")
+    .delete()
+    .eq("id", member.id);
+  if (deleteErr) throw deleteErr;
   return true;
 }

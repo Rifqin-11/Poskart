@@ -4,7 +4,6 @@ import { signInAction, signInWithGoogleAction, signUpAction } from "@/app/auth/a
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { reviewTestAccount } from "@/lib/constants/business";
 
 export function AuthForm({
   mode,
@@ -105,14 +104,6 @@ export function AuthForm({
               </Link>
             </div>
 
-            {isLogin ? (
-              <div className="mt-5 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-xs leading-6 text-zinc-600">
-                <div className="mb-2 font-semibold text-zinc-950">Sandbox review account</div>
-                <div>Email: {reviewTestAccount.email}</div>
-                <div>Password: {reviewTestAccount.password}</div>
-                <div>Role: {reviewTestAccount.role}</div>
-              </div>
-            ) : null}
           </CardContent>
         </Card>
       </div>

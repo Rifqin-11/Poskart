@@ -1,7 +1,12 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import type { PosPackageCode, PosPaymentMethod, PosSale } from "@/types/pos";
+import type {
+  PosPackageCode,
+  PosPackageOption,
+  PosPaymentMethod,
+  PosSale,
+} from "@/types/pos";
 
 type PosSaleRow = {
   id: string;
@@ -12,6 +17,17 @@ type PosSaleRow = {
   payment_method: PosPaymentMethod;
   notes: string | null;
   created_at: string;
+};
+
+type PosPackageRow = {
+  id: string;
+  name: string;
+  price: number;
+  promo_price: number | null;
+  print_limit: number;
+  qris_download: boolean;
+  gif_enabled: boolean;
+  active: boolean;
 };
 
 const POS_SALE_COLUMNS =
@@ -28,6 +44,23 @@ function mapPosSale(row: PosSaleRow): PosSale {
     paymentMethod: row.payment_method,
     notes: row.notes,
     createdAt: row.created_at,
+  };
+}
+
+function mapPosPackage(row: PosPackageRow): PosPackageOption {
+  return {
+    code: row.id,
+    name: row.name,
+    description: [
+      `${row.print_limit} print`,
+      row.qris_download ? "QR download" : null,
+      row.gif_enabled ? "GIF" : null,
+    ]
+      .filter(Boolean)
+      .join(" + "),
+    printCount: row.print_limit,
+    amount: row.promo_price ?? row.price,
+    popular: Boolean(row.promo_price),
   };
 }
 
@@ -53,4 +86,19 @@ export async function getPosSales(): Promise<PosSale[]> {
   }
 
   return sales.map(mapPosSale);
+}
+
+export async function getPosPackages(): Promise<PosPackageOption[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("pricing_products")
+    .select("id,name,price,promo_price,print_limit,qris_download,gif_enabled,active")
+    .eq("active", true)
+    .order("price", { ascending: true });
+
+  if (error) {
+    throw new Error(`Gagal memuat paket POS: ${error.message}`);
+  }
+
+  return ((data ?? []) as PosPackageRow[]).map(mapPosPackage);
 }

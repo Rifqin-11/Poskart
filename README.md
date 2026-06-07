@@ -16,14 +16,14 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Duitku Sandbox Checkout
+## Payment Gateway Checkout
 
-POSKART checkout uses Duitku for subscription payments from POSKART customers to POSKART. Configure these environment variables before testing the payment redirect:
+POSKART checkout uses a payment gateway for subscription payments from POSKART customers to POSKART. Configure these environment variables before testing the payment redirect:
 
 ```bash
-DUITKU_SANDBOX=true
-DUITKU_MERCHANT_CODE=DSXXXX
-DUITKU_API_KEY=your-duitku-sandbox-api-key
+DUITKU_SANDBOX=false
+DUITKU_MERCHANT_CODE=your-duitku-merchant-code
+DUITKU_API_KEY=your-duitku-api-key
 DUITKU_PAYMENT_METHOD=NQ
 NEXT_PUBLIC_SITE_URL=https://www.poskart.my.id
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
@@ -32,16 +32,9 @@ SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 The checkout flow is:
 
 ```text
-/subscriptions -> /checkout?plan=... -> Duitku Sandbox payment page -> /checkout/return
+/subscriptions -> /checkout?plan=... -> payment gateway page -> /checkout/return
                                          |
                                          -> /api/payments/duitku/callback
-```
-
-Sandbox reviewer login:
-
-```text
-Email: reviewer@poskart.my.id
-Password: ReviewPOSKART123!
 ```
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.

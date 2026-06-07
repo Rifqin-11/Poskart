@@ -3,14 +3,13 @@ export const businessProfile = {
   businessName: "POSKART Indonesia",
   legalName: "POSKART Indonesia",
   description:
-    "POSKART adalah SaaS dashboard dan visual builder untuk mengelola photobooth kiosk, template, QRIS transaction monitoring, device devices, pricing, media assets, organization, dan analytics.",
+    "POSKART adalah SaaS dashboard dan visual builder untuk mengelola photobooth kiosk, template, QRIS transaction monitoring, device devices, pricing, organization, dan analytics.",
   email: "support@poskart.my.id",
   salesEmail: "sales@poskart.my.id",
-  phone: "+62 82219262377",
-  whatsapp: "+62 82219262377",
-  whatsappUrl: "https://wa.me/6282219262377",
-  address:
-    "Perumahan Gayam Permai, Kutabanjarnegara, Banjarnegara, Jawa Tengah",
+  phone: "+62 85846626622",
+  whatsapp: "+62 85846626622",
+  whatsappUrl: "https://wa.me/6285846626622",
+  address: "Banjarnegara, Jawa Tengah",
   supportHours: "Monday-Friday, 09:00-18:00 WIB",
   domain: "https://poskart.my.id",
   taxNote:
@@ -18,13 +17,7 @@ export const businessProfile = {
   billingNote:
     "Subscription POSKART tersedia dalam pilihan 1 bulan dan 3 bulan dengan 1 device, 6 bulan dengan 3 devices, serta 1 tahun dengan 5 devices. Device tambahan ditagihkan Rp 50K per device per bulan.",
   purchaseFlow:
-    "Untuk berlangganan, pelanggan dapat memilih paket, lanjut ke halaman checkout, lalu menyelesaikan pembayaran melalui Duitku Sandbox sebelum payment gateway production diaktifkan.",
-};
-
-export const reviewTestAccount = {
-  email: "reviewer@poskart.my.id",
-  password: "ReviewPOSKART123!",
-  role: "Customer reviewer",
+    "Untuk berlangganan, pelanggan dapat memilih paket, lanjut ke halaman checkout, lalu menyelesaikan pembayaran melalui payment gateway yang tersedia.",
 };
 
 export const ADDITIONAL_DEVICE_PRICE_MONTHLY = 50000;

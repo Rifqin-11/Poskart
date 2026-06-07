@@ -14,7 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Activity, AlertCircle, ArrowUpRight, CircleDollarSign, Download, LayoutTemplate, MonitorCheck, Plus } from "lucide-react";
+import { Activity, AlertCircle, ArrowUpRight, CircleDollarSign, Download, LayoutTemplate, MonitorCheck, Plus, Printer, ReceiptText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +39,19 @@ const emptyDashboardData: DashboardData = {
   monthlyChart: [],
   transactions: [],
   devices: [],
+  posSummary: {
+    totalRevenue: 0,
+    todayRevenue: 0,
+    monthlyRevenue: 0,
+    totalTransactions: 0,
+    todayTransactions: 0,
+    totalPrints: 0,
+    averageTransaction: 0,
+    topPackages: [],
+    paymentBreakdown: [],
+    dailySales: [],
+    recentSales: [],
+  },
 };
 
 function useClientMounted() {
@@ -65,8 +78,9 @@ export function DashboardOverview() {
   const hasMonthlyChart = dashboardData.monthlyChart.length > 0;
   const hasDevices = dashboardData.devices.length > 0;
   const hasTransactions = dashboardData.transactions.length > 0;
+  const hasPosSales = dashboardData.posSummary.totalTransactions > 0;
   const isEmptyWorkspace =
-    !hasDevices && !hasTransactions && !hasWeeklyChart && !hasMonthlyChart;
+    !hasDevices && !hasTransactions && !hasPosSales && !hasWeeklyChart && !hasMonthlyChart;
   const canUseOperatingTools = subscription?.tier === "Pro";
 
   return (
@@ -113,7 +127,7 @@ export function DashboardOverview() {
                 No devices, transactions, or analytics have been recorded yet.
                 {canUseOperatingTools
                   ? "Add your first device, create templates, and publish a builder layout to start collecting operational data."
-                  : "Activate a subscription to unlock templates, builder, devices, assets, transactions, analytics, and settings."}
+                  : "Activate a subscription to unlock templates, builder, devices, transactions, analytics, and settings."}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -165,6 +179,78 @@ export function DashboardOverview() {
             </motion.div>
           );
         })}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>POS Kasir hari ini</CardTitle>
+            <CardDescription>
+              Data transaksi manual dari halaman POS Kasir.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">
+              <CircleDollarSign className="mb-3 size-4 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Pendapatan hari ini</div>
+              <div className="mt-1 text-xl font-semibold tracking-tight">
+                {formatCurrency(dashboardData.posSummary.todayRevenue)}
+              </div>
+            </div>
+            <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">
+              <ReceiptText className="mb-3 size-4 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Transaksi hari ini</div>
+              <div className="mt-1 text-xl font-semibold tracking-tight">
+                {dashboardData.posSummary.todayTransactions}
+              </div>
+            </div>
+            <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">
+              <Printer className="mb-3 size-4 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Total print</div>
+              <div className="mt-1 text-xl font-semibold tracking-tight">
+                {dashboardData.posSummary.totalPrints}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <div>
+              <CardTitle>Riwayat POS terbaru</CardTitle>
+              <CardDescription>
+                Penjualan paket print terakhir dari kasir.
+              </CardDescription>
+            </div>
+            <Link href="/pos" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              Buka POS
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {hasPosSales ? (
+              dashboardData.posSummary.recentSales.map((sale) => (
+                <div key={sale.id} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
+                  <div>
+                    <div className="text-sm font-medium">{sale.packageName}</div>
+                    <div className="text-xs text-zinc-500">
+                      {sale.printCount} print · {sale.paymentMethod} · {sale.createdAt}
+                    </div>
+                  </div>
+                  <div className="text-right text-sm font-semibold">
+                    {formatCurrency(sale.amount)}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <EmptyPanelState
+                title="Belum ada transaksi POS"
+                description="Simpan transaksi dari POS Kasir agar ringkasan pendapatan, paket, dan print muncul di dashboard."
+                href="/pos"
+                action="Buka POS Kasir"
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
