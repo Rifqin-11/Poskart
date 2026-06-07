@@ -25,6 +25,7 @@ import {
   Copy,
   Crosshair,
   Grid2X2,
+  GripVertical,
   Image as ImageIcon,
   Layers,
   Lock,
@@ -416,7 +417,7 @@ function SortableFrameLayer({
         {...attributes}
         {...listeners}
       >
-        <Grid2X2 className="size-3" />
+        <GripVertical className="size-3" />
       </button>
       <button className="min-w-0 flex-1 text-left" onClick={() => onSelect(node.id)}>
         <span className={cn("block font-medium", isSelected && "text-white")}>{node.type}</span>
@@ -1094,7 +1095,7 @@ export function FrameTemplateBuilder({
           </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={() => setZoom((value) => clampZoom(value - 0.1))} title="Zoom out">
-              <ZoomOut />
+              <ZoomOut className="size-4" />
             </Button>
             <button
               className="h-9 w-16 rounded-md text-center text-xs font-mono text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
@@ -1104,22 +1105,22 @@ export function FrameTemplateBuilder({
               {Math.round(zoom * 100)}%
             </button>
             <Button variant="ghost" size="icon" onClick={() => setZoom((value) => clampZoom(value + 0.1))} title="Zoom in">
-              <ZoomIn />
+              <ZoomIn className="size-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} title="Actual size">
-              <Maximize2 />
+              <Maximize2 className="size-4" />
             </Button>
             {selectedId ? (
               <Button variant="ghost" size="icon" onClick={() => panToNode(selectedId)} title="Pan to selection">
-                <Crosshair />
+                <Crosshair className="size-4" />
               </Button>
             ) : null}
             <div className="mx-2 h-5 w-px bg-zinc-200" />
             <Button variant="ghost" size="icon" onClick={undo} disabled={history.past.length === 0} title="Undo">
-              <Undo2 />
+              <Undo2 className="size-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={redo} disabled={history.future.length === 0} title="Redo">
-              <Redo2 />
+              <Redo2 className="size-4" />
             </Button>
             <div className="mx-2 h-5 w-px bg-zinc-200" />
             {/* Full view toggle */}
@@ -1130,7 +1131,7 @@ export function FrameTemplateBuilder({
               className={cn(fullView && "bg-zinc-900 text-white hover:bg-zinc-700 hover:text-white")}
               onClick={() => setFullView(!fullView)}
             >
-              {fullView ? <Minimize2 /> : <Maximize2 className="opacity-60" />}
+              {fullView ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4 opacity-60" />}
             </Button>
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button onClick={() => onSave(normalizeFrameLayout(layout, photoCount))}>{saveLabel}</Button>
@@ -1352,26 +1353,26 @@ export function FrameTemplateBuilder({
                         <div className="text-xs text-zinc-500">{selectedNode.id}</div>
                       </div>
                       <div className="flex gap-1">
-	                        <Button
-	                          variant="ghost"
-	                          size="icon"
-	                          disabled={selectedNode.type === "photo-slot" || selectedNode.id === "frame-background"}
-	                          onClick={() => duplicateNode(selectedNode)}
-	                        >
-                          <Copy />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={selectedNode.type === "photo-slot" || selectedNode.id === "frame-background"}
+                          onClick={() => duplicateNode(selectedNode)}
+                        >
+                          <Copy className="size-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => updateNode(selectedNode.id, { locked: !selectedNode.locked })}>
-                          {selectedNode.locked ? <Unlock /> : <Lock />}
+                          {selectedNode.locked ? <Unlock className="size-4" /> : <Lock className="size-4" />}
                         </Button>
-	                        <Button
-	                          variant="ghost"
-	                          size="icon"
-	                          disabled={selectedNode.type === "photo-slot" || selectedNode.id === "frame-background"}
-	                          onClick={() => {
-	                            deleteNode(selectedNode);
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={selectedNode.type === "photo-slot" || selectedNode.id === "frame-background"}
+                          onClick={() => {
+                            deleteNode(selectedNode);
                           }}
                         >
-                          <Trash2 />
+                          <Trash2 className="size-4" />
                         </Button>
                       </div>
                     </div>

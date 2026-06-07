@@ -34,6 +34,7 @@ import {
   Film,
   FolderOpen,
   Grid2X2,
+  GripVertical,
   Image as ImageIcon,
   Layers,
   Link2,
@@ -137,19 +138,71 @@ function HotspotOverlay({ node }: { node: BuilderNode }) {
   const padV = Math.max(3, Math.round(canvas.width * 0.004));
   const borderW = Math.max(2, Math.round(canvas.width * 0.003));
 
+  const isQr = node.type === "qr" || node.type === "qr-placeholder";
+  const radius = readNumber(node.props.radius, 4);
+
   return (
     <div
-      className="flex h-full w-full flex-col items-center justify-center gap-1 overflow-hidden text-center"
+      className="relative flex h-full w-full flex-col items-center justify-center gap-1 overflow-hidden text-center"
       style={{
-        background: colors.bg,
+        background: isQr ? "rgba(255, 255, 255, 0.9)" : colors.bg,
         borderColor: colors.border,
         borderWidth: borderW,
         borderStyle: "dashed",
-        borderRadius: 4,
+        borderRadius: radius,
       }}
     >
+      {/* If it's QR, render the QR pattern inside */}
+      {node.type === "qr" && (
+        <div className="absolute inset-0 p-3 opacity-30">
+          <div className="grid size-full grid-cols-4 grid-rows-4 gap-1">
+            {Array.from({ length: 16 }).map((_, index) => (
+              <span
+                key={index}
+                className={cn(
+                  "rounded-sm",
+                  index % 3 === 0 ? "bg-zinc-950" : "bg-zinc-200",
+                )}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {node.type === "qr-placeholder" && (
+        <div className="absolute inset-0 p-3 opacity-30">
+          <div className="relative flex size-full flex-col items-center justify-center gap-1">
+            {/* Corner squares (finder patterns) */}
+            <div className="absolute left-0 top-0 size-8 rounded-sm border-[3px] border-zinc-800 bg-white">
+              <div className="m-0.5 size-4 rounded-[2px] bg-zinc-800" />
+            </div>
+            <div className="absolute right-0 top-0 size-8 rounded-sm border-[3px] border-zinc-800 bg-white">
+              <div className="m-0.5 size-4 rounded-[2px] bg-zinc-800" />
+            </div>
+            <div className="absolute bottom-0 left-0 size-8 rounded-sm border-[3px] border-zinc-800 bg-white">
+              <div className="m-0.5 size-4 rounded-[2px] bg-zinc-800" />
+            </div>
+            {/* Module grid in the middle */}
+            <div className="grid w-full max-w-[70%] grid-cols-6 gap-0.5 px-10">
+              {Array.from({ length: 30 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "aspect-square rounded-[1px]",
+                    (i * 7 + i) % 5 === 0 ? "bg-zinc-800" : "bg-zinc-200",
+                  )}
+                />
+              ))}
+            </div>
+            <div className="absolute bottom-2 left-0 right-0 text-center text-[9px] font-semibold uppercase tracking-widest text-zinc-400">
+              QRIS — dari payment gateway
+            </div>
+          </div>
+        </div>
+      )}
+
       <span
-        className="max-w-full truncate rounded font-bold uppercase tracking-wide"
+        className="z-10 max-w-full truncate rounded font-bold uppercase tracking-wide"
         style={{
           color: colors.text,
           background: colors.border + "22",
@@ -165,7 +218,7 @@ function HotspotOverlay({ node }: { node: BuilderNode }) {
 
       {role ? (
         <span
-          className="max-w-full truncate font-mono"
+          className="z-10 max-w-full truncate font-mono"
           style={{ color: colors.text, opacity: 0.85, fontSize: roleSize }}
         >
           {role}
@@ -321,7 +374,12 @@ function NodeRenderer({
 
   if (node.type === "qr") {
     return (
-      <div className="grid h-full w-full place-items-center rounded-md border border-zinc-300 bg-white p-3">
+      <div
+        className="grid h-full w-full place-items-center border border-zinc-300 bg-white p-3"
+        style={{
+          borderRadius: readNumber(node.props.radius, 6),
+        }}
+      >
         <div className="grid size-full grid-cols-4 grid-rows-4 gap-1">
           {Array.from({ length: 16 }).map((_, index) => (
             <span
@@ -339,7 +397,12 @@ function NodeRenderer({
 
   if (node.type === "camera-view") {
     return (
-      <div className="relative h-full w-full overflow-hidden bg-zinc-950">
+      <div
+        className="relative h-full w-full overflow-hidden bg-zinc-950"
+        style={{
+          borderRadius: readNumber(node.props.radius, 8),
+        }}
+      >
         {/* Camera grid overlay */}
         <div
           className="absolute inset-0"
@@ -382,7 +445,12 @@ function NodeRenderer({
 
   if (node.type === "photo-result") {
     return (
-      <div className="relative h-full w-full overflow-hidden rounded-lg border-2 border-dashed border-teal-400 bg-teal-50/60">
+      <div
+        className="relative h-full w-full overflow-hidden border-2 border-dashed border-teal-400 bg-teal-50/60"
+        style={{
+          borderRadius: readNumber(node.props.radius, 8),
+        }}
+      >
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
           {/* Polaroid-style frame hint */}
           <div className="relative flex h-4/5 w-4/5 flex-col rounded bg-white p-2 shadow-md">
@@ -412,7 +480,12 @@ function NodeRenderer({
         ? node.props.countdownSeconds
         : 8;
     return (
-      <div className="flex h-full w-full items-center gap-3 overflow-hidden rounded-lg border-2 border-dashed border-indigo-300 bg-indigo-50/60 px-3">
+      <div
+        className="flex h-full w-full items-center gap-3 overflow-hidden border-2 border-dashed border-indigo-300 bg-indigo-50/60 px-3"
+        style={{
+          borderRadius: readNumber(node.props.radius, 8),
+        }}
+      >
         {/* Spinning circular ring — mimics Flutter CircularProgressIndicator */}
         <div className="relative shrink-0" style={{ width: 28, height: 28 }}>
           {/* Background ring */}
@@ -466,7 +539,12 @@ function NodeRenderer({
     const display =
       mins > 0 ? `${mins}:${String(remSecs).padStart(2, "0")}` : `${secs}s`;
     return (
-      <div className="flex h-full w-full items-center gap-3 overflow-hidden rounded-lg border-2 border-dashed border-rose-300 bg-rose-50/70 px-3">
+      <div
+        className="flex h-full w-full items-center gap-3 overflow-hidden border-2 border-dashed border-rose-300 bg-rose-50/70 px-3"
+        style={{
+          borderRadius: readNumber(node.props.radius, 8),
+        }}
+      >
         <div className="grid size-9 shrink-0 place-items-center rounded-md bg-rose-500 text-white">
           <span className="text-base">⏱</span>
         </div>
@@ -494,7 +572,12 @@ function NodeRenderer({
     const display =
       mins > 0 ? `${mins}:${String(remSecs).padStart(2, "0")}` : `${secs}s`;
     return (
-      <div className="flex h-full w-full items-center gap-3 overflow-hidden rounded-lg border-2 border-dashed border-emerald-300 bg-emerald-50/70 px-3">
+      <div
+        className="flex h-full w-full items-center gap-3 overflow-hidden border-2 border-dashed border-emerald-300 bg-emerald-50/70 px-3"
+        style={{
+          borderRadius: readNumber(node.props.radius, 8),
+        }}
+      >
         <div className="grid size-9 shrink-0 place-items-center rounded-md bg-emerald-500 text-white">
           <span className="text-base">💳</span>
         </div>
@@ -523,7 +606,12 @@ function NodeRenderer({
       typeof node.props.tileCount === "number" ? node.props.tileCount : 4;
     const tiles = Array.from({ length: tileCount });
     return (
-      <div className="relative h-full w-full overflow-hidden rounded-xl border-2 border-dashed border-orange-300 bg-orange-50">
+      <div
+        className="relative h-full w-full overflow-hidden border-2 border-dashed border-orange-300 bg-orange-50"
+        style={{
+          borderRadius: readNumber(node.props.radius, 12),
+        }}
+      >
         {/* pointer-events-none: inner display content never consumes mouse events */}
         <div className="pointer-events-none absolute inset-0 p-2">
           {/* Grid header */}
@@ -572,7 +660,12 @@ function NodeRenderer({
 
   if (node.type === "template-preview") {
     return (
-      <div className="relative h-full w-full overflow-hidden rounded-xl border-2 border-dashed border-orange-300 bg-orange-50/60">
+      <div
+        className="relative h-full w-full overflow-hidden border-2 border-dashed border-orange-300 bg-orange-50/60"
+        style={{
+          borderRadius: readNumber(node.props.radius, 12),
+        }}
+      >
         {/* pointer-events-none: inner display content never consumes mouse events */}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <div className="relative flex h-4/5 w-3/4 flex-col gap-1 rounded-lg border border-orange-200 bg-white p-2 shadow-md">
@@ -592,7 +685,12 @@ function NodeRenderer({
   if (node.type === "qr-placeholder") {
     // Realistic-looking QR placeholder — no real data, just visual structure
     return (
-      <div className="grid h-full w-full place-items-center rounded-lg border-2 border-dashed border-zinc-300 bg-white p-3">
+      <div
+        className="grid h-full w-full place-items-center border-2 border-dashed border-zinc-300 bg-white p-3"
+        style={{
+          borderRadius: readNumber(node.props.radius, 8),
+        }}
+      >
         <div className="relative flex size-full flex-col items-center justify-center gap-1">
           {/* Corner squares (finder patterns) */}
           <div className="absolute left-0 top-0 size-8 rounded-sm border-[3px] border-zinc-800 bg-white">
@@ -626,7 +724,12 @@ function NodeRenderer({
 
   if (node.type === "receipt-preview") {
     return (
-      <div className="h-full w-full rounded-sm border border-dashed border-zinc-300 bg-white p-5 font-mono text-zinc-950 shadow-xl">
+      <div
+        className="h-full w-full border border-dashed border-zinc-300 bg-white p-5 font-mono text-zinc-950 shadow-xl"
+        style={{
+          borderRadius: readNumber(node.props.radius, 4),
+        }}
+      >
         <div className="text-center text-sm font-bold">
           {readString(node.props.title, "POSKART")}
         </div>
@@ -809,7 +912,7 @@ function SortableLayer({ node }: { node: BuilderNode }) {
         {...attributes}
         {...listeners}
       >
-        <Grid2X2 className="size-3" />
+        <GripVertical className="size-3" />
       </button>
       <button
         className="min-w-0 flex-1 text-left"
@@ -945,6 +1048,7 @@ function PropertiesPanel({
   const updateNodeProps = useBuilderStore((state) => state.updateNodeProps);
   const updateCanvas = useBuilderStore((state) => state.updateCanvas);
   const canvas = useBuilderStore((state) => state.canvas);
+  const isOverlayMode = !!canvas.overlayMode;
   const duplicateNode = useBuilderStore((state) => state.duplicateNode);
   const deleteNode = useBuilderStore((state) => state.deleteNode);
   const [uploading, setUploading] = useState(false);
@@ -996,14 +1100,14 @@ function PropertiesPanel({
             size="icon"
             onClick={() => duplicateNode(selectedNode.id)}
           >
-            <Copy />
+            <Copy className="size-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => deleteNode(selectedNode.id)}
           >
-            <Trash2 />
+            <Trash2 className="size-4" />
           </Button>
         </div>
       </div>
@@ -1118,7 +1222,7 @@ function PropertiesPanel({
       </PanelSection>
 
       {/* Text */}
-      {editableText && (
+      {editableText && !isOverlayMode && (
         <PanelSection
           title="Text"
           icon={<Type className="size-3.5 text-zinc-500" />}
@@ -2653,6 +2757,7 @@ export function VisualBuilder() {
   const selectNodes = useBuilderStore((state) => state.selectNodes);
   const deleteSelected = useBuilderStore((state) => state.deleteSelected);
   const canvas = useBuilderStore((state) => state.canvas);
+  const isOverlayMode = !!canvas.overlayMode;
   const nodes = useBuilderStore((state) => state.nodes);
   const updateNode = useBuilderStore((state) => state.updateNode);
   const updateCanvas = useBuilderStore((state) => state.updateCanvas);
@@ -2803,6 +2908,18 @@ export function VisualBuilder() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
 
+  // Touch tracking refs for pinch zoom & panning
+  const touchStartDistRef = useRef<number>(0);
+  const touchStartZoomRef = useRef<number>(1);
+  const touchStartMidRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const touchStartPanRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const latestZoomRef = useRef(zoom);
+  latestZoomRef.current = zoom;
+
+  const latestPanRef = useRef(pan);
+  latestPanRef.current = pan;
+
   const clampZoom = useCallback(
     (z: number) => Math.min(4, Math.max(0.1, z)),
     [],
@@ -2861,8 +2978,64 @@ export function VisualBuilder() {
         setPan((p) => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }));
       }
     };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const dist = Math.hypot(
+          touch1.clientX - touch2.clientX,
+          touch1.clientY - touch2.clientY,
+        );
+        touchStartDistRef.current = dist;
+        touchStartZoomRef.current = latestZoomRef.current;
+        touchStartMidRef.current = {
+          x: (touch1.clientX + touch2.clientX) / 2,
+          y: (touch1.clientY + touch2.clientY) / 2,
+        };
+        touchStartPanRef.current = { ...latestPanRef.current };
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault(); // Prevent standard browser pinch zoom and scrolling
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+
+        // Zoom
+        const dist = Math.hypot(
+          touch1.clientX - touch2.clientX,
+          touch1.clientY - touch2.clientY,
+        );
+        if (touchStartDistRef.current > 0) {
+          const ratio = dist / touchStartDistRef.current;
+          const newZoom = clampZoom(touchStartZoomRef.current * ratio);
+          setZoom(newZoom);
+        }
+
+        // Pan
+        const cx = (touch1.clientX + touch2.clientX) / 2;
+        const cy = (touch1.clientY + touch2.clientY) / 2;
+        const dx = cx - touchStartMidRef.current.x;
+        const dy = cy - touchStartMidRef.current.y;
+
+        setPan({
+          x: touchStartPanRef.current.x + dx,
+          y: touchStartPanRef.current.y + dy,
+        });
+      }
+    };
+
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+    };
   }, [clampZoom]);
 
   useEffect(() => {
@@ -3004,6 +3177,7 @@ export function VisualBuilder() {
 
   const visibleNodes = nodes
     .filter((node) => node.page === activePage)
+    .filter((node) => !(isOverlayMode && node.type === "text"))
     .sort((a, b) => a.zIndex - b.zIndex);
   const selectedNode = nodes.find((node) => node.id === selectedId);
   const contextNode = contextMenu?.nodeId
@@ -3474,8 +3648,11 @@ export function VisualBuilder() {
               <span className="text-zinc-600 normal-case">{activePage}</span>
             </div>
             <div className="grid grid-cols-1 gap-0.5">
-              {PAGE_COMPONENTS[activePage].map((type) => {
+              {PAGE_COMPONENTS[activePage]
+                .filter((type) => !(isOverlayMode && type === "text"))
+                .map((type) => {
                 const meta = COMPONENT_META[type];
+                const Icon = meta.icon;
                 return (
                   <button
                     key={type}
@@ -3483,7 +3660,7 @@ export function VisualBuilder() {
                     className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
                   >
                     <span className="flex size-4 shrink-0 items-center justify-center text-[11px] text-zinc-400">
-                      {meta.icon}
+                      <Icon className="size-3.5" />
                     </span>
                     <span>{meta.label}</span>
                   </button>

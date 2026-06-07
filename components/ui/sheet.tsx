@@ -27,7 +27,7 @@ export function Sheet({
       >
         <div className="mb-4 flex justify-end">
           <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
-            <X />
+            <X className="size-4" />
           </Button>
         </div>
         {children}

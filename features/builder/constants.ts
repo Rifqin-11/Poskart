@@ -1,3 +1,20 @@
+import {
+  Type,
+  Image as ImageIcon,
+  Link2,
+  QrCode,
+  CreditCard,
+  Camera,
+  Receipt,
+  Layers,
+  Grid2X2,
+  Eye,
+  AtSign,
+  PaintBucket,
+  Clock,
+  Timer,
+  type LucideIcon,
+} from "lucide-react";
 import type { BuilderComponentType, BuilderPage } from "@/types/builder";
 
 /** Semantic roles Flutter uses to bind the correct action handler to each button */
@@ -83,24 +100,24 @@ export const pageLabels: BuilderPage[] = [
 /** Human-readable label and icon for each component type */
 export const COMPONENT_META: Record<
   BuilderComponentType,
-  { label: string; icon: string }
+  { label: string; icon: LucideIcon }
 > = {
-  text: { label: "Text", icon: "T" },
-  image: { label: "Image", icon: "Image" },
-  button: { label: "Button", icon: "Button" },
-  qr: { label: "QR Download", icon: "QR" },
-  "qr-placeholder": { label: "QRIS Payment", icon: "Pay" },
-  "camera-view": { label: "Camera View", icon: "Camera" },
-  "photo-result": { label: "Photo Result", icon: "Photo" },
-  "receipt-preview": { label: "Receipt Preview", icon: "Receipt" },
-  "frame-preview": { label: "Frame Preview", icon: "Frame" },
-  "template-list": { label: "Template Grid", icon: "Grid" },
-  "template-preview": { label: "Template Preview", icon: "Preview" },
-  "social-handle": { label: "Social Handle", icon: "@" },
-  "background-decoration": { label: "BG Decoration", icon: "BG" },
-  "return-countdown": { label: "Return Countdown", icon: "Return" },
-  "session-countdown": { label: "Session Countdown", icon: "Session" },
-  "payment-countdown": { label: "Payment Countdown", icon: "Pay" },
+  text: { label: "Text", icon: Type },
+  image: { label: "Image", icon: ImageIcon },
+  button: { label: "Button", icon: Link2 },
+  qr: { label: "QR Download", icon: QrCode },
+  "qr-placeholder": { label: "QRIS Payment", icon: CreditCard },
+  "camera-view": { label: "Camera View", icon: Camera },
+  "photo-result": { label: "Photo Result", icon: ImageIcon },
+  "receipt-preview": { label: "Receipt Preview", icon: Receipt },
+  "frame-preview": { label: "Frame Preview", icon: Layers },
+  "template-list": { label: "Template Grid", icon: Grid2X2 },
+  "template-preview": { label: "Template Preview", icon: Eye },
+  "social-handle": { label: "Social Handle", icon: AtSign },
+  "background-decoration": { label: "BG Decoration", icon: PaintBucket },
+  "return-countdown": { label: "Return Countdown", icon: Timer },
+  "session-countdown": { label: "Session Countdown", icon: Clock },
+  "payment-countdown": { label: "Payment Countdown", icon: Clock },
 };
 
 /** Components available per page. Only show relevant items in Add panel. */
