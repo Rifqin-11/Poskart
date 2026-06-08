@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
+import { LegalFooterLinks } from "@/features/root/legal/legal-footer-links";
 import { businessProfile } from "@/lib/constants/business";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -149,7 +150,7 @@ export function PublicFooter({ className }: { className?: string }) {
             </div>
           </div>
 
-          {/* Right Column: Menu */}
+          {/* Center Column: Menu */}
           <div className="flex flex-col gap-4">
             <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
               Menu
@@ -189,13 +190,21 @@ export function PublicFooter({ className }: { className?: string }) {
               </li>
             </ul>
           </div>
+
+          {/* Right Column: Legal */}
+          <div className="flex flex-col gap-4">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              Legal
+            </span>
+            <LegalFooterLinks />
+          </div>
         </div>
 
         {/* Divider */}
         <div className="border-t border-zinc-200" />
 
         {/* Copyright and Contact Button */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-sm text-zinc-500 py-6">
+        <div className="flex flex-col gap-4 text-sm text-zinc-500 py-6 lg:flex-row lg:items-center lg:justify-between">
           <p>© 2026 {businessProfile.legalName}. All rights reserved.</p>
           <Link
             href="/contact"

@@ -1,280 +1,366 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowDown,
   ArrowRight,
-  BarChart3,
-  Blocks,
-  CheckCircle2,
+  Camera,
   CreditCard,
-  Headphones,
+  ImageIcon,
   Layers3,
   MonitorSmartphone,
   Palette,
+  Printer,
+  QrCode,
   ShieldCheck,
-  Sparkles,
-  Workflow,
-  Zap,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { PricingCards } from "@/features/billing/pricing/pricing-cards";
-import { ProductScrollytelling } from "@/features/root/home/product-scrollytelling";
 import {
   PublicFooter,
   PublicHeader,
 } from "@/features/root/shell/public-site-shell";
-import { businessProfile, type PricingPlan } from "@/lib/constants/business";
+import type { PricingPlan } from "@/lib/constants/business";
 
-const capabilities = [
+const operatorFeatures = [
   {
-    title: "Visual Builder",
+    title: "Booth screen flow",
     description:
-      "Bangun setiap layar pengalaman booth dengan canvas dan layer yang terstruktur.",
-    icon: Blocks,
-    number: "01",
+      "Landing, kamera, preview, payment, dan thank-you screen dari satu builder.",
+    icon: Camera,
   },
   {
-    title: "Theme & Asset CMS",
+    title: "Frame templates",
     description:
-      "Kelola identitas visual, frame, template, dan media dari satu tempat.",
+      "Frame event, layout foto, warna brand, dan template siap publish ke booth.",
     icon: Palette,
-    number: "02",
   },
   {
-    title: "Device Operations",
+    title: "Print packages",
     description:
-      "Pantau perangkat, konfigurasi, dan status sinkronisasi untuk setiap booth.",
-    icon: MonitorSmartphone,
-    number: "03",
+      "Paket single, double, triple print, promo, dan batas cetak tersinkron.",
+    icon: Printer,
   },
   {
-    title: "QRIS Monitoring",
+    title: "POS and QRIS",
     description:
-      "Ikuti status transaksi dan alur pembayaran sebagai bagian dari operasi booth.",
+      "Kasir manual, pembayaran QRIS, dan riwayat transaksi untuk operator event.",
     icon: CreditCard,
-    number: "04",
   },
   {
-    title: "Operational Analytics",
+    title: "Device monitor",
     description:
-      "Baca aktivitas dan performa operasi untuk mendukung keputusan tim.",
-    icon: BarChart3,
-    number: "05",
+      "Pantau booth online, sinkronisasi layout, dan status operasional perangkat.",
+    icon: MonitorSmartphone,
   },
   {
-    title: "Organization Control",
+    title: "Team workspace",
     description:
-      "Atur anggota, peran, lokasi, dan perangkat sesuai struktur bisnis.",
+      "Akses admin, operator, dan staff event tetap berada di satu organisasi.",
     icon: ShieldCheck,
-    number: "06",
   },
 ];
 
-const workflow = [
+const sessionSteps = [
   {
-    text: "Buat akun dan pilih paket sesuai jumlah perangkat.",
-    icon: Sparkles,
-    hint: "Mulai gratis, upgrade kapan saja",
+    title: "Pilih paket",
+    description: "Single, double, atau triple print",
+    icon: Layers3,
   },
   {
-    text: "Atur identitas brand, aset, dan template booth.",
-    icon: Palette,
-    hint: "Desain sekali, pakai di semua booth",
+    title: "Bayar QRIS",
+    description: "Scan dan lanjutkan sesi",
+    icon: QrCode,
   },
   {
-    text: "Hubungkan perangkat lalu terbitkan konfigurasi.",
-    icon: Zap,
-    hint: "Sinkronisasi otomatis ke lapangan",
+    title: "Cetak foto",
+    description: "Operator dapat mencetak dari POS",
+    icon: Printer,
   },
-  {
-    text: "Pantau transaksi dan operasi dari dashboard.",
-    icon: BarChart3,
-    hint: "Realtime, lintas lokasi",
-  },
+];
+
+const posSalesPreview = [
+  { name: "Double Print", price: "Rp 10.000", method: "QRIS" },
+  { name: "Single Print", price: "Rp 6.000", method: "Cash" },
+  { name: "Triple Print", price: "Rp 14.000", method: "QRIS" },
+];
+
+const operationHighlights = [
+  { title: "Booth online", value: "3 devices", icon: MonitorSmartphone },
+  { title: "QRIS success", value: "98%", icon: QrCode },
+  { title: "Print queue", value: "Ready", icon: Printer },
 ];
 
 export function HomePage({ plans }: { plans: PricingPlan[] }) {
+  const starterPlan = plans.find((plan) => plan.id === "monthly") ?? plans[0];
+
   return (
     <main className="min-h-screen overflow-clip bg-[#fbfaf8] text-zinc-950">
       <PublicHeader />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <section className="relative isolate min-h-[calc(100svh-4rem)] overflow-hidden border-b border-zinc-200">
-        {/* Background layers */}
-        <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_82%_20%,rgba(251,146,60,0.24),transparent_34%),radial-gradient(circle_at_20%_15%,rgba(244,63,94,0.16),transparent_30%),linear-gradient(to_bottom,#fffaf7,#fbfaf8)]" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgba(24,24,27,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(24,24,27,0.04)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]" />
+      <section className="relative isolate overflow-hidden border-b border-zinc-200 bg-white">
+        <div className="absolute inset-x-0 top-0 -z-20 h-[38rem] bg-[radial-gradient(circle_at_50%_8%,rgba(251,146,60,0.18),transparent_32%),linear-gradient(to_bottom,#fff8ef,#ffffff_78%)]" />
 
-        <div className="mx-auto grid min-h-[calc(100svh-4rem)] max-w-7xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
-          {/* Left — copy */}
-          <div className="animate-[fade-up_0.7s_ease-out_both]">
-            <div className="inline-flex items-center gap-2 rounded-full border border-rose-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-rose-700 shadow-sm ring-1 ring-rose-100 backdrop-blur">
-              <Sparkles className="size-3.5" />
-              Operating system untuk photobooth modern
+        <div className="mx-auto max-w-7xl px-4 pt-10 pb-20 text-center sm:px-6 lg:px-8 lg:pt-14 lg:pb-24">
+          <div className="relative mx-auto max-w-5xl animate-[fade-up_0.8s_ease-out_both]">
+            <div className="absolute inset-x-16 top-20 bottom-8 -z-10 rounded-[3rem] bg-orange-200/35 blur-3xl" />
+            <div className="relative min-h-[19rem] sm:min-h-[28rem] lg:min-h-[36rem]">
+              <div className="absolute inset-x-0 top-0 mx-auto w-[72%] max-w-3xl">
+                <Image
+                  src="/POSKART Photobooth.png"
+                  alt="POSKART photobooth kiosk"
+                  width={1500}
+                  height={1000}
+                  priority
+                  className="mx-auto h-auto w-full object-contain drop-shadow-2xl"
+                />
+              </div>
+
+              <div className="absolute left-[21%] top-[42%] w-[48%] max-w-lg sm:top-[44%] lg:top-[45%]">
+                <Image
+                  src="/iPad Pro 11.png"
+                  alt="POSKART admin dashboard on iPad Pro"
+                  width={1100}
+                  height={760}
+                  priority
+                  className="h-auto w-full drop-shadow-2xl"
+                />
+              </div>
+
+              <div className="absolute right-[18%] top-[39%] w-[16%] max-w-40 sm:top-[41%] lg:top-[42%]">
+                <Image
+                  src="/iPhone 13 Pro.png"
+                  alt="POSKART customer download screen on iPhone"
+                  width={420}
+                  height={820}
+                  priority
+                  className="h-auto w-full drop-shadow-2xl"
+                />
+              </div>
             </div>
-            <h1 className="mt-7 max-w-3xl text-balance text-5xl font-semibold tracking-[-0.05em] sm:text-6xl lg:text-7xl lg:leading-[0.93]">
-              Satu pusat kendali untuk{" "}
-              <span className="bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 bg-clip-text text-transparent">
-                seluruh pengalaman photobooth.
-              </span>
-            </h1>
-            <p className="mt-6 max-w-xl text-pretty text-lg leading-8 text-zinc-500">
-              Rancang tampilan, publikasikan tema, kelola perangkat, dan pantau
-              transaksi dalam alur kerja yang utuh bersama POSKART.
-            </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/register"
-                className={buttonVariants({
-                  size: "lg",
-                  className:
-                    "h-12 bg-zinc-950 px-6 text-white shadow-xl shadow-zinc-950/20 transition-transform hover:-translate-y-px hover:bg-zinc-800 active:translate-y-0",
-                })}
-              >
-                Mulai dengan POSKART
-                <ArrowRight className="size-4" />
-              </Link>
-              <Link
-                href="/subscriptions"
-                className={buttonVariants({
-                  variant: "outline",
-                  size: "lg",
-                  className:
-                    "h-12 border-zinc-200 bg-white/80 px-6 transition-transform hover:-translate-y-px active:translate-y-0",
-                })}
-              >
-                Lihat paket
-                <Layers3 className="size-4" />
-              </Link>
-            </div>
-            <a
-              href="#platform"
-              className="mt-12 inline-flex items-center gap-2 text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-950"
+          </div>
+
+          <div className="mx-auto mt-2 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-4 py-2 text-xs font-semibold text-orange-700 shadow-sm shadow-orange-900/5">
+            <Camera className="size-3.5" />
+            Aplikasi photobooth untuk capture, print, QRIS, dan dashboard
+          </div>
+
+          <h1 className="mx-auto mt-6 max-w-3xl text-balance text-4xl font-semibold tracking-[-0.055em] sm:text-5xl lg:text-[4rem] lg:leading-[0.95]">
+            Jalankan photobooth dari sesi foto sampai cetak.
+          </h1>
+          <p className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-7 text-zinc-600 sm:text-lg">
+            POSKART menyatukan layar booth, kamera, template frame, pilihan
+            paket print, pembayaran QRIS, dan monitoring perangkat dalam satu
+            aplikasi yang siap dipakai operator photobooth.
+          </p>
+
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              href="/register"
+              className={buttonVariants({
+                size: "lg",
+                className:
+                  "h-12 rounded-full bg-zinc-950 px-6 text-white shadow-xl shadow-zinc-950/20 transition-transform hover:-translate-y-px hover:bg-zinc-800 active:translate-y-0",
+              })}
             >
-              Jelajahi cara kerjanya
-              <ArrowDown className="size-4 animate-bounce" />
-            </a>
+              Mulai setup booth
+              <ArrowRight className="size-4" />
+            </Link>
+            <Link
+              href="/subscriptions"
+              className={buttonVariants({
+                variant: "outline",
+                size: "lg",
+                className:
+                  "h-12 rounded-full border-zinc-200 bg-white/80 px-6 transition-transform hover:-translate-y-px active:translate-y-0",
+              })}
+            >
+              Lihat paket photobooth
+              <Layers3 className="size-4" />
+            </Link>
           </div>
 
-          {/* Right — product mockup */}
-          <div className="relative mx-auto w-full max-w-xl animate-[fade-up_0.9s_ease-out_0.15s_both]">
-            <div className="absolute -inset-10 -z-10 rounded-full bg-gradient-to-br from-rose-300/30 to-orange-200/40 blur-3xl" />
-            <div className="rotate-1 rounded-[2rem] border border-zinc-200/80 bg-white/80 p-3 shadow-2xl shadow-rose-950/10 backdrop-blur-xl transition-transform hover:rotate-[0.5deg]">
-              <div className="overflow-hidden rounded-[1.35rem] border border-zinc-200 bg-zinc-950 text-white">
-                <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-                  <div className="flex items-center gap-2">
-                    <span className="size-2.5 rounded-full bg-rose-400" />
-                    <span className="size-2.5 rounded-full bg-amber-400" />
-                    <span className="size-2.5 rounded-full bg-emerald-400" />
-                  </div>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-                    POSKART Control Room
-                  </span>
-                </div>
-                <div className="grid gap-4 p-5 sm:grid-cols-[1fr_0.72fr]">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-zinc-500">Workspace</p>
-                        <p className="mt-1 font-semibold">Booth experience</p>
-                      </div>
-                      <Workflow className="size-5 text-rose-300" />
-                    </div>
-                    <div className="mt-8 space-y-3">
-                      {["Design", "Theme", "Device", "Analytics"].map(
-                        (item, index) => (
-                          <div
-                            key={item}
-                            className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3"
-                          >
-                            <span className="grid size-7 place-items-center rounded-lg bg-white/10 font-mono text-[10px] text-zinc-400">
-                              0{index + 1}
-                            </span>
-                            <span className="text-sm text-zinc-300">{item}</span>
-                            <CheckCircle2 className="ml-auto size-4 text-emerald-400" />
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex min-h-72 flex-col rounded-2xl bg-gradient-to-b from-rose-50 to-orange-50 p-4 text-zinc-950">
-                    <div className="text-center font-mono text-xs font-bold tracking-[0.2em]">
-                      POSKART
-                    </div>
-                    <div className="mt-5 grid flex-1 place-items-center rounded-xl border border-rose-100 bg-white shadow-sm">
-                      <div className="grid grid-cols-2 gap-2">
-                        {[0, 1, 2, 3].map((item) => (
-                          <span
-                            key={item}
-                            className="size-12 rounded-lg bg-gradient-to-br from-rose-300 to-orange-200"
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="mt-4 rounded-full bg-zinc-950 py-3 text-center text-xs font-semibold text-white">
-                      Mulai sesi
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Floating badge */}
-            <div className="absolute -bottom-5 -left-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-xl sm:-left-8">
-              <div className="flex items-center gap-3">
-                <span className="grid size-8 place-items-center rounded-lg bg-emerald-100">
-                  <Zap className="size-4 text-emerald-700" />
-                </span>
-                <div>
-                  <p className="text-xs font-semibold">Siap dipublikasikan</p>
-                  <p className="text-[10px] text-zinc-500">
-                    Desain dan perangkat terhubung
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <a
+            href="#platform"
+            className="mt-12 inline-flex items-center gap-2 text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-950"
+          >
+            Lihat alur photobooth
+            <ArrowDown className="size-4 animate-bounce" />
+          </a>
         </div>
 
         {/* Gradient bridge to dark scrollytelling */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-zinc-950/8" />
       </section>
 
-      {/* ── SCROLLYTELLING ────────────────────────────────────────────────── */}
-      <ProductScrollytelling />
-
-      {/* ── CAPABILITIES ──────────────────────────────────────────────────── */}
-      <section id="capabilities" className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-        <div className="grid gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:gap-20">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-600">
-              Platform lengkap
+      <section id="platform" className="bg-white">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-24 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:py-32">
+          <div className="order-2 lg:order-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
+              Capture, preview, print
             </p>
-            <h2 className="mt-5 text-balance text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
-              Dibangun untuk pekerjaan harian, bukan sekadar tampilan.
+            <h2 className="mt-5 max-w-xl text-balance text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
+              Satu alur customer, dari layar mulai sampai foto tercetak.
             </h2>
-            <p className="mt-5 text-base leading-8 text-zinc-500">
-              POSKART menyatukan pekerjaan kreatif dan operasional agar tim
-              dapat bergerak dari perubahan desain ke eksekusi lapangan tanpa
-              kehilangan konteks.
+            <p className="mt-5 max-w-lg text-base leading-8 text-zinc-500">
+              Customer memilih paket, booth mengambil foto, menampilkan preview,
+              menerima pembayaran, lalu operator bisa langsung mencetak hasilnya.
             </p>
           </div>
-          <div className="grid gap-px overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-200 sm:grid-cols-2">
-            {capabilities.map((capability) => {
-              const Icon = capability.icon;
-              return (
-                <article
-                  key={capability.title}
-                  className="group relative bg-white p-6 transition-all duration-200 hover:-translate-y-px hover:bg-rose-50/40 hover:shadow-sm sm:p-8"
-                >
-                  <span className="absolute top-5 right-5 font-mono text-[10px] text-zinc-300 sm:top-7 sm:right-7">
-                    {capability.number}
-                  </span>
-                  <div className="grid size-11 place-items-center rounded-2xl bg-zinc-100 text-zinc-700 transition-colors group-hover:bg-rose-100 group-hover:text-rose-700">
-                    <Icon className="size-5" />
+          <div className="order-1 lg:order-2">
+            <div className="relative overflow-hidden rounded-[2.4rem] border border-zinc-200 bg-[#fff7ed] p-5 shadow-sm">
+              <div className="absolute inset-x-10 top-10 h-48 rounded-full bg-orange-200/50 blur-3xl" />
+              <div className="relative grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
+                <div className="rounded-[1.7rem] bg-zinc-950 p-4 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-zinc-500">Booth screen</p>
+                      <p className="text-sm font-semibold">Ready to capture</p>
+                    </div>
+                    <Camera className="size-5 text-orange-300" />
                   </div>
-                  <h3 className="mt-6 text-lg font-semibold">
-                    {capability.title}
-                  </h3>
+                  <div className="mt-5 grid aspect-[3/4] place-items-center rounded-2xl bg-gradient-to-br from-orange-100 to-rose-100">
+                    <div className="grid size-28 place-items-center rounded-full bg-white/80">
+                      <Camera className="size-9 text-zinc-950" />
+                    </div>
+                  </div>
+                  <div className="mt-4 rounded-full bg-white py-3 text-center text-xs font-semibold text-zinc-950">
+                    Ambil foto
+                  </div>
+                </div>
+                <div className="space-y-4 rounded-[1.7rem] bg-white p-4">
+                  {sessionSteps.map(({ title, description, icon: Icon }) => (
+                    <div key={title} className="flex items-center gap-4 rounded-2xl border border-zinc-100 p-4">
+                      <span className="grid size-11 place-items-center rounded-2xl bg-orange-50 text-orange-600">
+                        <Icon className="size-5" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold">{title}</p>
+                        <p className="mt-1 text-xs text-zinc-500">{description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="builder" className="bg-[#fbfaf8]">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-24 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-32">
+          <div className="relative rounded-[2.4rem] border border-zinc-200 bg-white p-5 shadow-sm">
+            <div className="absolute -inset-8 -z-10 rounded-[3rem] bg-rose-100/60 blur-3xl" />
+            <Image
+              src="/iPad Pro 11.png"
+              alt="POSKART visual builder on iPad"
+              width={1100}
+              height={760}
+              className="mx-auto h-auto w-full max-w-3xl"
+            />
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {["Landing", "Camera", "Thanks"].map((label) => (
+                <div key={label} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
+                  <div className="mb-3 flex aspect-video items-center justify-center rounded-xl bg-white">
+                    <ImageIcon className="size-5 text-rose-500" />
+                  </div>
+                  <p className="text-sm font-semibold">{label}</p>
+                  <p className="mt-1 text-xs text-zinc-500">Published screen</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-600">
+              Design once, publish everywhere
+            </p>
+            <h2 className="mt-5 max-w-xl text-balance text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
+              Frame event dan layar booth tetap konsisten.
+            </h2>
+            <p className="mt-5 max-w-lg text-base leading-8 text-zinc-500">
+              Susun halaman landing, kamera, preview, dan selesai dari builder.
+              Saat layout dipublish, perangkat booth memakai konfigurasi yang sama.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-2">
+              {["Visual builder", "Frame template", "Publish per booth"].map((item) => (
+                <span key={item} className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-600">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-24 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-32">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-600">
+              POS, QRIS, operations
+            </p>
+            <h2 className="mt-5 max-w-xl text-balance text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
+              Kasir print dan monitoring perangkat ada di satu tempat.
+            </h2>
+            <p className="mt-5 max-w-lg text-base leading-8 text-zinc-500">
+              Operator dapat mencatat penjualan cash atau QRIS, melihat paket
+              terlaris, serta memantau booth online tanpa spreadsheet manual.
+            </p>
+          </div>
+          <div className="relative overflow-hidden rounded-[2.4rem] border border-zinc-200 bg-zinc-950 p-5 text-white shadow-sm">
+            <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-emerald-500/20 to-transparent" />
+            <div className="relative grid gap-4 lg:grid-cols-[1fr_0.54fr]">
+              <div className="rounded-[1.7rem] bg-white p-4 text-zinc-950">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-zinc-500">POS Kasir hari ini</p>
+                    <p className="mt-1 text-2xl font-semibold">Rp 294.000</p>
+                  </div>
+                  <CreditCard className="size-5 text-emerald-600" />
+                </div>
+                <div className="mt-6 space-y-3">
+                  {posSalesPreview.map(({ name, price, method }) => (
+                    <div key={name} className="flex items-center justify-between rounded-2xl border border-zinc-100 p-3">
+                      <div>
+                        <p className="text-sm font-semibold">{name}</p>
+                        <p className="mt-1 text-xs text-zinc-500">{method}</p>
+                      </div>
+                      <p className="text-sm font-semibold">{price}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-4">
+                {operationHighlights.map(({ title, value, icon: Icon }) => (
+                  <div key={title} className="rounded-[1.35rem] border border-white/10 bg-white/5 p-4">
+                    <Icon className="mb-4 size-5 text-emerald-300" />
+                    <p className="text-xs text-zinc-500">{title}</p>
+                    <p className="mt-1 text-xl font-semibold">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#fbfaf8]">
+        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
+              Powerful features
+            </p>
+            <h2 className="mt-5 text-balance text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
+              Dibuat khusus untuk operator photobooth.
+            </h2>
+          </div>
+          <div className="mt-14 grid gap-px overflow-hidden rounded-[2rem] border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-3">
+            {operatorFeatures.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <article key={feature.title} className="bg-white p-7">
+                  <Icon className="size-5 text-zinc-400" />
+                  <h3 className="mt-6 text-lg font-semibold">{feature.title}</h3>
                   <p className="mt-3 text-sm leading-7 text-zinc-500">
-                    {capability.description}
+                    {feature.description}
                   </p>
                 </article>
               );
@@ -283,116 +369,43 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
         </div>
       </section>
 
-      {/* ── WORKFLOW ──────────────────────────────────────────────────────── */}
-      <section className="border-y border-zinc-200 bg-white">
-        <div className="mx-auto grid max-w-7xl gap-12 px-4 py-24 sm:px-6 lg:grid-cols-[1fr_0.9fr] lg:gap-20 lg:px-8">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
-              Mulai tanpa kerumitan
-            </p>
-            <h2 className="mt-5 max-w-2xl text-balance text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
-              Dari akun baru hingga booth aktif dalam satu alur.
-            </h2>
-            <p className="mt-5 text-base leading-8 text-zinc-500">
-              Tidak perlu konfigurasi teknis yang rumit. Setiap langkah dirancang
-              agar tim non-teknis sekalipun dapat bergerak mandiri.
-            </p>
-          </div>
-          <ol className="relative space-y-0">
-            {workflow.map((item, index) => {
-              const Icon = item.icon;
-              const isLast = index === workflow.length - 1;
-              return (
-                <li key={item.text} className="flex gap-5">
-                  <div className="flex flex-col items-center">
-                    <div className="grid size-10 shrink-0 place-items-center rounded-full bg-zinc-950 font-mono text-xs text-white shadow-md">
-                      {String(index + 1).padStart(2, "0")}
-                    </div>
-                    {!isLast && (
-                      <div className="mt-1 w-px flex-1 bg-gradient-to-b from-zinc-300 to-transparent" />
-                    )}
-                  </div>
-                  <div className={!isLast ? "pb-8" : ""}>
-                    <div className="flex items-center gap-2 pt-2">
-                      <Icon className="size-4 shrink-0 text-zinc-400" />
-                      <p className="text-sm font-medium leading-6 text-zinc-800">
-                        {item.text}
-                      </p>
-                    </div>
-                    <p className="mt-1 text-xs text-zinc-400">{item.hint}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      </section>
-
-      {/* ── PRICING ───────────────────────────────────────────────────────── */}
-      <section id="pricing" className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
-        <div className="mb-12 max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-600">
-            Paket berlangganan
-          </p>
-          <h2 className="mt-5 text-balance text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
-            Pilih kapasitas yang sesuai dengan operasi Anda.
-          </h2>
-          <p className="mt-5 text-base leading-8 text-zinc-500">
-            Mulai dari satu perangkat, lalu tingkatkan paket saat jumlah booth
-            dan kebutuhan tim bertambah.
-          </p>
-        </div>
-        <PricingCards plans={plans} />
-        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 text-sm leading-7 text-zinc-600">
-          <p>{businessProfile.taxNote}</p>
-          <p>{businessProfile.billingNote}</p>
-          <p>{businessProfile.purchaseFlow}</p>
-        </div>
-      </section>
-
-      {/* ── CTA ───────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-zinc-950 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(244,63,94,0.35),transparent_34%),radial-gradient(circle_at_85%_80%,rgba(251,146,60,0.28),transparent_38%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:48px_48px]" />
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-24 sm:px-6 lg:grid-cols-[1fr_0.65fr] lg:px-8 lg:py-28">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-zinc-300">
-              <Headphones className="size-3.5" />
-              Dukungan POSKART
+      <section className="bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+          <div className="rounded-[2rem] border border-zinc-200 bg-[#fff8ef] p-6 sm:p-10 lg:flex lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
+                Mulai dari satu booth
+              </p>
+              <h2 className="mt-4 max-w-2xl text-balance text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+                Aktifkan POSKART untuk booth pertama, lalu tambah perangkat saat event bertambah.
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-zinc-500">
+                {starterPlan
+                  ? `${starterPlan.name} mulai ${starterPlan.price} untuk ${starterPlan.includedDevices} device.`
+                  : "Paket lengkap tersedia di halaman pricing POSKART."}
+              </p>
             </div>
-            <h2 className="mt-6 max-w-3xl text-balance text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
-              Bangun pengalaman booth yang lebih rapi, konsisten, dan mudah
-              dikembangkan.
-            </h2>
-          </div>
-          <div className="flex flex-col justify-end">
-            <p className="text-base leading-8 text-zinc-400">
-              Tim POSKART siap membantu kebutuhan onboarding, paket bisnis, dan
-              implementasi operasi photobooth Anda.
-            </p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row lg:mt-0">
+              <Link
+                href="/subscriptions"
+                className={buttonVariants({
+                  variant: "outline",
+                  size: "lg",
+                  className: "rounded-full border-zinc-200 bg-white",
+                })}
+              >
+                Lihat paket
+                <Layers3 className="size-4" />
+              </Link>
               <Link
                 href="/register"
                 className={buttonVariants({
-                  variant: "secondary",
                   size: "lg",
-                  className:
-                    "bg-white text-zinc-950 hover:bg-zinc-50 transition-transform hover:-translate-y-px active:translate-y-0",
+                  className: "rounded-full bg-zinc-950 text-white hover:bg-zinc-800",
                 })}
               >
                 Buat akun
                 <ArrowRight className="size-4" />
-              </Link>
-              <Link
-                href="/contact"
-                className={buttonVariants({
-                  variant: "outline",
-                  size: "lg",
-                  className:
-                    "border-white/20 bg-white/5 text-white hover:bg-white/10 transition-transform hover:-translate-y-px active:translate-y-0",
-                })}
-              >
-                Hubungi kami
               </Link>
             </div>
           </div>
