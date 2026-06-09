@@ -65,6 +65,11 @@ export const SEMANTIC_ROLES: { value: string; label: string; screen: string }[] 
     screen: "preview",
   },
   {
+    value: "preview.retake",
+    label: "Retake / Back to Camera",
+    screen: "preview",
+  },
+  {
     value: "thanks.return_home",
     label: "Return to Landing - auto-only",
     screen: "thanks",
