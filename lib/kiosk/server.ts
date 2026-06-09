@@ -463,10 +463,13 @@ export async function buildKioskBootstrap(
   const assignedPricing = new Set(device?.pricing_profiles ?? []);
 
   const allTemplates = templatesResult.data ?? [];
-  // Always return ALL published templates — device filtering is opt-in via
-  // availableTemplates (which Flutter reads first). The `templates` field
-  // is the fallback and should include everything.
-  const templates = allTemplates;
+  // When a device has specific templates assigned, only return those.
+  // Otherwise return all published templates (backward compatible).
+  const templates = assignedTemplates.size > 0
+    ? allTemplates.filter(
+        (t) => assignedTemplates.has(t.id) || assignedTemplates.has(t.name),
+      )
+    : allTemplates;
   const pricingProducts = (pricingResult.data ?? []).filter(
     (product) =>
       assignedPricing.size === 0 ||
@@ -528,7 +531,7 @@ export async function buildKioskBootstrap(
       frameLayout: template.frame_layout ?? null,
       isDefault: template.is_default,
     })),
-    availableTemplates: allTemplates.map((template) => ({
+    availableTemplates: templates.map((template) => ({
       id: template.id,
       name: template.name,
       category: template.category,

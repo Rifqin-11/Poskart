@@ -20,7 +20,14 @@ import { useBuilderStore } from "@/stores/builder-store";
 import type { FrameLayout } from "@/types/frame-template";
 import type { TemplateFormValues } from "@/types/template";
 
-const ACCENT_PRESETS = ["#C4121A", "#2D3F8F", "#F5F1E8", "#1B1B1B", "#F6C9C9", "#B8C7E5"];
+const ACCENT_PRESETS = [
+  "#C4121A",
+  "#2D3F8F",
+  "#F5F1E8",
+  "#1B1B1B",
+  "#F6C9C9",
+  "#B8C7E5",
+];
 
 const DEFAULT_FORM: TemplateFormValues = {
   name: "",
@@ -38,15 +45,23 @@ function countPhotoSlots(layout: FrameLayout) {
   return layout.nodes.filter((node) => node.type === "photo-slot").length;
 }
 
-export function TemplateBuilderWorkspace({ templateId }: { templateId: string }) {
+export function TemplateBuilderWorkspace({
+  templateId,
+}: {
+  templateId: string;
+}) {
   const router = useRouter();
   const isNew = templateId === "new";
   const { data: templates = [], isLoading } = useTemplates();
   const createTemplate = useCreateTemplate();
   const updateTemplate = useUpdateTemplate();
-  const template = isNew ? null : templates.find((item) => item.id === templateId);
+  const template = isNew
+    ? null
+    : templates.find((item) => item.id === templateId);
   const [form, setForm] = useState<TemplateFormValues>(DEFAULT_FORM);
-  const [hydratedTemplateId, setHydratedTemplateId] = useState(isNew ? "new" : "");
+  const [hydratedTemplateId, setHydratedTemplateId] = useState(
+    isNew ? "new" : "",
+  );
   const [uploading, setUploading] = useState(false);
   const builderFullView = useBuilderStore((s) => s.builderFullView);
   const setBuilderFullView = useBuilderStore((s) => s.setBuilderFullView);
@@ -83,8 +98,14 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="text-sm font-medium text-zinc-500">Template not found</div>
-          <Button className="mt-4" variant="outline" onClick={() => router.push("/templates")}>
+          <div className="text-sm font-medium text-zinc-500">
+            Template not found
+          </div>
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={() => router.push("/templates")}
+          >
             Back to templates
           </Button>
         </CardContent>
@@ -96,7 +117,10 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
     return <Skeleton className="h-[760px]" />;
   }
 
-  const patch = <K extends keyof TemplateFormValues>(key: K, value: TemplateFormValues[K]) => {
+  const patch = <K extends keyof TemplateFormValues>(
+    key: K,
+    value: TemplateFormValues[K],
+  ) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
@@ -117,7 +141,7 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
   const handleSave = async (layout: FrameLayout) => {
     const payload = {
       ...form,
-      status: "published", // Always publish when saving from builder
+      status: "published" as const, // Always publish when saving from builder
       photoCount: countPhotoSlots(layout),
       frameLayout: layout,
     };
@@ -147,7 +171,9 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
     <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
       <div>
         <div className="text-sm font-semibold">Template details</div>
-        <div className="text-xs text-zinc-500">{isNew ? "Create frame template" : `Edit ${template?.name}`}</div>
+        <div className="text-xs text-zinc-500">
+          {isNew ? "Create frame template" : `Edit ${template?.name}`}
+        </div>
       </div>
       <Button
         variant="ghost"
@@ -187,7 +213,9 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
               type="button"
               className={cn(
                 "size-7 rounded-full border-2",
-                form.accentColor === color ? "scale-110 border-zinc-950" : "border-zinc-200",
+                form.accentColor === color
+                  ? "scale-110 border-zinc-950"
+                  : "border-zinc-200",
               )}
               style={{ background: color }}
               onClick={() => patch("accentColor", color)}
@@ -195,8 +223,16 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
           ))}
         </div>
         <div className="grid grid-cols-[42px_1fr] gap-2">
-          <Input className="h-9 p-1" type="color" value={form.accentColor} onChange={(event) => patch("accentColor", event.target.value)} />
-          <Input value={form.accentColor} onChange={(event) => patch("accentColor", event.target.value)} />
+          <Input
+            className="h-9 p-1"
+            type="color"
+            value={form.accentColor}
+            onChange={(event) => patch("accentColor", event.target.value)}
+          />
+          <Input
+            value={form.accentColor}
+            onChange={(event) => patch("accentColor", event.target.value)}
+          />
         </div>
       </div>
 
@@ -227,9 +263,7 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
     <div
       className={cn(
         "overflow-hidden",
-        builderFullView
-          ? "fixed inset-0 z-[100]"
-          : "-mx-4 -my-6 lg:-mx-8",
+        builderFullView ? "fixed inset-0 z-[100]" : "-mx-4 -my-6 lg:-mx-8",
       )}
       style={{ height: builderFullView ? "100vh" : "calc(100vh - 4rem)" }}
     >
@@ -244,7 +278,9 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
           router.push("/templates");
         }}
         onSave={handleSave}
-        saveLabel={saving ? "Saving..." : isNew ? "Create template" : "Save template"}
+        saveLabel={
+          saving ? "Saving..." : isNew ? "Create template" : "Save template"
+        }
         detailsPanel={detailsPanel}
       />
     </div>
