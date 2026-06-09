@@ -544,7 +544,7 @@ function NodeRenderer({
       <div
         className="flex h-full w-full flex-col justify-center text-zinc-900 select-none px-1"
         style={{
-          fontFamily: "sans-serif",
+          fontFamily: "'Manrope', 'Outfit', 'Inter', sans-serif",
         }}
       >
         <div className="flex w-full items-center justify-between" style={{ marginBottom: 10 * scale }}>
@@ -560,9 +560,10 @@ function NodeRenderer({
             style={{
               fontSize: 12 * scale,
               color: "#71717a",
+              fontWeight: 500,
             }}
           >
-            61%
+            39%
           </span>
         </div>
         <div
@@ -576,7 +577,7 @@ function NodeRenderer({
           <div
             className="h-full bg-zinc-800"
             style={{
-              width: "61%",
+              width: "39%",
               borderRadius: 9999,
             }}
           />
