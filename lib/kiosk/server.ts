@@ -1,6 +1,10 @@
 import "server-only";
 
-import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import {
+  createClient,
+  type SupabaseClient,
+  type User,
+} from "@supabase/supabase-js";
 
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
 import { getPublicGalleryBaseUrl } from "@/lib/gallery/urls";
@@ -377,7 +381,11 @@ export async function buildKioskBootstrap(
       )
       .eq("organization_id", context.organizationId)
       .maybeSingle(),
-    context.client.from("app_configs").select("*").eq("id", "default").maybeSingle(),
+    context.client
+      .from("app_configs")
+      .select("*")
+      .eq("id", "default")
+      .maybeSingle(),
     context.client
       .from("layout_schemas")
       .select("id,name,schema,is_active,status,updated_at")
@@ -543,7 +551,9 @@ export function jsonError(error: unknown) {
     error instanceof KioskApiError
       ? error
       : new KioskApiError(
-          error instanceof Error ? error.message : "Unexpected kiosk API error.",
+          error instanceof Error
+            ? error.message
+            : "Unexpected kiosk API error.",
           500,
           "KIOSK_INTERNAL_ERROR",
         );
