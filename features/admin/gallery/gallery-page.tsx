@@ -3,6 +3,7 @@ import { CalendarDays, ExternalLink, ImageIcon, Images } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { DeleteSessionButton } from "@/app/(admin)/gallery/delete-button";
 
 type GallerySessionRow = {
   id: string;
@@ -163,14 +164,17 @@ export async function GalleryPage() {
                           {rawCount} raw
                         </p>
                       </div>
-                      <Link
-                        href={session.share_url || `/s/${session.id}`}
-                        target="_blank"
-                        aria-label="Buka hasil foto"
-                        className="grid size-8 shrink-0 place-items-center rounded-lg bg-zinc-100 text-zinc-700 transition-colors hover:bg-zinc-950 hover:text-white"
-                      >
-                        <ExternalLink className="size-3.5" />
-                      </Link>
+                      <div className="flex gap-1.5 shrink-0">
+                        <Link
+                          href={session.share_url || `/s/${session.id}`}
+                          target="_blank"
+                          aria-label="Buka hasil foto"
+                          className="grid size-8 place-items-center rounded-lg bg-zinc-100 text-zinc-700 transition-colors hover:bg-zinc-950 hover:text-white"
+                        >
+                          <ExternalLink className="size-3.5" />
+                        </Link>
+                        <DeleteSessionButton sessionId={session.id} />
+                      </div>
                     </div>
                     <p className="mt-2 truncate text-[11px] text-zinc-400">
                       {session.device_id || "Unknown device"}

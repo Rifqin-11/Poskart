@@ -72,3 +72,39 @@ export function createCloudinaryUploadSignatures({
     }),
   };
 }
+
+export async function deleteCloudinaryAssets(publicIds: string[]) {
+  const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
+
+  for (const publicId of publicIds) {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signaturePayload = `public_id=${publicId}&timestamp=${timestamp}`;
+    const signature = createHash("sha1")
+      .update(`${signaturePayload}${apiSecret}`)
+      .digest("hex");
+
+    const formData = new URLSearchParams();
+    formData.append("public_id", publicId);
+    formData.append("timestamp", timestamp.toString());
+    formData.append("api_key", apiKey);
+    formData.append("signature", signature);
+
+    try {
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+      if (!res.ok) {
+        console.error(
+          `Failed to delete asset ${publicId} from Cloudinary:`,
+          await res.text()
+        );
+      }
+    } catch (e) {
+      console.error(`Error deleting asset ${publicId} from Cloudinary:`, e);
+    }
+  }
+}

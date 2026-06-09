@@ -465,11 +465,12 @@ export async function buildKioskBootstrap(
   const allTemplates = templatesResult.data ?? [];
   // When a device has specific templates assigned, only return those.
   // Otherwise return all published templates (backward compatible).
-  const templates = assignedTemplates.size > 0
-    ? allTemplates.filter(
-        (t) => assignedTemplates.has(t.id) || assignedTemplates.has(t.name),
-      )
-    : allTemplates;
+  const templates =
+    assignedTemplates.size > 0
+      ? allTemplates.filter(
+          (t) => assignedTemplates.has(t.id) || assignedTemplates.has(t.name),
+        )
+      : allTemplates;
   const pricingProducts = (pricingResult.data ?? []).filter(
     (product) =>
       assignedPricing.size === 0 ||

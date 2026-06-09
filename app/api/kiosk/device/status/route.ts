@@ -10,6 +10,7 @@ type StatusBody = {
   status?: "online" | "offline" | "maintenance";
   battery?: number;
   appVersion?: string;
+  location?: string;
 };
 
 export async function POST(request: Request) {
@@ -31,6 +32,10 @@ export async function POST(request: Request) {
 
     if (Number.isFinite(body.battery)) {
       patch.battery = Math.max(0, Math.min(100, Math.round(body.battery!)));
+    }
+
+    if (body.location !== undefined) {
+      patch.location = body.location;
     }
 
     const { error } = await context.client

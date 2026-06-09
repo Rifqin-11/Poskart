@@ -22,6 +22,7 @@ import {
   Building,
   Shield,
   UserRound,
+  Ticket,
 } from "lucide-react";
 import { useState } from "react";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
@@ -46,6 +47,7 @@ const navItems = [
   { href: "/transactions", label: "Transactions", icon: Store, requiresSubscription: true },
   { href: "/gallery", label: "Gallery", icon: Images, requiresSubscription: true },
   { href: "/devices", label: "Devices", icon: MonitorSmartphone, requiresSubscription: true },
+  { href: "/vouchers", label: "Vouchers", icon: Ticket, requiresSubscription: true },
   { href: "/superadmin", label: "Super Admin", icon: Shield, superAdminOnly: true },
   { href: "/settings", label: "Settings", icon: Settings, requiresSubscription: true },
 ];
