@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Download,
   Images,
+  X,
 } from "lucide-react";
 
 import { businessProfile } from "@/lib/constants/business";
@@ -14,10 +15,13 @@ export const dynamic = "force-dynamic";
 
 export default async function SharedGalleryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ sessionId: string }>;
+  searchParams: Promise<{ view?: string }>;
 }) {
   const { sessionId } = await params;
+  const { view: viewPhotoId } = await searchParams;
   const supabase = createSupabaseAdminClient();
   const { data: session } = await supabase
     .from("gallery_sessions")
@@ -33,9 +37,10 @@ export default async function SharedGalleryPage({
     .eq("session_id", sessionId)
     .order("kind", { ascending: false })
     .order("photo_index", { ascending: true });
-  const framed = photos?.find((photo) => photo.kind === "framed" && photo.photo_index === 1)
-    || photos?.find((photo) => photo.kind === "framed" && photo.photo_index === 0);
+  const framedGif = photos?.find((photo) => photo.kind === "framed" && photo.photo_index === 1);
+  const framedStatic = photos?.find((photo) => photo.kind === "framed" && photo.photo_index === 0);
   const raw = photos?.filter((photo) => photo.kind === "raw") ?? [];
+  const selectedPhoto = photos?.find((photo) => photo.id === viewPhotoId);
 
   return (
     <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10">
@@ -79,24 +84,86 @@ export default async function SharedGalleryPage({
         </section>
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-          <section className="rounded-[28px] border border-black/10 bg-white p-3 shadow-xl shadow-black/5 md:p-5">
-            {framed ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={framed.secure_url}
-                  alt={`POSKART ${session.template_name}`}
-                  className="max-h-[68vh] w-full rounded-2xl bg-zinc-50 object-contain"
-                />
-                <a
-                  href={`/s/${encodeURIComponent(sessionId)}/download/${framed.id}`}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+          <section className="rounded-[28px] border border-black/10 bg-white p-3 shadow-xl shadow-black/5 md:p-5 grid gap-6">
+            {framedGif && (
+              <div className="rounded-2xl border border-black/5 bg-zinc-50/50 p-3 md:p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  Frame Animasi (GIF)
+                </p>
+                <Link
+                  href={`?view=${framedGif.id}`}
+                  className="block group relative overflow-hidden rounded-xl cursor-zoom-in bg-zinc-100"
                 >
-                  <ArrowDownToLine className="size-4" />
-                  Download foto dengan frame
-                </a>
-              </>
-            ) : (
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={framedGif.secure_url}
+                    alt={`POSKART ${session.template_name} GIF`}
+                    className="max-h-[58vh] w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"
+                  />
+                  <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/10 flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full bg-black/60 px-4 py-2 text-xs font-medium text-white backdrop-blur">
+                      Klik untuk memperbesar
+                    </span>
+                  </div>
+                </Link>
+                <div className="mt-3 flex gap-3">
+                  <Link
+                    href={`?view=${framedGif.id}`}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-50"
+                  >
+                    Lihat Animasi
+                  </Link>
+                  <a
+                    href={`/s/${encodeURIComponent(sessionId)}/download/${framedGif.id}`}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+                  >
+                    <ArrowDownToLine className="size-4" />
+                    Download GIF
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {framedStatic && (
+              <div className="rounded-2xl border border-black/5 bg-zinc-50/50 p-3 md:p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  Frame Foto (PNG)
+                </p>
+                <Link
+                  href={`?view=${framedStatic.id}`}
+                  className="block group relative overflow-hidden rounded-xl cursor-zoom-in bg-zinc-100"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={framedStatic.secure_url}
+                    alt={`POSKART ${session.template_name} Foto`}
+                    className="max-h-[58vh] w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"
+                  />
+                  <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/10 flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-full bg-black/60 px-4 py-2 text-xs font-medium text-white backdrop-blur">
+                      Klik untuk memperbesar
+                    </span>
+                  </div>
+                </Link>
+                <div className="mt-3 flex gap-3">
+                  <Link
+                    href={`?view=${framedStatic.id}`}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-50"
+                  >
+                    Lihat Foto
+                  </Link>
+                  <a
+                    href={`/s/${encodeURIComponent(sessionId)}/download/${framedStatic.id}`}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+                  >
+                    <ArrowDownToLine className="size-4" />
+                    Download Foto
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {!framedGif && !framedStatic && (
               <div className="grid min-h-96 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center text-zinc-500">
                 Hasil dengan frame sedang diproses.
               </div>
@@ -121,24 +188,29 @@ export default async function SharedGalleryPage({
                 {raw.map((photo, index) => (
                   <div
                     key={photo.id}
-                    className="flex items-center gap-3 rounded-2xl border border-zinc-200 p-2.5"
+                    className="flex items-center gap-3 rounded-2xl border border-zinc-200 p-2.5 transition-colors hover:bg-zinc-50"
                   >
-                    <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={photo.secure_url}
-                        alt={`Foto original ${index + 1}`}
-                        className="size-full object-cover"
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">
-                        Foto original {index + 1}
-                      </p>
-                      <p className="mt-0.5 text-xs text-zinc-500">
-                        Resolusi asli dari kamera
-                      </p>
-                    </div>
+                    <Link
+                      href={`?view=${photo.id}`}
+                      className="flex flex-1 items-center gap-3 min-w-0 cursor-zoom-in"
+                    >
+                      <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={photo.secure_url}
+                          alt={`Foto original ${index + 1}`}
+                          className="size-full object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold">
+                          Foto original {index + 1}
+                        </p>
+                        <p className="mt-0.5 text-xs text-zinc-500">
+                          Resolusi asli dari kamera
+                        </p>
+                      </div>
+                    </Link>
                     <a
                       href={`/s/${encodeURIComponent(sessionId)}/download/${photo.id}`}
                       aria-label={`Download foto original ${index + 1}`}
@@ -180,6 +252,38 @@ export default async function SharedGalleryPage({
           </div>
         </footer>
       </div>
+
+      {selectedPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
+          {/* Close button in top-left corner */}
+          <Link
+            href={`/s/${encodeURIComponent(sessionId)}`}
+            className="absolute left-6 top-6 grid size-12 place-items-center rounded-full bg-white/10 text-white backdrop-blur transition-all duration-200 hover:bg-white/20 hover:scale-105"
+            aria-label="Tutup"
+          >
+            <X className="size-6" />
+          </Link>
+
+          {/* Download button in top-right corner */}
+          <a
+            href={`/s/${encodeURIComponent(sessionId)}/download/${selectedPhoto.id}`}
+            className="absolute right-6 top-6 flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 shadow transition-all duration-200 hover:bg-zinc-100 hover:scale-[1.02]"
+          >
+            <Download className="size-4" />
+            Download
+          </a>
+
+          {/* Centered Image / GIF preview */}
+          <div className="relative max-h-[80vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={selectedPhoto.secure_url}
+              alt="Pratinjau Foto"
+              className="max-h-[80vh] max-w-[90vw] object-contain"
+            />
+          </div>
+        </div>
+      )}
     </main>
   );
 }
