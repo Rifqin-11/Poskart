@@ -71,7 +71,8 @@ export default async function SharedGalleryPage({
     .order("photo_index", { ascending: true });
   const framedGif = photos?.find((photo) => photo.kind === "framed" && photo.photo_index === 1);
   const framedStatic = photos?.find((photo) => photo.kind === "framed" && photo.photo_index === 0);
-  const raw = photos?.filter((photo) => photo.kind === "raw") ?? [];
+  const raw = photos?.filter((photo) => photo.kind === "raw" && photo.photo_index !== 99) ?? [];
+  const rawGif = photos?.find((photo) => photo.kind === "raw" && photo.photo_index === 99);
   const selectedPhoto = photos?.find((photo) => photo.id === viewPhotoId);
 
   return (
@@ -210,13 +211,46 @@ export default async function SharedGalleryPage({
               <div>
                 <h2 className="font-semibold">Foto original</h2>
                 <p className="text-xs text-zinc-500">
-                  {raw.length} foto tanpa frame
+                  {raw.length} foto {rawGif ? "& 1 animasi " : ""}tanpa frame
                 </p>
               </div>
             </div>
 
+            {rawGif && (
+              <div className="mt-5 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/50 p-2.5 transition-colors hover:bg-zinc-50">
+                <Link
+                  href={`?view=${rawGif.id}`}
+                  className="flex flex-1 items-center gap-3 min-w-0 cursor-zoom-in"
+                >
+                  <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={rawGif.secure_url}
+                      alt="Raw GIF"
+                      className="size-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">
+                      Animasi Original (GIF)
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      Gabungan semua frame kamera
+                    </p>
+                  </div>
+                </Link>
+                <a
+                  href={`/s/${encodeURIComponent(sessionId)}/download/${rawGif.id}`}
+                  aria-label="Download Animasi Original GIF"
+                  className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 transition-colors hover:bg-zinc-950 hover:text-white"
+                >
+                  <Download className="size-4" />
+                </a>
+              </div>
+            )}
+
             {raw.length > 0 ? (
-              <div className="mt-5 space-y-3">
+              <div className="mt-4 space-y-3">
                 {raw.map((photo, index) => (
                   <div
                     key={photo.id}
@@ -254,9 +288,11 @@ export default async function SharedGalleryPage({
                 ))}
               </div>
             ) : (
-              <div className="mt-5 rounded-2xl bg-zinc-50 p-6 text-center text-sm text-zinc-500">
-                Foto original tidak diunggah untuk sesi ini.
-              </div>
+              !rawGif && (
+                <div className="mt-5 rounded-2xl bg-zinc-50 p-6 text-center text-sm text-zinc-500">
+                  Foto original tidak diunggah untuk sesi ini.
+                </div>
+              )
             )}
           </aside>
         </div>
