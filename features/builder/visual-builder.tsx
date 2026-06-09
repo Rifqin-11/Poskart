@@ -443,21 +443,27 @@ function NodeRenderer({
   if (node.type === "qr") {
     return (
       <div
-        className="grid h-full w-full place-items-center border border-zinc-300 bg-white p-3"
+        className="flex h-full w-full flex-col items-center justify-between border border-zinc-300 bg-white p-3 pb-6"
         style={{
-          borderRadius: readNumber(node.props.radius, 6),
+          borderRadius: readNumber(node.props.radius, 12),
+          fontFamily: "'Manrope', 'Outfit', 'Inter', sans-serif",
         }}
       >
-        <div className="grid size-full grid-cols-4 grid-rows-4 gap-1">
-          {Array.from({ length: 16 }).map((_, index) => (
-            <span
-              key={index}
-              className={cn(
-                "rounded-sm",
-                index % 3 === 0 ? "bg-zinc-950" : "bg-zinc-200",
-              )}
-            />
-          ))}
+        <div className="flex-1 w-full max-w-[120px] aspect-square flex items-center justify-center">
+          <div className="grid size-full grid-cols-4 grid-rows-4 gap-1">
+            {Array.from({ length: 16 }).map((_, index) => (
+              <span
+                key={index}
+                className={cn(
+                  "rounded-sm",
+                  index % 3 === 0 ? "bg-zinc-950" : "bg-zinc-200",
+                )}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="mt-2 w-full text-center text-[10px] font-bold text-zinc-800 truncate px-1">
+          https://poskart.my.id/s/MQ6V8EJW-4TSQZ
         </div>
       </div>
     );

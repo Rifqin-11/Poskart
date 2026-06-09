@@ -119,8 +119,8 @@ export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
   landing: ["text", "image", "button", "social-handle", "background-decoration"],
   template: ["text", "image", "button", "template-preview", "template-list", "background-decoration"],
   camera: ["text", "image", "camera-view", "photo-result", "button", "social-handle", "background-decoration"],
-  preview: ["text", "image", "button", "qr", "qr-link", "receipt-preview", "frame-preview", "social-handle", "background-decoration"],
-  thanks: ["text", "image", "button", "qr", "qr-link", "frame-preview", "social-handle", "background-decoration", "return-countdown"],
+  preview: ["text", "image", "button", "qr", "receipt-preview", "frame-preview", "social-handle", "background-decoration"],
+  thanks: ["text", "image", "button", "qr", "frame-preview", "social-handle", "background-decoration", "return-countdown"],
 };
 
 /** Semantic roles shown per page in the Properties dropdown */
