@@ -27,6 +27,9 @@ DUITKU_API_KEY=your-duitku-api-key
 DUITKU_PAYMENT_METHOD=NQ
 NEXT_PUBLIC_SITE_URL=https://www.poskart.my.id
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
+CLOUDINARY_API_KEY=your-cloudinary-api-key
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 ```
 
 The checkout flow is:
