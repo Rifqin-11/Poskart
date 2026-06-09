@@ -1,30 +1,50 @@
 "use client";
 
-import { ImageOff, Layers } from "lucide-react";
+import { ImageOff, Image as ImageIcon, Layers } from "lucide-react";
 import type { BuilderNode, BuilderPage, LayoutSchema } from "@/types/builder";
 import { cn } from "@/lib/utils";
 
-const TYPE_COLORS: Record<string, { bg: string; border: string }> = {
-  button: { bg: "rgba(59,130,246,0.7)", border: "#1d4ed8" },
-  text: { bg: "rgba(139,92,246,0.45)", border: "#7c3aed" },
-  "social-handle": { bg: "rgba(139,92,246,0.35)", border: "#a78bfa" },
-  "qr-placeholder": { bg: "rgba(245,158,11,0.55)", border: "#b45309" },
-  qr: { bg: "rgba(245,158,11,0.55)", border: "#b45309" },
-  "receipt-preview": { bg: "rgba(168,85,247,0.5)", border: "#7e22ce" },
-  image: { bg: "rgba(16,185,129,0.45)", border: "#065f46" },
-  "frame-preview": { bg: "rgba(16,185,129,0.35)", border: "#34d399" },
-  "template-list": { bg: "rgba(234,88,12,0.5)", border: "#9a3412" },
-  "template-preview": { bg: "rgba(234,88,12,0.4)", border: "#fb923c" },
-  "background-decoration": { bg: "rgba(100,116,139,0.35)", border: "#94a3b8" },
-  "return-countdown": { bg: "rgba(99,102,241,0.4)", border: "#6366f1" },
-  "session-countdown": { bg: "rgba(244,63,94,0.4)", border: "#f43f5e" },
-  "payment-countdown": { bg: "rgba(34,197,94,0.4)", border: "#22c55e" },
-  "camera-view": { bg: "rgba(15,23,42,0.7)", border: "#1e293b" },
-  "photo-result": { bg: "rgba(15,23,42,0.55)", border: "#334155" },
-};
+const FALLBACK_PREVIEW_BG = "#fafafa";
 
 function readString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
+}
+
+function parseHexColor(value?: string) {
+  if (!value?.startsWith("#")) return null;
+  const hex = value.replace("#", "").trim();
+  if (![3, 6].includes(hex.length)) return null;
+  const normalized =
+    hex.length === 3
+      ? hex
+          .split("")
+          .map((part) => part + part)
+          .join("")
+      : hex;
+  const int = Number.parseInt(normalized, 16);
+  if (Number.isNaN(int)) return null;
+  return {
+    r: (int >> 16) & 255,
+    g: (int >> 8) & 255,
+    b: int & 255,
+  };
+}
+
+function safePreviewBackground(value?: string) {
+  const color = parseHexColor(value);
+  if (!color) return FALLBACK_PREVIEW_BG;
+  const luminance =
+    (0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b) / 255;
+  const saturation =
+    (Math.max(color.r, color.g, color.b) -
+      Math.min(color.r, color.g, color.b)) /
+    255;
+
+  if (luminance < 0.65 || saturation > 0.42) {
+    return FALLBACK_PREVIEW_BG;
+  }
+
+  return value;
 }
 
 function MiniNode({
@@ -41,29 +61,62 @@ function MiniNode({
   const top = (node.y / canvasHeight) * 100;
   const width = (node.width / canvasWidth) * 100;
   const height = (node.height / canvasHeight) * 100;
-  const color = TYPE_COLORS[node.type] ?? {
-    bg: "rgba(113,113,122,0.4)",
-    border: "#71717a",
-  };
   const imageUrl = readString(node.props?.imageUrl);
 
   const isMedia =
     node.type === "image" ||
     node.type === "frame-preview" ||
     node.type === "background-decoration";
+  const isLarge = width * height > 2400;
+  const isText = node.type === "text" || node.type === "social-handle";
+  const isButton = node.type === "button";
+  const isPreviewSurface = [
+    "camera-view",
+    "photo-result",
+    "receipt-preview",
+    "template-list",
+    "template-preview",
+    "qr",
+    "qr-placeholder",
+  ].includes(node.type);
+
+  const fill = isText
+    ? "transparent"
+    : isButton
+      ? "#18181b"
+      : isPreviewSurface
+        ? isLarge
+          ? "rgba(244,244,245,0.68)"
+          : "rgba(244,244,245,0.9)"
+        : isMedia
+          ? imageUrl
+            ? "transparent"
+            : "rgba(244,244,245,0.4)"
+          : "rgba(244,244,245,0.72)";
+  const borderColor = isText
+    ? "transparent"
+    : isButton
+      ? "#18181b"
+      : "rgba(161,161,170,0.65)";
 
   return (
     <div
-      className="absolute overflow-hidden rounded-[2px]"
+      className="absolute overflow-hidden rounded-[3px]"
       style={{
         left: `${left}%`,
         top: `${top}%`,
         width: `${width}%`,
         height: `${height}%`,
-        opacity: typeof node.opacity === "number" ? node.opacity : 1,
+        opacity: Math.min(
+          typeof node.opacity === "number" ? node.opacity : 1,
+          isLarge ? 0.74 : 0.95,
+        ),
         transform: node.rotation ? `rotate(${node.rotation}deg)` : undefined,
-        background: isMedia && imageUrl ? "transparent" : color.bg,
-        border: `1px solid ${color.border}`,
+        background: fill,
+        border:
+          isText && !readString(node.props?.text)
+            ? "none"
+            : `1px solid ${borderColor}`,
         zIndex: node.zIndex ?? 0,
       }}
     >
@@ -71,14 +124,16 @@ function MiniNode({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={imageUrl} alt="" className="h-full w-full object-cover" />
       ) : null}
-      {node.type === "text" ? (
+      {isText ? (
         <div className="flex h-full w-full items-center justify-center px-0.5">
-          <span
-            className="line-clamp-1 text-[6px] font-medium leading-none"
-            style={{ color: color.border }}
-          >
+          <span className="line-clamp-1 text-[6px] font-semibold leading-none text-zinc-700/75">
             {readString(node.props?.text, "Aa")}
           </span>
+        </div>
+      ) : null}
+      {isMedia && !imageUrl ? (
+        <div className="grid h-full w-full place-items-center text-zinc-300">
+          <ImageIcon className="size-3" />
         </div>
       ) : null}
     </div>
@@ -118,11 +173,11 @@ export function ThemeThumbnail({
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden rounded-md border border-zinc-200",
+        "relative w-full overflow-hidden rounded-md border border-zinc-200 bg-white",
         aspect,
         className,
       )}
-      style={{ backgroundColor: canvas.backgroundColor ?? "#0f172a" }}
+      style={{ backgroundColor: safePreviewBackground(canvas.backgroundColor) }}
     >
       {pageBg ? (
         // eslint-disable-next-line @next/next/no-img-element
