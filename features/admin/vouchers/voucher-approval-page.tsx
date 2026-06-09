@@ -47,21 +47,12 @@ function PageHeader({
   );
 }
 
-const PRESET_VOUCHERS = [
-  { code: "FREE", label: "Free Session" },
-  { code: "PROMO100", label: "100% Promo" },
-  { code: "CASH_PAID", label: "Cash paid to cashier" },
-  { code: "EVENT_PASS", label: "Event Ticket" },
-];
-
 export function VoucherApproval() {
   const { data: devices = [], refetch, isLoading } = useBooths();
   const updateBooth = useUpdateBooth();
 
   const [search, setSearch] = useState("");
   const [selectedDevice, setSelectedDevice] = useState<any>(null);
-  const [customCode, setCustomCode] = useState("");
-  const [selectedPreset, setSelectedPreset] = useState("FREE");
 
   // Filter devices that are currently waiting for vouchers
   const waitingDevices = devices.filter(
@@ -79,11 +70,7 @@ export function VoucherApproval() {
 
   const handleApprove = async () => {
     if (!selectedDevice) return;
-    const code = (
-      customCode.trim() ||
-      selectedPreset ||
-      "FREE"
-    ).toUpperCase();
+    const code = "FREE";
 
     try {
       await updateBooth.mutateAsync({
@@ -92,11 +79,10 @@ export function VoucherApproval() {
           location: `VOUCHER:${code}`,
         },
       });
-      toast.success(`Voucher "${code}" approved and sent to ${selectedDevice.name}`);
+      toast.success(`Voucher approved and sent to ${selectedDevice.name}`);
       setSelectedDevice(null);
-      setCustomCode("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to approve voucher");
+      toast.error(err instanceof Error ? err.message : "Failed to send voucher");
     }
   };
 
@@ -118,52 +104,18 @@ export function VoucherApproval() {
         }
       />
 
-      {/* Dialog to approve and send voucher */}
+      {/* Dialog to confirm voucher sending */}
       <Dialog
         open={Boolean(selectedDevice)}
-        title={`Approve Voucher for ${selectedDevice?.name}`}
+        title="Confirm Voucher Action"
         onOpenChange={(open) => !open && setSelectedDevice(null)}
+        className="max-w-md"
       >
         <div className="space-y-4 pt-2">
-          <p className="text-sm text-zinc-500">
-            Select a preset voucher code or enter a custom code to approve for this kiosk:
+          <p className="text-sm text-zinc-600">
+            Are you sure you want to send a voucher to{" "}
+            <strong className="text-zinc-900">{selectedDevice?.name}</strong>?
           </p>
-
-          <div className="grid grid-cols-2 gap-2">
-            {PRESET_VOUCHERS.map((preset) => {
-              const isSelected = selectedPreset === preset.code && !customCode;
-              return (
-                <button
-                  key={preset.code}
-                  type="button"
-                  onClick={() => {
-                    setSelectedPreset(preset.code);
-                    setCustomCode("");
-                  }}
-                  className={`flex flex-col items-start rounded-lg border p-3 text-left transition-all ${
-                    isSelected
-                      ? "border-zinc-900 bg-zinc-50 font-medium text-zinc-900"
-                      : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50/50"
-                  }`}
-                >
-                  <span className="text-xs font-semibold">{preset.code}</span>
-                  <span className="text-[11px] text-zinc-400">{preset.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-zinc-600">
-              Custom Voucher Code
-            </label>
-            <Input
-              placeholder="e.g. CUSTOM-CODE"
-              value={customCode}
-              onChange={(e) => setCustomCode(e.target.value)}
-              className="uppercase"
-            />
-          </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setSelectedDevice(null)}>
@@ -182,7 +134,7 @@ export function VoucherApproval() {
               ) : (
                 <>
                   <Send className="size-4 mr-2" />
-                  Approve & Send
+                  Yes, Send
                 </>
               )}
             </Button>
