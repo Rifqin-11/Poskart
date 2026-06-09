@@ -29,7 +29,39 @@ export default async function SharedGalleryPage({
     .eq("id", sessionId)
     .maybeSingle();
 
-  if (!session) notFound();
+  if (!session) {
+    return (
+      <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10 flex flex-col justify-center items-center">
+        <noscript>
+          <meta httpEquiv="refresh" content="2" />
+        </noscript>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `setTimeout(() => window.location.reload(), 2000);`,
+          }}
+        />
+        <div className="text-center max-w-md">
+          <span className="grid size-16 place-items-center overflow-hidden rounded-2xl bg-zinc-50 border border-black/5 mx-auto animate-pulse">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/Logo Poskart.png"
+              alt="POSKART Logo"
+              className="size-10 object-contain"
+            />
+          </span>
+          <h1 className="mt-6 text-2xl font-semibold tracking-tight text-zinc-900">
+            Menyiapkan Momen Anda...
+          </h1>
+          <p className="mt-3 text-sm text-zinc-500 leading-relaxed">
+            Foto-foto sedang diunggah dengan aman ke server. Halaman ini akan memuat ulang secara otomatis dalam beberapa saat.
+          </p>
+          <div className="mt-8 flex justify-center">
+            <div className="size-6 rounded-full border-2 border-zinc-200 border-t-zinc-800 animate-spin" />
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   const { data: photos } = await supabase
     .from("gallery_photos")
