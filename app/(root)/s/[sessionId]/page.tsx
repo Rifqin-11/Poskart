@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import {
   ArrowDownToLine,
   CheckCircle2,
@@ -74,9 +73,16 @@ export default async function SharedGalleryPage({
   const raw = photos?.filter((photo) => photo.kind === "raw" && photo.photo_index !== 99) ?? [];
   const rawGif = photos?.find((photo) => photo.kind === "raw" && photo.photo_index === 99);
   const selectedPhoto = photos?.find((photo) => photo.id === viewPhotoId);
+  const photoCount = photos?.length ?? 0;
+  const refreshUntil = new Date(session.created_at).getTime() + 120_000;
+  const shouldRefreshWhileProcessing =
+    !selectedPhoto && (photoCount === 0 || (!framedGif && !framedStatic));
 
   return (
     <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10">
+      {shouldRefreshWhileProcessing && (
+        <ProcessingRefresh refreshUntil={refreshUntil} />
+      )}
       <div className="mx-auto max-w-6xl">
         <div className="flex items-center justify-between border-b border-black/10 pb-5">
           <Link href="/" className="flex items-center gap-3">
@@ -353,5 +359,20 @@ export default async function SharedGalleryPage({
         </div>
       )}
     </main>
+  );
+}
+
+function ProcessingRefresh({ refreshUntil }: { refreshUntil: number }) {
+  return (
+    <>
+      <noscript>
+        <meta httpEquiv="refresh" content="2" />
+      </noscript>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `if (Date.now() < ${JSON.stringify(refreshUntil)}) setTimeout(() => window.location.reload(), 2000);`,
+        }}
+      />
+    </>
   );
 }
