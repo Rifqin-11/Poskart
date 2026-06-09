@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
+import { getPublicGalleryBaseUrl } from "@/lib/gallery/urls";
 import { createClient } from "@/lib/supabase/server";
 import type { LayoutSchema } from "@/types/builder";
 
@@ -59,7 +60,7 @@ export async function GET() {
         ? {
             merchantName: config.merchant_name,
             qrisPayloadPrefix: config.qris_payload_prefix,
-            shareBaseUrl: config.share_base_url,
+            shareBaseUrl: getPublicGalleryBaseUrl(),
             countdownDurationSeconds: config.countdown_duration_seconds,
             flashDurationMs: config.flash_duration_ms,
             autoReturnDurationSeconds: config.auto_return_duration_seconds,

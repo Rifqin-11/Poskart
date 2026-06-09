@@ -1,7 +1,9 @@
 import "server-only";
 
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
+import { getPublicGalleryBaseUrl } from "@/lib/gallery/urls";
 import type { LayoutSchema } from "@/types/builder";
 
 type OrganizationMembershipRow = {
@@ -483,7 +485,7 @@ export async function buildKioskBootstrap(
       ? {
           merchantName: config.merchant_name,
           qrisPayloadPrefix: config.qris_payload_prefix,
-          shareBaseUrl: config.share_base_url,
+          shareBaseUrl: getPublicGalleryBaseUrl(),
           countdownDurationSeconds: config.countdown_duration_seconds,
           flashDurationMs: config.flash_duration_ms,
           autoReturnDurationSeconds: config.auto_return_duration_seconds,

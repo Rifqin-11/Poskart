@@ -4,6 +4,7 @@ import {
   requireKioskContext,
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
+import { getPublicGalleryUrl } from "@/lib/gallery/urls";
 
 type UploadedAsset = {
   kind?: "raw" | "framed";
@@ -50,10 +51,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const siteUrl = (
-      process.env.NEXT_PUBLIC_SITE_URL ?? "https://poskart.my.id"
-    ).replace(/\/+$/, "");
-    const shareUrl = `${siteUrl}/s/${encodeURIComponent(sessionId)}`;
+    const shareUrl = getPublicGalleryUrl(sessionId);
     const now = new Date().toISOString();
 
     const { error: sessionError } = await context.client

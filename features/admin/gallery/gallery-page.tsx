@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, ImageIcon, Images } from "lucide-react";
+import { CalendarDays, ExternalLink, ImageIcon, Images } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
@@ -64,8 +64,34 @@ export async function GalleryPage() {
     );
   }
 
+  const sessionsByDate = rows.reduce<
+    Map<string, { label: string; sessions: GallerySessionRow[] }>
+  >((groups, session) => {
+    const date = new Date(session.created_at);
+    const key = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
+    const existing = groups.get(key);
+    if (existing) {
+      existing.sessions.push(session);
+    } else {
+      groups.set(key, {
+        label: new Intl.DateTimeFormat("id-ID", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }).format(date),
+        sessions: [session],
+      });
+    }
+    return groups;
+  }, new Map());
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <header>
         <div className="flex items-center gap-2 text-sm font-medium text-zinc-500">
           <Images className="size-4" />
@@ -79,69 +105,83 @@ export async function GalleryPage() {
         </p>
       </header>
 
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {rows.map((session) => {
-          const sessionPhotos = photoRows.filter(
-            (photo) => photo.session_id === session.id,
-          );
-          const framed = sessionPhotos.find(
-            (photo) => photo.kind === "framed",
-          );
-          const rawCount = sessionPhotos.filter(
-            (photo) => photo.kind === "raw",
-          ).length;
+      {[...sessionsByDate.entries()].map(([dateKey, group]) => (
+        <section key={dateKey}>
+          <div className="mb-3 flex items-center gap-2">
+            <CalendarDays className="size-4 text-zinc-400" />
+            <h2 className="text-sm font-semibold capitalize text-zinc-800">
+              {group.label}
+            </h2>
+            <span className="text-xs text-zinc-400">
+              {group.sessions.length} sesi
+            </span>
+          </div>
 
-          return (
-            <Card key={session.id} className="overflow-hidden rounded-2xl">
-              <div className="aspect-[4/3] bg-zinc-100">
-                {framed ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={framed.secure_url}
-                    alt={session.template_name || "POSKART session"}
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <div className="grid size-full place-items-center text-zinc-400">
-                    <ImageIcon className="size-10" />
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {group.sessions.map((session) => {
+              const sessionPhotos = photoRows.filter(
+                (photo) => photo.session_id === session.id,
+              );
+              const framed = sessionPhotos.find(
+                (photo) => photo.kind === "framed",
+              );
+              const rawCount = sessionPhotos.filter(
+                (photo) => photo.kind === "raw",
+              ).length;
+
+              return (
+                <Card
+                  key={session.id}
+                  className="group overflow-hidden rounded-xl border-zinc-200 py-0 shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <div className="aspect-[4/3] bg-zinc-100">
+                    {framed ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={framed.secure_url}
+                        alt={session.template_name || "POSKART session"}
+                        className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                      />
+                    ) : (
+                      <div className="grid size-full place-items-center text-zinc-400">
+                        <ImageIcon className="size-7" />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <h2 className="truncate font-semibold text-zinc-950">
-                      {session.template_name || "Photobooth session"}
-                    </h2>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {new Intl.DateTimeFormat("id-ID", {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      }).format(new Date(session.created_at))}
+                  <div className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-semibold text-zinc-950">
+                          {session.template_name || "Photobooth session"}
+                        </h3>
+                        <p className="mt-0.5 text-[11px] text-zinc-500">
+                          {new Intl.DateTimeFormat("id-ID", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }).format(new Date(session.created_at))}
+                          {" · "}
+                          {rawCount} raw
+                        </p>
+                      </div>
+                      <Link
+                        href={session.share_url || `/s/${session.id}`}
+                        target="_blank"
+                        aria-label="Buka hasil foto"
+                        className="grid size-8 shrink-0 place-items-center rounded-lg bg-zinc-100 text-zinc-700 transition-colors hover:bg-zinc-950 hover:text-white"
+                      >
+                        <ExternalLink className="size-3.5" />
+                      </Link>
+                    </div>
+                    <p className="mt-2 truncate text-[11px] text-zinc-400">
+                      {session.device_id || "Unknown device"}
                     </p>
                   </div>
-                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
-                    {rawCount} raw
-                  </span>
-                </div>
-                <div className="mt-4 flex items-center justify-between text-xs text-zinc-500">
-                  <span className="truncate">
-                    {session.device_id || "Unknown device"}
-                  </span>
-                  <Link
-                    href={session.share_url || `/s/${session.id}`}
-                    target="_blank"
-                    className="inline-flex items-center gap-1 font-medium text-zinc-950"
-                  >
-                    Open
-                    <ExternalLink className="size-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

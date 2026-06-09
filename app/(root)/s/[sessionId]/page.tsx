@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import {
+  ArrowDownToLine,
+  CheckCircle2,
+  Download,
+  Images,
+} from "lucide-react";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -30,80 +36,114 @@ export default async function SharedGalleryPage({
   const raw = photos?.filter((photo) => photo.kind === "raw") ?? [];
 
   return (
-    <main className="min-h-screen bg-[#f7f5ef] px-5 py-12 text-zinc-950">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-10 flex items-center justify-between">
+    <main className="min-h-screen bg-[#f7f5ef] px-5 py-6 text-zinc-950 md:px-8 md:py-10">
+      <div className="mx-auto max-w-6xl">
+        <div className="flex items-center justify-between border-b border-black/10 pb-5">
           <Link href="/" className="text-lg font-semibold tracking-tight">
             POSKART
           </Link>
-          <span className="text-sm text-zinc-500">Digital photo delivery</span>
+          <span className="inline-flex items-center gap-2 text-xs font-medium text-zinc-500">
+            <CheckCircle2 className="size-4 text-emerald-600" />
+            Foto tersimpan aman
+          </span>
         </div>
 
-        <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr]">
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              Your photobooth result
-            </p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">
-              Foto Anda sudah siap.
-            </h1>
-            <p className="mt-4 max-w-xl text-zinc-600">
-              Download hasil dengan frame atau simpan foto mentah dari sesi
-              POSKART ini.
-            </p>
+        <section className="py-10 text-center md:py-14">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            Hasil photobooth Anda
+          </p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight md:text-6xl">
+            Momen Anda sudah siap.
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-zinc-600 md:text-base">
+            Simpan foto dengan frame atau unduh setiap foto original dari sesi
+            POSKART ini.
+          </p>
+        </section>
+
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+          <section className="rounded-[28px] border border-black/10 bg-white p-3 shadow-xl shadow-black/5 md:p-5">
             {framed ? (
-              <div className="mt-8 overflow-hidden rounded-3xl border border-black/10 bg-white p-3 shadow-xl shadow-black/5">
+              <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={framed.secure_url}
                   alt={`POSKART ${session.template_name}`}
-                  className="max-h-[70vh] w-full rounded-2xl object-contain"
+                  className="max-h-[68vh] w-full rounded-2xl bg-zinc-50 object-contain"
                 />
-              </div>
+                <a
+                  href={`/s/${encodeURIComponent(sessionId)}/download/${framed.id}`}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 px-5 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+                >
+                  <ArrowDownToLine className="size-4" />
+                  Download foto dengan frame
+                </a>
+              </>
             ) : (
-              <div className="mt-8 rounded-3xl border border-dashed border-zinc-300 bg-white p-12 text-center text-zinc-500">
+              <div className="grid min-h-96 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center text-zinc-500">
                 Hasil dengan frame sedang diproses.
               </div>
             )}
           </section>
 
-          <aside className="lg:pt-28">
-            {framed ? (
-              <a
-                href={framed.secure_url}
-                download
-                target="_blank"
-                rel="noreferrer"
-                className="flex w-full items-center justify-center rounded-xl bg-zinc-950 px-5 py-3 text-sm font-medium text-white"
-              >
-                Download framed photo
-              </a>
-            ) : null}
+          <aside className="rounded-[28px] border border-black/10 bg-white p-5 md:p-6">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-xl bg-zinc-100">
+                <Images className="size-5" />
+              </span>
+              <div>
+                <h2 className="font-semibold">Foto original</h2>
+                <p className="text-xs text-zinc-500">
+                  {raw.length} foto tanpa frame
+                </p>
+              </div>
+            </div>
+
             {raw.length > 0 ? (
-              <div className="mt-6">
-                <h2 className="text-sm font-semibold">Raw photos</h2>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  {raw.map((photo, index) => (
-                    <a
-                      key={photo.id}
-                      href={photo.secure_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="overflow-hidden rounded-xl border bg-white"
-                    >
+              <div className="mt-5 space-y-3">
+                {raw.map((photo, index) => (
+                  <div
+                    key={photo.id}
+                    className="flex items-center gap-3 rounded-2xl border border-zinc-200 p-2.5"
+                  >
+                    <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={photo.secure_url}
-                        alt={`Raw photo ${index + 1}`}
-                        className="aspect-[4/5] w-full object-cover"
+                        alt={`Foto original ${index + 1}`}
+                        className="size-full object-cover"
                       />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">
+                        Foto original {index + 1}
+                      </p>
+                      <p className="mt-0.5 text-xs text-zinc-500">
+                        Resolusi asli dari kamera
+                      </p>
+                    </div>
+                    <a
+                      href={`/s/${encodeURIComponent(sessionId)}/download/${photo.id}`}
+                      aria-label={`Download foto original ${index + 1}`}
+                      className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 transition-colors hover:bg-zinc-950 hover:text-white"
+                    >
+                      <Download className="size-4" />
                     </a>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-5 rounded-2xl bg-zinc-50 p-6 text-center text-sm text-zinc-500">
+                Foto original tidak diunggah untuk sesi ini.
+              </div>
+            )}
           </aside>
         </div>
+
+        <footer className="mt-10 flex flex-col gap-2 border-t border-black/10 py-6 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+          <span>© 2026 POSKART Indonesia</span>
+          <span>Digital photo delivery by POSKART</span>
+        </footer>
       </div>
     </main>
   );

@@ -2,6 +2,7 @@ import {
   createCloudinaryUploadSignatures,
   type CloudinaryUploadDescriptor,
 } from "@/lib/cloudinary/server";
+import { getPublicGalleryUrl } from "@/lib/gallery/urls";
 import {
   jsonError,
   jsonOk,
@@ -43,9 +44,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const siteUrl = (
-      process.env.NEXT_PUBLIC_SITE_URL ?? "https://poskart.my.id"
-    ).replace(/\/+$/, "");
+    const shareUrl = getPublicGalleryUrl(sessionId);
     const { error: sessionError } = await context.client
       .from("gallery_sessions")
       .upsert({
@@ -53,18 +52,19 @@ export async function POST(request: Request) {
         organization_id: context.organizationId,
         device_id: device.id,
         template_name: body.templateName?.trim() ?? "",
-        share_url: `${siteUrl}/s/${encodeURIComponent(sessionId)}`,
+        share_url: shareUrl,
         updated_at: new Date().toISOString(),
       });
     if (sessionError) throw sessionError;
 
-    return jsonOk(
-      createCloudinaryUploadSignatures({
+    return jsonOk({
+      ...createCloudinaryUploadSignatures({
         organizationId: context.organizationId,
         sessionId,
         files,
       }),
-    );
+      shareUrl,
+    });
   } catch (error) {
     return jsonError(error);
   }
