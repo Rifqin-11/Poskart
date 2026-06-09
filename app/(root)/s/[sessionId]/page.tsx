@@ -75,8 +75,11 @@ export default async function SharedGalleryPage({
   const selectedPhoto = photos?.find((photo) => photo.id === viewPhotoId);
   const photoCount = photos?.length ?? 0;
   const refreshUntil = new Date(session.created_at).getTime() + 120_000;
+  const hasAnyFramed = Boolean(framedGif || framedStatic);
+  const hasAnyRaw = raw.length > 0 || Boolean(rawGif);
+  const waitingForAssets = photoCount === 0 || !hasAnyFramed || !hasAnyRaw;
   const shouldRefreshWhileProcessing =
-    !selectedPhoto && (photoCount === 0 || (!framedGif && !framedStatic));
+    !selectedPhoto && waitingForAssets;
 
   return (
     <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10">
@@ -204,7 +207,7 @@ export default async function SharedGalleryPage({
 
             {!framedGif && !framedStatic && (
               <div className="grid min-h-96 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center text-zinc-500">
-                Hasil dengan frame sedang diproses.
+                Hasil foto sedang disiapkan. Halaman ini akan memperbarui otomatis.
               </div>
             )}
           </section>
@@ -217,7 +220,9 @@ export default async function SharedGalleryPage({
               <div>
                 <h2 className="font-semibold">Foto original</h2>
                 <p className="text-xs text-zinc-500">
-                  {raw.length} foto {rawGif ? "& 1 animasi " : ""}tanpa frame
+                  {hasAnyRaw
+                    ? `${raw.length} foto ${rawGif ? "& 1 animasi " : ""}tanpa frame`
+                    : "Menyiapkan foto original"}
                 </p>
               </div>
             </div>
@@ -296,7 +301,7 @@ export default async function SharedGalleryPage({
             ) : (
               !rawGif && (
                 <div className="mt-5 rounded-2xl bg-zinc-50 p-6 text-center text-sm text-zinc-500">
-                  Foto original tidak diunggah untuk sesi ini.
+                  Foto original sedang disiapkan. Hasil utama dengan frame bisa diunduh terlebih dahulu.
                 </div>
               )
             )}
