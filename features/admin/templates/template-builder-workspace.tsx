@@ -25,7 +25,7 @@ const ACCENT_PRESETS = ["#C4121A", "#2D3F8F", "#F5F1E8", "#1B1B1B", "#F6C9C9", "
 const DEFAULT_FORM: TemplateFormValues = {
   name: "",
   category: "frame",
-  status: "draft",
+  status: "published",
   tagline: "",
   photoCount: 0,
   accentColor: "#C4121A",
@@ -117,6 +117,7 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
   const handleSave = async (layout: FrameLayout) => {
     const payload = {
       ...form,
+      status: "published", // Always publish when saving from builder
       photoCount: countPhotoSlots(layout),
       frameLayout: layout,
     };
