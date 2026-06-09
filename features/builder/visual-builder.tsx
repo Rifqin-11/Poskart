@@ -2320,24 +2320,13 @@ function CanvasControls() {
       {/* App background */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <div
-            className={cn(
-              "text-xs font-medium",
-              activePage === "payment" ? "text-amber-600" : "text-zinc-500",
-            )}
-          >
-            {activePage === "payment" ? "Dialog background" : "Background"}
+          <div className="text-xs font-medium text-zinc-500">
+            Background
           </div>
           <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-mono text-zinc-500 capitalize">
             {activePage}
           </span>
         </div>
-        {activePage === "payment" && (
-          <p className="text-[10px] text-amber-600 leading-snug">
-            This sets the <strong>dialog card</strong> background. The backdrop
-            uses the landing page bg.
-          </p>
-        )}
 
         {bgVideo ? (
           <div className="relative overflow-hidden rounded-lg border border-zinc-200">
@@ -2447,94 +2436,6 @@ function CanvasControls() {
         />
       )}
 
-      {/* Payment Dialog size settings */}
-      {activePage === "payment" && (
-        <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-amber-700">
-            Payment Dialog Size
-          </div>
-          <label className="block text-xs font-medium text-zinc-600">
-            Width ratio
-            <span className="ml-auto float-right text-zinc-400">
-              {Math.round((canvas.paymentModal?.widthRatio ?? 0.65) * 100)}%
-            </span>
-            <Slider
-              className="mt-1"
-              min={30}
-              max={95}
-              step={1}
-              value={String(
-                Math.round((canvas.paymentModal?.widthRatio ?? 0.65) * 100),
-              )}
-              onChange={(e) =>
-                updateCanvas({
-                  paymentModal: {
-                    ...(canvas.paymentModal ?? {
-                      heightRatio: 0.75,
-                      borderRadius: 20,
-                    }),
-                    widthRatio: Number(e.target.value) / 100,
-                  },
-                })
-              }
-            />
-          </label>
-          <label className="block text-xs font-medium text-zinc-600">
-            Height ratio
-            <span className="ml-auto float-right text-zinc-400">
-              {Math.round((canvas.paymentModal?.heightRatio ?? 0.75) * 100)}%
-            </span>
-            <Slider
-              className="mt-1"
-              min={30}
-              max={95}
-              step={1}
-              value={String(
-                Math.round((canvas.paymentModal?.heightRatio ?? 0.75) * 100),
-              )}
-              onChange={(e) =>
-                updateCanvas({
-                  paymentModal: {
-                    ...(canvas.paymentModal ?? {
-                      widthRatio: 0.65,
-                      borderRadius: 20,
-                    }),
-                    heightRatio: Number(e.target.value) / 100,
-                  },
-                })
-              }
-            />
-          </label>
-          <label className="block text-xs font-medium text-zinc-600">
-            Corner radius
-            <span className="ml-auto float-right text-zinc-400">
-              {canvas.paymentModal?.borderRadius ?? 20}px
-            </span>
-            <Slider
-              className="mt-1"
-              min={0}
-              max={60}
-              step={1}
-              value={String(canvas.paymentModal?.borderRadius ?? 20)}
-              onChange={(e) =>
-                updateCanvas({
-                  paymentModal: {
-                    ...(canvas.paymentModal ?? {
-                      widthRatio: 0.65,
-                      heightRatio: 0.75,
-                    }),
-                    borderRadius: Number(e.target.value),
-                  },
-                })
-              }
-            />
-          </label>
-          <p className="text-[10px] text-amber-600">
-            Dialog coords are <strong>full-screen relative</strong>. Place nodes
-            on top of the white card.
-          </p>
-        </div>
-      )}
     </PanelSection>
   );
 }
@@ -3598,17 +3499,6 @@ export function VisualBuilder() {
             </Badge>
           </div>
 
-          {/* Payment page context hint */}
-          {activePage === "payment" && (
-            <div className="mx-2 mb-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] leading-snug text-amber-800">
-              <div className="font-semibold">💳 Centered Dialog</div>
-              <div className="mt-0.5 text-amber-700">
-                Payment renders as a centered Flutter dialog (maxWidth 520px).
-                Place nodes over the white card area.
-              </div>
-            </div>
-          )}
-
           {/* Template page empty-state hint */}
           {activePage === "template" && visibleNodes.length === 0 && (
             <div className="mx-2 mb-2 rounded-md border border-orange-200 bg-orange-50 px-2 py-1.5 text-[10px] leading-snug text-orange-800">
@@ -3622,7 +3512,6 @@ export function VisualBuilder() {
 
           {/* Generic empty-state hint */}
           {activePage !== "template" &&
-            activePage !== "payment" &&
             visibleNodes.length === 0 && (
               <div className="mx-2 mb-2 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-[10px] text-zinc-500">
                 No layers yet — add a component below.
@@ -3753,17 +3642,8 @@ export function VisualBuilder() {
                   width: canvas.width,
                   height: canvas.height,
                   backgroundColor: canvas.backgroundColor ?? "#ffffff",
-                  // For payment page: show landing background dimmed behind the dialog
-                  backgroundImage: (
-                    activePage === "payment"
-                      ? canvas.pageBackgrounds?.["landing"]?.image
-                      : canvas.pageBackgrounds?.[activePage]?.image
-                  )
-                    ? `url(${
-                        activePage === "payment"
-                          ? canvas.pageBackgrounds!["landing"]!.image
-                          : canvas.pageBackgrounds![activePage]!.image
-                      })`
+                  backgroundImage: canvas.pageBackgrounds?.[activePage]?.image
+                    ? `url(${canvas.pageBackgrounds[activePage]!.image})`
                     : undefined,
                   backgroundSize: "cover",
                   borderRadius: 28,
@@ -3830,18 +3710,10 @@ export function VisualBuilder() {
                   </div>
                 )}
 
-                {/* Per-page video background (for payment page: show landing video behind dialog) */}
-                {(
-                  activePage === "payment"
-                    ? canvas.pageBackgrounds?.["landing"]?.video
-                    : canvas.pageBackgrounds?.[activePage]?.video
-                ) ? (
+                {/* Per-page video background */}
+                {canvas.pageBackgrounds?.[activePage]?.video ? (
                   <video
-                    src={
-                      activePage === "payment"
-                        ? canvas.pageBackgrounds!["landing"]!.video
-                        : canvas.pageBackgrounds![activePage]!.video
-                    }
+                    src={canvas.pageBackgrounds[activePage]!.video}
                     autoPlay
                     loop
                     muted
@@ -3934,95 +3806,6 @@ export function VisualBuilder() {
                     );
                   })()}
 
-                {/* Payment modal visual — centered dialog (matches Flutter AlertDialog) */}
-                {activePage === "payment" &&
-                  (() => {
-                    const mw = Math.round(
-                      canvas.width * (canvas.paymentModal?.widthRatio ?? 0.406),
-                    );
-                    const mh = Math.round(
-                      canvas.height *
-                        (canvas.paymentModal?.heightRatio ?? 0.75),
-                    );
-                    const mx = Math.round((canvas.width - mw) / 2);
-                    const my = Math.round((canvas.height - mh) / 2);
-                    const br = canvas.paymentModal?.borderRadius ?? 20;
-                    // Barrier: #1B1B1B @ 0.55 (Flutter default)
-                    const barrierHex =
-                      canvas.paymentModal?.barrierColor ?? "#1B1B1B";
-                    const r = parseInt(barrierHex.slice(1, 3), 16);
-                    const g = parseInt(barrierHex.slice(3, 5), 16);
-                    const b = parseInt(barrierHex.slice(5, 7), 16);
-                    const barrierBg = `rgba(${r},${g},${b},0.55)`;
-                    const dialogBg =
-                      canvas.paymentModal?.backgroundColor ?? "#FAF8F2";
-                    return (
-                      <>
-                        {/* Scrim / backdrop — matches Flutter #1B1B1B @ 0.55 */}
-                        <div
-                          className="pointer-events-none absolute inset-0"
-                          style={{ background: barrierBg, zIndex: 1 }}
-                        />
-                        {/* Centered dialog card — background comes from payment page's uploaded bg */}
-                        <div
-                          className="pointer-events-none absolute overflow-hidden"
-                          style={{
-                            left: mx,
-                            top: my,
-                            width: mw,
-                            height: mh,
-                            borderRadius: br,
-                            zIndex: 2,
-                            boxShadow: "0 8px 48px rgba(0,0,0,0.30)",
-                            backgroundColor: canvas.pageBackgrounds?.["payment"]
-                              ?.image
-                              ? "transparent"
-                              : dialogBg,
-                            backgroundImage: canvas.pageBackgrounds?.["payment"]
-                              ?.image
-                              ? `url(${canvas.pageBackgrounds["payment"]!.image})`
-                              : undefined,
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                          }}
-                        >
-                          {/* Payment page video on dialog card */}
-                          {canvas.pageBackgrounds?.["payment"]?.video ? (
-                            <video
-                              src={canvas.pageBackgrounds["payment"]!.video}
-                              autoPlay
-                              loop
-                              muted
-                              playsInline
-                              className="absolute inset-0 h-full w-full object-cover"
-                              style={{ zIndex: 0 }}
-                            />
-                          ) : null}
-                          {/* Badge label */}
-                          <div
-                            className="absolute right-0 top-0 flex items-center gap-1 bg-amber-400 px-2 py-1 text-amber-900"
-                            style={{
-                              fontSize: Math.max(10, canvas.width * 0.012),
-                              fontWeight: 600,
-                              borderTopRightRadius: br,
-                              borderBottomLeftRadius: br / 2,
-                            }}
-                          >
-                            Payment Dialog ({mw}×{mh})
-                          </div>
-                          {/* Coordinate reference */}
-                          <div
-                            className="absolute bottom-2 left-3 font-mono text-zinc-300"
-                            style={{
-                              fontSize: Math.max(9, canvas.width * 0.009),
-                            }}
-                          >
-                            x:{mx} y:{my} — place nodes relative to full screen
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()}
 
                 {visibleNodes.map((node) =>
                   node.visible ? (

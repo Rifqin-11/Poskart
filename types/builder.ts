@@ -1,6 +1,5 @@
 export type BuilderPage =
   | "landing"
-  | "payment"
   | "template"
   | "camera"
   | "preview"

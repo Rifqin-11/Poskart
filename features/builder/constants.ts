@@ -26,17 +26,6 @@ export const SEMANTIC_ROLES: { value: string; label: string; screen: string }[] 
   },
   { value: "landing.settings", label: "Settings / Config", screen: "landing" },
   {
-    value: "payment.confirm",
-    label: "Sudah Bayar (Confirm)",
-    screen: "payment",
-  },
-  { value: "payment.cancel", label: "Batal (Cancel)", screen: "payment" },
-  {
-    value: "payment.qr_display",
-    label: "QRIS Display Area",
-    screen: "payment",
-  },
-  {
     value: "template.select",
     label: "Select Template Tile",
     screen: "template",
@@ -90,7 +79,6 @@ export const SEMANTIC_ROLES: { value: string; label: string; screen: string }[] 
 
 export const pageLabels: BuilderPage[] = [
   "landing",
-  "payment",
   "template",
   "camera",
   "preview",
@@ -123,7 +111,6 @@ export const COMPONENT_META: Record<
 /** Components available per page. Only show relevant items in Add panel. */
 export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
   landing: ["text", "image", "button", "social-handle", "background-decoration"],
-  payment: ["text", "image", "button", "qr-placeholder", "background-decoration", "payment-countdown"],
   template: ["text", "image", "button", "template-preview", "template-list", "background-decoration", "session-countdown"],
   camera: ["text", "image", "camera-view", "photo-result", "button", "social-handle", "background-decoration", "session-countdown"],
   preview: ["text", "image", "button", "qr", "receipt-preview", "frame-preview", "social-handle", "background-decoration", "session-countdown"],
@@ -133,7 +120,6 @@ export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
 /** Semantic roles shown per page in the Properties dropdown */
 export const PAGE_ROLES: Record<BuilderPage | "generic", string[]> = {
   landing: ["landing.start_session", "landing.settings"],
-  payment: ["payment.confirm", "payment.cancel", "payment.qr_display"],
   template: ["template.select", "template.continue", "template.back"],
   camera: [
     "camera.take_photo",
