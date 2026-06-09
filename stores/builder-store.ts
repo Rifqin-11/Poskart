@@ -143,6 +143,14 @@ function defaultProps(type: BuilderNode["type"]) {
     return { src: "", alt: type, objectFit: "cover", radius: 8 };
   }
 
+  if (type === "qr-link") {
+    return { label: "https://poskart.app/s/...", fontSize: 12, color: "#3b82f6" };
+  }
+
+  if (type === "return-countdown") {
+    return { countdownText: "Kembali ke halaman awal", countdownSeconds: 8 };
+  }
+
   return { content: type.replace("-", " "), fontSize: 18, color: "#18181b", fontWeight: 500 };
 }
 
@@ -298,19 +306,47 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   addNode: (type) =>
     set((state) => {
       const id = `node-${Date.now()}`;
+      const isAspectLocked =
+        type === "qr" ||
+        type === "qr-link" ||
+        type === "return-countdown" ||
+        type === "camera-view" ||
+        type === "frame-preview" ||
+        type === "receipt-preview" ||
+        type === "qr-placeholder";
+
+      const defaultWidth =
+        type === "text"
+          ? 220
+          : type === "return-countdown"
+          ? 320
+          : type === "qr-link"
+          ? 160
+          : 140;
+
+      const defaultHeight =
+        type === "text"
+          ? 54
+          : type === "return-countdown"
+          ? 72
+          : type === "qr-link"
+          ? 200
+          : 140;
+
       const node: BuilderNode = {
         id,
         type,
         page: state.activePage,
         x: 110,
         y: 120,
-        width: type === "text" ? 220 : 140,
-        height: type === "text" ? 54 : 120,
+        width: defaultWidth,
+        height: defaultHeight,
         rotation: 0,
         opacity: 1,
         locked: false,
         visible: true,
         zIndex: state.nodes.length + 1,
+        lockAspect: isAspectLocked,
         props: defaultProps(type),
       };
       return pushHistory(state, { nodes: [...state.nodes, node], selectedId: id });

@@ -94,6 +94,7 @@ export const COMPONENT_META: Record<
   image: { label: "Image", icon: ImageIcon },
   button: { label: "Button", icon: Link2 },
   qr: { label: "QR Download", icon: QrCode },
+  "qr-link": { label: "QR Code Link", icon: QrCode },
   "qr-placeholder": { label: "QRIS Payment", icon: CreditCard },
   "camera-view": { label: "Camera View", icon: Camera },
   "photo-result": { label: "Photo Result", icon: ImageIcon },
@@ -113,8 +114,8 @@ export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
   landing: ["text", "image", "button", "social-handle", "background-decoration"],
   template: ["text", "image", "button", "template-preview", "template-list", "background-decoration", "session-countdown"],
   camera: ["text", "image", "camera-view", "photo-result", "button", "social-handle", "background-decoration", "session-countdown"],
-  preview: ["text", "image", "button", "qr", "receipt-preview", "frame-preview", "social-handle", "background-decoration", "session-countdown"],
-  thanks: ["text", "image", "button", "qr", "frame-preview", "social-handle", "background-decoration", "return-countdown", "session-countdown"],
+  preview: ["text", "image", "button", "qr", "qr-link", "receipt-preview", "frame-preview", "social-handle", "background-decoration", "session-countdown"],
+  thanks: ["text", "image", "button", "qr", "qr-link", "frame-preview", "social-handle", "background-decoration", "return-countdown", "session-countdown"],
 };
 
 /** Semantic roles shown per page in the Properties dropdown */
@@ -145,6 +146,7 @@ export const HOTSPOT_COLORS: Record<
   "qr-placeholder": { bg: "rgba(245,158,11,0.22)", border: "#f59e0b", text: "#b45309" },
   "receipt-preview": { bg: "rgba(168,85,247,0.20)", border: "#a855f7", text: "#7e22ce" },
   qr: { bg: "rgba(245,158,11,0.18)", border: "#fbbf24", text: "#92400e" },
+  "qr-link": { bg: "rgba(245,158,11,0.20)", border: "#fbbf24", text: "#92400e" },
   image: { bg: "rgba(16,185,129,0.18)", border: "#10b981", text: "#065f46" },
   "frame-preview": { bg: "rgba(16,185,129,0.14)", border: "#34d399", text: "#065f46" },
   "template-list": { bg: "rgba(234,88,12,0.18)", border: "#ea580c", text: "#9a3412" },

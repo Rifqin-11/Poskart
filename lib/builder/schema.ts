@@ -23,6 +23,7 @@ const deprecatedComponentTypes = new Set<string>([
 const overlaySchemaComponentTypes = new Set<BuilderComponentType>([
   "button",
   "qr",
+  "qr-link",
   "qr-placeholder",
   "camera-view",
   "photo-result",

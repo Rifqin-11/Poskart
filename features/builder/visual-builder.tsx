@@ -138,7 +138,7 @@ function HotspotOverlay({ node }: { node: BuilderNode }) {
   const padV = Math.max(3, Math.round(canvas.width * 0.004));
   const borderW = Math.max(2, Math.round(canvas.width * 0.003));
 
-  const isQr = node.type === "qr" || node.type === "qr-placeholder";
+  const isQr = node.type === "qr" || node.type === "qr-link" || node.type === "qr-placeholder";
   const radius = readNumber(node.props.radius, 4);
 
   return (
@@ -153,7 +153,7 @@ function HotspotOverlay({ node }: { node: BuilderNode }) {
       }}
     >
       {/* If it's QR, render the QR pattern inside */}
-      {node.type === "qr" && (
+      {(node.type === "qr" || node.type === "qr-link") && (
         <div className="absolute inset-0 p-3 opacity-30">
           <div className="grid size-full grid-cols-4 grid-rows-4 gap-1">
             {Array.from({ length: 16 }).map((_, index) => (
@@ -377,6 +377,45 @@ function NodeRenderer({
     );
   }
 
+  if (node.type === "qr-link") {
+    const scale = node.height / 200;
+    const label = readString(node.props.label, "https://poskart.app/s/...");
+    const fontSize = readNumber(node.props.fontSize, 12);
+    const color = readString(node.props.color, "#3b82f6");
+
+    return (
+      <div
+        className="flex h-full w-full flex-col items-center bg-white p-3 border border-zinc-300"
+        style={{
+          borderRadius: readNumber(node.props.radius, 6),
+        }}
+      >
+        <div className="flex-1 w-full flex items-center justify-center min-h-0">
+          <div className="grid size-full max-h-[85%] max-w-[85%] aspect-square grid-cols-4 grid-rows-4 gap-1">
+            {Array.from({ length: 16 }).map((_, index) => (
+              <span
+                key={index}
+                className={cn(
+                  "rounded-sm",
+                  index % 3 === 0 ? "bg-zinc-950" : "bg-zinc-200",
+                )}
+              />
+            ))}
+          </div>
+        </div>
+        <div
+          className="w-full text-center truncate font-medium mt-1 select-none"
+          style={{
+            fontSize: fontSize * scale,
+            color: color,
+          }}
+        >
+          {label}
+        </div>
+      </div>
+    );
+  }
+
   if (node.type === "qr") {
     return (
       <div
@@ -476,60 +515,47 @@ function NodeRenderer({
   }
 
   if (node.type === "return-countdown") {
-    const cdText =
-      typeof node.props.countdownText === "string"
-        ? node.props.countdownText
-        : "Returning to start";
-    const cdSecs =
-      typeof node.props.countdownSeconds === "number"
-        ? node.props.countdownSeconds
-        : 8;
+    const scale = node.height / 72;
     return (
       <div
-        className="flex h-full w-full items-center gap-3 overflow-hidden border-2 border-dashed border-indigo-300 bg-indigo-50/60 px-3"
+        className="flex h-full w-full flex-col justify-center text-zinc-900 select-none px-1"
         style={{
-          borderRadius: readNumber(node.props.radius, 8),
+          fontFamily: "sans-serif",
         }}
       >
-        {/* Spinning circular ring — mimics Flutter CircularProgressIndicator */}
-        <div className="relative shrink-0" style={{ width: 28, height: 28 }}>
-          {/* Background ring */}
-          <svg
-            viewBox="0 0 28 28"
-            className="absolute inset-0 h-full w-full -rotate-90"
+        <div className="flex w-full items-center justify-between" style={{ marginBottom: 10 * scale }}>
+          <span
+            style={{
+              fontSize: 13 * scale,
+              fontWeight: 700,
+            }}
           >
-            <circle
-              cx="14"
-              cy="14"
-              r="11"
-              fill="none"
-              stroke="#e0e7ff"
-              strokeWidth="3"
-            />
-            <circle
-              cx="14"
-              cy="14"
-              r="11"
-              fill="none"
-              stroke="#C4121A"
-              strokeWidth="3"
-              strokeDasharray="69.1"
-              strokeDashoffset="17"
-              strokeLinecap="round"
-              style={{
-                animation: "spin 2s linear infinite",
-                transformOrigin: "50% 50%",
-              }}
-            />
-          </svg>
-          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-        </div>
-        {/* Text */}
-        <div className="flex flex-col">
-          <span className="text-xs font-medium text-zinc-700">{cdText}</span>
-          <span className="text-[10px] text-indigo-400">
-            {cdSecs}s · configurable
+            Kembali ke halaman awal
           </span>
+          <span
+            style={{
+              fontSize: 12 * scale,
+              color: "#71717a",
+            }}
+          >
+            61%
+          </span>
+        </div>
+        <div
+          className="w-full bg-zinc-200"
+          style={{
+            height: 7 * scale,
+            borderRadius: 9999,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            className="h-full bg-zinc-800"
+            style={{
+              width: "61%",
+              borderRadius: 9999,
+            }}
+          />
         </div>
       </div>
     );
@@ -1853,7 +1879,7 @@ function PropertiesPanel({
       )}
 
       {/* Generic color/radius for non-text, non-media nodes */}
-      {!editableText && !mediaNode && (
+      {!editableText && !mediaNode && selectedNode.type !== "return-countdown" && (
         <PanelSection
           title="Appearance"
           icon={<PaintBucket className="size-3.5 text-zinc-500" />}
@@ -1883,53 +1909,6 @@ function PropertiesPanel({
                 }
               />
             </label>
-          </div>
-        </PanelSection>
-      )}
-
-      {/* Return Countdown */}
-      {selectedNode.type === "return-countdown" && (
-        <PanelSection
-          title="Return Countdown"
-          icon={<span className="text-sm">⏳</span>}
-        >
-          <div className="space-y-2 text-xs text-zinc-500">
-            <label className="block">
-              Display text
-              <Input
-                className="mt-1"
-                value={readString(
-                  selectedNode.props.countdownText,
-                  "Returning to start",
-                )}
-                placeholder="Returning to start"
-                onChange={(e) =>
-                  updateNodeProps(selectedNode.id, {
-                    countdownText: e.target.value,
-                  })
-                }
-              />
-            </label>
-            <label className="block">
-              Countdown duration (seconds)
-              <Input
-                className="mt-1"
-                type="number"
-                min={3}
-                max={60}
-                value={readNumber(selectedNode.props.countdownSeconds, 8)}
-                onChange={(e) =>
-                  updateNodeProps(selectedNode.id, {
-                    countdownSeconds: Number(e.target.value),
-                  })
-                }
-              />
-            </label>
-            <div className="rounded border border-indigo-200 bg-indigo-50 p-2 text-[10px] text-indigo-600 leading-4">
-              <strong>Flutter:</strong> after this many seconds on the Thanks
-              screen, the app auto-navigates back to Landing. The spinner and
-              text are rendered at this node&apos;s position and size.
-            </div>
           </div>
         </PanelSection>
       )}
@@ -3820,6 +3799,7 @@ export function VisualBuilder() {
                       bounds="parent"
                       disableDragging={node.locked || editingId === node.id}
                       enableResizing={!node.locked && editingId !== node.id}
+                      lockAspectRatio={node.lockAspect ?? false}
                       position={{ x: node.x, y: node.y }}
                       size={{ width: node.width, height: node.height }}
                       onClick={(e: React.MouseEvent) => {

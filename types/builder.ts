@@ -10,6 +10,7 @@ export type BuilderComponentType =
   | "image"
   | "button"
   | "qr"
+  | "qr-link"
   | "qr-placeholder"
   | "camera-view"
   | "photo-result" // Captured photo result slot on camera page
