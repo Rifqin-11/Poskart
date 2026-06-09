@@ -16,6 +16,9 @@ export function useLayoutSchemas() {
   return useQuery({
     queryKey: adminQueryKeys.layoutSchemas,
     queryFn: layoutService.getLayoutSchemas,
+    // Poll every 30 s as fallback when Realtime is unavailable
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 }
 

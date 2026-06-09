@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
+import { useRealtimeSync } from "@/features/admin/hooks/use-realtime-sync";
 import { signOutAction } from "@/app/auth/actions";
 import { SubscriptionDialog } from "@/features/billing/subscription/subscription-dialog";
 import { Avatar } from "@/components/ui/avatar";
@@ -204,6 +205,10 @@ export function AdminShell({
   const adminMode = isSuperAdmin(userEmail);
   const canPublish = adminMode || subscription?.tier === "Pro";
   const builderFullView = useBuilderStore((s) => s.builderFullView);
+
+  // Subscribe to Supabase Realtime so layout_schemas + devices queries
+  // auto-refresh when the Flutter kiosk app pushes changes (e.g. active theme)
+  useRealtimeSync();
 
   return (
     <div className="min-h-screen bg-zinc-50">
