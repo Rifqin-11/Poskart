@@ -112,6 +112,7 @@ export const COMPONENT_META: Record<
   "return-countdown": { label: "Return Countdown", icon: Timer },
   "session-countdown": { label: "Session Countdown", icon: Clock },
   "payment-countdown": { label: "Payment Countdown", icon: Clock },
+  background: { label: "Page Background", icon: ImageIcon },
 };
 
 /** Components available per page. Only show relevant items in Add panel. */

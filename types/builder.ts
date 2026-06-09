@@ -22,7 +22,8 @@ export type BuilderComponentType =
   | "background-decoration"
   | "return-countdown" // Spinning loader + auto-return text on thanks page
   | "session-countdown" // Total-session countdown shown on template/camera/preview/thanks
-  | "payment-countdown"; // Payment QRIS countdown shown on the payment page
+  | "payment-countdown"
+  | "background"; // Payment QRIS countdown shown on the payment page
 
 export type BuilderNode = {
   id: string;
@@ -51,7 +52,7 @@ export type BuilderCanvas = {
   backgroundVideo?: string;
   /** Per-page background images/videos — keyed by BuilderPage */
   pageBackgrounds?: Partial<
-    Record<BuilderPage, { image?: string; video?: string }>
+    Record<BuilderPage, { image?: string; video?: string; zIndex?: number }>
   >;
   /** If true, nodes render as colored hotspot overlays instead of real UI components */
   overlayMode?: boolean;

@@ -277,17 +277,21 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       });
     }),
   setPageBackground: (page, bg) =>
-    set((state) =>
-      pushHistory(state, {
+    set((state) => {
+      const existing = state.canvas.pageBackgrounds?.[page] || {};
+      return pushHistory(state, {
         canvas: {
           ...state.canvas,
           pageBackgrounds: {
             ...state.canvas.pageBackgrounds,
-            [page]: bg,
+            [page]: {
+              ...existing,
+              ...bg,
+            },
           },
         },
-      }),
-    ),
+      });
+    }),
   updateNode: (id, patch) =>
     set((state) =>
       pushHistory(state, { nodes: state.nodes.map((node) => (node.id === id ? { ...node, ...patch } : node)) }),
@@ -377,14 +381,32 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     ),
   reorderNodes: (ids) =>
     set((state) => {
-      const currentPageNodes = ids
-        .map((id, index) => {
-          const node = state.nodes.find((candidate) => candidate.id === id);
-          return node ? { ...node, zIndex: index + 1 } : null;
-        })
-        .filter(Boolean) as BuilderNode[];
-      const otherNodes = state.nodes.filter((node) => node.page !== state.activePage);
-      return pushHistory(state, { nodes: [...otherNodes, ...currentPageNodes] });
+      const bgIndex = ids.indexOf("page-background");
+      const nextNodes = state.nodes.map((node) => {
+        if (node.page !== state.activePage) return node;
+        const idx = ids.indexOf(node.id);
+        if (idx === -1) return node;
+        return { ...node, zIndex: idx + 1 };
+      });
+
+      if (bgIndex !== -1) {
+        const pageBg = state.canvas.pageBackgrounds?.[state.activePage] || {};
+        return pushHistory(state, {
+          nodes: nextNodes,
+          canvas: {
+            ...state.canvas,
+            pageBackgrounds: {
+              ...state.canvas.pageBackgrounds,
+              [state.activePage]: {
+                ...pageBg,
+                zIndex: bgIndex + 1,
+              },
+            },
+          },
+        });
+      }
+
+      return pushHistory(state, { nodes: nextNodes });
     }),
   undo: () =>
     set((state) => {

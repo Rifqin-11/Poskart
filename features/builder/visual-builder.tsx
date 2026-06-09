@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   AlignCenter,
   AlignJustify,
@@ -952,8 +952,11 @@ function SortableLayer({ node }: { node: BuilderNode }) {
     "template-list": "bg-orange-100 text-orange-700",
     "template-preview": "bg-orange-50 text-orange-600",
     "background-decoration": "bg-zinc-100 text-zinc-500",
+    background: "bg-amber-100 text-amber-700",
   };
-  const badgeClass = TYPE_COLORS[node.type] ?? "bg-zinc-100 text-zinc-500";
+  const badgeClass = node.id === "page-background"
+    ? "bg-amber-100 text-amber-700"
+    : (TYPE_COLORS[node.type] ?? "bg-zinc-100 text-zinc-500");
 
   return (
     <div
@@ -987,7 +990,7 @@ function SortableLayer({ node }: { node: BuilderNode }) {
               isSelected ? "bg-white/15 text-white" : badgeClass,
             )}
           >
-            {node.type}
+            {node.id === "page-background" ? "BACKGROUND" : node.type}
           </span>
           <span
             className={cn(
@@ -995,38 +998,44 @@ function SortableLayer({ node }: { node: BuilderNode }) {
               isSelected ? "text-zinc-300" : "text-zinc-400",
             )}
           >
-            {node.id}
+            {node.id === "page-background" ? "Page Background" : node.id}
           </span>
         </div>
       </button>
-      <button
-        onClick={() => toggleNode(node.id, "visible")}
-        className={
-          isSelected
-            ? "text-zinc-400 hover:text-white"
-            : "text-zinc-400 hover:text-zinc-700"
-        }
-      >
-        {node.visible ? (
-          <Eye className="size-3" />
-        ) : (
-          <EyeOff className="size-3" />
-        )}
-      </button>
-      <button
-        onClick={() => toggleNode(node.id, "locked")}
-        className={
-          isSelected
-            ? "text-zinc-400 hover:text-white"
-            : "text-zinc-400 hover:text-zinc-700"
-        }
-      >
-        {node.locked ? (
-          <Lock className="size-3" />
-        ) : (
-          <Unlock className="size-3" />
-        )}
-      </button>
+      {node.id !== "page-background" ? (
+        <>
+          <button
+            onClick={() => toggleNode(node.id, "visible")}
+            className={
+              isSelected
+                ? "text-zinc-400 hover:text-white"
+                : "text-zinc-400 hover:text-zinc-700"
+            }
+          >
+            {node.visible ? (
+              <Eye className="size-3" />
+            ) : (
+              <EyeOff className="size-3" />
+            )}
+          </button>
+          <button
+            onClick={() => toggleNode(node.id, "locked")}
+            className={
+              isSelected
+                ? "text-zinc-400 hover:text-white"
+                : "text-zinc-400 hover:text-zinc-700"
+            }
+          >
+            {node.locked ? (
+              <Lock className="size-3" />
+            ) : (
+              <Unlock className="size-3" />
+            )}
+          </button>
+        </>
+      ) : (
+        <Lock className="size-3 text-zinc-400" />
+      )}
     </div>
   );
 }
@@ -3145,6 +3154,35 @@ export function VisualBuilder() {
     .filter((node) => node.page === activePage)
     .filter((node) => !(isOverlayMode && node.type === "text"))
     .sort((a, b) => a.zIndex - b.zIndex);
+
+  const layersList: BuilderNode[] = useMemo(() => {
+    const pageBg = canvas.pageBackgrounds?.[activePage];
+    const hasBg = pageBg?.image || pageBg?.video;
+    const pageNodes = nodes
+      .filter((node) => node.page === activePage)
+      .filter((node) => !(isOverlayMode && node.type === "text"));
+
+    if (hasBg) {
+      const bgVirtualNode: BuilderNode = {
+        id: "page-background",
+        page: activePage,
+        type: "background",
+        x: 0,
+        y: 0,
+        width: canvas.width,
+        height: canvas.height,
+        rotation: 0,
+        opacity: 1,
+        locked: true,
+        visible: true,
+        zIndex: pageBg.zIndex ?? 1,
+        props: {},
+      };
+      return [...pageNodes, bgVirtualNode].sort((a, b) => a.zIndex - b.zIndex);
+    }
+    return pageNodes.sort((a, b) => a.zIndex - b.zIndex);
+  }, [nodes, activePage, canvas, isOverlayMode]);
+
   const selectedNode = nodes.find((node) => node.id === selectedId);
   const contextNode = contextMenu?.nodeId
     ? nodes.find((node) => node.id === contextMenu.nodeId)
@@ -3322,9 +3360,9 @@ export function VisualBuilder() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     if (!event.over || event.active.id === event.over.id) return;
-    const oldIndex = visibleNodes.findIndex((n) => n.id === event.active.id);
-    const newIndex = visibleNodes.findIndex((n) => n.id === event.over?.id);
-    reorderNodes(arrayMove(visibleNodes, oldIndex, newIndex).map((n) => n.id));
+    const oldIndex = layersList.findIndex((n) => n.id === event.active.id);
+    const newIndex = layersList.findIndex((n) => n.id === event.over?.id);
+    reorderNodes(arrayMove(layersList, oldIndex, newIndex).map((n) => n.id));
   };
 
   const startTextEdit = (node: BuilderNode) => {
@@ -3560,12 +3598,12 @@ export function VisualBuilder() {
               Layers
             </span>
             <Badge variant="secondary" className="h-4 px-1 text-[9px]">
-              {visibleNodes.length}
+              {layersList.length}
             </Badge>
           </div>
 
           {/* Template page empty-state hint */}
-          {activePage === "template" && visibleNodes.length === 0 && (
+          {activePage === "template" && layersList.length === 0 && (
             <div className="mx-2 mb-2 rounded-md border border-orange-200 bg-orange-50 px-2 py-1.5 text-[10px] leading-snug text-orange-800">
               <div className="font-semibold">📋 No nodes on this page</div>
               <div className="mt-0.5 text-orange-700">
@@ -3577,7 +3615,7 @@ export function VisualBuilder() {
 
           {/* Generic empty-state hint */}
           {activePage !== "template" &&
-            visibleNodes.length === 0 && (
+            layersList.length === 0 && (
               <div className="mx-2 mb-2 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-[10px] text-zinc-500">
                 No layers yet — add a component below.
               </div>
@@ -3585,11 +3623,11 @@ export function VisualBuilder() {
           <ScrollArea className="flex-1">
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
               <SortableContext
-                items={visibleNodes.map((n) => n.id)}
+                items={layersList.map((n) => n.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className="space-y-0.5 px-2 pb-2">
-                  {visibleNodes.map((node) => (
+                  {layersList.map((node) => (
                     <SortableLayer key={node.id} node={node} />
                   ))}
                 </div>
@@ -3722,7 +3760,7 @@ export function VisualBuilder() {
                     className="pointer-events-none absolute inset-0 bg-cover bg-center"
                     style={{
                       backgroundImage: `url(${canvas.pageBackgrounds[activePage]!.image})`,
-                      zIndex: 1,
+                      zIndex: canvas.pageBackgrounds?.[activePage]?.zIndex ?? 1,
                       borderRadius: 28,
                     }}
                   />
@@ -3737,7 +3775,7 @@ export function VisualBuilder() {
                     muted
                     playsInline
                     className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-                    style={{ zIndex: 1, borderRadius: 28 }}
+                    style={{ zIndex: canvas.pageBackgrounds?.[activePage]?.zIndex ?? 1, borderRadius: 28 }}
                   />
                 ) : null}
 
