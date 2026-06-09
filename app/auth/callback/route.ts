@@ -1,9 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSiteUrl } from "@/lib/auth/site-url";
+import { completeKioskGoogleCallback } from "@/lib/kiosk/oauth";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
+  if (requestUrl.searchParams.get("kiosk") === "1") {
+    return completeKioskGoogleCallback(request);
+  }
+
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next") ?? "/dashboard";
 

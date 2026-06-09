@@ -1,14 +1,13 @@
 "use client";
 
 import { create } from "zustand";
+import {
+  buildLayoutSchema,
+  builderPages,
+  isDeprecatedBuilderNode,
+} from "@/lib/builder/schema";
 import type { BuilderCanvas, BuilderNode, BuilderPage, LayoutSchema } from "@/types/builder";
 
-const pages: BuilderPage[] = ["landing", "payment", "template", "camera", "preview", "thanks"];
-const deprecatedComponentTypes = new Set<string>([
-  "stamp",
-  "countdown-overlay",
-  "flash-overlay",
-]);
 const defaultCanvas: BuilderCanvas = {
   width: 1280,
   height: 800,
@@ -384,9 +383,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     }),
   setSchema: (schema) =>
     set({
-      nodes: pages
+      nodes: builderPages
         .flatMap((page) => schema.pages[page] ?? [])
-        .filter((node) => !deprecatedComponentTypes.has(node.type)),
+        .filter((node) => !isDeprecatedBuilderNode(node)),
       canvas: { ...defaultCanvas, ...schema.canvas },
       selectedId: null,
       selectedIds: [],
@@ -395,19 +394,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     }),
   schema: () => {
     const state = get();
-    return {
-      version: 1,
-      canvas: state.canvas,
-      pages: Object.fromEntries(
-        pages.map((page) => [
-          page,
-          state.nodes.filter(
-            (node) =>
-              node.page === page && !deprecatedComponentTypes.has(node.type),
-          ),
-        ]),
-      ) as LayoutSchema["pages"],
-    };
+    return buildLayoutSchema(state.canvas, state.nodes);
   },
   resetPageNodes: (page) =>
     set((state) => ({

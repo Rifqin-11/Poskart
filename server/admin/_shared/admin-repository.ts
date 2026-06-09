@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { sanitizeLayoutSchema } from "@/lib/builder/schema";
 import type { ChartPoint, KpiMetric } from "@/types/analytics";
 import type { Device } from "@/types/device";
 import type { LayoutSchema } from "@/types/builder";
@@ -1300,7 +1301,7 @@ async function saveLayoutAsTheme(
     id,
     name,
     status: "draft",
-    schema,
+    schema: sanitizeLayoutSchema(schema),
     is_active: false,
     updated_at: new Date().toISOString(),
   });
@@ -1368,7 +1369,7 @@ async function publishLayoutSchema(schema: LayoutSchema): Promise<void> {
     id: "default-photobooth",
     name: "Default Photobooth Layout",
     status: "published",
-    schema,
+    schema: sanitizeLayoutSchema(schema),
     updated_at: new Date().toISOString(),
   });
 

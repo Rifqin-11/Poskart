@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { sanitizeLayoutSchema } from "@/lib/builder/schema";
 import { createClient } from "@/lib/supabase/server";
+import type { LayoutSchema } from "@/types/builder";
 
 /**
  * GET /api/flutter-config
@@ -73,7 +75,9 @@ export async function GET() {
         : null,
 
       // Visual builder schema (nodes per screen)
-      layoutSchema: layout?.schema ?? null,
+      layoutSchema: layout?.schema
+        ? sanitizeLayoutSchema(layout.schema as LayoutSchema)
+        : null,
 
       // Active design tokens
       designTokens: theme?.schema ?? null,
