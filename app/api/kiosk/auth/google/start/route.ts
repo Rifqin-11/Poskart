@@ -7,21 +7,16 @@ import {
 } from "@/lib/kiosk/oauth";
 
 export async function GET(request: NextRequest) {
-  const deviceId = request.nextUrl.searchParams.get("deviceId")?.trim() ?? "";
-  if (!deviceId) {
-    return kioskCallbackPage(
-      kioskCallbackUri({
-        error: "Device ID wajib diisi sebelum login dengan Google.",
-      }),
-      false,
-    );
-  }
+  // hardwareId is the Android hardware ID sent by Flutter — optional here
+  // because the device UPSERT happens in the OAuth callback (oauth.ts).
+  const hardwareId = request.nextUrl.searchParams.get("hardwareId")?.trim() ?? "";
 
   try {
     const siteUrl = await getSiteUrl();
     const callbackUrl = new URL("/auth/callback", siteUrl);
     callbackUrl.searchParams.set("kiosk", "1");
-    callbackUrl.searchParams.set("deviceId", deviceId);
+    // Forward hardwareId so the callback can perform device UPSERT
+    if (hardwareId) callbackUrl.searchParams.set("hardwareId", hardwareId);
     const oauth = createKioskOAuthClient(request);
     const { data, error } = await oauth.client.auth.signInWithOAuth({
       provider: "google",
