@@ -7,6 +7,15 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    /*
+     * Match all request paths EXCEPT:
+     * - _next/static  (static files)
+     * - _next/image   (image optimization)
+     * - favicon.ico, image files
+     * - /api/kiosk/*  (Flutter kiosk API — uses Bearer token auth, not cookies.
+     *                  Middleware's getClaims() call on these routes can cause
+     *                  unexpected 307 redirects when Dio receives them.)
+     */
+    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$|api/kiosk(?:/.*)?$).*)",
   ],
 };
