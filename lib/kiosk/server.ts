@@ -458,7 +458,7 @@ export async function buildKioskBootstrap(
   }
 
   const config = configResult.data;
-  const layout = layoutResult.data ?? fallbackLayoutResult.data;
+  const layout = layoutResult.data;
   const assignedTemplates = new Set(device?.frame_templates ?? []);
   const assignedPricing = new Set(device?.pricing_profiles ?? []);
 
