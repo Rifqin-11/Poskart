@@ -37,11 +37,26 @@ export default async function SharedGalleryPage({
   const raw = photos?.filter((photo) => photo.kind === "raw") ?? [];
 
   return (
-    <main className="min-h-screen bg-[#f7f5ef] px-5 py-6 text-zinc-950 md:px-8 md:py-10">
+    <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10">
       <div className="mx-auto max-w-6xl">
         <div className="flex items-center justify-between border-b border-black/10 pb-5">
-          <Link href="/" className="text-lg font-semibold tracking-tight">
-            POSKART
+          <Link href="/" className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center overflow-hidden rounded-xl bg-white">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/Logo Poskart.png"
+                alt="POSKART Logo"
+                className="size-8 object-contain"
+              />
+            </span>
+            <span>
+              <span className="block text-sm font-semibold tracking-tight">
+                {businessProfile.brandName}
+              </span>
+              <span className="block text-xs text-zinc-500">
+                Photobooth OS
+              </span>
+            </span>
           </Link>
           <span className="inline-flex items-center gap-2 text-xs font-medium text-zinc-500">
             <CheckCircle2 className="size-4 text-emerald-600" />
