@@ -95,3 +95,35 @@ export async function POST(request: Request) {
     return jsonError(error);
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const context = await requireKioskContext(request);
+    const { searchParams } = new URL(request.url);
+    const deviceId = searchParams.get("deviceId") ?? "";
+    const device = await requireOrganizationDevice(context, deviceId);
+
+    // Fetch transactions for this booth
+    const { data: transactions, error } = await context.client
+      .from("transactions")
+      .select("*")
+      .eq("organization_id", context.organizationId)
+      .eq("booth", device.name)
+      .order("created_at_label", { ascending: false });
+
+    if (error) throw error;
+
+    // Calculate total money (paid transactions)
+    const totalAmount = transactions
+      ?.filter((t) => t.status === "paid")
+      .reduce((sum, t) => sum + (t.amount ?? 0), 0) ?? 0;
+
+    return jsonOk({
+      totalAmount,
+      transactions: transactions ?? [],
+    });
+  } catch (error) {
+    return jsonError(error);
+  }
+}
+
