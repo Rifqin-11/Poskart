@@ -357,8 +357,7 @@ export async function buildKioskBootstrap(
     organizationResult,
     subscriptionResult,
     configResult,
-    layoutResult,
-    fallbackLayoutResult,
+    layoutsResult,
     themeResult,
     templatesResult,
     pricingResult,
@@ -381,16 +380,7 @@ export async function buildKioskBootstrap(
       .from("layout_schemas")
       .select("id,name,schema,is_active,status,updated_at")
       .eq("organization_id", context.organizationId)
-      .eq("is_active", true)
-      .maybeSingle(),
-    context.client
-      .from("layout_schemas")
-      .select("id,name,schema,is_active,status,updated_at")
-      .eq("organization_id", context.organizationId)
-      .eq("status", "published")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .order("updated_at", { ascending: false }),
     context.client
       .from("theme_presets")
       .select("id,name,schema,status,updated_at")
@@ -421,8 +411,7 @@ export async function buildKioskBootstrap(
     organizationResult.error,
     subscriptionResult.error,
     configResult.error,
-    layoutResult.error,
-    fallbackLayoutResult.error,
+    layoutsResult.error,
     themeResult.error,
     templatesResult.error,
     pricingResult.error,
@@ -458,7 +447,8 @@ export async function buildKioskBootstrap(
   }
 
   const config = configResult.data;
-  const layout = layoutResult.data;
+  const layouts = layoutsResult.data ?? [];
+  const layout = layouts.find((l) => l.is_active) ?? layouts[0] ?? null;
   const assignedTemplates = new Set(device?.frame_templates ?? []);
   const assignedPricing = new Set(device?.pricing_profiles ?? []);
 
@@ -509,6 +499,14 @@ export async function buildKioskBootstrap(
     layoutSchema: layout?.schema
       ? sanitizeLayoutSchema(layout.schema as LayoutSchema)
       : null,
+    availableLayouts: layouts.map((l) => ({
+      id: l.id,
+      name: l.name,
+      isActive: l.is_active,
+      status: l.status,
+      updatedAt: l.updated_at,
+      schema: l.schema,
+    })),
     designTokens: themeResult.data?.schema ?? null,
     templates: templates.map((template) => ({
       id: template.id,
