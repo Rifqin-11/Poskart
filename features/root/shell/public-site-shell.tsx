@@ -2,24 +2,9 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
-import { LegalFooterLinks } from "@/features/root/legal/legal-footer-links";
 import { businessProfile } from "@/lib/constants/business";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
-
-const Instagram = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-  </svg>
-);
-
-const Tiktok = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
-  </svg>
-);
 
 const navLinks = [
   { href: "/#platform", label: "Platform" },
@@ -90,135 +75,26 @@ export async function PublicHeader() {
 export function PublicFooter({ className }: { className?: string }) {
   return (
     <footer
-      className={cn("border-t border-zinc-250 bg-white pt-16 pb-0", className)}
+      className={cn("overflow-hidden bg-white", className)}
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Main 3-column Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-12">
-          {/* Left Column: Social Buttons and Contact Info */}
-          <div className="flex flex-col gap-6">
-            <div className="flex gap-3">
-              <a
-                href="https://instagram.com/poskart.id"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex size-9 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-950"
-                aria-label="Instagram"
-              >
-                <Instagram className="size-4" />
-              </a>
-              <a
-                href="https://tiktok.com/@poskart.id"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex size-9 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-950"
-                aria-label="TikTok"
-              >
-                <Tiktok className="size-4" />
-              </a>
-            </div>
-            <div className="space-y-1.5 text-sm text-zinc-500">
-              <p>{businessProfile.address}</p>
-              <p>
-                <a
-                  href={`mailto:${businessProfile.email}`}
-                  className="hover:text-zinc-950 transition-colors"
-                >
-                  {businessProfile.email}
-                </a>
-              </p>
-              <p>
-                <a
-                  href={businessProfile.whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-zinc-950 transition-colors"
-                >
-                  {businessProfile.phone}
-                </a>
-              </p>
-              <p>
-                <a
-                  href={businessProfile.domain}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-zinc-950 transition-colors"
-                >
-                  {businessProfile.domain.replace(/^https?:\/\//, "")}
-                </a>
-              </p>
-            </div>
-          </div>
-
-          {/* Center Column: Menu */}
-          <div className="flex flex-col gap-4">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-              Menu
-            </span>
-            <ul className="space-y-2 text-sm text-zinc-500">
-              <li>
-                <Link
-                  href="/#platform"
-                  className="hover:text-zinc-950 transition-colors"
-                >
-                  Platform
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/#builder"
-                  className="hover:text-zinc-950 transition-colors"
-                >
-                  Builder
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/subscriptions"
-                  className="hover:text-zinc-950 transition-colors"
-                >
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className="hover:text-zinc-950 transition-colors"
-                >
-                  Contact
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Right Column: Legal */}
-          <div className="flex flex-col gap-4">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-              Legal
-            </span>
-            <LegalFooterLinks />
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-zinc-200" />
-
-        {/* Copyright and Contact Button */}
-        <div className="flex flex-col gap-4 text-sm text-zinc-500 py-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mx-auto flex min-h-[300px] max-w-7xl flex-col px-4 py-7 sm:min-h-[360px] sm:px-6 lg:min-h-[384px] lg:px-8">
+        <div className="flex flex-col gap-4 text-sm text-zinc-500 sm:flex-row sm:items-start sm:justify-between">
           <p>© 2026 {businessProfile.legalName}. All rights reserved.</p>
           <Link
             href="/contact"
-            className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-5 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50"
+            className="inline-flex h-10 w-fit items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-900 shadow-[0_1px_2px_rgba(24,24,27,0.02)] transition-colors hover:bg-zinc-50"
           >
             Contact Support
           </Link>
         </div>
 
-        {/* Giant POSKART background text at the bottom */}
-        <div className="w-full overflow-hidden select-none pb-2 mt-4">
-          <h1 className="text-[14vw] font-black text-zinc-100 leading-none tracking-tighter text-center uppercase select-none font-sans">
+        <div className="mt-auto w-full select-none overflow-hidden pt-16 sm:pt-20">
+          <div
+            aria-hidden="true"
+            className="text-center font-sans text-[clamp(5.75rem,21vw,17rem)] font-black uppercase leading-[0.78] tracking-[-0.085em] text-[#f4f4f5] sm:leading-[0.74]"
+          >
             POSKART
-          </h1>
+          </div>
         </div>
       </div>
     </footer>
