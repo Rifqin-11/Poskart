@@ -3707,10 +3707,6 @@ export function VisualBuilder() {
                   width: canvas.width,
                   height: canvas.height,
                   backgroundColor: canvas.backgroundColor ?? "#ffffff",
-                  backgroundImage: canvas.pageBackgrounds?.[activePage]?.image
-                    ? `url(${canvas.pageBackgrounds[activePage]!.image})`
-                    : undefined,
-                  backgroundSize: "cover",
                   borderRadius: 28,
                   outline: "10px solid #1a1a1a",
                   outlineOffset: "0px",
@@ -3719,6 +3715,31 @@ export function VisualBuilder() {
               >
                 {/* Notch */}
                 <div className="absolute left-1/2 top-3 z-50 h-1 w-20 -translate-x-1/2 rounded-full bg-black/20" />
+
+                {/* Per-page image background overlay */}
+                {canvas.pageBackgrounds?.[activePage]?.image ? (
+                  <div
+                    className="pointer-events-none absolute inset-0 bg-cover bg-center"
+                    style={{
+                      backgroundImage: `url(${canvas.pageBackgrounds[activePage]!.image})`,
+                      zIndex: 1,
+                      borderRadius: 28,
+                    }}
+                  />
+                ) : null}
+
+                {/* Per-page video background */}
+                {canvas.pageBackgrounds?.[activePage]?.video ? (
+                  <video
+                    src={canvas.pageBackgrounds[activePage]!.video}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+                    style={{ zIndex: 1, borderRadius: 28 }}
+                  />
+                ) : null}
 
                 {/* Smart guide lines — rendered in canvas coordinate space */}
                 {guides.map((g, i) =>
@@ -3774,19 +3795,6 @@ export function VisualBuilder() {
                     </div>
                   </div>
                 )}
-
-                {/* Per-page video background */}
-                {canvas.pageBackgrounds?.[activePage]?.video ? (
-                  <video
-                    src={canvas.pageBackgrounds[activePage]!.video}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="absolute inset-0 h-full w-full object-cover"
-                    style={{ zIndex: 0 }}
-                  />
-                ) : null}
 
                 {/* Template page layout guide — scaled to canvas dimensions */}
                 {activePage === "template" &&

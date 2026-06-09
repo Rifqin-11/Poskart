@@ -147,15 +147,12 @@ function upsertFrameBackground(layout: FrameLayout, frameImageUrl?: string): Fra
                 y: 0,
                 width: layout.canvas.width,
                 height: layout.canvas.height,
-                zIndex: 0,
                 locked: true,
                 props: { ...node.props, src, alt: "Frame background", objectFit: "cover", radius: 0 },
               }
-            : node.zIndex <= 0
-              ? { ...node, zIndex: node.zIndex + 1 }
-              : node,
+            : node,
         )
-      : [backgroundNode, ...layout.nodes.map((node) => (node.zIndex <= 0 ? { ...node, zIndex: node.zIndex + 1 } : node))],
+      : [backgroundNode, ...layout.nodes],
   };
 }
 
@@ -292,8 +289,7 @@ function SortableFrameLayer({
   onSelect: (id: string) => void;
   onToggleLock: (id: string, locked: boolean) => void;
 }) {
-  const isFrameBackground = node.id === "frame-background";
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: node.id, disabled: isFrameBackground });
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: node.id, disabled: false });
   const isSelected = selectedId === node.id;
 
   return (
@@ -308,9 +304,8 @@ function SortableFrameLayer({
       )}
     >
       <button
-        className={cn("text-zinc-400", isFrameBackground ? "cursor-not-allowed opacity-40" : "cursor-grab active:cursor-grabbing", isSelected && "text-zinc-300")}
-        title={isFrameBackground ? "Frame background is pinned below all layers" : "Drag to reorder layer"}
-        disabled={isFrameBackground}
+        className={cn("text-zinc-400 cursor-grab active:cursor-grabbing", isSelected && "text-zinc-300")}
+        title="Drag to reorder layer"
         {...attributes}
         {...listeners}
       >
@@ -400,7 +395,7 @@ function FrameContextMenu({
                 <button type="button" className={item} onClick={onBringToFront}><BringToFront className="size-3.5" />Bring to front</button>
                 <button type="button" className={item} onClick={onBringForward}><ArrowUpToLine className="size-3.5" />Bring forward</button>
                 <button type="button" className={item} onClick={onSendBackward}><ArrowDownToLine className="size-3.5" />Send backward</button>
-                <button type="button" className={item} onClick={onSendToBack} disabled={node.id === "frame-background"}><SendToBack className="size-3.5" />Send to back</button>
+                <button type="button" className={item} onClick={onSendToBack}><SendToBack className="size-3.5" />Send to back</button>
               </div>
             )}
           </div>
@@ -844,10 +839,8 @@ export function FrameTemplateBuilder({
   };
 
   const moveLayer = (id: string, direction: "up" | "down") => {
-    if (id === "frame-background") return;
     commitLayout((current) => {
       const ordered = current.nodes
-        .filter((node) => node.id !== "frame-background")
         .slice()
         .sort((a, b) => a.zIndex - b.zIndex)
         .map((node, index) => ({ ...node, zIndex: index + 1 }));
@@ -864,28 +857,22 @@ export function FrameTemplateBuilder({
 
       return {
         ...current,
-        nodes: current.nodes.map((node) => (node.id === "frame-background" ? { ...node, zIndex: 0 } : byId.get(node.id) ?? node)),
+        nodes: current.nodes.map((node) => byId.get(node.id) ?? node),
       };
     });
   };
 
   const bringNodeToFront = (node: FrameNode) => {
-    if (node.id === "frame-background") return;
     const maxZIndex = Math.max(...layout.nodes.map((item) => item.zIndex));
     updateNode(node.id, { zIndex: maxZIndex + 1 });
   };
 
   const sendNodeToBack = (node: FrameNode) => {
-    if (node.id === "frame-background") return;
-    const backgroundZIndex = layout.nodes.find((item) => item.id === "frame-background")?.zIndex;
     const minZIndex = Math.min(...layout.nodes.map((item) => item.zIndex));
-    updateNode(node.id, { zIndex: backgroundZIndex != null ? backgroundZIndex + 1 : minZIndex - 1 });
+    updateNode(node.id, { zIndex: minZIndex - 1 });
   };
 
   const reorderLayers = (topToBottomIds: string[]) => {
-    if (topToBottomIds.includes("frame-background")) {
-      topToBottomIds = topToBottomIds.filter((id) => id !== "frame-background");
-    }
     commitLayout((current) => {
       const bottomToTopIds = topToBottomIds.slice().reverse();
       const nextZIndexById = new Map(bottomToTopIds.map((id, index) => [id, index + 1]));
@@ -894,10 +881,7 @@ export function FrameTemplateBuilder({
         ...current,
         nodes: current.nodes.map((node) => {
           const nextZIndex = nextZIndexById.get(node.id);
-          if (node.id === "frame-background") {
-            return { ...node, zIndex: 0 };
-          }
-          return nextZIndex ? { ...node, zIndex: nextZIndex } : node;
+          return nextZIndex != null ? { ...node, zIndex: nextZIndex } : node;
         }),
       };
     });
@@ -905,7 +889,6 @@ export function FrameTemplateBuilder({
 
   const handleLayerDragEnd = (event: DragEndEvent) => {
     if (!event.over || event.active.id === event.over.id) return;
-    if (event.active.id === "frame-background" || event.over.id === "frame-background") return;
     const oldIndex = layers.findIndex((node) => node.id === event.active.id);
     const newIndex = layers.findIndex((node) => node.id === event.over?.id);
     if (oldIndex < 0 || newIndex < 0) return;
@@ -1183,6 +1166,7 @@ export function FrameTemplateBuilder({
                         "frame-rnd-node group",
                         selectedId === node.id && "outline outline-2 outline-offset-2 outline-zinc-950",
                         node.locked && "cursor-not-allowed",
+                        node.id === "frame-background" && selectedId !== node.id && "pointer-events-none",
                       )}
                     >
                       <FrameNodeRenderer node={node} />
