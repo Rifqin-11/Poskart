@@ -39,6 +39,7 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Card,
   CardContent,
@@ -198,22 +199,31 @@ export function TemplateManagement() {
   const { data = [] } = useTemplates();
   const deleteTemplate = useDeleteTemplate();
   const [testTemplate, setTestTemplate] = useState<Template | null>(null);
+  const confirmDelete = useConfirmDialog();
 
   const openAdd = () => router.push("/templates/builder/new");
   const openEdit = (template: Template) =>
     router.push(`/templates/builder/${template.id}`);
 
   const handleDelete = (t: Template) => {
-    if (!confirm(`Delete "${t.name}"? This cannot be undone.`)) return;
-    deleteTemplate.mutate(t.id, {
-      onSuccess: () => toast.success("Template deleted"),
-      onError: (err) =>
-        toast.error(err instanceof Error ? err.message : "Delete failed"),
+    confirmDelete.confirm({
+      title: "Delete template?",
+      description: `Delete "${t.name}"? This cannot be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: () => {
+        deleteTemplate.mutate(t.id, {
+          onSuccess: () => toast.success("Template deleted"),
+          onError: (err) =>
+            toast.error(err instanceof Error ? err.message : "Delete failed"),
+        });
+      },
     });
   };
 
   return (
     <div>
+      {confirmDelete.dialog}
       <PageHeader
         title="Template Management"
         description="Frame templates for the Flutter photobooth picker screen."
@@ -356,6 +366,7 @@ export function PricingManagement() {
   const deletePricing = useDeletePricing();
   const [editing, setEditing] = useState<PricingProduct | null>(null);
   const [creating, setCreating] = useState(false);
+  const confirmDelete = useConfirmDialog();
 
   const handleToggle = (
     product: PricingProduct,
@@ -373,16 +384,24 @@ export function PricingManagement() {
   };
 
   const handleDelete = (product: PricingProduct) => {
-    if (!confirm(`Delete package "${product.name}"?`)) return;
-    deletePricing.mutate(product.id, {
-      onSuccess: () => toast.success("Package deleted"),
-      onError: (err) =>
-        toast.error(err instanceof Error ? err.message : "Delete failed"),
+    confirmDelete.confirm({
+      title: "Delete package?",
+      description: `Delete package "${product.name}"?`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: () => {
+        deletePricing.mutate(product.id, {
+          onSuccess: () => toast.success("Package deleted"),
+          onError: (err) =>
+            toast.error(err instanceof Error ? err.message : "Delete failed"),
+        });
+      },
     });
   };
 
   return (
     <div>
+      {confirmDelete.dialog}
       <PageHeader
         title="Pricing & Product Management"
         description="Configure packages, promos, QR download, GIF options, and print limits."
@@ -996,6 +1015,7 @@ export function BoothManagement() {
   const [creating, setCreating] = useState(false);
   const [assignFor, setAssignFor] = useState<Device | null>(null);
   const [failedFor, setFailedFor] = useState<Device | null>(null);
+  const confirmDelete = useConfirmDialog();
   const deviceLimit = subscriptionStatus?.deviceLimit ?? 1;
   const usedDevices = data.length;
   const remainingDevices = Math.max(0, deviceLimit - usedDevices);
@@ -1018,11 +1038,18 @@ export function BoothManagement() {
   );
 
   const handleDelete = (device: Device) => {
-    if (!confirm(`Delete device "${device.name}"?`)) return;
-    deleteBooth.mutate(device.id, {
-      onSuccess: () => toast.success("Device deleted"),
-      onError: (err) =>
-        toast.error(err instanceof Error ? err.message : "Delete failed"),
+    confirmDelete.confirm({
+      title: "Delete device?",
+      description: `Delete device "${device.name}"?`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: () => {
+        deleteBooth.mutate(device.id, {
+          onSuccess: () => toast.success("Device deleted"),
+          onError: (err) =>
+            toast.error(err instanceof Error ? err.message : "Delete failed"),
+        });
+      },
     });
   };
 
@@ -1062,6 +1089,7 @@ export function BoothManagement() {
 
   return (
     <div>
+      {confirmDelete.dialog}
       <PageHeader
         title="Device Management"
         description="Configure kiosk theme, frame template, pricing package, countdowns, sync status, and remote actions."
@@ -1223,10 +1251,10 @@ export function BoothManagement() {
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    toast.message(`${device.name} remote refresh queued`)
+                    toast.message(`${device.name} sync queued`)
                   }
                 >
-                  <RotateCcw className="size-4" /> Remote refresh
+                  <RotateCcw className="size-4" /> Sync
                 </Button>
                 <Button
                   variant="outline"
@@ -1286,8 +1314,15 @@ export function BoothManagement() {
           submitting={updateBooth.isPending}
           onClose={() => setEditing(null)}
           onSubmit={(values) => {
+            const {
+              battery: _battery,
+              appVersion: _appVersion,
+              ...editableValues
+            } = values;
+            void _battery;
+            void _appVersion;
             updateBooth.mutate(
-              { id: editing.id, patch: values },
+              { id: editing.id, patch: editableValues },
               {
                 onSuccess: () => {
                   toast.success("Device updated");
@@ -1313,8 +1348,9 @@ export function BoothManagement() {
           open
           onOpenChange={(o) => !o && setAssignFor(null)}
           title={`Configure ${assignFor.name}`}
+          className="max-w-5xl"
         >
-          <div className="space-y-5">
+          <div className="max-h-[74vh] space-y-5 overflow-y-auto pr-2">
             <div>
               <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Theme / layout
@@ -1324,13 +1360,13 @@ export function BoothManagement() {
                   No builder themes saved yet. Open the Visual Builder to create one.
                 </p>
               ) : (
-                <ul className="divide-y divide-zinc-100 rounded-md border border-zinc-200">
+                <ul className="grid max-h-80 gap-2 overflow-y-auto rounded-md border border-zinc-200 bg-zinc-50 p-2 md:grid-cols-2">
                   {layouts.map((layout) => {
                     const isCurrent = assignFor.theme === layout.name;
                     return (
                       <li
                         key={layout.id}
-                        className="flex items-center justify-between gap-3 p-3"
+                        className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 bg-white p-3"
                       >
                         <div>
                           <div className="text-sm font-medium text-zinc-800">
@@ -1480,25 +1516,15 @@ function BoothFormDialog({
                 <option value="maintenance">maintenance</option>
               </Select>
             </label>
-            <label className="block text-xs font-medium text-zinc-600">
-              Battery: {form.battery}%
-              <Slider
-                min={0}
-                max={100}
-                value={form.battery}
-                onChange={(e) =>
-                  setForm({ ...form, battery: Number(e.target.value) })
-                }
-              />
-            </label>
-            <label className="block text-xs font-medium text-zinc-600">
+            <div className="block text-xs font-medium text-zinc-600">
               App version
-              <Input
-                className="mt-1"
-                value={form.appVersion}
-                onChange={(e) => setForm({ ...form, appVersion: e.target.value })}
-              />
-            </label>
+              <div className="mt-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700">
+                {form.appVersion || "Waiting for device sync"}
+              </div>
+              <p className="mt-1 text-[10px] font-normal text-zinc-400">
+                App version is reported by the kiosk device and cannot be edited manually.
+              </p>
+            </div>
             <label className="block text-xs font-medium text-zinc-600">
               Last sync
               <Input
@@ -1800,7 +1826,7 @@ function DeviceMultiSelect({
   return (
     <div className={cn("block text-xs font-medium text-zinc-600", className)}>
       {label ? <div>{label}</div> : null}
-      <div className="mt-1 rounded-md border border-zinc-200 bg-white p-1.5 shadow-sm">
+      <div className="mt-1 max-h-48 overflow-y-auto rounded-md border border-zinc-200 bg-white p-1.5 shadow-sm">
         {normalizedOptions.length === 0 ? (
           <div className="px-2 py-1.5 text-xs font-normal text-zinc-400">
             {emptyLabel}
@@ -1943,6 +1969,7 @@ export function AssetLibrary() {
   const [tagFilter, setTagFilter] = useState("all");
   const [editing, setEditing] = useState<AssetItem | null>(null);
   const [uploading, setUploading] = useState(false);
+  const confirmDelete = useConfirmDialog();
 
   const folders = useMemo(
     () => Array.from(new Set(data.map((a) => a.folder))).sort(),
@@ -1968,19 +1995,27 @@ export function AssetLibrary() {
   );
 
   const handleDelete = (asset: AssetItem) => {
-    if (!confirm(`Delete asset "${asset.name}"?`)) return;
-    deleteAsset.mutate(
-      { id: asset.id, storagePath: asset.storage_path ?? undefined },
-      {
-        onSuccess: () => toast.success("Asset deleted"),
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : "Delete failed"),
+    confirmDelete.confirm({
+      title: "Delete asset?",
+      description: `Delete asset "${asset.name}"?`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: () => {
+        deleteAsset.mutate(
+          { id: asset.id, storagePath: asset.storage_path ?? undefined },
+          {
+            onSuccess: () => toast.success("Asset deleted"),
+            onError: (err) =>
+              toast.error(err instanceof Error ? err.message : "Delete failed"),
+          },
+        );
       },
-    );
+    });
   };
 
   return (
     <div>
+      {confirmDelete.dialog}
       <PageHeader
         title="Media & Asset Library"
         description="Organize logos, backgrounds, stamps, decorative elements, and receipt assets."
@@ -2570,17 +2605,26 @@ export function TenantManagement() {
   const [editing, setEditing] = useState<Organization | null>(null);
   const [editingProfile, setEditingProfile] = useState<AdminUserProfile | null>(null);
   const [creating, setCreating] = useState(false);
+  const confirmDelete = useConfirmDialog();
 
   const handleDelete = (organization: Organization) => {
-    if (!confirm(`Delete organization "${organization.name}"?`)) return;
-    deleteTenant.mutate(organization.id, {
-      onSuccess: () => toast.success("Organization deleted"),
-      onError: (err) => toast.error(err instanceof Error ? err.message : "Delete failed"),
+    confirmDelete.confirm({
+      title: "Delete organization?",
+      description: `Delete organization "${organization.name}"?`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: () => {
+        deleteTenant.mutate(organization.id, {
+          onSuccess: () => toast.success("Organization deleted"),
+          onError: (err) => toast.error(err instanceof Error ? err.message : "Delete failed"),
+        });
+      },
     });
   };
 
   return (
     <div>
+      {confirmDelete.dialog}
       <PageHeader
         title="Super Admin Dashboard"
         description="Multi-organization SaaS controls and registered user accounts."
@@ -3917,6 +3961,7 @@ function OrganizationSettings({
   const [inviteEmail, setInviteEmail] = useState("");
   const [myEmail, setMyEmail] = useState("");
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(subscriptionRequired);
+  const confirmRemove = useConfirmDialog();
 
   const supabase = createClient();
   useEffect(() => {
@@ -3941,6 +3986,7 @@ function OrganizationSettings({
 
   return (
     <div className="space-y-6">
+      {confirmRemove.dialog}
       {subscriptionRequired ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <div className="flex items-start gap-3">
@@ -4154,12 +4200,18 @@ function OrganizationSettings({
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       disabled={m.email === myEmail}
                       onClick={() => {
-                        if (confirm(`Remove ${m.email} from organization?`)) {
-                          removeMember.mutate(m.id, {
-                            onSuccess: () => toast.success("Member removed"),
-                            onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to remove member")
-                          });
-                        }
+                        confirmRemove.confirm({
+                          title: "Remove member?",
+                          description: `Remove ${m.email} from organization?`,
+                          confirmLabel: "Remove",
+                          destructive: true,
+                          onConfirm: () => {
+                            removeMember.mutate(m.id, {
+                              onSuccess: () => toast.success("Member removed"),
+                              onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to remove member")
+                            });
+                          },
+                        });
                       }}
                     >
                       Remove

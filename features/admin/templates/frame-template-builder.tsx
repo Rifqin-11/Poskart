@@ -84,33 +84,6 @@ function readNumber(value: unknown, fallback: number) {
   return typeof value === "number" ? value : fallback;
 }
 
-function makePhotoSlots(photoCount: number, canvasWidth: number, canvasHeight: number): FrameNode[] {
-  const columns = photoCount <= 2 ? 1 : 2;
-  const rows = Math.ceil(photoCount / columns);
-  const gap = 18;
-  const outer = 34;
-  const slotWidth = (canvasWidth - outer * 2 - gap * (columns - 1)) / columns;
-  const slotHeight = Math.min(150, (canvasHeight - 150 - gap * (rows - 1)) / rows);
-
-  return Array.from({ length: photoCount }).map((_, index) => {
-    const col = index % columns;
-    const row = Math.floor(index / columns);
-    return {
-      id: `photo-${index + 1}`,
-      type: "photo-slot",
-      x: outer + col * (slotWidth + gap),
-      y: 92 + row * (slotHeight + gap),
-      width: slotWidth,
-      height: slotHeight,
-      rotation: 0,
-      opacity: 1,
-      zIndex: index + 2,
-      locked: false,
-      props: { label: `Photo ${index + 1}`, background: "#f4f4f5", borderColor: "#d4d4d8", radius: 10 },
-    } satisfies FrameNode;
-  });
-}
-
 function enforceFixedCanvasWidth(layout: FrameLayout): FrameLayout {
   if (layout.canvas.width === FRAME_TEMPLATE_WIDTH_PX) {
     return layout;
@@ -132,37 +105,8 @@ function enforceFixedCanvasWidth(layout: FrameLayout): FrameLayout {
   };
 }
 
-function ensurePhotoSlotCount(layout: FrameLayout, photoCount: number): FrameLayout {
-  const existingSlots = layout.nodes
-    .filter((node) => node.type === "photo-slot")
-    .sort((a, b) => a.zIndex - b.zIndex);
-
-  if (existingSlots.length === photoCount) {
-    return layout;
-  }
-
-  const generatedSlots = makePhotoSlots(photoCount, layout.canvas.width, layout.canvas.height);
-  const nextSlots = generatedSlots.map((slot, index) => {
-    const existing = existingSlots[index];
-    return existing
-      ? {
-          ...slot,
-          props: { ...slot.props, ...existing.props, label: `Photo ${index + 1}` },
-        }
-      : slot;
-  });
-
-  return {
-    ...layout,
-    nodes: [
-      ...layout.nodes.filter((node) => node.type !== "photo-slot"),
-      ...nextSlots,
-    ],
-  };
-}
-
-function normalizeFrameLayout(layout: FrameLayout, photoCount: number): FrameLayout {
-  return ensurePhotoSlotCount(enforceFixedCanvasWidth(layout), photoCount);
+function normalizeFrameLayout(layout: FrameLayout): FrameLayout {
+  return enforceFixedCanvasWidth(layout);
 }
 
 function upsertFrameBackground(layout: FrameLayout, frameImageUrl?: string): FrameLayout {
@@ -216,59 +160,12 @@ function upsertFrameBackground(layout: FrameLayout, frameImageUrl?: string): Fra
 }
 
 function createDefaultFrameLayout({
-  templateName,
-  accentColor,
-  photoCount,
   frameImageUrl,
 }: {
-  templateName: string;
-  accentColor: string;
-  photoCount: number;
   frameImageUrl?: string;
 }): FrameLayout {
   const canvas = { ...DEFAULT_FRAME_CANVAS };
-  const nodes: FrameNode[] = [
-    {
-      id: "frame-title",
-      type: "text",
-      x: 34,
-      y: 30,
-      width: 260,
-      height: 40,
-      rotation: 0,
-      opacity: 1,
-      zIndex: 20,
-      locked: false,
-      props: { content: templateName || "POSKART", color: accentColor, fontSize: 26, fontWeight: 700 },
-    },
-    ...makePhotoSlots(photoCount, canvas.width, canvas.height),
-    {
-      id: "frame-date",
-      type: "date-stamp",
-      x: 34,
-      y: canvas.height - 70,
-      width: 160,
-      height: 26,
-      rotation: 0,
-      opacity: 0.8,
-      zIndex: 20,
-      locked: false,
-      props: { content: "DD.MM.YYYY", color: "#52525b", fontSize: 13 },
-    },
-    {
-      id: "frame-border",
-      type: "border",
-      x: 16,
-      y: 16,
-      width: canvas.width - 32,
-      height: canvas.height - 32,
-      rotation: 0,
-      opacity: 1,
-      zIndex: 30,
-      locked: false,
-      props: { borderColor: accentColor, borderWidth: 2, radius: 18 },
-    },
-  ];
+  const nodes: FrameNode[] = [];
 
   if (frameImageUrl) {
     nodes.unshift({
@@ -555,8 +452,6 @@ export function FrameTemplateBuilder({
   resetKey = "default",
   initialLayout,
   templateName,
-  accentColor,
-  photoCount,
   frameImageUrl,
   onClose,
   onSave,
@@ -568,8 +463,6 @@ export function FrameTemplateBuilder({
   resetKey?: string;
   initialLayout: FrameLayout | null;
   templateName: string;
-  accentColor: string;
-  photoCount: number;
   frameImageUrl?: string;
   onClose: () => void;
   onSave: (layout: FrameLayout) => void;
@@ -577,10 +470,10 @@ export function FrameTemplateBuilder({
   detailsPanel?: ReactNode;
 }) {
   const fallbackLayout = useMemo(
-    () => createDefaultFrameLayout({ templateName, accentColor, photoCount, frameImageUrl }),
-    [accentColor, frameImageUrl, photoCount, templateName],
+    () => createDefaultFrameLayout({ frameImageUrl }),
+    [frameImageUrl],
   );
-  const [layout, setLayout] = useState<FrameLayout>(normalizeFrameLayout(initialLayout ?? fallbackLayout, photoCount));
+  const [layout, setLayout] = useState<FrameLayout>(normalizeFrameLayout(initialLayout ?? fallbackLayout));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [zoom, setZoom] = useState(0.9);
@@ -669,26 +562,14 @@ export function FrameTemplateBuilder({
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
-      setLayout(normalizeFrameLayout(initialLayout ?? fallbackLayout, photoCount));
+      setLayout(normalizeFrameLayout(initialLayout ?? fallbackLayout));
       setSelectedId(null);
       setHistory({ past: [], future: [] });
     });
     return () => {
       cancelled = true;
     };
-  }, [fallbackLayout, initialLayout, open, photoCount, resetKey]);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (cancelled) return;
-      setLayout((current) => normalizeFrameLayout(current, photoCount));
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, photoCount]);
+  }, [fallbackLayout, initialLayout, open, resetKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -1134,7 +1015,7 @@ export function FrameTemplateBuilder({
               {fullView ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4 opacity-60" />}
             </Button>
             <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={() => onSave(normalizeFrameLayout(layout, photoCount))}>{saveLabel}</Button>
+            <Button onClick={() => onSave(normalizeFrameLayout(layout))}>{saveLabel}</Button>
           </div>
         </div>
 

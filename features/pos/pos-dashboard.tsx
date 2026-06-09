@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { createPosSale, deletePosSale } from "@/app/(admin)/pos/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Card,
   CardContent,
@@ -64,6 +65,7 @@ export function PosDashboard({
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
+  const confirmDelete = useConfirmDialog();
   const [selectedPackage, setSelectedPackage] =
     useState<PosPackageCode>(packages[0]?.code ?? "");
   const [search, setSearch] = useState("");
@@ -147,24 +149,29 @@ export function PosDashboard({
   }
 
   function handleDelete(sale: PosSale) {
-    if (!confirm(`Hapus transaksi ${sale.id.slice(0, 8).toUpperCase()}? Data tidak dapat dikembalikan.`)) {
-      return;
-    }
+    confirmDelete.confirm({
+      title: "Hapus transaksi?",
+      description: `Hapus transaksi ${sale.id.slice(0, 8).toUpperCase()}? Data tidak dapat dikembalikan.`,
+      confirmLabel: "Hapus",
+      destructive: true,
+      onConfirm: () => {
+        startTransition(async () => {
+          const result = await deletePosSale(sale.id);
+          if (!result.success) {
+            toast.error(result.error ?? "Transaksi gagal dihapus.");
+            return;
+          }
 
-    startTransition(async () => {
-      const result = await deletePosSale(sale.id);
-      if (!result.success) {
-        toast.error(result.error ?? "Transaksi gagal dihapus.");
-        return;
-      }
-
-      toast.success("Transaksi berhasil dihapus.");
-      router.refresh();
+          toast.success("Transaksi berhasil dihapus.");
+          router.refresh();
+        });
+      },
     });
   }
 
   return (
     <div className="space-y-6">
+      {confirmDelete.dialog}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-medium text-red-700">

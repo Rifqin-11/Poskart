@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FrameTemplateBuilder } from "@/features/admin/templates/frame-template-builder";
 import {
@@ -21,7 +20,6 @@ import { useBuilderStore } from "@/stores/builder-store";
 import type { FrameLayout } from "@/types/frame-template";
 import type { TemplateFormValues } from "@/types/template";
 
-const PHOTO_COUNTS = [1, 2, 3, 4, 6, 8] as const;
 const ACCENT_PRESETS = ["#C4121A", "#2D3F8F", "#F5F1E8", "#1B1B1B", "#F6C9C9", "#B8C7E5"];
 
 const DEFAULT_FORM: TemplateFormValues = {
@@ -29,12 +27,16 @@ const DEFAULT_FORM: TemplateFormValues = {
   category: "frame",
   status: "draft",
   tagline: "",
-  photoCount: 4,
+  photoCount: 0,
   accentColor: "#C4121A",
   frameImageUrl: "",
   isDefault: false,
   frameLayout: null,
 };
+
+function countPhotoSlots(layout: FrameLayout) {
+  return layout.nodes.filter((node) => node.type === "photo-slot").length;
+}
 
 export function TemplateBuilderWorkspace({ templateId }: { templateId: string }) {
   const router = useRouter();
@@ -113,7 +115,11 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
   };
 
   const handleSave = async (layout: FrameLayout) => {
-    const payload = { ...form, frameLayout: layout };
+    const payload = {
+      ...form,
+      photoCount: countPhotoSlots(layout),
+      frameLayout: layout,
+    };
 
     if (!payload.name.trim()) {
       toast.error("Template name is required");
@@ -161,18 +167,6 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
           placeholder="Classic Postcard"
           onChange={(event) => patch("name", event.target.value)}
         />
-      </label>
-      <label className="block text-xs font-medium text-zinc-600">
-        Photos
-        <Select
-          className="mt-1"
-          value={String(form.photoCount)}
-          onChange={(event) => patch("photoCount", Number(event.target.value))}
-        >
-          {PHOTO_COUNTS.map((count) => (
-            <option key={count} value={count}>{count} photos</option>
-          ))}
-        </Select>
       </label>
       <label className="block text-xs font-medium text-zinc-600">
         Tagline
@@ -242,9 +236,7 @@ export function TemplateBuilderWorkspace({ templateId }: { templateId: string })
         presentation="embedded"
         resetKey={templateId}
         initialLayout={form.frameLayout ?? null}
-        templateName={form.name || "Untitled template"}
-        accentColor={form.accentColor}
-        photoCount={form.photoCount}
+        templateName={form.name}
         frameImageUrl={form.frameImageUrl}
         onClose={() => {
           setBuilderFullView(false);

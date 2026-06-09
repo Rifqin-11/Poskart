@@ -12,6 +12,7 @@ import type { Template, TemplateFormValues } from "@/types/template";
 import type { Organization } from "@/types/organization";
 import type { ThemePreset, ThemeSchema } from "@/types/theme";
 import type { Transaction } from "@/types/transaction";
+import type { FrameLayout } from "@/types/frame-template";
 
 type KpiMetricRow = KpiMetric & { sort_order: number };
 
@@ -135,6 +136,10 @@ type SubscriptionPlanRow = {
   is_public: boolean;
   features: Record<string, unknown> | null;
 };
+
+function countPhotoSlotsFromLayout(layout?: FrameLayout | null) {
+  return layout?.nodes.filter((node) => node.type === "photo-slot").length ?? 0;
+}
 
 type ThemePresetRow = Omit<ThemePreset, "schema"> & {
   schema: ThemeSchema;
@@ -828,6 +833,7 @@ async function createTemplate(values: TemplateFormValues): Promise<void> {
   const supabase = createClient();
   const now = new Date().toISOString();
   const id = `TPL-${Date.now()}`;
+  const photoCount = countPhotoSlotsFromLayout(values.frameLayout);
   const { error } = await supabase.from("templates").insert({
     id,
     name: values.name,
@@ -836,7 +842,7 @@ async function createTemplate(values: TemplateFormValues): Promise<void> {
     assigned_booths: 0,
     updated_at_label: "just now",
     tagline: values.tagline || null,
-    photo_count: values.photoCount,
+    photo_count: photoCount,
     accent_color: values.accentColor,
     frame_image_url: values.frameImageUrl || null,
     frame_layout: values.frameLayout ?? null,
@@ -861,12 +867,15 @@ async function updateTemplate(
   if (values.category !== undefined) patch.category = values.category;
   if (values.status !== undefined) patch.status = values.status;
   if (values.tagline !== undefined) patch.tagline = values.tagline || null;
-  if (values.photoCount !== undefined) patch.photo_count = values.photoCount;
   if (values.accentColor !== undefined) patch.accent_color = values.accentColor;
   if (values.frameImageUrl !== undefined)
     patch.frame_image_url = values.frameImageUrl || null;
-  if (values.frameLayout !== undefined)
+  if (values.frameLayout !== undefined) {
     patch.frame_layout = values.frameLayout ?? null;
+    patch.photo_count = countPhotoSlotsFromLayout(values.frameLayout);
+  } else if (values.photoCount !== undefined) {
+    patch.photo_count = values.photoCount;
+  }
   if (values.isDefault !== undefined) patch.is_default = values.isDefault;
 
   const { error } = await supabase.from("templates").update(patch).eq("id", id);

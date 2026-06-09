@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Blocks,
   ChevronDown,
@@ -9,6 +9,7 @@ import {
   Gauge,
   LayoutTemplate,
   Images,
+  RefreshCw,
   LockKeyhole,
   Menu,
   MonitorSmartphone,
@@ -202,10 +203,8 @@ export function AdminShell({
   const [open, setOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
+  const router = useRouter();
   const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
-  const { data: subscription } = useSubscriptionStatus();
-  const adminMode = isSuperAdmin(userEmail);
-  const canPublish = adminMode || subscription?.tier === "Pro";
   const builderFullView = useBuilderStore((s) => s.builderFullView);
 
   // Subscribe to Supabase Realtime so layout_schemas + devices queries
@@ -244,9 +243,14 @@ export function AdminShell({
                   <div className="text-xs text-zinc-500">Signed in as</div>
                   <div className="max-w-48 truncate text-sm font-medium">{userEmail ?? "POSKART Photobooth"}</div>
                 </div>
-                <Button variant="outline" size="sm" disabled={!canPublish}>
-                  {!canPublish ? <LockKeyhole className="size-3.5" /> : null}
-                  Publish
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.refresh()}
+                  title="Sync dashboard data"
+                >
+                  <RefreshCw className="size-3.5" />
+                  Sync
                 </Button>
                 <div className="relative">
                   <button
