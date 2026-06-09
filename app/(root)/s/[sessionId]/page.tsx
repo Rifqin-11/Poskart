@@ -7,6 +7,7 @@ import {
   Images,
 } from "lucide-react";
 
+import { businessProfile } from "@/lib/constants/business";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -140,9 +141,27 @@ export default async function SharedGalleryPage({
           </aside>
         </div>
 
-        <footer className="mt-10 flex flex-col gap-2 border-t border-black/10 py-6 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
-          <span>© 2026 POSKART Indonesia</span>
-          <span>Digital photo delivery by POSKART</span>
+        <footer className="mt-10 overflow-hidden bg-white">
+          <div className="flex min-h-[300px] flex-col px-0 py-7 sm:min-h-[360px] lg:min-h-[384px]">
+            <div className="flex flex-col gap-4 text-sm text-zinc-500 sm:flex-row sm:items-start sm:justify-between">
+              <p>© 2026 {businessProfile.legalName}. All rights reserved.</p>
+              <Link
+                href="/contact"
+                className="inline-flex h-10 w-fit items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-900 shadow-[0_1px_2px_rgba(24,24,27,0.02)] transition-colors hover:bg-zinc-50"
+              >
+                Contact Support
+              </Link>
+            </div>
+
+            <div className="mt-auto w-full select-none overflow-hidden pt-16 sm:pt-20">
+              <div
+                aria-hidden="true"
+                className="text-center font-sans text-[clamp(5.75rem,20vw,15rem)] font-black uppercase leading-[0.78] tracking-[-0.085em] text-[#f4f4f5] sm:leading-[0.74]"
+              >
+                POSKART
+              </div>
+            </div>
+          </div>
         </footer>
       </div>
     </main>
