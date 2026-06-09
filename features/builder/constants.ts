@@ -128,7 +128,7 @@ export const PAGE_ROLES: Record<BuilderPage | "generic", string[]> = {
     "camera.retake",
     "camera.photo_result",
   ],
-  preview: ["preview.print", "preview.finish", "preview.share", "preview.qr_download"],
+  preview: ["preview.print", "preview.finish", "preview.share", "preview.qr_download", "preview.retake"],
   thanks: ["thanks.return_home", "thanks.countdown_timer"],
   generic: ["generic.action"],
 };

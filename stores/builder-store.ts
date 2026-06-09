@@ -321,7 +321,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
           : type === "return-countdown"
           ? 320
           : type === "qr-link"
-          ? 160
+          ? 320
           : 140;
 
       const defaultHeight =
@@ -330,7 +330,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
           : type === "return-countdown"
           ? 72
           : type === "qr-link"
-          ? 200
+          ? 48
           : 140;
 
       const node: BuilderNode = {

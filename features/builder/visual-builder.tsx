@@ -332,6 +332,43 @@ function NodeRenderer({
     const flexDir = isVertical ? "column" : "row";
     const reverseOrder = iconPos === "right" || iconPos === "bottom";
 
+    const src = readString(node.props.src, "");
+    if (src) {
+      return (
+        <div
+          className="relative h-full w-full overflow-hidden"
+          style={{
+            borderRadius: readNumber(
+              node.props.radius,
+              Math.max(6, Math.round(canvas.width * 0.005)),
+            ),
+          }}
+        >
+          <img
+            src={src}
+            alt={label}
+            className="h-full w-full object-fill pointer-events-none select-none"
+          />
+          {/* Semantic role badge */}
+          {roleLabel ? (
+            <span
+              className="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-zinc-950/80 px-1.5 py-0.5 font-mono text-white"
+              style={{ fontSize: Math.max(9, Math.round(canvas.width * 0.009)) }}
+            >
+              {role}
+            </span>
+          ) : (
+            <span
+              className="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-amber-500/90 px-1.5 py-0.5 font-mono text-white"
+              style={{ fontSize: Math.max(9, Math.round(canvas.width * 0.009)) }}
+            >
+              ⚠ no role set
+            </span>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div
         className="relative h-full w-full overflow-hidden font-medium shadow-sm"
@@ -378,33 +415,20 @@ function NodeRenderer({
   }
 
   if (node.type === "qr-link") {
-    const scale = node.height / 200;
-    const label = readString(node.props.label, "https://poskart.app/s/...");
+    const scale = node.height / 48;
+    const label = readString(node.props.label, "https://poskart.my.id/s/MQ6V8EJW-4TSQZ");
     const fontSize = readNumber(node.props.fontSize, 12);
     const color = readString(node.props.color, "#3b82f6");
 
     return (
       <div
-        className="flex h-full w-full flex-col items-center bg-white p-3 border border-zinc-300"
+        className="flex h-full w-full items-center justify-center bg-white px-3 border border-zinc-300"
         style={{
           borderRadius: readNumber(node.props.radius, 6),
         }}
       >
-        <div className="flex-1 w-full flex items-center justify-center min-h-0">
-          <div className="grid size-full max-h-[85%] max-w-[85%] aspect-square grid-cols-4 grid-rows-4 gap-1">
-            {Array.from({ length: 16 }).map((_, index) => (
-              <span
-                key={index}
-                className={cn(
-                  "rounded-sm",
-                  index % 3 === 0 ? "bg-zinc-950" : "bg-zinc-200",
-                )}
-              />
-            ))}
-          </div>
-        </div>
         <div
-          className="w-full text-center truncate font-medium mt-1 select-none"
+          className="w-full text-center truncate font-medium select-none"
           style={{
             fontSize: fontSize * scale,
             color: color,
@@ -1620,6 +1644,56 @@ function PropertiesPanel({
               }
             />
           </label>
+
+          {/* Custom image background / design */}
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 p-2 text-xs">
+            <div className="mb-1.5 font-semibold text-zinc-600">
+              🖼 Custom Button Design (Canva/Image)
+            </div>
+            {readString(selectedNode.props.src, "") && (
+              <div className="mb-2 flex items-center gap-2 rounded border border-zinc-200 bg-white p-2">
+                <img
+                  src={readString(selectedNode.props.src, "")}
+                  alt="button preview"
+                  className="h-8 w-12 object-contain rounded border border-zinc-100"
+                />
+                <span className="flex-1 truncate text-[10px] text-zinc-400">
+                  Image loaded
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateNodeProps(selectedNode.id, { src: null })
+                  }
+                  className="text-zinc-400 hover:text-red-500 text-sm font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+            <label className="block text-zinc-500">
+              Source URL
+              <Input
+                className="mt-0.5 bg-white"
+                value={readString(selectedNode.props.src, "")}
+                placeholder="https://..."
+                onChange={(e) =>
+                  updateNodeProps(selectedNode.id, { src: e.target.value })
+                }
+              />
+            </label>
+            <label className="mt-1.5 block text-zinc-500">
+              Upload image
+              <Input
+                className="mt-0.5 bg-white"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                disabled={uploading}
+                onChange={(e) => handleImageUpload(e.target.files?.[0])}
+              />
+            </label>
+          </div>
+
           <label className="block text-xs font-medium text-zinc-500">
             <div className="mb-1 flex items-center gap-1.5">
               Semantic Role
