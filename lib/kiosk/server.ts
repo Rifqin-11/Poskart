@@ -451,15 +451,9 @@ export async function buildKioskBootstrap(
   const config = configResult.data;
   const layouts = layoutsResult.data ?? [];
   const layout = layouts.find((l) => l.is_active) ?? layouts[0] ?? null;
-  const assignedTemplates = new Set(device?.frame_templates ?? []);
   const assignedPricing = new Set(device?.pricing_profiles ?? []);
 
-  const templates = (templatesResult.data ?? []).filter(
-    (template) =>
-      assignedTemplates.size === 0 ||
-      assignedTemplates.has(template.id) ||
-      assignedTemplates.has(template.name),
-  );
+  const templates = templatesResult.data ?? [];
   const pricingProducts = (pricingResult.data ?? []).filter(
     (product) =>
       assignedPricing.size === 0 ||
