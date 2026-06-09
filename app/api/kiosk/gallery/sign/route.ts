@@ -34,7 +34,7 @@ export async function POST(request: Request) {
         file.photoIndex >= 0,
     );
 
-    if (!sessionId || files.length === 0 || files.length > 12) {
+    if (!sessionId || files.length > 12) {
       return jsonOk(
         {
           error: "A session ID and up to 12 valid files are required.",
@@ -56,6 +56,15 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
       });
     if (sessionError) throw sessionError;
+
+    if (files.length === 0) {
+      return jsonOk({
+        uploadUrl: "",
+        apiKey: "",
+        uploads: [],
+        shareUrl,
+      });
+    }
 
     return jsonOk({
       ...createCloudinaryUploadSignatures({
