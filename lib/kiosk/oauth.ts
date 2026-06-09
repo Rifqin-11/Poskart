@@ -252,13 +252,12 @@ export async function completeKioskGoogleCallback(request: NextRequest) {
   const providerError =
     request.nextUrl.searchParams.get("error_description") ??
     request.nextUrl.searchParams.get("error");
-  const deviceId = request.nextUrl.searchParams.get("deviceId")?.trim() ?? "";
+  const hardwareId = request.nextUrl.searchParams.get("hardwareId")?.trim() ?? "";
   const oauth = createKioskOAuthClient(request);
 
   try {
     if (providerError) throw new Error(providerError);
     if (!code) throw new Error("Google tidak mengembalikan authorization code.");
-    if (!deviceId) throw new Error("Device ID tidak ditemukan pada callback.");
 
     const { data, error } = await oauth.client.auth.exchangeCodeForSession(code);
     if (error || !data.session) {
@@ -266,10 +265,15 @@ export async function completeKioskGoogleCallback(request: NextRequest) {
     }
 
     const context = await resolveKioskContext(data.session.access_token);
-    const bootstrap = await buildKioskBootstrap(context, deviceId);
+    const bootstrap = await buildKioskBootstrap(
+      context,
+      null,                                   // no explicit deviceId
+      hardwareId || null,                     // use hardwareId for UPSERT
+      context.user.email ?? "unknown",        // device name fallback
+    );
     const ticket = await issueKioskOAuthTicket({
       userId: context.user.id,
-      deviceId,
+      deviceId: bootstrap.registeredDeviceId ?? hardwareId,
       sessionPayload: {
         accessToken: data.session.access_token,
         refreshToken: data.session.refresh_token,

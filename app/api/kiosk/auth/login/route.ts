@@ -10,6 +10,7 @@ type LoginBody = {
   email?: string;
   password?: string;
   deviceId?: string;
+  hardwareId?: string;
 };
 
 export async function POST(request: Request) {
@@ -45,7 +46,12 @@ export async function POST(request: Request) {
     }
 
     const context = await resolveKioskContext(data.session.access_token);
-    const bootstrap = await buildKioskBootstrap(context, body.deviceId);
+    const bootstrap = await buildKioskBootstrap(
+      context,
+      body.deviceId,     // legacy: deviceId already stored on device
+      body.hardwareId,   // new: Android hardware ID for auto-registration
+      email,             // used as fallback device name on first register
+    );
 
     return jsonOk({
       accessToken: data.session.access_token,

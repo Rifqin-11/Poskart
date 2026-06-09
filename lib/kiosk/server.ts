@@ -243,13 +243,115 @@ export async function listOrganizationDevices(context: KioskRequestContext) {
   return (data ?? []) as KioskDeviceRow[];
 }
 
+/**
+ * Find an existing device by its hardware_id, or create a new one.
+ * This allows the same physical device to map to the same DB row even after
+ * the app is reinstalled (Android ID survives reinstall with the same signing key).
+ */
+export async function upsertDeviceByHardwareId(
+  context: KioskRequestContext,
+  hardwareId: string,
+  userEmail: string,
+): Promise<KioskDeviceRow> {
+  const normalizedHwId = hardwareId.trim();
+  if (!normalizedHwId) {
+    throw new KioskApiError(
+      "Hardware ID is required for device registration.",
+      400,
+      "KIOSK_HARDWARE_ID_REQUIRED",
+    );
+  }
+
+  // 1. Check if device already exists for this org + hardware_id
+  const { data: existing, error: lookupError } = await context.client
+    .from("devices")
+    .select(
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds",
+    )
+    .eq("organization_id", context.organizationId)
+    .eq("hardware_id", normalizedHwId)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new KioskApiError(
+      `Unable to look up device: ${lookupError.message}`,
+      500,
+      "KIOSK_DEVICE_LOOKUP_FAILED",
+    );
+  }
+
+  if (existing) {
+    return existing as KioskDeviceRow;
+  }
+
+  // 2. No existing device — register a new one
+  const newId = `BTH-${Date.now()}`;
+  const deviceName = `Booth (${userEmail})`;
+  const now = new Date().toISOString();
+
+  const { error: insertError } = await context.client.from("devices").insert({
+    id: newId,
+    organization_id: context.organizationId,
+    hardware_id: normalizedHwId,
+    name: deviceName,
+    location: "",
+    status: "online",
+    battery: 0,
+    app_version: "",
+    last_sync: now,
+    theme: "",
+    template: "",
+    pricing_profile: "",
+    frame_templates: [],
+    pricing_profiles: [],
+    updated_at: now,
+  });
+
+  if (insertError) {
+    throw new KioskApiError(
+      `Unable to register device: ${insertError.message}`,
+      500,
+      "KIOSK_DEVICE_REGISTER_FAILED",
+    );
+  }
+
+  // Return the freshly inserted row
+  const { data: fresh, error: refetchError } = await context.client
+    .from("devices")
+    .select(
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds",
+    )
+    .eq("id", newId)
+    .single();
+
+  if (refetchError || !fresh) {
+    throw new KioskApiError(
+      "Device registered but could not be retrieved.",
+      500,
+      "KIOSK_DEVICE_REFETCH_FAILED",
+    );
+  }
+
+  return fresh as KioskDeviceRow;
+}
+
 export async function buildKioskBootstrap(
   context: KioskRequestContext,
   deviceId?: string | null,
+  hardwareId?: string | null,
+  userEmail?: string,
 ) {
-  const device = deviceId
-    ? await requireOrganizationDevice(context, deviceId)
-    : null;
+  // Resolve the device: prefer explicit deviceId, then upsert by hardwareId
+  let device: KioskDeviceRow | null = null;
+  if (deviceId) {
+    device = await requireOrganizationDevice(context, deviceId);
+  } else if (hardwareId) {
+    device = await upsertDeviceByHardwareId(
+      context,
+      hardwareId,
+      userEmail ?? context.user.email ?? "unknown",
+    );
+  }
 
   const [
     organizationResult,
@@ -420,6 +522,9 @@ export async function buildKioskBootstrap(
       isDefault: template.is_default,
     })),
     pricingProducts,
+    // The ID of the device resolved/registered for this session.
+    // Flutter must persist this so subsequent API calls use the correct device.
+    registeredDeviceId: device?.id ?? null,
   };
 }
 
