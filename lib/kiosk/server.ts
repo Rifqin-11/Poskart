@@ -451,9 +451,16 @@ export async function buildKioskBootstrap(
   const config = configResult.data;
   const layouts = layoutsResult.data ?? [];
   const layout = layouts.find((l) => l.is_active) ?? layouts[0] ?? null;
+  const assignedTemplates = new Set(device?.frame_templates ?? []);
   const assignedPricing = new Set(device?.pricing_profiles ?? []);
 
-  const templates = templatesResult.data ?? [];
+  const allTemplates = templatesResult.data ?? [];
+  const templates = allTemplates.filter(
+    (template) =>
+      assignedTemplates.size === 0 ||
+      assignedTemplates.has(template.id) ||
+      assignedTemplates.has(template.name),
+  );
   const pricingProducts = (pricingResult.data ?? []).filter(
     (product) =>
       assignedPricing.size === 0 ||
@@ -505,6 +512,17 @@ export async function buildKioskBootstrap(
     })),
     designTokens: themeResult.data?.schema ?? null,
     templates: templates.map((template) => ({
+      id: template.id,
+      name: template.name,
+      category: template.category,
+      tagline: template.tagline ?? null,
+      photoCount: template.photo_count,
+      accentColor: template.accent_color,
+      frameImageUrl: template.frame_image_url ?? null,
+      frameLayout: template.frame_layout ?? null,
+      isDefault: template.is_default,
+    })),
+    availableTemplates: allTemplates.map((template) => ({
       id: template.id,
       name: template.name,
       category: template.category,
