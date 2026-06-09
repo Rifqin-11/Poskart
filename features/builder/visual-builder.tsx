@@ -249,12 +249,17 @@ function NodeRenderer({
   const isOverlayMode = !!canvas.overlayMode;
   const color = readString(node.props.color, "#18181b");
 
+  const isCameraContinue =
+    node.type === "button" &&
+    readString((node.props.semanticRole as string | undefined) ?? "", "") ===
+      "camera.continue";
+
   // Default font size scales with canvas (ref 1080px → 30px ≈ 2.8%; min 14px)
   const scaledDefaultFontSize = Math.max(14, Math.round(canvas.width * 0.028));
   const fontSize = readNumber(node.props.fontSize, scaledDefaultFontSize);
 
   // When a background image/video is set, all nodes become hotspot overlays
-  if (isOverlayMode) return <HotspotOverlay node={node} />;
+  if (isOverlayMode && !isCameraContinue) return <HotspotOverlay node={node} />;
 
   if (node.type === "button") {
     const role = readString(
