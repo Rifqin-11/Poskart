@@ -33,7 +33,8 @@ export default async function SharedGalleryPage({
     .eq("session_id", sessionId)
     .order("kind", { ascending: false })
     .order("photo_index", { ascending: true });
-  const framed = photos?.find((photo) => photo.kind === "framed");
+  const framed = photos?.find((photo) => photo.kind === "framed" && photo.photo_index === 1)
+    || photos?.find((photo) => photo.kind === "framed" && photo.photo_index === 0);
   const raw = photos?.filter((photo) => photo.kind === "raw") ?? [];
 
   return (
