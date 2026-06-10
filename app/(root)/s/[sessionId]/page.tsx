@@ -32,11 +32,11 @@ export default async function SharedGalleryPage({
     return (
       <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10 flex flex-col justify-center items-center">
         <noscript>
-          <meta httpEquiv="refresh" content="2" />
+          <meta httpEquiv="refresh" content="30" />
         </noscript>
         <script
           dangerouslySetInnerHTML={{
-            __html: `setTimeout(() => window.location.reload(), 2000);`,
+            __html: `setTimeout(() => window.location.reload(), 30000);`,
           }}
         />
         <div className="text-center max-w-md">
@@ -430,7 +430,7 @@ function ProcessingRefresh({ refreshUntil }: { refreshUntil: number }) {
       </noscript>
       <script
         dangerouslySetInnerHTML={{
-          __html: `if (Date.now() < ${JSON.stringify(refreshUntil)}) setTimeout(() => window.location.reload(), 2000);`,
+          __html: `if (Date.now() < ${JSON.stringify(refreshUntil)}) setTimeout(() => window.location.reload(), 30000);`,
         }}
       />
     </>
