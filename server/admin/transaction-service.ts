@@ -10,4 +10,5 @@ export const transactionService = {
   updateTransaction: ({ id, patch }: { id: string; patch: TransactionPatch }) =>
     adminRepository.updateTransaction(id, patch),
   deleteTransaction: (id: string) => adminRepository.deleteTransaction(id),
+  deleteTransactions: (ids: string[]) => adminRepository.deleteTransactions(ids),
 };

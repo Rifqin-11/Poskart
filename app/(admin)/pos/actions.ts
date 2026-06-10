@@ -109,3 +109,32 @@ export async function deletePosSale(saleId: string): Promise<PosActionState> {
   revalidatePath("/pos");
   return { success: true };
 }
+
+export async function deletePosSales(saleIds: string[]): Promise<PosActionState> {
+  if (!saleIds || saleIds.length === 0) {
+    return { success: false, error: "ID transaksi tidak valid." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { success: false, error: "Sesi login tidak valid. Silakan login kembali." };
+  }
+
+  const { error } = await supabase
+    .from("pos_sales")
+    .delete()
+    .in("id", saleIds);
+
+  if (error) {
+    return { success: false, error: `Gagal menghapus transaksi: ${error.message}` };
+  }
+
+  revalidatePath("/pos");
+  return { success: true };
+}
+

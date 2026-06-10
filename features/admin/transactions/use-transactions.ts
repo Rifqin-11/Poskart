@@ -52,3 +52,15 @@ export function useDeleteTransaction() {
     },
   });
 }
+
+export function useDeleteTransactions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: transactionService.deleteTransactions,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
+    },
+  });
+}
+
