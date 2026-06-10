@@ -418,20 +418,22 @@ function NodeRenderer({
     const scale = node.height / 48;
     const label = readString(node.props.label, "https://poskart.my.id/s/MQ6V8EJW-4TSQZ");
     const fontSize = readNumber(node.props.fontSize, 12);
-    const color = readString(node.props.color, "#3b82f6");
+    const qrBgColor = readString(node.props.qrBgColor, "#ffffff");
+    const qrTextColor = readString(node.props.qrTextColor ?? node.props.color, "#3b82f6");
 
     return (
       <div
-        className="flex h-full w-full items-center justify-center bg-white px-3 border border-zinc-300"
+        className="flex h-full w-full items-center justify-center px-3 border border-zinc-300"
         style={{
           borderRadius: readNumber(node.props.radius, 6),
+          backgroundColor: qrBgColor,
         }}
       >
         <div
           className="w-full text-center truncate font-medium select-none"
           style={{
             fontSize: fontSize * scale,
-            color: color,
+            color: qrTextColor,
           }}
         >
           {label}
@@ -441,11 +443,16 @@ function NodeRenderer({
   }
 
   if (node.type === "qr") {
+    const qrColor = readString(node.props.qrColor, "#000000");
+    const qrBgColor = readString(node.props.qrBgColor, "#ffffff");
+    const qrTextColor = readString(node.props.qrTextColor ?? node.props.color, "#27272a");
+
     return (
       <div
-        className="flex h-full w-full flex-col items-center justify-between border border-zinc-300 bg-white p-3 pb-6"
+        className="flex h-full w-full flex-col items-center justify-between border border-zinc-300 p-3 pb-6"
         style={{
           borderRadius: readNumber(node.props.radius, 12),
+          backgroundColor: qrBgColor,
           fontFamily: "'Manrope', 'Outfit', 'Inter', sans-serif",
         }}
       >
@@ -454,15 +461,18 @@ function NodeRenderer({
             {Array.from({ length: 16 }).map((_, index) => (
               <span
                 key={index}
-                className={cn(
-                  "rounded-sm",
-                  index % 3 === 0 ? "bg-zinc-950" : "bg-zinc-200",
-                )}
+                className="rounded-sm"
+                style={{
+                  backgroundColor: index % 3 === 0 ? qrColor : "rgba(0,0,0,0.05)",
+                }}
               />
             ))}
           </div>
         </div>
-        <div className="mt-2 w-full text-center text-[10px] font-bold text-zinc-800 truncate px-1">
+        <div
+          className="mt-2 w-full text-center text-[10px] font-bold truncate px-1"
+          style={{ color: qrTextColor }}
+        >
           https://poskart.my.id/s/MQ6V8EJW-4TSQZ
         </div>
       </div>
@@ -745,38 +755,63 @@ function NodeRenderer({
   }
 
   if (node.type === "qr-placeholder") {
+    const qrColor = readString(node.props.qrColor, "#000000");
+    const qrBgColor = readString(node.props.qrBgColor, "#ffffff");
+    const qrTextColor = readString(node.props.qrTextColor ?? node.props.color, "#27272a");
     // Realistic-looking QR placeholder — no real data, just visual structure
     return (
       <div
-        className="grid h-full w-full place-items-center border-2 border-dashed border-zinc-300 bg-white p-3"
+        className="grid h-full w-full place-items-center border-2 border-dashed border-zinc-300 p-3"
         style={{
           borderRadius: readNumber(node.props.radius, 8),
+          backgroundColor: qrBgColor,
         }}
       >
         <div className="relative flex size-full flex-col items-center justify-center gap-1">
           {/* Corner squares (finder patterns) */}
-          <div className="absolute left-0 top-0 size-8 rounded-sm border-[3px] border-zinc-800 bg-white">
-            <div className="m-0.5 size-4 rounded-[2px] bg-zinc-800" />
+          <div
+            className="absolute left-0 top-0 size-8 rounded-sm border-[3px] bg-white"
+            style={{ borderColor: qrColor }}
+          >
+            <div
+              className="m-0.5 size-4 rounded-[2px]"
+              style={{ backgroundColor: qrColor }}
+            />
           </div>
-          <div className="absolute right-0 top-0 size-8 rounded-sm border-[3px] border-zinc-800 bg-white">
-            <div className="m-0.5 size-4 rounded-[2px] bg-zinc-800" />
+          <div
+            className="absolute right-0 top-0 size-8 rounded-sm border-[3px] bg-white"
+            style={{ borderColor: qrColor }}
+          >
+            <div
+              className="m-0.5 size-4 rounded-[2px]"
+              style={{ backgroundColor: qrColor }}
+            />
           </div>
-          <div className="absolute bottom-0 left-0 size-8 rounded-sm border-[3px] border-zinc-800 bg-white">
-            <div className="m-0.5 size-4 rounded-[2px] bg-zinc-800" />
+          <div
+            className="absolute bottom-0 left-0 size-8 rounded-sm border-[3px] bg-white"
+            style={{ borderColor: qrColor }}
+          >
+            <div
+              className="m-0.5 size-4 rounded-[2px]"
+              style={{ backgroundColor: qrColor }}
+            />
           </div>
           {/* Module grid in the middle */}
           <div className="grid w-full max-w-[70%] grid-cols-6 gap-0.5 px-10">
             {Array.from({ length: 30 }).map((_, i) => (
               <div
                 key={i}
-                className={cn(
-                  "aspect-square rounded-[1px]",
-                  (i * 7 + i) % 5 === 0 ? "bg-zinc-800" : "bg-zinc-200",
-                )}
+                className="aspect-square rounded-[1px]"
+                style={{
+                  backgroundColor: (i * 7 + i) % 5 === 0 ? qrColor : "rgba(0,0,0,0.05)",
+                }}
               />
             ))}
           </div>
-          <div className="absolute bottom-2 left-0 right-0 text-center text-[9px] font-semibold uppercase tracking-widest text-zinc-400">
+          <div
+            className="absolute bottom-2 left-0 right-0 text-center text-[9px] font-semibold uppercase tracking-widest"
+            style={{ color: qrTextColor }}
+          >
             QRIS — dari payment gateway
           </div>
         </div>
@@ -1969,29 +2004,89 @@ function PropertiesPanel({
       )}
 
       {/* Generic color/radius for non-text, non-media nodes */}
-      {!editableText && !mediaNode && selectedNode.type !== "return-countdown" && (
+      {!editableText &&
+        !mediaNode &&
+        selectedNode.type !== "return-countdown" &&
+        selectedNode.type !== "qr" &&
+        selectedNode.type !== "qr-placeholder" &&
+        selectedNode.type !== "qr-link" && (
+          <PanelSection
+            title="Appearance"
+            icon={<PaintBucket className="size-3.5 text-zinc-500" />}
+            defaultOpen={false}
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs font-medium text-zinc-500">
+                Color
+                <Input
+                  className="mt-1"
+                  value={readString(selectedNode.props.color, "#18181b")}
+                  onChange={(e) =>
+                    updateNodeProps(selectedNode.id, { color: e.target.value })
+                  }
+                />
+              </label>
+              <label className="text-xs font-medium text-zinc-500">
+                Radius
+                <Input
+                  className="mt-1"
+                  type="number"
+                  value={readNumber(selectedNode.props.radius, 6)}
+                  onChange={(e) =>
+                    updateNodeProps(selectedNode.id, {
+                      radius: Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
+            </div>
+          </PanelSection>
+        )}
+
+      {/* QR Code and Link Styling */}
+      {(selectedNode.type === "qr" ||
+        selectedNode.type === "qr-placeholder" ||
+        selectedNode.type === "qr-link") && (
         <PanelSection
-          title="Appearance"
-          icon={<PaintBucket className="size-3.5 text-zinc-500" />}
-          defaultOpen={false}
+          title={selectedNode.type === "qr-link" ? "QR Link" : "QR Code"}
+          icon={<Grid2X2 className="size-3.5 text-zinc-500" />}
         >
-          <div className="grid grid-cols-2 gap-2">
-            <label className="text-xs font-medium text-zinc-500">
-              Color
-              <Input
-                className="mt-1"
-                value={readString(selectedNode.props.color, "#18181b")}
-                onChange={(e) =>
-                  updateNodeProps(selectedNode.id, { color: e.target.value })
+          <div className="space-y-3">
+            {selectedNode.type !== "qr-link" && (
+              <ColorField
+                label="QR Color"
+                value={readString(selectedNode.props.qrColor, "#000000")}
+                onChange={(v) =>
+                  updateNodeProps(selectedNode.id, { qrColor: v })
                 }
               />
-            </label>
-            <label className="text-xs font-medium text-zinc-500">
-              Radius
+            )}
+            <ColorField
+              label="QR Background"
+              value={readString(selectedNode.props.qrBgColor, "#ffffff")}
+              onChange={(v) =>
+                updateNodeProps(selectedNode.id, { qrBgColor: v })
+              }
+            />
+            <ColorField
+              label="QR Link Text Color"
+              value={readString(
+                selectedNode.props.qrTextColor ?? selectedNode.props.color,
+                selectedNode.type === "qr-link" ? "#3b82f6" : "#27272a",
+              )}
+              onChange={(v) =>
+                updateNodeProps(selectedNode.id, { qrTextColor: v, color: v })
+              }
+            />
+            <label className="block text-xs font-medium text-zinc-500">
+              Radius (Rounded)
               <Input
                 className="mt-1"
                 type="number"
-                value={readNumber(selectedNode.props.radius, 6)}
+                value={readNumber(
+                  selectedNode.props.radius,
+                  selectedNode.type === "qr-link" ? 6 : 12,
+                )}
                 onChange={(e) =>
                   updateNodeProps(selectedNode.id, {
                     radius: Number(e.target.value),
@@ -2131,6 +2226,7 @@ function PropertiesPanel({
 
 function CanvasControls() {
   const canvas = useBuilderStore((state) => state.canvas);
+  const selectedNode = useBuilderStore((state) => state.selectedNode);
   const activePage = useBuilderStore((state) => state.activePage);
   const updateCanvas = useBuilderStore((state) => state.updateCanvas);
   const setPageBackground = useBuilderStore((state) => state.setPageBackground);
@@ -2230,8 +2326,10 @@ function CanvasControls() {
 
   return (
     <PanelSection
+      key={selectedNode ? "collapsed" : "expanded"}
       title="Canvas"
       icon={<Smartphone className="size-3.5 text-zinc-500" />}
+      defaultOpen={!selectedNode}
     >
       {/* Canvas Mode toggle */}
       <div className="space-y-1.5">
