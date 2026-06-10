@@ -146,16 +146,17 @@ async function renderFrameToCanvas(canvas: HTMLCanvasElement, layout: FrameLayou
   ctx.fillRect(0, 0, layout.canvas.width, layout.canvas.height);
 
   const orderedNodes = layout.nodes.slice().sort((a, b) => a.zIndex - b.zIndex);
-  const photoSlots = layout.nodes
-    .filter((node) => node.type === "photo-slot")
-    .slice()
-    .sort((a, b) => {
-      if (Math.abs(a.y - b.y) > 1) {
-        return a.y - b.y;
-      }
-      return a.x - b.x;
-    });
-  const photoSlotIds = photoSlots.map((node) => node.id);
+  const photoSlots = layout.nodes.filter((node) => node.type === "photo-slot");
+  const sortedPhotoSlots = [...photoSlots].sort((a, b) => {
+    const labelA = String(a.props?.label || "");
+    const labelB = String(b.props?.label || "");
+    const matchA = /Photo\s+(\d+)/.exec(labelA);
+    const matchB = /Photo\s+(\d+)/.exec(labelB);
+    const idxA = matchA ? parseInt(matchA[1], 10) - 1 : photoSlots.indexOf(a);
+    const idxB = matchB ? parseInt(matchB[1], 10) - 1 : photoSlots.indexOf(b);
+    return idxA - idxB;
+  });
+  const photoSlotIds = sortedPhotoSlots.map((node) => node.id);
   const imageCache = new Map<string, HTMLImageElement>();
 
   for (const node of orderedNodes) {

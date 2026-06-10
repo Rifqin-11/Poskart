@@ -215,12 +215,6 @@ function createNode(type: FrameNodeType, layout: FrameLayout): FrameNode {
 
 function normalizePhotoSlotLabels(nodes: FrameNode[]): FrameNode[] {
   const photoSlots = nodes.filter((node) => node.type === "photo-slot");
-  photoSlots.sort((a, b) => {
-    if (Math.abs(a.y - b.y) > 1) {
-      return a.y - b.y;
-    }
-    return a.x - b.x;
-  });
   const slotIdToIndex = new Map(photoSlots.map((node, index) => [node.id, index]));
   
   return nodes.map((node) => {
