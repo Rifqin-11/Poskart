@@ -1,5 +1,6 @@
 "use client";
 
+import QRCodeSVG from "react-qr-code";
 import {
   DndContext,
   type DragEndEvent,
@@ -67,6 +68,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import {
   useActiveLayoutSchema,
   useLayoutSchemas,
@@ -447,6 +449,7 @@ function NodeRenderer({
     const qrBgColor = readString(node.props.qrBgColor, "#ffffff");
     const qrTextColor = readString(node.props.qrTextColor ?? node.props.color, "#27272a");
     const showQrLink = node.props.showQrLink !== false;
+    const sampleUrl = "https://poskart.my.id/s/MQ6V8EJW-4TSQZ";
 
     return (
       <div
@@ -457,49 +460,16 @@ function NodeRenderer({
           fontFamily: "'Manrope', 'Outfit', 'Inter', sans-serif",
         }}
       >
-        <div className="relative flex-1 w-full max-w-[120px] aspect-square flex items-center justify-center">
-          {/* Top-Left Finder */}
-          <div
-            className="absolute left-0 top-0 size-[26px] rounded-[3px] border-[3px]"
-            style={{ borderColor: qrColor, backgroundColor: "transparent" }}
-          >
-            <div
-              className="m-0.5 size-3 rounded-[1px]"
-              style={{ backgroundColor: qrColor }}
+        {/* QR code locked to 1:1 aspect ratio, fills available height */}
+        <div className="flex-1 w-full flex items-center justify-center" style={{ minHeight: 0 }}>
+          <div className="aspect-square h-full max-h-full">
+            <QRCodeSVG
+              value={sampleUrl}
+              style={{ width: "100%", height: "100%", display: "block" }}
+              fgColor={qrColor}
+              bgColor="transparent"
+              level="M"
             />
-          </div>
-          {/* Top-Right Finder */}
-          <div
-            className="absolute right-0 top-0 size-[26px] rounded-[3px] border-[3px]"
-            style={{ borderColor: qrColor, backgroundColor: "transparent" }}
-          >
-            <div
-              className="m-0.5 size-3 rounded-[1px]"
-              style={{ backgroundColor: qrColor }}
-            />
-          </div>
-          {/* Bottom-Left Finder */}
-          <div
-            className="absolute bottom-0 left-0 size-[26px] rounded-[3px] border-[3px]"
-            style={{ borderColor: qrColor, backgroundColor: "transparent" }}
-          >
-            <div
-              className="m-0.5 size-3 rounded-[1px]"
-              style={{ backgroundColor: qrColor }}
-            />
-          </div>
-          {/* Data Modules Grid */}
-          <div className="grid w-[60%] grid-cols-5 gap-0.5">
-            {Array.from({ length: 25 }).map((_, i) => (
-              <div
-                key={i}
-                className="aspect-square rounded-[1px]"
-                style={{
-                  backgroundColor:
-                    (i * 7 + i) % 5 === 0 ? qrColor : "rgba(0,0,0,0.03)",
-                }}
-              />
-            ))}
           </div>
         </div>
         {showQrLink && (
@@ -507,7 +477,7 @@ function NodeRenderer({
             className="mt-2 w-full text-center text-[10px] font-bold truncate px-1"
             style={{ color: qrTextColor }}
           >
-            https://poskart.my.id/s/MQ6V8EJW-4TSQZ
+            {sampleUrl}
           </div>
         )}
       </div>
@@ -2132,23 +2102,17 @@ function PropertiesPanel({
               />
             </label>
             {selectedNode.type !== "qr-link" && (
-              <label className="flex items-start gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
+              <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-100 bg-zinc-50 p-2.5">
+                <div>
+                  <span className="block text-xs font-medium text-zinc-700">Show QR Link</span>
+                  <span className="block text-[10px] text-zinc-400">Display the text link below the QR code.</span>
+                </div>
+                <Switch
                   checked={selectedNode.props.showQrLink !== false}
-                  onChange={(e) =>
-                    updateNodeProps(selectedNode.id, {
-                      showQrLink: e.target.checked,
-                    })
+                  onCheckedChange={(v) =>
+                    updateNodeProps(selectedNode.id, { showQrLink: v })
                   }
                 />
-                <span className="text-xs font-medium text-zinc-500">
-                  Show QR Link
-                  <span className="block text-[10px] text-zinc-400">
-                    Display the text link below the QR code.
-                  </span>
-                </span>
               </label>
             )}
           </div>

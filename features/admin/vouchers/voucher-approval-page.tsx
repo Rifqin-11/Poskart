@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useBooths, useUpdateBooth } from "@/features/admin/devices/use-devices";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
+import type { Device } from "@/types/device";
 import {
   Card,
   CardContent,
@@ -52,7 +53,7 @@ export function VoucherApproval() {
   const updateBooth = useUpdateBooth();
 
   const [search, setSearch] = useState("");
-  const [selectedDevice, setSelectedDevice] = useState<any>(null);
+  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
   // Filter devices that are currently waiting for vouchers
   const waitingDevices = devices.filter(

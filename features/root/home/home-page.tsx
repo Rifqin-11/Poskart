@@ -139,8 +139,14 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
             </div>
           </div>
 
-          <div className="mx-auto mt-2 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-4 py-2 text-xs font-semibold text-orange-700 shadow-sm shadow-orange-900/5">
-            <Camera className="size-3.5" />
+          <div className="mx-auto mt-2 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1.5 text-xs font-semibold text-orange-700 shadow-sm shadow-orange-900/5">
+            <Image
+              src="/app-logo.png"
+              alt="POSKART app icon"
+              width={20}
+              height={20}
+              className="size-5 rounded-md object-cover"
+            />
             Aplikasi photobooth untuk capture, print, QRIS, dan dashboard
           </div>
 

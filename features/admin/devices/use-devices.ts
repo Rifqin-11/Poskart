@@ -5,9 +5,10 @@ import { adminQueryKeys } from "@/features/admin/query-keys";
 import { deviceService } from "@/server/admin/device-service";
 import { transactionService } from "@/server/admin/transaction-service";
 import type { BoothInput } from "@/server/admin/_shared/admin-repository";
+import type { Device } from "@/types/device";
 
 export function useBooths() {
-  return useQuery({
+  return useQuery<Device[], Error>({
     queryKey: adminQueryKeys.devices,
     queryFn: deviceService.getDevices,
     // Poll every 30 s as fallback when Realtime is unavailable
