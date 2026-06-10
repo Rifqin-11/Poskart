@@ -75,11 +75,28 @@ export default async function SharedGalleryPage({
   const selectedPhoto = photos?.find((photo) => photo.id === viewPhotoId);
   const photoCount = photos?.length ?? 0;
   const refreshUntil = new Date(session.created_at).getTime() + 120_000;
+  
+  // Expiry date calculation (7 days after creation)
+  const expiryDate = new Date(new Date(session.created_at).getTime() + 7 * 24 * 60 * 60 * 1000);
+  const day = expiryDate.getDate().toString().padStart(2, '0');
+  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const monthName = months[expiryDate.getMonth()];
+  const year = expiryDate.getFullYear();
+  const formattedExpiryDate = `${day} ${monthName} ${year}`;
+
   const hasAnyFramed = Boolean(framedGif || framedStatic);
   const hasAnyRaw = raw.length > 0 || Boolean(rawGif);
-  const waitingForAssets = photoCount === 0 || !hasAnyFramed || !hasAnyRaw;
+
+  const waitingForAssets =
+    photoCount === 0 ||
+    !framedStatic ||
+    !framedGif ||
+    raw.length === 0 ||
+    !rawGif;
+
+  const isWithinRefreshWindow = Date.now() < refreshUntil;
   const shouldRefreshWhileProcessing =
-    !selectedPhoto && waitingForAssets;
+    !selectedPhoto && waitingForAssets && isWithinRefreshWindow;
 
   return (
     <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10">
@@ -123,6 +140,15 @@ export default async function SharedGalleryPage({
             Simpan foto dengan frame atau unduh setiap foto original dari sesi
             POSKART ini.
           </p>
+          <div className="mx-auto mt-4 flex justify-center">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-600/20">
+              <span className="relative flex size-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full size-1.5 bg-amber-500"></span>
+              </span>
+              Tautan ini aktif selama 7 hari (sampai {formattedExpiryDate})
+            </span>
+          </div>
         </section>
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
@@ -163,6 +189,21 @@ export default async function SharedGalleryPage({
                     Download GIF
                   </a>
                 </div>
+              </div>
+            )}
+
+            {!framedGif && framedStatic && isWithinRefreshWindow && (
+              <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/30 p-6 md:p-8 flex flex-col items-center justify-center text-center min-h-[240px]">
+                <div className="relative flex items-center justify-center mb-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-zinc-200 border-t-zinc-800" />
+                  <span className="absolute text-[8px] font-bold uppercase tracking-wider text-zinc-600">GIF</span>
+                </div>
+                <p className="text-sm font-semibold text-zinc-800">
+                  Frame Animasi (GIF) Sedang Diproses
+                </p>
+                <p className="mt-1 text-xs text-zinc-500 max-w-xs leading-relaxed">
+                  Foto sedang dirangkai menjadi animasi GIF. Halaman akan memuat ulang otomatis ketika siap.
+                </p>
               </div>
             )}
 
@@ -257,6 +298,20 @@ export default async function SharedGalleryPage({
                 >
                   <Download className="size-4" />
                 </a>
+              </div>
+            )}
+
+            {!rawGif && raw.length > 0 && isWithinRefreshWindow && (
+              <div className="mt-5 flex items-center gap-3 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/30 p-3 text-zinc-500">
+                <div className="size-5 shrink-0 rounded-full border border-zinc-300 border-t-zinc-700 animate-spin" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-zinc-750">
+                    Animasi Original (GIF) Sedang Diproses
+                  </p>
+                  <p className="text-[10px] text-zinc-500">
+                    Sedang diunggah ke server...
+                  </p>
+                </div>
               </div>
             )}
 
