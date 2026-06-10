@@ -69,17 +69,27 @@ export async function GalleryPage() {
     Map<string, { label: string; sessions: GallerySessionRow[] }>
   >((groups, session) => {
     const date = new Date(session.created_at);
-    const key = [
-      date.getFullYear(),
-      String(date.getMonth() + 1).padStart(2, "0"),
-      String(date.getDate()).padStart(2, "0"),
-    ].join("-");
+    
+    // Get year, month, day in Asia/Jakarta timezone
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+    
+    const year = parts.find((p) => p.type === "year")?.value || "1970";
+    const month = parts.find((p) => p.type === "month")?.value || "01";
+    const day = parts.find((p) => p.type === "day")?.value || "01";
+    const key = `${year}-${month}-${day}`;
+
     const existing = groups.get(key);
     if (existing) {
       existing.sessions.push(session);
     } else {
       groups.set(key, {
         label: new Intl.DateTimeFormat("id-ID", {
+          timeZone: "Asia/Jakarta",
           weekday: "long",
           day: "numeric",
           month: "long",
@@ -157,6 +167,7 @@ export async function GalleryPage() {
                         </h3>
                         <p className="mt-0.5 text-[11px] text-zinc-500">
                           {new Intl.DateTimeFormat("id-ID", {
+                            timeZone: "Asia/Jakarta",
                             hour: "2-digit",
                             minute: "2-digit",
                           }).format(new Date(session.created_at))}

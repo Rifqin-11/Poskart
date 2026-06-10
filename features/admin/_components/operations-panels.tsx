@@ -3475,6 +3475,7 @@ type SettingsForm = {
   booth_timeout_seconds: number;
   // Media
   download_expiry_hours: number;
+  gallery_retention_days: number;
   storage_provider: string;
   watermark_enabled: boolean;
   // System
@@ -3496,6 +3497,7 @@ const DEFAULT_SETTINGS_FORM: SettingsForm = {
   printer_name: "POSKART-THERMAL-01",
   booth_timeout_seconds: 90,
   download_expiry_hours: 72,
+  gallery_retention_days: 30,
   storage_provider: "Supabase Storage",
   watermark_enabled: true,
   maintenance_mode: false,
@@ -3529,6 +3531,7 @@ export function SettingsPanel() {
         printer_name: config.printer_name ?? "POSKART-THERMAL-01",
         booth_timeout_seconds: config.booth_timeout_seconds ?? 90,
         download_expiry_hours: config.download_expiry_hours ?? 72,
+        gallery_retention_days: config.gallery_retention_days ?? 30,
         storage_provider: config.storage_provider ?? "Supabase Storage",
         watermark_enabled: config.watermark_enabled ?? true,
         maintenance_mode: config.maintenance_mode ?? false,
@@ -3556,6 +3559,7 @@ export function SettingsPanel() {
         printer_name: form.printer_name,
         booth_timeout_seconds: form.booth_timeout_seconds,
         download_expiry_hours: form.download_expiry_hours,
+        gallery_retention_days: form.gallery_retention_days,
         storage_provider: form.storage_provider,
         watermark_enabled: form.watermark_enabled,
         maintenance_mode: form.maintenance_mode,
@@ -3688,7 +3692,7 @@ export function SettingsPanel() {
                 Expiration, watermark, and storage provider.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-3">
+            <CardContent className="grid gap-3 md:grid-cols-4">
               <label className="block text-xs font-medium text-zinc-600">
                 Download expiry (hours)
                 <Input
@@ -3701,6 +3705,22 @@ export function SettingsPanel() {
                     setForm((f) => ({
                       ...f,
                       download_expiry_hours: Number(e.target.value),
+                    }))
+                  }
+                />
+              </label>
+              <label className="block text-xs font-medium text-zinc-600">
+                Gallery retention (days)
+                <Input
+                  className="mt-1"
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={form.gallery_retention_days}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      gallery_retention_days: Number(e.target.value),
                     }))
                   }
                 />

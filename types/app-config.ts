@@ -40,6 +40,7 @@ export type AppConfigRow = {
   booth_timeout_seconds: number;
   // Media
   download_expiry_hours: number;
+  gallery_retention_days: number;
   storage_provider: string;
   watermark_enabled: boolean;
   // System

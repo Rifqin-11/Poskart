@@ -42,6 +42,7 @@ function csvCell(value: string | number) {
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
@@ -49,9 +50,15 @@ function formatDate(value: string) {
 
 function getLocalDateKey(value: string) {
   const date = new Date(value);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((p) => p.type === "year")?.value || "1970";
+  const month = parts.find((p) => p.type === "month")?.value || "01";
+  const day = parts.find((p) => p.type === "day")?.value || "01";
   return `${year}-${month}-${day}`;
 }
 

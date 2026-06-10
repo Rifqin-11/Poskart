@@ -7,7 +7,7 @@ const SELECT_COLUMNS =
   "id,merchant_name,qris_payload_prefix,share_base_url,countdown_duration_seconds,flash_duration_ms,auto_return_duration_seconds,default_template_id," +
   "qris_provider_merchant_id,qris_webhook_secret,qris_auto_retry,subscription_payment_gateway," +
   "printer_name,booth_timeout_seconds," +
-  "download_expiry_hours,storage_provider,watermark_enabled," +
+  "download_expiry_hours,gallery_retention_days,storage_provider,watermark_enabled," +
   "maintenance_mode,updated_at";
 
 async function getAppConfig(): Promise<AppConfigRow | null> {
