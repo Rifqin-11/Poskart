@@ -12,7 +12,7 @@ import {
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { createPosSale, deletePosSale } from "@/app/(admin)/pos/actions";
+import { createPosSale, deletePosSale, deletePosSales } from "@/app/(admin)/pos/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -82,6 +82,7 @@ export function PosDashboard({
   const [selectedDate, setSelectedDate] = useState(
     () => getLocalDateKey(new Date().toISOString()),
   );
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const hasPackages = packages.length > 0;
 
   const filteredSales = useMemo(() => {
@@ -170,11 +171,35 @@ export function PosDashboard({
           }
 
           toast.success("Transaksi berhasil dihapus.");
+          setSelectedIds((prev) => prev.filter((id) => id !== sale.id));
           router.refresh();
         });
       },
     });
   }
+
+  function handleDeleteSelected() {
+    confirmDelete.confirm({
+      title: "Hapus transaksi terpilih?",
+      description: `Apakah Anda yakin ingin menghapus ${selectedIds.length} transaksi POS yang dipilih? Data tidak dapat dikembalikan.`,
+      confirmLabel: "Hapus Semua",
+      destructive: true,
+      onConfirm: () => {
+        startTransition(async () => {
+          const result = await deletePosSales(selectedIds);
+          if (!result.success) {
+            toast.error(result.error ?? "Transaksi gagal dihapus.");
+            return;
+          }
+
+          toast.success("Transaksi berhasil dihapus.");
+          setSelectedIds([]);
+          router.refresh();
+        });
+      },
+    });
+  }
+
 
   return (
     <div className="space-y-6">
@@ -351,11 +376,24 @@ export function PosDashboard({
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <CardTitle>Riwayat penjualan</CardTitle>
-                <CardDescription className="mt-1">
-                  Data terbaru ditampilkan paling atas.
-                </CardDescription>
+              <div className="flex items-center justify-between lg:justify-start gap-4">
+                <div>
+                  <CardTitle>Riwayat penjualan</CardTitle>
+                  <CardDescription className="mt-1">
+                    Data terbaru ditampilkan paling atas.
+                  </CardDescription>
+                </div>
+                {selectedIds.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={handleDeleteSelected}
+                    className="flex items-center gap-1.5 animate-in fade-in duration-200"
+                    disabled={isPending}
+                  >
+                    <Trash2 className="size-3.5" /> Hapus Terpilih ({selectedIds.length})
+                  </Button>
+                )}
               </div>
               <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px_150px]">
                 <div className="relative">
@@ -399,6 +437,27 @@ export function PosDashboard({
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <input
+                          type="checkbox"
+                          className="size-4 rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950 accent-zinc-950 cursor-pointer"
+                          checked={filteredSales.length > 0 && filteredSales.every((t) => selectedIds.includes(t.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedIds((prev) => {
+                                const newIds = [...prev];
+                                filteredSales.forEach((t) => {
+                                  if (!newIds.includes(t.id)) newIds.push(t.id);
+                                });
+                                return newIds;
+                              });
+                            } else {
+                              setSelectedIds((prev) => prev.filter((id) => !filteredSales.some((t) => t.id === id)));
+                            }
+                          }}
+                          aria-label="Pilih semua transaksi POS"
+                        />
+                      </TableHead>
                       <TableHead>Waktu</TableHead>
                       <TableHead>Paket</TableHead>
                       <TableHead>Catatan</TableHead>
@@ -409,7 +468,22 @@ export function PosDashboard({
                   </TableHeader>
                   <TableBody>
                     {filteredSales.map((sale) => (
-                      <TableRow key={sale.id}>
+                      <TableRow key={sale.id} className={selectedIds.includes(sale.id) ? "bg-zinc-50/60" : ""}>
+                        <TableCell className="w-12">
+                          <input
+                            type="checkbox"
+                            className="size-4 rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950 accent-zinc-950 cursor-pointer"
+                            checked={selectedIds.includes(sale.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds((prev) => [...prev, sale.id]);
+                              } else {
+                                setSelectedIds((prev) => prev.filter((id) => id !== sale.id));
+                              }
+                            }}
+                            aria-label={`Pilih transaksi POS ${sale.id.slice(0, 8)}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="whitespace-nowrap text-sm">
                             {formatDate(sale.createdAt)}

@@ -90,6 +90,7 @@ import {
   useTransactions,
   useUpdateTransaction,
   useDeleteTransaction,
+  useDeleteTransactions,
 } from "@/features/admin/transactions/use-transactions";
 import {
   useLayoutSchemas,
@@ -679,11 +680,14 @@ export function TransactionsMonitoring() {
   const { data = [] } = useTransactions();
   const updateTransaction = useUpdateTransaction();
   const deleteTransaction = useDeleteTransaction();
+  const deleteTransactions = useDeleteTransactions();
+  const confirmDelete = useConfirmDialog();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editForm, setEditForm] = useState<TransactionEditForm>({
     booth: "",
     location: "",
@@ -739,11 +743,31 @@ export function TransactionsMonitoring() {
   async function handleDelete(id: string) {
     await deleteTransaction.mutateAsync(id);
     toast.success("Transaction deleted");
+    setSelectedIds((prev) => prev.filter((item) => item !== id));
     setDeletingId(null);
+  }
+
+  function handleDeleteSelected() {
+    confirmDelete.confirm({
+      title: "Hapus transaksi terpilih?",
+      description: `Apakah Anda yakin ingin menghapus ${selectedIds.length} transaksi yang dipilih? Data tidak dapat dikembalikan.`,
+      confirmLabel: "Hapus Semua",
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          await deleteTransactions.mutateAsync(selectedIds);
+          toast.success(`${selectedIds.length} transaksi berhasil dihapus`);
+          setSelectedIds([]);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Gagal menghapus transaksi");
+        }
+      },
+    });
   }
 
   return (
     <div>
+      {confirmDelete.dialog}
       <PageHeader
         title="Transaction & QRIS Monitoring"
         description="Track live payments, failed logs, manual verification, retry, and refund tools."
@@ -849,24 +873,36 @@ export function TransactionsMonitoring() {
 
       <Card>
         <CardHeader>
-          <div className="grid gap-3 md:grid-cols-3">
-            <Input
-              placeholder="Search by ID, device, customer…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="all">All status</option>
-              <option value="paid">Paid</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-              <option value="refunded">Refunded</option>
-            </Select>
-            <div className="text-xs text-zinc-500 flex items-center">
-              {filtered.length} of {data.length} transactions
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-1 gap-3 max-w-xl">
+              <Input
+                placeholder="Search by ID, device, customer…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All status</option>
+                <option value="paid">Paid</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+                <option value="refunded">Refunded</option>
+              </Select>
+            </div>
+            <div className="text-xs text-zinc-500 flex items-center gap-4">
+              <span>{filtered.length} of {data.length} transactions</span>
+              {selectedIds.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleDeleteSelected}
+                  className="flex items-center gap-1.5 animate-in fade-in duration-200"
+                >
+                  <Trash2 className="size-3.5" /> Hapus Terpilih ({selectedIds.length})
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -874,6 +910,27 @@ export function TransactionsMonitoring() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950 accent-zinc-900 cursor-pointer"
+                    checked={filtered.length > 0 && filtered.every((t) => selectedIds.includes(t.id))}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedIds((prev) => {
+                          const newIds = [...prev];
+                          filtered.forEach((t) => {
+                            if (!newIds.includes(t.id)) newIds.push(t.id);
+                          });
+                          return newIds;
+                        });
+                      } else {
+                        setSelectedIds((prev) => prev.filter((id) => !filtered.some((t) => t.id === id)));
+                      }
+                    }}
+                    aria-label="Pilih semua transaksi"
+                  />
+                </TableHead>
                 <TableHead>ID</TableHead>
                 <TableHead>Device</TableHead>
                 <TableHead>Location</TableHead>
@@ -885,7 +942,22 @@ export function TransactionsMonitoring() {
             </TableHeader>
             <TableBody>
               {filtered.map((transaction: Transaction) => (
-                <TableRow key={transaction.id}>
+                <TableRow key={transaction.id} className={selectedIds.includes(transaction.id) ? "bg-zinc-50/60" : ""}>
+                  <TableCell className="w-12">
+                    <input
+                      type="checkbox"
+                      className="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950 accent-zinc-900 cursor-pointer"
+                      checked={selectedIds.includes(transaction.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds((prev) => [...prev, transaction.id]);
+                        } else {
+                          setSelectedIds((prev) => prev.filter((id) => id !== transaction.id));
+                        }
+                      }}
+                      aria-label={`Pilih transaksi ${transaction.id.slice(0, 8)}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-mono text-xs">
                     {transaction.id}
                   </TableCell>
@@ -967,7 +1039,7 @@ export function TransactionsMonitoring() {
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-sm text-zinc-400">
+                  <TableCell colSpan={8} className="py-10 text-center text-sm text-zinc-400">
                     No transactions found.
                   </TableCell>
                 </TableRow>
