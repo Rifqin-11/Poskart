@@ -140,7 +140,10 @@ function HotspotOverlay({ node }: { node: BuilderNode }) {
   const padV = Math.max(3, Math.round(canvas.width * 0.004));
   const borderW = Math.max(2, Math.round(canvas.width * 0.003));
 
-  const isQr = node.type === "qr" || node.type === "qr-link" || node.type === "qr-placeholder";
+  const isQr =
+    node.type === "qr" ||
+    node.type === "qr-link" ||
+    node.type === "qr-placeholder";
   const radius = readNumber(node.props.radius, 4);
 
   return (
@@ -362,14 +365,18 @@ function NodeRenderer({
           {roleLabel ? (
             <span
               className="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-zinc-950/80 px-1.5 py-0.5 font-mono text-white"
-              style={{ fontSize: Math.max(9, Math.round(canvas.width * 0.009)) }}
+              style={{
+                fontSize: Math.max(9, Math.round(canvas.width * 0.009)),
+              }}
             >
               {role}
             </span>
           ) : (
             <span
               className="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-amber-500/90 px-1.5 py-0.5 font-mono text-white"
-              style={{ fontSize: Math.max(9, Math.round(canvas.width * 0.009)) }}
+              style={{
+                fontSize: Math.max(9, Math.round(canvas.width * 0.009)),
+              }}
             >
               ⚠ no role set
             </span>
@@ -425,10 +432,16 @@ function NodeRenderer({
 
   if (node.type === "qr-link") {
     const scale = node.height / 48;
-    const label = readString(node.props.label, "https://poskart.my.id/s/MQ6V8EJW-4TSQZ");
+    const label = readString(
+      node.props.label,
+      "https://poskart.my.id/s/MQ6V8EJW-4TSQZ",
+    );
     const fontSize = readNumber(node.props.fontSize, 12);
     const qrBgColor = readString(node.props.qrBgColor, "#ffffff");
-    const qrTextColor = readString(node.props.qrTextColor ?? node.props.color, "#3b82f6");
+    const qrTextColor = readString(
+      node.props.qrTextColor ?? node.props.color,
+      "#3b82f6",
+    );
 
     return (
       <div
@@ -454,7 +467,10 @@ function NodeRenderer({
   if (node.type === "qr") {
     const qrColor = readString(node.props.qrColor, "#000000");
     const qrBgColor = readString(node.props.qrBgColor, "#ffffff");
-    const qrTextColor = readString(node.props.qrTextColor ?? node.props.color, "#27272a");
+    const qrTextColor = readString(
+      node.props.qrTextColor ?? node.props.color,
+      "#27272a",
+    );
     const showQrLink = node.props.showQrLink !== false;
     const sampleUrl = "https://poskart.my.id/s/MQ6V8EJW-4TSQZ";
 
@@ -468,7 +484,10 @@ function NodeRenderer({
         }}
       >
         {/* QR code locked to 1:1 aspect ratio, fills available height */}
-        <div className="flex-1 w-full flex items-center justify-center" style={{ minHeight: 0 }}>
+        <div
+          className="flex-1 w-full flex items-center justify-center"
+          style={{ minHeight: 0 }}
+        >
           <div className="aspect-square h-full max-h-full">
             <QRCodeSVG
               value={sampleUrl}
@@ -575,7 +594,10 @@ function NodeRenderer({
           fontFamily: "'Manrope', 'Outfit', 'Inter', sans-serif",
         }}
       >
-        <div className="flex w-full items-center justify-between" style={{ marginBottom: 10 * scale }}>
+        <div
+          className="flex w-full items-center justify-between"
+          style={{ marginBottom: 10 * scale }}
+        >
           <span
             style={{
               fontSize: 13 * scale,
@@ -769,7 +791,10 @@ function NodeRenderer({
   if (node.type === "qr-placeholder") {
     const qrColor = readString(node.props.qrColor, "#000000");
     const qrBgColor = readString(node.props.qrBgColor, "#ffffff");
-    const qrTextColor = readString(node.props.qrTextColor ?? node.props.color, "#27272a");
+    const qrTextColor = readString(
+      node.props.qrTextColor ?? node.props.color,
+      "#27272a",
+    );
     // Realistic-looking QR placeholder — no real data, just visual structure
     return (
       <div
@@ -815,7 +840,8 @@ function NodeRenderer({
                 key={i}
                 className="aspect-square rounded-[1px]"
                 style={{
-                  backgroundColor: (i * 7 + i) % 5 === 0 ? qrColor : "rgba(0,0,0,0.05)",
+                  backgroundColor:
+                    (i * 7 + i) % 5 === 0 ? qrColor : "rgba(0,0,0,0.05)",
                 }}
               />
             ))}
@@ -1001,9 +1027,10 @@ function SortableLayer({ node }: { node: BuilderNode }) {
     "background-decoration": "bg-zinc-100 text-zinc-500",
     background: "bg-amber-100 text-amber-700",
   };
-  const badgeClass = node.id === "page-background"
-    ? "bg-amber-100 text-amber-700"
-    : (TYPE_COLORS[node.type] ?? "bg-zinc-100 text-zinc-500");
+  const badgeClass =
+    node.id === "page-background"
+      ? "bg-amber-100 text-amber-700"
+      : (TYPE_COLORS[node.type] ?? "bg-zinc-100 text-zinc-500");
 
   return (
     <div
@@ -2080,7 +2107,8 @@ function PropertiesPanel({
                 updateNodeProps(selectedNode.id, { qrBgColor: v })
               }
             />
-            {(selectedNode.type === "qr-link" || selectedNode.props.showQrLink !== false) && (
+            {(selectedNode.type === "qr-link" ||
+              selectedNode.props.showQrLink !== false) && (
               <ColorField
                 label="QR Link Text Color"
                 value={readString(
@@ -2111,8 +2139,12 @@ function PropertiesPanel({
             {selectedNode.type !== "qr-link" && (
               <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-100 bg-zinc-50 p-2.5">
                 <div>
-                  <span className="block text-xs font-medium text-zinc-700">Show QR Link</span>
-                  <span className="block text-[10px] text-zinc-400">Display the text link below the QR code.</span>
+                  <span className="block text-xs font-medium text-zinc-700">
+                    Show QR Link
+                  </span>
+                  <span className="block text-[10px] text-zinc-400">
+                    Display the text link below the QR code.
+                  </span>
                 </div>
                 <Switch
                   checked={selectedNode.props.showQrLink !== false}
@@ -2461,7 +2493,7 @@ function CanvasControls() {
         <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">
           <Film className="size-3.5" /> Page Transitions
         </div>
-        
+
         <label className="block text-xs font-medium text-zinc-500">
           Transition Effect
           <Select
@@ -2522,9 +2554,7 @@ function CanvasControls() {
       {/* App background */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-xs font-medium text-zinc-500">
-            Background
-          </div>
+          <div className="text-xs font-medium text-zinc-500">Background</div>
           <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-mono text-zinc-500 capitalize">
             {activePage}
           </span>
@@ -2637,7 +2667,6 @@ function CanvasControls() {
           onChange={(value) => updateCanvas({ backgroundColor: value })}
         />
       )}
-
     </PanelSection>
   );
 }
@@ -2741,10 +2770,7 @@ function BuilderContextMenu({
           >
             <button
               type="button"
-              className={cn(
-                itemClass,
-                layerHover && "bg-zinc-100",
-              )}
+              className={cn(itemClass, layerHover && "bg-zinc-100")}
             >
               <Layers className="size-3.5" />
               Layer order
@@ -2757,19 +2783,35 @@ function BuilderContextMenu({
                 <div className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
                   Layer order
                 </div>
-                <button type="button" className={itemClass} onClick={onBringToFront}>
+                <button
+                  type="button"
+                  className={itemClass}
+                  onClick={onBringToFront}
+                >
                   <BringToFront className="size-3.5" />
                   Bring to front
                 </button>
-                <button type="button" className={itemClass} onClick={onBringForward}>
+                <button
+                  type="button"
+                  className={itemClass}
+                  onClick={onBringForward}
+                >
                   <ArrowUpToLine className="size-3.5" />
                   Bring forward
                 </button>
-                <button type="button" className={itemClass} onClick={onSendBackward}>
+                <button
+                  type="button"
+                  className={itemClass}
+                  onClick={onSendBackward}
+                >
                   <ArrowDownToLine className="size-3.5" />
                   Send backward
                 </button>
-                <button type="button" className={itemClass} onClick={onSendToBack}>
+                <button
+                  type="button"
+                  className={itemClass}
+                  onClick={onSendToBack}
+                >
                   <SendToBack className="size-3.5" />
                   Send to back
                 </button>
@@ -2781,15 +2823,19 @@ function BuilderContextMenu({
 
           {/* Visibility / Lock */}
           <button type="button" className={itemClass} onClick={onToggleVisible}>
-            {node.visible
-              ? <EyeOff className="size-3.5" />
-              : <Eye className="size-3.5" />}
+            {node.visible ? (
+              <EyeOff className="size-3.5" />
+            ) : (
+              <Eye className="size-3.5" />
+            )}
             {node.visible ? "Hide" : "Show"}
           </button>
           <button type="button" className={itemClass} onClick={onToggleLock}>
-            {node.locked
-              ? <Unlock className="size-3.5" />
-              : <Lock className="size-3.5" />}
+            {node.locked ? (
+              <Unlock className="size-3.5" />
+            ) : (
+              <Lock className="size-3.5" />
+            )}
             {node.locked ? "Unlock" : "Lock"}
           </button>
 
@@ -2820,19 +2866,24 @@ function BuilderContextMenu({
           <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
             Add component
           </div>
-          {(["text", "button", "image", "background-decoration"] as BuilderComponentType[]).map(
-            (type) => (
-              <button
-                key={type}
-                type="button"
-                className={itemClass}
-                onClick={() => onAddNode(type)}
-              >
-                <Plus className="size-3.5" />
-                {type}
-              </button>
-            ),
-          )}
+          {(
+            [
+              "text",
+              "button",
+              "image",
+              "background-decoration",
+            ] as BuilderComponentType[]
+          ).map((type) => (
+            <button
+              key={type}
+              type="button"
+              className={itemClass}
+              onClick={() => onAddNode(type)}
+            >
+              <Plus className="size-3.5" />
+              {type}
+            </button>
+          ))}
         </>
       )}
 
@@ -2848,7 +2899,6 @@ function BuilderContextMenu({
     </div>
   );
 }
-
 
 export function VisualBuilder() {
   const sensors = useSensors(useSensor(PointerSensor));
@@ -3001,7 +3051,12 @@ export function VisualBuilder() {
   const setFullView = useBuilderStore((s) => s.setBuilderFullView);
 
   // Reset full-view when leaving the builder page
-  useEffect(() => () => { setFullView(false); }, [setFullView]);
+  useEffect(
+    () => () => {
+      setFullView(false);
+    },
+    [setFullView],
+  );
   // ── Zoom / Pan ────────────────────────────────────────────
   const [zoom, setZoom] = useState(0.35);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -3484,7 +3539,17 @@ export function VisualBuilder() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [deleteSelected, deleteNode, selectedNode, selectedIds, selectedId, copyNode, cutNode, pasteNode, duplicateNode]);
+  }, [
+    deleteSelected,
+    deleteNode,
+    selectedNode,
+    selectedIds,
+    selectedId,
+    copyNode,
+    cutNode,
+    pasteNode,
+    duplicateNode,
+  ]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     if (!event.over || event.active.id === event.over.id) return;
@@ -3539,8 +3604,8 @@ export function VisualBuilder() {
       className={cn(
         "flex flex-col overflow-hidden",
         fullView
-          ? "fixed inset-0 z-[100]"  /* cover everything — shell is hidden */
-          : "-mx-4 -my-6 lg:-mx-8",  /* cancel main padding as before */
+          ? "fixed inset-0 z-[100]" /* cover everything — shell is hidden */
+          : "-mx-4 -my-6 lg:-mx-8" /* cancel main padding as before */,
       )}
       style={{ height: fullView ? "100vh" : "calc(100vh - 4rem)" }}
     >
@@ -3629,10 +3694,13 @@ export function VisualBuilder() {
         <button
           className={cn(
             toolbarBtn,
-            fullView && "bg-zinc-900 text-white hover:bg-zinc-700 hover:text-white",
+            fullView &&
+              "bg-zinc-900 text-white hover:bg-zinc-700 hover:text-white",
           )}
           onClick={() => setFullView(!fullView)}
-          title={fullView ? "Exit full view (Esc)" : "Full view — hide sidebars"}
+          title={
+            fullView ? "Exit full view (Esc)" : "Full view — hide sidebars"
+          }
         >
           {fullView ? (
             <Minimize2 className="size-3.5" />
@@ -3742,12 +3810,11 @@ export function VisualBuilder() {
           )}
 
           {/* Generic empty-state hint */}
-          {activePage !== "template" &&
-            layersList.length === 0 && (
-              <div className="mx-2 mb-2 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-[10px] text-zinc-500">
-                No layers yet — add a component below.
-              </div>
-            )}
+          {activePage !== "template" && layersList.length === 0 && (
+            <div className="mx-2 mb-2 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-[10px] text-zinc-500">
+              No layers yet — add a component below.
+            </div>
+          )}
           <ScrollArea className="flex-1">
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
               <SortableContext
@@ -3771,21 +3838,21 @@ export function VisualBuilder() {
               {PAGE_COMPONENTS[activePage]
                 .filter((type) => !(isOverlayMode && type === "text"))
                 .map((type) => {
-                const meta = COMPONENT_META[type];
-                const Icon = meta.icon;
-                return (
-                  <button
-                    key={type}
-                    onClick={() => addNode(type)}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
-                  >
-                    <span className="flex size-4 shrink-0 items-center justify-center text-[11px] text-zinc-400">
-                      <Icon className="size-3.5" />
-                    </span>
-                    <span>{meta.label}</span>
-                  </button>
-                );
-              })}
+                  const meta = COMPONENT_META[type];
+                  const Icon = meta.icon;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => addNode(type)}
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
+                    >
+                      <span className="flex size-4 shrink-0 items-center justify-center text-[11px] text-zinc-400">
+                        <Icon className="size-3.5" />
+                      </span>
+                      <span>{meta.label}</span>
+                    </button>
+                  );
+                })}
             </div>
           </div>
         </aside>
@@ -3903,7 +3970,10 @@ export function VisualBuilder() {
                     muted
                     playsInline
                     className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-                    style={{ zIndex: canvas.pageBackgrounds?.[activePage]?.zIndex ?? 1, borderRadius: 28 }}
+                    style={{
+                      zIndex: canvas.pageBackgrounds?.[activePage]?.zIndex ?? 1,
+                      borderRadius: 28,
+                    }}
                   />
                 ) : null}
 
@@ -4044,7 +4114,6 @@ export function VisualBuilder() {
                       </>
                     );
                   })()}
-
 
                 {visibleNodes.map((node) =>
                   node.visible ? (
@@ -4190,7 +4259,9 @@ export function VisualBuilder() {
             contextNode && runContextAction(() => copyNode(contextNode.id))
           }
           onCut={() =>
-            contextNode && !contextNode.locked && runContextAction(() => cutNode(contextNode.id))
+            contextNode &&
+            !contextNode.locked &&
+            runContextAction(() => cutNode(contextNode.id))
           }
           onPaste={() => runContextAction(() => pasteNode())}
           onEditText={() =>

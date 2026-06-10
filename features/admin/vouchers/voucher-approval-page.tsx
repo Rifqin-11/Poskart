@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useBooths, useUpdateBooth } from "@/features/admin/devices/use-devices";
+import {
+  useBooths,
+  useUpdateBooth,
+} from "@/features/admin/devices/use-devices";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
 import type { Device } from "@/types/device";
 import {
@@ -57,11 +60,11 @@ export function VoucherApproval() {
 
   // Filter devices that are currently waiting for vouchers
   const waitingDevices = devices.filter(
-    (d) => d.location === "WAITING_VOUCHER"
+    (d: Device) => d.location === "WAITING_VOUCHER",
   );
 
   // Filter other devices (not waiting)
-  const otherDevices = devices.filter((d) => {
+  const otherDevices = devices.filter((d: Device) => {
     const matchSearch =
       !search ||
       d.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -83,7 +86,9 @@ export function VoucherApproval() {
       toast.success(`Voucher approved and sent to ${selectedDevice.name}`);
       setSelectedDevice(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send voucher");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to send voucher",
+      );
     }
   };
 
@@ -151,7 +156,7 @@ export function VoucherApproval() {
 
         {waitingDevices.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2">
-            {waitingDevices.map((device) => (
+            {waitingDevices.map((device: Device) => (
               <Card
                 key={device.id}
                 className="relative overflow-hidden border-yellow-200 bg-yellow-50/20 shadow-sm transition-all"
@@ -169,7 +174,10 @@ export function VoucherApproval() {
                         Kiosk is waiting for voucher activation
                       </CardDescription>
                     </div>
-                    <Badge variant="warning" className="animate-pulse bg-yellow-100 text-yellow-800 border-yellow-200">
+                    <Badge
+                      variant="warning"
+                      className="animate-pulse bg-yellow-100 text-yellow-800 border-yellow-200"
+                    >
                       Waiting Voucher
                     </Badge>
                   </div>
@@ -178,7 +186,9 @@ export function VoucherApproval() {
                   <div className="flex items-center gap-3 text-sm text-zinc-600 bg-white/70 border border-yellow-100/50 rounded-lg p-3">
                     <AlertCircle className="size-5 text-yellow-600 shrink-0" />
                     <div>
-                      A user on this device selected <strong>Gunakan Voucher</strong>. Tap approve to allow them to proceed.
+                      A user on this device selected{" "}
+                      <strong>Gunakan Voucher</strong>. Tap approve to allow
+                      them to proceed.
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -214,9 +224,12 @@ export function VoucherApproval() {
           <Card className="border-dashed border-zinc-200 bg-zinc-50/50">
             <CardContent className="flex flex-col items-center justify-center py-10 text-center text-zinc-500">
               <CheckCircle className="size-10 text-emerald-500 mb-3" />
-              <div className="font-semibold text-zinc-800">All Devices Clear</div>
+              <div className="font-semibold text-zinc-800">
+                All Devices Clear
+              </div>
               <p className="text-xs text-zinc-500 mt-1 max-w-sm">
-                No active voucher approval requests. When a kiosk enters the voucher sheet, it will appear here in real time.
+                No active voucher approval requests. When a kiosk enters the
+                voucher sheet, it will appear here in real time.
               </p>
             </CardContent>
           </Card>
@@ -246,10 +259,13 @@ export function VoucherApproval() {
           </div>
         ) : otherDevices.length > 0 ? (
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {otherDevices.map((device) => {
+            {otherDevices.map((device: Device) => {
               const isOnline = device.status === "online";
               return (
-                <Card key={device.id} className="bg-white hover:border-zinc-300 transition-all">
+                <Card
+                  key={device.id}
+                  className="bg-white hover:border-zinc-300 transition-all"
+                >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -261,8 +277,8 @@ export function VoucherApproval() {
                           device.status === "online"
                             ? "success"
                             : device.status === "maintenance"
-                            ? "warning"
-                            : "destructive"
+                              ? "warning"
+                              : "destructive"
                         }
                       >
                         {device.status}

@@ -209,7 +209,8 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
             </h2>
             <p className="mt-5 max-w-lg text-base leading-8 text-zinc-500">
               Customer memilih paket, booth mengambil foto, menampilkan preview,
-              menerima pembayaran, lalu operator bisa langsung mencetak hasilnya.
+              menerima pembayaran, lalu operator bisa langsung mencetak
+              hasilnya.
             </p>
           </div>
           <div className="order-1 lg:order-2">
@@ -235,13 +236,18 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
                 </div>
                 <div className="space-y-4 rounded-[1.7rem] bg-white p-4">
                   {sessionSteps.map(({ title, description, icon: Icon }) => (
-                    <div key={title} className="flex items-center gap-4 rounded-2xl border border-zinc-100 p-4">
+                    <div
+                      key={title}
+                      className="flex items-center gap-4 rounded-2xl border border-zinc-100 p-4"
+                    >
                       <span className="grid size-11 place-items-center rounded-2xl bg-orange-50 text-orange-600">
                         <Icon className="size-5" />
                       </span>
                       <div>
                         <p className="text-sm font-semibold">{title}</p>
-                        <p className="mt-1 text-xs text-zinc-500">{description}</p>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {description}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -265,7 +271,10 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
             />
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               {["Landing", "Camera", "Thanks"].map((label) => (
-                <div key={label} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
+                <div
+                  key={label}
+                  className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4"
+                >
                   <div className="mb-3 flex aspect-video items-center justify-center rounded-xl bg-white">
                     <ImageIcon className="size-5 text-rose-500" />
                   </div>
@@ -284,14 +293,20 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
             </h2>
             <p className="mt-5 max-w-lg text-base leading-8 text-zinc-500">
               Susun halaman landing, kamera, preview, dan selesai dari builder.
-              Saat layout dipublish, perangkat booth memakai konfigurasi yang sama.
+              Saat layout dipublish, perangkat booth memakai konfigurasi yang
+              sama.
             </p>
             <div className="mt-7 flex flex-wrap gap-2">
-              {["Visual builder", "Frame template", "Publish per booth"].map((item) => (
-                <span key={item} className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-600">
-                  {item}
-                </span>
-              ))}
+              {["Visual builder", "Frame template", "Publish per booth"].map(
+                (item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-600"
+                  >
+                    {item}
+                  </span>
+                ),
+              )}
             </div>
           </div>
         </div>
@@ -324,7 +339,10 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
                 </div>
                 <div className="mt-6 space-y-3">
                   {posSalesPreview.map(({ name, price, method }) => (
-                    <div key={name} className="flex items-center justify-between rounded-2xl border border-zinc-100 p-3">
+                    <div
+                      key={name}
+                      className="flex items-center justify-between rounded-2xl border border-zinc-100 p-3"
+                    >
                       <div>
                         <p className="text-sm font-semibold">{name}</p>
                         <p className="mt-1 text-xs text-zinc-500">{method}</p>
@@ -336,7 +354,10 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
               </div>
               <div className="space-y-4">
                 {operationHighlights.map(({ title, value, icon: Icon }) => (
-                  <div key={title} className="rounded-[1.35rem] border border-white/10 bg-white/5 p-4">
+                  <div
+                    key={title}
+                    className="rounded-[1.35rem] border border-white/10 bg-white/5 p-4"
+                  >
                     <Icon className="mb-4 size-5 text-emerald-300" />
                     <p className="text-xs text-zinc-500">{title}</p>
                     <p className="mt-1 text-xl font-semibold">{value}</p>
@@ -364,7 +385,9 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
               return (
                 <article key={feature.title} className="bg-white p-7">
                   <Icon className="size-5 text-zinc-400" />
-                  <h3 className="mt-6 text-lg font-semibold">{feature.title}</h3>
+                  <h3 className="mt-6 text-lg font-semibold">
+                    {feature.title}
+                  </h3>
                   <p className="mt-3 text-sm leading-7 text-zinc-500">
                     {feature.description}
                   </p>
@@ -383,7 +406,8 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
                 Mulai dari satu booth
               </p>
               <h2 className="mt-4 max-w-2xl text-balance text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-                Aktifkan POSKART untuk booth pertama, lalu tambah perangkat saat event bertambah.
+                Aktifkan POSKART untuk booth pertama, lalu tambah perangkat saat
+                event bertambah.
               </h2>
               <p className="mt-4 text-sm leading-7 text-zinc-500">
                 {starterPlan
@@ -407,7 +431,8 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
                 href="/register"
                 className={buttonVariants({
                   size: "lg",
-                  className: "rounded-full bg-zinc-950 text-white hover:bg-zinc-800",
+                  className:
+                    "rounded-full bg-zinc-950 text-white hover:bg-zinc-800",
                 })}
               >
                 Buat akun
