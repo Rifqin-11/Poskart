@@ -446,35 +446,70 @@ function NodeRenderer({
     const qrColor = readString(node.props.qrColor, "#000000");
     const qrBgColor = readString(node.props.qrBgColor, "#ffffff");
     const qrTextColor = readString(node.props.qrTextColor ?? node.props.color, "#27272a");
+    const showQrLink = node.props.showQrLink !== false;
 
     return (
       <div
-        className="flex h-full w-full flex-col items-center justify-between border border-zinc-300 p-3 pb-6"
+        className="flex h-full w-full flex-col items-center justify-between border border-zinc-300 p-3"
         style={{
           borderRadius: readNumber(node.props.radius, 12),
           backgroundColor: qrBgColor,
           fontFamily: "'Manrope', 'Outfit', 'Inter', sans-serif",
         }}
       >
-        <div className="flex-1 w-full max-w-[120px] aspect-square flex items-center justify-center">
-          <div className="grid size-full grid-cols-4 grid-rows-4 gap-1">
-            {Array.from({ length: 16 }).map((_, index) => (
-              <span
-                key={index}
-                className="rounded-sm"
+        <div className="relative flex-1 w-full max-w-[120px] aspect-square flex items-center justify-center">
+          {/* Top-Left Finder */}
+          <div
+            className="absolute left-0 top-0 size-[26px] rounded-[3px] border-[3px]"
+            style={{ borderColor: qrColor, backgroundColor: "transparent" }}
+          >
+            <div
+              className="m-0.5 size-3 rounded-[1px]"
+              style={{ backgroundColor: qrColor }}
+            />
+          </div>
+          {/* Top-Right Finder */}
+          <div
+            className="absolute right-0 top-0 size-[26px] rounded-[3px] border-[3px]"
+            style={{ borderColor: qrColor, backgroundColor: "transparent" }}
+          >
+            <div
+              className="m-0.5 size-3 rounded-[1px]"
+              style={{ backgroundColor: qrColor }}
+            />
+          </div>
+          {/* Bottom-Left Finder */}
+          <div
+            className="absolute bottom-0 left-0 size-[26px] rounded-[3px] border-[3px]"
+            style={{ borderColor: qrColor, backgroundColor: "transparent" }}
+          >
+            <div
+              className="m-0.5 size-3 rounded-[1px]"
+              style={{ backgroundColor: qrColor }}
+            />
+          </div>
+          {/* Data Modules Grid */}
+          <div className="grid w-[60%] grid-cols-5 gap-0.5">
+            {Array.from({ length: 25 }).map((_, i) => (
+              <div
+                key={i}
+                className="aspect-square rounded-[1px]"
                 style={{
-                  backgroundColor: index % 3 === 0 ? qrColor : "rgba(0,0,0,0.05)",
+                  backgroundColor:
+                    (i * 7 + i) % 5 === 0 ? qrColor : "rgba(0,0,0,0.03)",
                 }}
               />
             ))}
           </div>
         </div>
-        <div
-          className="mt-2 w-full text-center text-[10px] font-bold truncate px-1"
-          style={{ color: qrTextColor }}
-        >
-          https://poskart.my.id/s/MQ6V8EJW-4TSQZ
-        </div>
+        {showQrLink && (
+          <div
+            className="mt-2 w-full text-center text-[10px] font-bold truncate px-1"
+            style={{ color: qrTextColor }}
+          >
+            https://poskart.my.id/s/MQ6V8EJW-4TSQZ
+          </div>
+        )}
       </div>
     );
   }
@@ -2068,16 +2103,18 @@ function PropertiesPanel({
                 updateNodeProps(selectedNode.id, { qrBgColor: v })
               }
             />
-            <ColorField
-              label="QR Link Text Color"
-              value={readString(
-                selectedNode.props.qrTextColor ?? selectedNode.props.color,
-                selectedNode.type === "qr-link" ? "#3b82f6" : "#27272a",
-              )}
-              onChange={(v) =>
-                updateNodeProps(selectedNode.id, { qrTextColor: v, color: v })
-              }
-            />
+            {(selectedNode.type === "qr-link" || selectedNode.props.showQrLink !== false) && (
+              <ColorField
+                label="QR Link Text Color"
+                value={readString(
+                  selectedNode.props.qrTextColor ?? selectedNode.props.color,
+                  selectedNode.type === "qr-link" ? "#3b82f6" : "#27272a",
+                )}
+                onChange={(v) =>
+                  updateNodeProps(selectedNode.id, { qrTextColor: v, color: v })
+                }
+              />
+            )}
             <label className="block text-xs font-medium text-zinc-500">
               Radius (Rounded)
               <Input
@@ -2094,6 +2131,26 @@ function PropertiesPanel({
                 }
               />
             </label>
+            {selectedNode.type !== "qr-link" && (
+              <label className="flex items-start gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={selectedNode.props.showQrLink !== false}
+                  onChange={(e) =>
+                    updateNodeProps(selectedNode.id, {
+                      showQrLink: e.target.checked,
+                    })
+                  }
+                />
+                <span className="text-xs font-medium text-zinc-500">
+                  Show QR Link
+                  <span className="block text-[10px] text-zinc-400">
+                    Display the text link below the QR code.
+                  </span>
+                </span>
+              </label>
+            )}
           </div>
         </PanelSection>
       )}
@@ -2226,7 +2283,9 @@ function PropertiesPanel({
 
 function CanvasControls() {
   const canvas = useBuilderStore((state) => state.canvas);
-  const selectedNode = useBuilderStore((state) => state.selectedNode);
+  const selectedId = useBuilderStore((state) => state.selectedId);
+  const nodes = useBuilderStore((state) => state.nodes);
+  const selectedNode = nodes.find((node) => node.id === selectedId);
   const activePage = useBuilderStore((state) => state.activePage);
   const updateCanvas = useBuilderStore((state) => state.updateCanvas);
   const setPageBackground = useBuilderStore((state) => state.setPageBackground);
