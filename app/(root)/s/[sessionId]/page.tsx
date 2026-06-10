@@ -52,7 +52,8 @@ export default async function SharedGalleryPage({
             Menyiapkan Momen Anda...
           </h1>
           <p className="mt-3 text-sm text-zinc-500 leading-relaxed">
-            Foto-foto sedang diunggah dengan aman ke server. Halaman ini akan memuat ulang secara otomatis dalam beberapa saat.
+            Foto-foto sedang diunggah dengan aman ke server. Halaman ini akan
+            memuat ulang secara otomatis dalam beberapa saat.
           </p>
           <div className="mt-8 flex justify-center">
             <div className="size-6 rounded-full border-2 border-zinc-200 border-t-zinc-800 animate-spin" />
@@ -68,18 +69,42 @@ export default async function SharedGalleryPage({
     .eq("session_id", sessionId)
     .order("kind", { ascending: false })
     .order("photo_index", { ascending: true });
-  const framedGif = photos?.find((photo) => photo.kind === "framed" && photo.photo_index === 1);
-  const framedStatic = photos?.find((photo) => photo.kind === "framed" && photo.photo_index === 0);
-  const raw = photos?.filter((photo) => photo.kind === "raw" && photo.photo_index !== 99) ?? [];
-  const rawGif = photos?.find((photo) => photo.kind === "raw" && photo.photo_index === 99);
+  const framedGif = photos?.find(
+    (photo) => photo.kind === "framed" && photo.photo_index === 1,
+  );
+  const framedStatic = photos?.find(
+    (photo) => photo.kind === "framed" && photo.photo_index === 0,
+  );
+  const raw =
+    photos?.filter(
+      (photo) => photo.kind === "raw" && photo.photo_index !== 99,
+    ) ?? [];
+  const rawGif = photos?.find(
+    (photo) => photo.kind === "raw" && photo.photo_index === 99,
+  );
   const selectedPhoto = photos?.find((photo) => photo.id === viewPhotoId);
   const photoCount = photos?.length ?? 0;
   const refreshUntil = new Date(session.created_at).getTime() + 120_000;
-  
+
   // Expiry date calculation (7 days after creation)
-  const expiryDate = new Date(new Date(session.created_at).getTime() + 7 * 24 * 60 * 60 * 1000);
-  const day = expiryDate.getDate().toString().padStart(2, '0');
-  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const expiryDate = new Date(
+    new Date(session.created_at).getTime() + 7 * 24 * 60 * 60 * 1000,
+  );
+  const day = expiryDate.getDate().toString().padStart(2, "0");
+  const months = [
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
+  ];
   const monthName = months[expiryDate.getMonth()];
   const year = expiryDate.getFullYear();
   const formattedExpiryDate = `${day} ${monthName} ${year}`;
@@ -118,9 +143,7 @@ export default async function SharedGalleryPage({
               <span className="block text-sm font-semibold tracking-tight">
                 {businessProfile.brandName}
               </span>
-              <span className="block text-xs text-zinc-500">
-                Photobooth OS
-              </span>
+              <span className="block text-xs text-zinc-500">Photobooth OS</span>
             </span>
           </Link>
           <span className="inline-flex items-center gap-2 text-xs font-medium text-zinc-500">
@@ -196,13 +219,16 @@ export default async function SharedGalleryPage({
               <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/30 p-6 md:p-8 flex flex-col items-center justify-center text-center min-h-[240px]">
                 <div className="relative flex items-center justify-center mb-3">
                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-zinc-200 border-t-zinc-800" />
-                  <span className="absolute text-[8px] font-bold uppercase tracking-wider text-zinc-600">GIF</span>
+                  <span className="absolute text-[8px] font-bold uppercase tracking-wider text-zinc-600">
+                    GIF
+                  </span>
                 </div>
                 <p className="text-sm font-semibold text-zinc-800">
                   Frame Animasi (GIF) Sedang Diproses
                 </p>
                 <p className="mt-1 text-xs text-zinc-500 max-w-xs leading-relaxed">
-                  Foto sedang dirangkai menjadi animasi GIF. Halaman akan memuat ulang otomatis ketika siap.
+                  Foto sedang dirangkai menjadi animasi GIF. Halaman akan memuat
+                  ulang otomatis ketika siap.
                 </p>
               </div>
             )}
@@ -248,7 +274,8 @@ export default async function SharedGalleryPage({
 
             {!framedGif && !framedStatic && (
               <div className="grid min-h-96 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center text-zinc-500">
-                Hasil foto sedang disiapkan. Halaman ini akan memperbarui otomatis.
+                Hasil foto sedang disiapkan. Halaman ini akan memperbarui
+                otomatis.
               </div>
             )}
           </section>
@@ -356,7 +383,8 @@ export default async function SharedGalleryPage({
             ) : (
               !rawGif && (
                 <div className="mt-5 rounded-2xl bg-zinc-50 p-6 text-center text-sm text-zinc-500">
-                  Foto original sedang disiapkan. Hasil utama dengan frame bisa diunduh terlebih dahulu.
+                  Foto original sedang disiapkan. Hasil utama dengan frame bisa
+                  diunduh terlebih dahulu.
                 </div>
               )
             )}

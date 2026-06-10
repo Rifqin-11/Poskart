@@ -213,6 +213,30 @@ function createNode(type: FrameNodeType, layout: FrameLayout): FrameNode {
   return { ...base, props: { content: type === "date-stamp" ? "DD.MM.YYYY" : "Text", color: "#18181b", fontSize: 18, fontWeight: 600 } };
 }
 
+function normalizePhotoSlotLabels(nodes: FrameNode[]): FrameNode[] {
+  const photoSlots = nodes.filter((node) => node.type === "photo-slot");
+  photoSlots.sort((a, b) => {
+    if (Math.abs(a.y - b.y) > 1) {
+      return a.y - b.y;
+    }
+    return a.x - b.x;
+  });
+  const slotIdToIndex = new Map(photoSlots.map((node, index) => [node.id, index]));
+  
+  return nodes.map((node) => {
+    if (node.type !== "photo-slot") return node;
+    const index = slotIdToIndex.get(node.id);
+    if (index === undefined) return node;
+    return {
+      ...node,
+      props: {
+        ...node.props,
+        label: `Photo ${index + 1}`,
+      },
+    };
+  });
+}
+
 function FrameNodeRenderer({ node }: { node: FrameNode }) {
   if (node.type === "photo-slot") {
     return (
@@ -312,7 +336,9 @@ function SortableFrameLayer({
         <GripVertical className="size-3" />
       </button>
       <button className="min-w-0 flex-1 text-left" onClick={() => onSelect(node.id)}>
-        <span className={cn("block font-medium", isSelected && "text-white")}>{node.type}</span>
+        <span className={cn("block font-medium", isSelected && "text-white")}>
+          {node.type === "photo-slot" ? readString(node.props.label, "Photo slot") : node.type}
+        </span>
         <span className={cn("block truncate text-zinc-500", isSelected && "text-zinc-300")}>{node.id}</span>
       </button>
       <button
@@ -515,11 +541,16 @@ export function FrameTemplateBuilder({
     const nextLayout = updater(layout);
     if (nextLayout === layout) return;
 
+    const finalizedLayout: FrameLayout = {
+      ...nextLayout,
+      nodes: normalizePhotoSlotLabels(nextLayout.nodes),
+    };
+
     setHistory((current) => ({
       past: [...current.past.slice(-49), layout],
       future: [],
     }));
-    setLayout(nextLayout);
+    setLayout(finalizedLayout);
   }, [layout]);
 
   const undo = useCallback(() => {
