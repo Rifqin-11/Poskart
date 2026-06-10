@@ -541,16 +541,11 @@ export function FrameTemplateBuilder({
     const nextLayout = updater(layout);
     if (nextLayout === layout) return;
 
-    const finalizedLayout: FrameLayout = {
-      ...nextLayout,
-      nodes: normalizePhotoSlotLabels(nextLayout.nodes),
-    };
-
     setHistory((current) => ({
       past: [...current.past.slice(-49), layout],
       future: [],
     }));
-    setLayout(finalizedLayout);
+    setLayout(nextLayout);
   }, [layout]);
 
   const undo = useCallback(() => {
@@ -667,9 +662,9 @@ export function FrameTemplateBuilder({
       if (cmd && event.key === "x") {
         event.preventDefault();
         const node = layout.nodes.find((n) => n.id === selectedId);
-        if (node && !node.locked && node.type !== "photo-slot" && node.id !== "frame-background") {
+        if (node && !node.locked && node.id !== "frame-background") {
           setClipboard({ ...node });
-          commitLayout((c) => ({ ...c, nodes: c.nodes.filter((n) => n.id !== node.id) }));
+          commitLayout((c) => ({ ...c, nodes: normalizePhotoSlotLabels(c.nodes.filter((n) => n.id !== node.id)) }));
           setSelectedId(null);
         }
         return;
@@ -686,7 +681,7 @@ export function FrameTemplateBuilder({
             locked: false,
             zIndex: Math.max(0, ...layout.nodes.map((n) => n.zIndex)) + 1,
           };
-          commitLayout((c) => ({ ...c, nodes: [...c.nodes, clone] }));
+          commitLayout((c) => ({ ...c, nodes: normalizePhotoSlotLabels([...c.nodes, clone]) }));
           setSelectedId(clone.id);
           return cb; // keep clipboard
         });
@@ -695,9 +690,9 @@ export function FrameTemplateBuilder({
       if (cmd && event.key === "d") {
         event.preventDefault();
         const node = layout.nodes.find((n) => n.id === selectedId);
-        if (node && node.type !== "photo-slot" && node.id !== "frame-background") {
+        if (node && node.id !== "frame-background") {
           const clone = { ...node, id: `${node.id}-copy-${Date.now()}`, x: node.x + 18, y: node.y + 18, locked: false };
-          commitLayout((c) => ({ ...c, nodes: [...c.nodes, clone] }));
+          commitLayout((c) => ({ ...c, nodes: normalizePhotoSlotLabels([...c.nodes, clone]) }));
           setSelectedId(clone.id);
         }
         return;
@@ -738,7 +733,7 @@ export function FrameTemplateBuilder({
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
         if (selectedNode.id === "frame-background") return;
-        commitLayout((current) => ({ ...current, nodes: current.nodes.filter((node) => node.id !== selectedNode.id) }));
+        commitLayout((current) => ({ ...current, nodes: normalizePhotoSlotLabels(current.nodes.filter((node) => node.id !== selectedNode.id)) }));
         setSelectedId(null);
       }
     };
@@ -844,7 +839,7 @@ export function FrameTemplateBuilder({
 
   const addNode = (type: FrameNodeType) => {
     const node = createNode(type, layout);
-    commitLayout((current) => ({ ...current, nodes: [...current.nodes, node] }));
+    commitLayout((current) => ({ ...current, nodes: normalizePhotoSlotLabels([...current.nodes, node]) }));
     setSelectedId(node.id);
   };
 
@@ -855,7 +850,7 @@ export function FrameTemplateBuilder({
     }
 
     const clone = { ...node, id: `${node.id}-copy-${Date.now()}`, x: node.x + 18, y: node.y + 18, locked: false };
-    commitLayout((current) => ({ ...current, nodes: [...current.nodes, clone] }));
+    commitLayout((current) => ({ ...current, nodes: normalizePhotoSlotLabels([...current.nodes, clone]) }));
     setSelectedId(clone.id);
   };
 
@@ -865,7 +860,7 @@ export function FrameTemplateBuilder({
       return;
     }
 
-    commitLayout((current) => ({ ...current, nodes: current.nodes.filter((item) => item.id !== node.id) }));
+    commitLayout((current) => ({ ...current, nodes: normalizePhotoSlotLabels(current.nodes.filter((item) => item.id !== node.id)) }));
     setSelectedId(null);
   };
 
@@ -1252,7 +1247,7 @@ export function FrameTemplateBuilder({
                         <Button
                           variant="ghost"
                           size="icon"
-                          disabled={selectedNode.type === "photo-slot" || selectedNode.id === "frame-background"}
+                          disabled={selectedNode.id === "frame-background"}
                           onClick={() => duplicateNode(selectedNode)}
                         >
                           <Copy className="size-4" />
@@ -1263,7 +1258,7 @@ export function FrameTemplateBuilder({
                         <Button
                           variant="ghost"
                           size="icon"
-                          disabled={selectedNode.type === "photo-slot" || selectedNode.id === "frame-background"}
+                          disabled={selectedNode.id === "frame-background"}
                           onClick={() => {
                             deleteNode(selectedNode);
                           }}
@@ -1377,10 +1372,10 @@ export function FrameTemplateBuilder({
           onClose={() => setContextMenu(null)}
           onCopy={() => contextNode && runContextAction(() => setClipboard({ ...contextNode }))}
           onCut={() => {
-            if (!contextNode || contextNode.locked || contextNode.type === "photo-slot" || contextNode.id === "frame-background") return;
+            if (!contextNode || contextNode.locked || contextNode.id === "frame-background") return;
             setClipboard({ ...contextNode });
             runContextAction(() => {
-              commitLayout((c) => ({ ...c, nodes: c.nodes.filter((n) => n.id !== contextNode.id) }));
+              commitLayout((c) => ({ ...c, nodes: normalizePhotoSlotLabels(c.nodes.filter((n) => n.id !== contextNode.id)) }));
               setSelectedId(null);
             });
           }}
@@ -1395,7 +1390,7 @@ export function FrameTemplateBuilder({
               zIndex: Math.max(0, ...layout.nodes.map((n) => n.zIndex)) + 1,
             };
             runContextAction(() => {
-              commitLayout((c) => ({ ...c, nodes: [...c.nodes, clone] }));
+              commitLayout((c) => ({ ...c, nodes: normalizePhotoSlotLabels([...c.nodes, clone]) }));
               setSelectedId(clone.id);
             });
           }}
