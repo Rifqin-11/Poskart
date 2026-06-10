@@ -4,6 +4,7 @@ import {
   requireKioskContext,
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
+import { deleteCloudinaryAssets } from "@/lib/cloudinary/server";
 
 export async function GET(request: Request) {
   try {
@@ -37,6 +38,60 @@ export async function GET(request: Request) {
       sessions: sessions ?? [],
       photos: photos ?? [],
     });
+  } catch (error) {
+    return jsonError(error);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const context = await requireKioskContext(request);
+    const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get("sessionId") ?? "";
+    const deviceId = searchParams.get("deviceId") ?? "";
+    await requireOrganizationDevice(context, deviceId);
+
+    if (!sessionId) {
+      return jsonOk({ error: "Session ID is required" }, { status: 400 });
+    }
+
+    // Verify ownership
+    const { data: session, error: verifyError } = await context.client
+      .from("gallery_sessions")
+      .select("id")
+      .eq("id", sessionId)
+      .eq("organization_id", context.organizationId)
+      .maybeSingle();
+
+    if (verifyError || !session) {
+      return jsonOk({ error: "Session not found or access denied" }, { status: 404 });
+    }
+
+    // Fetch photo cloudinary public IDs
+    const { data: photos } = await context.client
+      .from("gallery_photos")
+      .select("cloudinary_public_id")
+      .eq("session_id", sessionId);
+
+    const publicIds = (photos ?? [])
+      .map((p) => p.cloudinary_public_id)
+      .filter(Boolean);
+
+    // Delete from Cloudinary
+    if (publicIds.length > 0) {
+      await deleteCloudinaryAssets(publicIds);
+    }
+
+    // Delete session (cascades to gallery_photos)
+    const { error: deleteError } = await context.client
+      .from("gallery_sessions")
+      .delete()
+      .eq("id", sessionId)
+      .eq("organization_id", context.organizationId);
+
+    if (deleteError) throw deleteError;
+
+    return jsonOk({ success: true });
   } catch (error) {
     return jsonError(error);
   }
