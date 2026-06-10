@@ -260,8 +260,15 @@ function NodeRenderer({
   const scaledDefaultFontSize = Math.max(14, Math.round(canvas.width * 0.028));
   const fontSize = readNumber(node.props.fontSize, scaledDefaultFontSize);
 
-  // When a background image/video is set, all nodes become hotspot overlays
-  if (isOverlayMode && !isCameraContinue) return <HotspotOverlay node={node} />;
+  // When a background image/video is set, all nodes become hotspot overlays, except camera.continue and QR codes
+  if (
+    isOverlayMode &&
+    !isCameraContinue &&
+    node.type !== "qr" &&
+    node.type !== "qr-placeholder"
+  ) {
+    return <HotspotOverlay node={node} />;
+  }
 
   if (node.type === "button") {
     const role = readString(
