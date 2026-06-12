@@ -20,6 +20,11 @@ import { useBuilderStore } from "@/stores/builder-store";
 import type { FrameLayout } from "@/types/frame-template";
 import type { TemplateFormValues } from "@/types/template";
 
+type ImageDimensions = {
+  width: number;
+  height: number;
+};
+
 const ACCENT_PRESETS = [
   "#C4121A",
   "#2D3F8F",
@@ -45,6 +50,30 @@ function countPhotoSlots(layout: FrameLayout) {
   return layout.nodes.filter((node) => node.type === "photo-slot").length;
 }
 
+function readImageDimensions(file: File): Promise<ImageDimensions> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+        reject(new Error("Unable to read image dimensions."));
+        return;
+      }
+      resolve({
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Unable to read image dimensions."));
+    };
+    image.src = objectUrl;
+  });
+}
+
 export function TemplateBuilderWorkspace({
   templateId,
 }: {
@@ -63,6 +92,8 @@ export function TemplateBuilderWorkspace({
     isNew ? "new" : "",
   );
   const [uploading, setUploading] = useState(false);
+  const [uploadedImageDimensions, setUploadedImageDimensions] =
+    useState<ImageDimensions | null>(null);
   const builderFullView = useBuilderStore((s) => s.builderFullView);
   const setBuilderFullView = useBuilderStore((s) => s.setBuilderFullView);
 
@@ -83,6 +114,7 @@ export function TemplateBuilderWorkspace({
         isDefault: template.isDefault,
         frameLayout: template.frameLayout ?? null,
       });
+      setUploadedImageDimensions(null);
       setHydratedTemplateId(template.id);
     });
     return () => {
@@ -128,9 +160,13 @@ export function TemplateBuilderWorkspace({
     if (!file) return;
     setUploading(true);
     try {
+      const dimensions = await readImageDimensions(file);
       const image = await uploadBuilderImage(file);
       patch("frameImageUrl", image.url);
-      toast.success("Frame image uploaded");
+      setUploadedImageDimensions(dimensions);
+      toast.success(
+        `Frame image uploaded. Canvas adjusted to ${dimensions.width} × ${dimensions.height}px.`,
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Upload failed");
     } finally {
@@ -242,7 +278,10 @@ export function TemplateBuilderWorkspace({
           className="mt-1"
           value={form.frameImageUrl}
           placeholder="https://..."
-          onChange={(event) => patch("frameImageUrl", event.target.value)}
+          onChange={(event) => {
+            setUploadedImageDimensions(null);
+            patch("frameImageUrl", event.target.value);
+          }}
         />
       </label>
       <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-200 p-3 text-sm font-medium text-zinc-600 hover:border-zinc-400">
@@ -273,6 +312,7 @@ export function TemplateBuilderWorkspace({
         initialLayout={form.frameLayout ?? null}
         templateName={form.name}
         frameImageUrl={form.frameImageUrl}
+        frameImageDimensions={uploadedImageDimensions}
         onClose={() => {
           setBuilderFullView(false);
           router.push("/templates");

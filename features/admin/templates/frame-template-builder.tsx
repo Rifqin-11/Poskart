@@ -68,12 +68,10 @@ const FRAME_NODE_TYPES: { type: FrameNodeType; label: string; icon: ReactNode }[
   { type: "background", label: "Bg", icon: <ImageIcon className="size-3.5" /> },
   { type: "photo-slot", label: "Photo slot", icon: <Grid2X2 className="size-3.5" /> },
 ];
-const FRAME_TEMPLATE_WIDTH_CM = 8;
-const FRAME_TEMPLATE_WIDTH_PX = DEFAULT_FRAME_CANVAS.width;
 const FRAME_SNAP_THRESHOLD = 8;
 
 function clampZoom(value: number) {
-  return Math.min(2, Math.max(0.25, Number(value.toFixed(2))));
+  return Math.min(2, Math.max(0.02, Number(value.toFixed(2))));
 }
 
 function readString(value: unknown, fallback: string) {
@@ -84,29 +82,45 @@ function readNumber(value: unknown, fallback: number) {
   return typeof value === "number" ? value : fallback;
 }
 
-function enforceFixedCanvasWidth(layout: FrameLayout): FrameLayout {
-  if (layout.canvas.width === FRAME_TEMPLATE_WIDTH_PX) {
-    return layout;
-  }
+function normalizeFrameLayout(layout: FrameLayout): FrameLayout {
+  return layout;
+}
 
-  const scale = FRAME_TEMPLATE_WIDTH_PX / Math.max(1, layout.canvas.width);
+function resizeFrameLayout(
+  layout: FrameLayout,
+  width: number,
+  height: number,
+): FrameLayout {
+  const nextWidth = Math.max(1, Math.round(width));
+  const nextHeight = Math.max(1, Math.round(height));
+  const scaleX = nextWidth / Math.max(1, layout.canvas.width);
+  const scaleY = nextHeight / Math.max(1, layout.canvas.height);
 
   return {
     ...layout,
     canvas: {
       ...layout.canvas,
-      width: FRAME_TEMPLATE_WIDTH_PX,
+      width: nextWidth,
+      height: nextHeight,
     },
-    nodes: layout.nodes.map((node) => ({
-      ...node,
-      x: Math.round(node.x * scale),
-      width: Math.max(1, Math.round(node.width * scale)),
-    })),
+    nodes: layout.nodes.map((node) =>
+      node.id === "frame-background"
+        ? {
+            ...node,
+            x: 0,
+            y: 0,
+            width: nextWidth,
+            height: nextHeight,
+          }
+        : {
+            ...node,
+            x: Math.round(node.x * scaleX),
+            y: Math.round(node.y * scaleY),
+            width: Math.max(1, Math.round(node.width * scaleX)),
+            height: Math.max(1, Math.round(node.height * scaleY)),
+          },
+    ),
   };
-}
-
-function normalizeFrameLayout(layout: FrameLayout): FrameLayout {
-  return enforceFixedCanvasWidth(layout);
 }
 
 function upsertFrameBackground(layout: FrameLayout, frameImageUrl?: string): FrameLayout {
@@ -468,6 +482,7 @@ export function FrameTemplateBuilder({
   initialLayout,
   templateName,
   frameImageUrl,
+  frameImageDimensions,
   onClose,
   onSave,
   saveLabel = "Save frame layout",
@@ -479,6 +494,7 @@ export function FrameTemplateBuilder({
   initialLayout: FrameLayout | null;
   templateName: string;
   frameImageUrl?: string;
+  frameImageDimensions?: { width: number; height: number } | null;
   onClose: () => void;
   onSave: (layout: FrameLayout) => void;
   saveLabel?: string;
@@ -591,12 +607,26 @@ export function FrameTemplateBuilder({
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
-      setLayout((current) => upsertFrameBackground(current, frameImageUrl));
+      setLayout((current) => {
+        const resized = frameImageDimensions
+          ? resizeFrameLayout(
+              current,
+              frameImageDimensions.width,
+              frameImageDimensions.height,
+            )
+          : current;
+        return upsertFrameBackground(resized, frameImageUrl);
+      });
     });
     return () => {
       cancelled = true;
     };
-  }, [frameImageUrl, open]);
+  }, [
+    frameImageDimensions?.height,
+    frameImageDimensions?.width,
+    frameImageUrl,
+    open,
+  ]);
 
   useEffect(() => {
     const closeMenu = () => setContextMenu(null);
@@ -740,7 +770,7 @@ export function FrameTemplateBuilder({
 
   const updateCanvas = (patch: Partial<FrameLayout["canvas"]>) =>
     commitLayout((current) => {
-      const canvas = { ...current.canvas, ...patch, width: FRAME_TEMPLATE_WIDTH_PX };
+      const canvas = { ...current.canvas, ...patch };
       return {
         ...current,
         canvas,
@@ -1090,7 +1120,7 @@ export function FrameTemplateBuilder({
                 style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "center center" }}
               >
                 <div className="absolute -top-7 left-0 select-none whitespace-nowrap text-[11px] font-medium text-zinc-400">
-                  Frame template — {FRAME_TEMPLATE_WIDTH_CM}cm × variable length · {layout.canvas.width} × {layout.canvas.height}px
+                  Frame template · {layout.canvas.width} × {layout.canvas.height}px
                 </div>
                 <div
                   className="relative overflow-hidden rounded-lg shadow-2xl"
@@ -1156,6 +1186,7 @@ export function FrameTemplateBuilder({
                         setSelectedId(node.id);
                         setContextMenu({ x: event.clientX, y: event.clientY, nodeId: node.id });
                       }}
+                      onDragStart={() => setSelectedId(node.id)}
                       onDrag={(_, data) => {
                         const snapState = computeGuides(node, data.x, data.y);
                         setGuides(snapState.guides);
@@ -1171,6 +1202,7 @@ export function FrameTemplateBuilder({
                         setGuides(snapState.guides);
                         setSnapPreview(snapState.isSnapping ? { x: snapState.sx, y: snapState.sy, w: snapState.w, h: snapState.h } : null);
                       }}
+                      onResizeStart={() => setSelectedId(node.id)}
                       onResizeStop={(_, __, ref, ___, position) => {
                         const snapState = computeGuides(node, position.x, position.y, ref.offsetWidth, ref.offsetHeight);
                         updateNode(node.id, {
@@ -1206,19 +1238,14 @@ export function FrameTemplateBuilder({
                 {detailsPanel}
                 <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
                   <div className="text-sm font-semibold">Canvas</div>
-                  <div className="rounded-md border border-zinc-100 bg-zinc-50 px-3 py-2">
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Template width</div>
-                    <div className="mt-1 text-sm font-semibold text-zinc-900">
-                      {FRAME_TEMPLATE_WIDTH_CM}cm
-                      <span className="ml-2 font-mono text-xs font-normal text-zinc-400">
-                        {FRAME_TEMPLATE_WIDTH_PX}px design width
-                      </span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <label className="text-xs font-medium text-zinc-500">
-                      Length / height (px)
-                      <Input className="mt-1" type="number" min={280} max={1800} value={layout.canvas.height} onChange={(event) => updateCanvas({ height: Number(event.target.value) })} />
+                      Width (px)
+                      <Input className="mt-1" type="number" min={1} max={10000} value={layout.canvas.width} onChange={(event) => updateCanvas({ width: Number(event.target.value) })} />
+                    </label>
+                    <label className="text-xs font-medium text-zinc-500">
+                      Height (px)
+                      <Input className="mt-1" type="number" min={1} max={10000} value={layout.canvas.height} onChange={(event) => updateCanvas({ height: Number(event.target.value) })} />
                     </label>
                   </div>
                   <label className="text-xs font-medium text-zinc-500">

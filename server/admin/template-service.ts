@@ -5,4 +5,5 @@ export const templateService = {
   createTemplate: adminRepository.createTemplate,
   updateTemplate: adminRepository.updateTemplate,
   deleteTemplate: adminRepository.deleteTemplate,
+  reorderTemplates: adminRepository.reorderTemplates,
 };

@@ -1,6 +1,20 @@
 "use client";
 
 import {
+  DndContext,
+  PointerSensor,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Bar,
   BarChart,
   CartesianGrid,
@@ -21,6 +35,7 @@ import {
   Download,
   Edit2,
   Folder,
+  GripVertical,
   ImagePlus,
   LockKeyhole,
   Plus,
@@ -65,9 +80,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FrameTemplateTester } from "@/features/admin/templates/frame-template-tester";
 import { SubscriptionDialog } from "@/features/billing/subscription/subscription-dialog";
-import {
-  useDashboardData,
-} from "@/features/admin/dashboard/use-dashboard";
+import { useDashboardData } from "@/features/admin/dashboard/use-dashboard";
 import {
   useBooths,
   useCreateBooth,
@@ -84,6 +97,7 @@ import {
 } from "@/features/admin/pricing/use-pricing";
 import {
   useDeleteTemplate,
+  useReorderTemplates,
   useTemplates,
 } from "@/features/admin/templates/use-templates";
 import {
@@ -92,9 +106,7 @@ import {
   useDeleteTransaction,
   useDeleteTransactions,
 } from "@/features/admin/transactions/use-transactions";
-import {
-  useLayoutSchemas,
-} from "@/features/admin/layout/use-layout";
+import { useLayoutSchemas } from "@/features/admin/layout/use-layout";
 import {
   useAssets,
   useCreateAsset,
@@ -195,12 +207,148 @@ function PageHeader({
   );
 }
 
+function SortableTemplateCard({
+  template,
+  onDelete,
+  onEdit,
+  onTest,
+}: {
+  template: Template;
+  onDelete: (template: Template) => void;
+  onEdit: (template: Template) => void;
+  onTest: (template: Template) => void;
+}) {
+  const {
+    attributes,
+    isDragging,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: template.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 10 : undefined,
+      }}
+      className={cn(isDragging && "opacity-70")}
+    >
+      <Card className="group h-full overflow-hidden">
+        <CardContent className="space-y-4 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-medium text-zinc-400">
+              Urutan {template.displayOrder + 1}
+            </span>
+            <button
+              type="button"
+              className="cursor-grab rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 active:cursor-grabbing"
+              title="Geser untuk mengubah urutan"
+              aria-label={`Ubah urutan ${template.name}`}
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="size-4" />
+            </button>
+          </div>
+
+          <div
+            className="relative mx-auto flex aspect-[8/12] h-48 w-32 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm"
+            style={{ backgroundColor: `${template.accentColor}14` }}
+          >
+            {template.frameImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={template.frameImageUrl}
+                alt={template.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <Boxes
+                className="size-10"
+                style={{ color: template.accentColor }}
+              />
+            )}
+          </div>
+
+          <div className="min-w-0 space-y-3">
+            <h2 className="truncate text-base font-semibold text-zinc-950">
+              {template.name}
+            </h2>
+            {template.tagline ? (
+              <p className="line-clamp-2 text-sm text-zinc-500">
+                {template.tagline}
+              </p>
+            ) : (
+              <p className="text-sm text-zinc-400">No tagline configured.</p>
+            )}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="size-3 rounded-full border border-zinc-200"
+                  style={{ background: template.accentColor }}
+                />
+                {template.accentColor}
+              </span>
+              <span>{template.photoCount} photos</span>
+              <span>
+                {template.frameLayout ? "Custom layout" : "Default layout"}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 justify-center px-2"
+              onClick={() => onTest(template)}
+            >
+              <ImagePlus className="size-3.5" /> Test
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 justify-center px-2"
+              onClick={() => onEdit(template)}
+            >
+              <Edit2 className="size-3.5" /> Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="justify-center px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
+              onClick={() => onDelete(template)}
+            >
+              <Trash2 className="size-3.5" /> Delete
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export function TemplateManagement() {
   const router = useRouter();
   const { data = [] } = useTemplates();
   const deleteTemplate = useDeleteTemplate();
+  const reorderTemplates = useReorderTemplates();
+  const [orderedTemplates, setOrderedTemplates] = useState<Template[]>([]);
   const [testTemplate, setTestTemplate] = useState<Template | null>(null);
   const confirmDelete = useConfirmDialog();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+  );
+
+  useEffect(() => {
+    setOrderedTemplates(data);
+  }, [data]);
 
   const openAdd = () => router.push("/templates/builder/new");
   const openEdit = (template: Template) =>
@@ -222,6 +370,37 @@ export function TemplateManagement() {
     });
   };
 
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = orderedTemplates.findIndex(
+      (template) => template.id === active.id,
+    );
+    const newIndex = orderedTemplates.findIndex(
+      (template) => template.id === over.id,
+    );
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reordered = arrayMove(orderedTemplates, oldIndex, newIndex).map(
+      (template, displayOrder) => ({ ...template, displayOrder }),
+    );
+    setOrderedTemplates(reordered);
+    reorderTemplates.mutate(
+      reordered.map((template) => template.id),
+      {
+        onSuccess: () => toast.success("Urutan template disimpan"),
+        onError: (error) => {
+          setOrderedTemplates(data);
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Gagal menyimpan urutan template",
+          );
+        },
+      },
+    );
+  };
+
   return (
     <div>
       {confirmDelete.dialog}
@@ -235,7 +414,7 @@ export function TemplateManagement() {
         }
       />
 
-      {data.length === 0 ? (
+      {orderedTemplates.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Boxes className="mb-4 size-10 text-zinc-300" />
@@ -251,90 +430,23 @@ export function TemplateManagement() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid max-w-5xl gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {data.map((template) => (
-            <Card key={template.id} className="group overflow-hidden">
-              <CardContent className="space-y-4 p-4">
-                <div
-                  className="relative mx-auto flex aspect-[8/12] h-48 w-32 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm"
-                  style={{ backgroundColor: `${template.accentColor}14` }}
-                >
-                  {template.frameImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={template.frameImageUrl}
-                      alt={template.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <Boxes
-                      className="size-10"
-                      style={{ color: template.accentColor }}
-                    />
-                  )}
-                </div>
-
-                <div className="min-w-0 space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="truncate text-base font-semibold text-zinc-950">
-                      {template.name}
-                    </h2>
-                  </div>
-                  {template.tagline ? (
-                    <p className="line-clamp-2 text-sm text-zinc-500">
-                      {template.tagline}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-zinc-400">
-                      No tagline configured.
-                    </p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className="size-3 rounded-full border border-zinc-200"
-                        style={{ background: template.accentColor }}
-                      />
-                      {template.accentColor}
-                    </span>
-                    <span>{template.photoCount} photos</span>
-                    <span>
-                      {template.frameLayout
-                        ? "Custom layout"
-                        : "Default layout"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 justify-center px-2"
-                    onClick={() => setTestTemplate(template)}
-                  >
-                    <ImagePlus className="size-3.5" /> Test
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 justify-center px-2"
-                    onClick={() => openEdit(template)}
-                  >
-                    <Edit2 className="size-3.5" /> Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="justify-center px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
-                    onClick={() => handleDelete(template)}
-                  >
-                    <Trash2 className="size-3.5" /> Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <SortableContext
+            items={orderedTemplates.map((template) => template.id)}
+            strategy={rectSortingStrategy}
+          >
+            <div className="grid max-w-5xl gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {orderedTemplates.map((template) => (
+                <SortableTemplateCard
+                  key={template.id}
+                  template={template}
+                  onDelete={handleDelete}
+                  onEdit={openEdit}
+                  onTest={setTestTemplate}
+                />
+              ))}
+            </div>
+          </SortableContext>
           {testTemplate ? (
             <FrameTemplateTester
               template={testTemplate}
@@ -344,7 +456,7 @@ export function TemplateManagement() {
               }}
             />
           ) : null}
-        </div>
+        </DndContext>
       )}
     </div>
   );
@@ -759,7 +871,9 @@ export function TransactionsMonitoring() {
           toast.success(`${selectedIds.length} transaksi berhasil dihapus`);
           setSelectedIds([]);
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Gagal menghapus transaksi");
+          toast.error(
+            err instanceof Error ? err.message : "Gagal menghapus transaksi",
+          );
         }
       },
     });
@@ -779,7 +893,11 @@ export function TransactionsMonitoring() {
       />
 
       {/* Edit Dialog */}
-      <Dialog open={Boolean(editing)} title="Edit Transaction" onOpenChange={(open) => !open && setEditing(null)}>
+      <Dialog
+        open={Boolean(editing)}
+        title="Edit Transaction"
+        onOpenChange={(open) => !open && setEditing(null)}
+      >
         <div className="space-y-4">
           <p className="text-xs text-zinc-500 font-mono">{editing?.id}</p>
           <div className="grid gap-3 md:grid-cols-2">
@@ -788,7 +906,9 @@ export function TransactionsMonitoring() {
               <Input
                 className="mt-1"
                 value={editForm.booth}
-                onChange={(e) => setEditForm((f) => ({ ...f, booth: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, booth: e.target.value }))
+                }
               />
             </label>
             <label className="block text-xs font-medium text-zinc-600">
@@ -796,7 +916,9 @@ export function TransactionsMonitoring() {
               <Input
                 className="mt-1"
                 value={editForm.location}
-                onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, location: e.target.value }))
+                }
               />
             </label>
             <label className="block text-xs font-medium text-zinc-600">
@@ -804,7 +926,9 @@ export function TransactionsMonitoring() {
               <Input
                 className="mt-1"
                 value={editForm.customer}
-                onChange={(e) => setEditForm((f) => ({ ...f, customer: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, customer: e.target.value }))
+                }
               />
             </label>
             <label className="block text-xs font-medium text-zinc-600">
@@ -812,7 +936,9 @@ export function TransactionsMonitoring() {
               <Input
                 className="mt-1"
                 value={editForm.package_name}
-                onChange={(e) => setEditForm((f) => ({ ...f, package_name: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, package_name: e.target.value }))
+                }
               />
             </label>
             <label className="block text-xs font-medium text-zinc-600">
@@ -822,7 +948,9 @@ export function TransactionsMonitoring() {
                 type="number"
                 min={0}
                 value={editForm.amount}
-                onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, amount: e.target.value }))
+                }
               />
             </label>
             <label className="block text-xs font-medium text-zinc-600">
@@ -831,7 +959,10 @@ export function TransactionsMonitoring() {
                 className="mt-1 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm"
                 value={editForm.provider}
                 onChange={(e) =>
-                  setEditForm((f) => ({ ...f, provider: e.target.value as "QRIS" | "Cash" }))
+                  setEditForm((f) => ({
+                    ...f,
+                    provider: e.target.value as "QRIS" | "Cash",
+                  }))
                 }
               >
                 <option value="QRIS">QRIS</option>
@@ -846,7 +977,11 @@ export function TransactionsMonitoring() {
                 onChange={(e) =>
                   setEditForm((f) => ({
                     ...f,
-                    status: e.target.value as "paid" | "pending" | "failed" | "refunded",
+                    status: e.target.value as
+                      | "paid"
+                      | "pending"
+                      | "failed"
+                      | "refunded",
                   }))
                 }
               >
@@ -892,7 +1027,9 @@ export function TransactionsMonitoring() {
               </Select>
             </div>
             <div className="text-xs text-zinc-500 flex items-center gap-4">
-              <span>{filtered.length} of {data.length} transactions</span>
+              <span>
+                {filtered.length} of {data.length} transactions
+              </span>
               {selectedIds.length > 0 && (
                 <Button
                   size="sm"
@@ -900,7 +1037,8 @@ export function TransactionsMonitoring() {
                   onClick={handleDeleteSelected}
                   className="flex items-center gap-1.5 animate-in fade-in duration-200"
                 >
-                  <Trash2 className="size-3.5" /> Hapus Terpilih ({selectedIds.length})
+                  <Trash2 className="size-3.5" /> Hapus Terpilih (
+                  {selectedIds.length})
                 </Button>
               )}
             </div>
@@ -914,7 +1052,10 @@ export function TransactionsMonitoring() {
                   <input
                     type="checkbox"
                     className="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950 accent-zinc-900 cursor-pointer"
-                    checked={filtered.length > 0 && filtered.every((t) => selectedIds.includes(t.id))}
+                    checked={
+                      filtered.length > 0 &&
+                      filtered.every((t) => selectedIds.includes(t.id))
+                    }
                     onChange={(e) => {
                       if (e.target.checked) {
                         setSelectedIds((prev) => {
@@ -925,7 +1066,11 @@ export function TransactionsMonitoring() {
                           return newIds;
                         });
                       } else {
-                        setSelectedIds((prev) => prev.filter((id) => !filtered.some((t) => t.id === id)));
+                        setSelectedIds((prev) =>
+                          prev.filter(
+                            (id) => !filtered.some((t) => t.id === id),
+                          ),
+                        );
                       }
                     }}
                     aria-label="Pilih semua transaksi"
@@ -942,7 +1087,12 @@ export function TransactionsMonitoring() {
             </TableHeader>
             <TableBody>
               {filtered.map((transaction: Transaction) => (
-                <TableRow key={transaction.id} className={selectedIds.includes(transaction.id) ? "bg-zinc-50/60" : ""}>
+                <TableRow
+                  key={transaction.id}
+                  className={
+                    selectedIds.includes(transaction.id) ? "bg-zinc-50/60" : ""
+                  }
+                >
                   <TableCell className="w-12">
                     <input
                       type="checkbox"
@@ -952,7 +1102,9 @@ export function TransactionsMonitoring() {
                         if (e.target.checked) {
                           setSelectedIds((prev) => [...prev, transaction.id]);
                         } else {
-                          setSelectedIds((prev) => prev.filter((id) => id !== transaction.id));
+                          setSelectedIds((prev) =>
+                            prev.filter((id) => id !== transaction.id),
+                          );
                         }
                       }}
                       aria-label={`Pilih transaksi ${transaction.id.slice(0, 8)}`}
@@ -1039,7 +1191,10 @@ export function TransactionsMonitoring() {
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-sm text-zinc-400">
+                  <TableCell
+                    colSpan={8}
+                    className="py-10 text-center text-sm text-zinc-400"
+                  >
                     No transactions found.
                   </TableCell>
                 </TableRow>
@@ -1091,7 +1246,8 @@ export function BoothManagement() {
   const deviceLimit = subscriptionStatus?.deviceLimit ?? 1;
   const usedDevices = data.length;
   const remainingDevices = Math.max(0, deviceLimit - usedDevices);
-  const deviceUsagePercent = deviceLimit > 0 ? Math.min(100, (usedDevices / deviceLimit) * 100) : 0;
+  const deviceUsagePercent =
+    deviceLimit > 0 ? Math.min(100, (usedDevices / deviceLimit) * 100) : 0;
   const deviceLimitReached = remainingDevices <= 0;
 
   const deviceFormOptions = useMemo<DeviceFormOptions>(
@@ -1189,11 +1345,19 @@ export function BoothManagement() {
       <Card className="mb-6">
         <CardContent className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center">
           <div>
-            <div className="text-sm font-semibold text-zinc-950">Device capacity</div>
+            <div className="text-sm font-semibold text-zinc-950">
+              Device capacity
+            </div>
             <p className="mt-1 text-sm text-zinc-500">
-              {usedDevices} of {deviceLimit} device{deviceLimit > 1 ? "s" : ""} used.
-              {" "}
-              <span className={deviceLimitReached ? "font-medium text-red-600" : "font-medium text-emerald-700"}>
+              {usedDevices} of {deviceLimit} device{deviceLimit > 1 ? "s" : ""}{" "}
+              used.{" "}
+              <span
+                className={
+                  deviceLimitReached
+                    ? "font-medium text-red-600"
+                    : "font-medium text-emerald-700"
+                }
+              >
                 {deviceLimitReached
                   ? "No device slots remaining."
                   : `${remainingDevices} device${remainingDevices > 1 ? "s" : ""} available.`}
@@ -1203,18 +1367,33 @@ export function BoothManagement() {
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
-              <div className="text-lg font-semibold text-zinc-950">{usedDevices}</div>
-              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">Used</div>
+              <div className="text-lg font-semibold text-zinc-950">
+                {usedDevices}
+              </div>
+              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                Used
+              </div>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
-              <div className="text-lg font-semibold text-zinc-950">{deviceLimit}</div>
-              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">Allowed</div>
+              <div className="text-lg font-semibold text-zinc-950">
+                {deviceLimit}
+              </div>
+              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                Allowed
+              </div>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
-              <div className={cn("text-lg font-semibold", deviceLimitReached ? "text-red-600" : "text-emerald-700")}>
+              <div
+                className={cn(
+                  "text-lg font-semibold",
+                  deviceLimitReached ? "text-red-600" : "text-emerald-700",
+                )}
+              >
                 {remainingDevices}
               </div>
-              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">Available</div>
+              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                Available
+              </div>
             </div>
           </div>
         </CardContent>
@@ -1322,9 +1501,7 @@ export function BoothManagement() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    toast.message(`${device.name} sync queued`)
-                  }
+                  onClick={() => toast.message(`${device.name} sync queued`)}
                 >
                   <RotateCcw className="size-4" /> Sync
                 </Button>
@@ -1429,7 +1606,8 @@ export function BoothManagement() {
               </div>
               {layouts.length === 0 ? (
                 <p className="rounded-md border border-dashed border-zinc-200 p-3 text-sm text-zinc-500">
-                  No builder themes saved yet. Open the Visual Builder to create one.
+                  No builder themes saved yet. Open the Visual Builder to create
+                  one.
                 </p>
               ) : (
                 <ul className="grid max-h-80 gap-2 overflow-y-auto rounded-md border border-zinc-200 bg-zinc-50 p-2 md:grid-cols-2">
@@ -1520,7 +1698,10 @@ function BoothFormDialog({
     return {
       ...rest,
       frameTemplates: normalizeStringList(rest.frameTemplates, rest.template),
-      pricingProfiles: normalizeStringList(rest.pricingProfiles, rest.pricingProfile),
+      pricingProfiles: normalizeStringList(
+        rest.pricingProfiles,
+        rest.pricingProfile,
+      ),
     } as BoothInput;
   });
 
@@ -1555,7 +1736,10 @@ function BoothFormDialog({
           </TabsList>
 
           {/* TAB 1: GENERAL & CONTENT */}
-          <TabsContent value="general" className="grid gap-3 md:grid-cols-2 min-h-[340px]">
+          <TabsContent
+            value="general"
+            className="grid gap-3 md:grid-cols-2 min-h-[340px]"
+          >
             <label className="block text-xs font-medium text-zinc-600">
               Name
               <Input
@@ -1580,7 +1764,10 @@ function BoothFormDialog({
                 className="mt-1"
                 value={form.status}
                 onChange={(e) =>
-                  setForm({ ...form, status: e.target.value as Device["status"] })
+                  setForm({
+                    ...form,
+                    status: e.target.value as Device["status"],
+                  })
                 }
               >
                 <option value="online">online</option>
@@ -1594,7 +1781,8 @@ function BoothFormDialog({
                 {form.appVersion || "Waiting for device sync"}
               </div>
               <p className="mt-1 text-[10px] font-normal text-zinc-400">
-                App version is reported by the kiosk device and cannot be edited manually.
+                App version is reported by the kiosk device and cannot be edited
+                manually.
               </p>
             </div>
             <label className="block text-xs font-medium text-zinc-600">
@@ -1614,11 +1802,13 @@ function BoothFormDialog({
                 onChange={(e) => setForm({ ...form, theme: e.target.value })}
               >
                 <option value="">Use default theme</option>
-                {includeCurrentOption(options.themes, form.theme).map((theme) => (
-                  <option key={theme} value={theme}>
-                    {theme}
-                  </option>
-                ))}
+                {includeCurrentOption(options.themes, form.theme).map(
+                  (theme) => (
+                    <option key={theme} value={theme}>
+                      {theme}
+                    </option>
+                  ),
+                )}
               </Select>
             </label>
             <div className="block text-xs font-medium text-zinc-600">
@@ -1627,7 +1817,10 @@ function BoothFormDialog({
                 className="mt-1"
                 values={form.frameTemplates}
                 emptyLabel="No frame templates yet"
-                options={includeCurrentOptions(options.frameTemplates, form.frameTemplates)}
+                options={includeCurrentOptions(
+                  options.frameTemplates,
+                  form.frameTemplates,
+                )}
                 onChange={(values) =>
                   setForm({
                     ...form,
@@ -1643,7 +1836,10 @@ function BoothFormDialog({
                 className="mt-1"
                 values={form.pricingProfiles}
                 emptyLabel="No active pricing packages yet"
-                options={includeCurrentOptions(options.pricingProfiles, form.pricingProfiles)}
+                options={includeCurrentOptions(
+                  options.pricingProfiles,
+                  form.pricingProfiles,
+                )}
                 onChange={(values) =>
                   setForm({
                     ...form,
@@ -1706,7 +1902,10 @@ function BoothFormDialog({
           </TabsContent>
 
           {/* TAB 3: HARDWARE & PRINTER */}
-          <TabsContent value="hardware" className="space-y-4 min-h-[340px] max-h-[420px] overflow-y-auto pr-1">
+          <TabsContent
+            value="hardware"
+            className="space-y-4 min-h-[340px] max-h-[420px] overflow-y-auto pr-1"
+          >
             {/* PRINTER SETTINGS SECTION */}
             <div className="rounded-lg border border-zinc-200 p-3 bg-zinc-50/30">
               <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-600">
@@ -1715,7 +1914,11 @@ function BoothFormDialog({
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="block text-xs font-medium text-zinc-600">
                   Connection Mode
-                  <Select className="mt-1" value={printerConn} onChange={(e) => setPrinterConn(e.target.value)}>
+                  <Select
+                    className="mt-1"
+                    value={printerConn}
+                    onChange={(e) => setPrinterConn(e.target.value)}
+                  >
                     <option value="usb">USB OTG Cable (Direct)</option>
                     <option value="bluetooth">Bluetooth (Wireless)</option>
                     <option value="wifi">Network (TCP/IP socket)</option>
@@ -1724,7 +1927,11 @@ function BoothFormDialog({
 
                 <label className="block text-xs font-medium text-zinc-600">
                   Paper Size Width
-                  <Select className="mt-1" value={paperWidth} onChange={(e) => setPaperWidth(e.target.value)}>
+                  <Select
+                    className="mt-1"
+                    value={paperWidth}
+                    onChange={(e) => setPaperWidth(e.target.value)}
+                  >
                     <option value="80mm">80mm Paper width (Premium)</option>
                     <option value="58mm">58mm Paper width (Standard)</option>
                   </Select>
@@ -1732,7 +1939,8 @@ function BoothFormDialog({
 
                 <div className="md:col-span-2 grid gap-3 md:grid-cols-2 border-t border-zinc-100 pt-3 mt-1">
                   <label className="block text-xs font-medium text-zinc-600">
-                    Brightness: {brightness > 0 ? `+${brightness}` : brightness}%
+                    Brightness: {brightness > 0 ? `+${brightness}` : brightness}
+                    %
                     <Slider
                       min={-50}
                       max={50}
@@ -1782,15 +1990,26 @@ function BoothFormDialog({
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-100 bg-white p-2.5">
                   <div>
-                    <span className="block text-xs font-medium text-zinc-700">Mirror Camera Feed</span>
-                    <span className="block text-[10px] text-zinc-400">Flips user selfie live view</span>
+                    <span className="block text-xs font-medium text-zinc-700">
+                      Mirror Camera Feed
+                    </span>
+                    <span className="block text-[10px] text-zinc-400">
+                      Flips user selfie live view
+                    </span>
                   </div>
-                  <Switch checked={mirrorCamera} onCheckedChange={setMirrorCamera} />
+                  <Switch
+                    checked={mirrorCamera}
+                    onCheckedChange={setMirrorCamera}
+                  />
                 </label>
 
                 <label className="block text-xs font-medium text-zinc-600">
                   Target Live View Resolution
-                  <Select className="mt-1" value={resolution} onChange={(e) => setResolution(e.target.value)}>
+                  <Select
+                    className="mt-1"
+                    value={resolution}
+                    onChange={(e) => setResolution(e.target.value)}
+                  >
                     <option value="720p">HD (720p @ 30fps)</option>
                     <option value="1080p">Full HD (1080p @ 30fps)</option>
                     <option value="4k">Ultra HD (4K @ 15fps)</option>
@@ -1799,8 +2018,12 @@ function BoothFormDialog({
 
                 <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-100 bg-white p-2.5 md:col-span-2">
                   <div>
-                    <span className="block text-xs font-medium text-zinc-700">Enable Diagnostics Debug Mode</span>
-                    <span className="block text-[10px] text-zinc-400">Prints verbose connection errors on Kiosk UI</span>
+                    <span className="block text-xs font-medium text-zinc-700">
+                      Enable Diagnostics Debug Mode
+                    </span>
+                    <span className="block text-[10px] text-zinc-400">
+                      Prints verbose connection errors on Kiosk UI
+                    </span>
                   </div>
                   <Switch checked={debugLogs} onCheckedChange={setDebugLogs} />
                 </label>
@@ -1849,12 +2072,18 @@ function getSubscriptionPlanOptions(plans: SubscriptionPlan[]) {
   ];
 }
 
-function includeCurrentOptions(options: string[], currentValues?: string[] | null) {
+function includeCurrentOptions(
+  options: string[],
+  currentValues?: string[] | null,
+) {
   const values = normalizeStringList(currentValues);
   return [...values.filter((value) => !options.includes(value)), ...options];
 }
 
-function normalizeStringList(values?: string[] | null, fallback?: string | null) {
+function normalizeStringList(
+  values?: string[] | null,
+  fallback?: string | null,
+) {
   const list = Array.isArray(values)
     ? values.map((value) => value.trim()).filter(Boolean)
     : [];
@@ -1862,7 +2091,10 @@ function normalizeStringList(values?: string[] | null, fallback?: string | null)
   return fallback?.trim() ? [fallback.trim()] : [];
 }
 
-function formatAssignmentList(values?: string[] | null, fallback?: string | null) {
+function formatAssignmentList(
+  values?: string[] | null,
+  fallback?: string | null,
+) {
   const list = normalizeStringList(values, fallback);
   if (list.length === 0) return "—";
   if (list.length <= 2) return list.join(", ");
@@ -2540,7 +2772,9 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Penjualan 7 hari</CardTitle>
-            <CardDescription>Omzet harian dari transaksi POS Kasir.</CardDescription>
+            <CardDescription>
+              Omzet harian dari transaksi POS Kasir.
+            </CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             {chartsMounted && dailySales.length > 0 ? (
@@ -2551,7 +2785,9 @@ export function AnalyticsDashboard() {
                   <YAxis
                     tickFormatter={(value) => `${Number(value) / 1000}rb`}
                   />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Tooltip
+                    formatter={(value) => formatCurrency(Number(value))}
+                  />
                   <Bar dataKey="revenue" fill="#18181b" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -2570,7 +2806,10 @@ export function AnalyticsDashboard() {
           <CardContent className="space-y-3">
             {paymentBreakdown.length > 0 ? (
               paymentBreakdown.map((payment) => (
-                <div key={payment.method} className="rounded-lg border border-zinc-100 p-4">
+                <div
+                  key={payment.method}
+                  className="rounded-lg border border-zinc-100 p-4"
+                >
                   <div className="flex items-center justify-between">
                     <div className="font-medium">{payment.method}</div>
                     <Badge variant="outline">
@@ -2595,12 +2834,17 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Paket terlaris</CardTitle>
-            <CardDescription>Paket print dengan kontribusi pendapatan terbesar.</CardDescription>
+            <CardDescription>
+              Paket print dengan kontribusi pendapatan terbesar.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {topPackages.length > 0 ? (
               topPackages.map((item) => (
-                <div key={item.name} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
+                <div
+                  key={item.name}
+                  className="flex items-center justify-between rounded-lg border border-zinc-100 p-3"
+                >
                   <div>
                     <div className="text-sm font-medium">{item.name}</div>
                     <div className="text-xs text-zinc-500">
@@ -2623,16 +2867,24 @@ export function AnalyticsDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Transaksi terbaru</CardTitle>
-            <CardDescription>Data terakhir yang masuk dari POS Kasir.</CardDescription>
+            <CardDescription>
+              Data terakhir yang masuk dari POS Kasir.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {recentSales.length > 0 ? (
               recentSales.map((sale) => (
-                <div key={sale.id} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
+                <div
+                  key={sale.id}
+                  className="flex items-center justify-between rounded-lg border border-zinc-100 p-3"
+                >
                   <div>
-                    <div className="text-sm font-medium">{sale.packageName}</div>
+                    <div className="text-sm font-medium">
+                      {sale.packageName}
+                    </div>
                     <div className="text-xs text-zinc-500">
-                      {sale.printCount} print · {sale.paymentMethod} · {sale.createdAt}
+                      {sale.printCount} print · {sale.paymentMethod} ·{" "}
+                      {sale.createdAt}
                     </div>
                   </div>
                   <div className="text-right text-sm font-semibold">
@@ -2673,9 +2925,11 @@ export function TenantManagement() {
   const updateTenant = useUpdateTenant();
   const deleteTenant = useDeleteTenant();
   const updateProfile = useUpdateProfile();
-  
+
   const [editing, setEditing] = useState<Organization | null>(null);
-  const [editingProfile, setEditingProfile] = useState<AdminUserProfile | null>(null);
+  const [editingProfile, setEditingProfile] = useState<AdminUserProfile | null>(
+    null,
+  );
   const [creating, setCreating] = useState(false);
   const confirmDelete = useConfirmDialog();
 
@@ -2688,7 +2942,8 @@ export function TenantManagement() {
       onConfirm: () => {
         deleteTenant.mutate(organization.id, {
           onSuccess: () => toast.success("Organization deleted"),
-          onError: (err) => toast.error(err instanceof Error ? err.message : "Delete failed"),
+          onError: (err) =>
+            toast.error(err instanceof Error ? err.message : "Delete failed"),
         });
       },
     });
@@ -2732,14 +2987,18 @@ export function TenantManagement() {
                 <TableBody>
                   {data.map((organization) => (
                     <TableRow key={organization.id}>
-                      <TableCell className="font-medium">{organization.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {organization.name}
+                      </TableCell>
                       <TableCell>{organization.plan}</TableCell>
                       <TableCell>
                         <Badge
                           variant={
                             organization.subscriptionStatus === "active"
                               ? "success"
-                              : organization.subscriptionStatus === "trialing" || organization.subscriptionStatus === "trial"
+                              : organization.subscriptionStatus ===
+                                    "trialing" ||
+                                  organization.subscriptionStatus === "trial"
                                 ? "warning"
                                 : "secondary"
                           }
@@ -2758,17 +3017,24 @@ export function TenantManagement() {
                           {organization.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{organization.devices} / {organization.deviceLimit ?? 1}</TableCell>
+                      <TableCell>
+                        {organization.devices} / {organization.deviceLimit ?? 1}
+                      </TableCell>
                       <TableCell>{organization.users}</TableCell>
                       <TableCell>
                         {organization.subscriptionExpiresAt
-                          ? new Date(organization.subscriptionExpiresAt).toLocaleDateString()
+                          ? new Date(
+                              organization.subscriptionExpiresAt,
+                            ).toLocaleDateString()
                           : "Never"}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu
                           items={[
-                            { label: "Edit", onClick: () => setEditing(organization) },
+                            {
+                              label: "Edit",
+                              onClick: () => setEditing(organization),
+                            },
                             {
                               label: "Delete",
                               destructive: true,
@@ -2785,7 +3051,8 @@ export function TenantManagement() {
                         colSpan={8}
                         className="py-8 text-center text-sm text-zinc-400"
                       >
-                        No organizations yet. Click <strong>Create organization</strong>.
+                        No organizations yet. Click{" "}
+                        <strong>Create organization</strong>.
                       </TableCell>
                     </TableRow>
                   ) : null}
@@ -2798,7 +3065,9 @@ export function TenantManagement() {
           <Card>
             <CardHeader>
               <CardTitle>User Accounts</CardTitle>
-              <CardDescription>All user accounts across the system.</CardDescription>
+              <CardDescription>
+                All user accounts across the system.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -2814,18 +3083,30 @@ export function TenantManagement() {
                 <TableBody>
                   {(profiles as AdminUserProfile[]).map((profile) => (
                     <TableRow key={profile.id}>
-                      <TableCell className="font-medium">{profile.email}</TableCell>
+                      <TableCell className="font-medium">
+                        {profile.email}
+                      </TableCell>
                       <TableCell>
-                        <Badge variant={profile.role === "admin" ? "warning" : "secondary"}>
+                        <Badge
+                          variant={
+                            profile.role === "admin" ? "warning" : "secondary"
+                          }
+                        >
                           {profile.role}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-zinc-600">
                         {profile.organizationName || "None"}
                       </TableCell>
-                      <TableCell>{new Date(profile.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {new Date(profile.created_at).toLocaleDateString()}
+                      </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => setEditingProfile(profile)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingProfile(profile)}
+                        >
                           Edit User
                         </Button>
                       </TableCell>
@@ -2833,7 +3114,12 @@ export function TenantManagement() {
                   ))}
                   {profiles.length === 0 && !isLoadingProfiles && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-zinc-500 py-8">No users found.</TableCell>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center text-zinc-500 py-8"
+                      >
+                        No users found.
+                      </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -2848,7 +3134,7 @@ export function TenantManagement() {
           <PaymentGatewayManagement />
         </TabsContent>
       </Tabs>
-      
+
       {creating ? (
         <TenantFormDialog
           title="Create organization"
@@ -2896,43 +3182,74 @@ export function TenantManagement() {
       ) : null}
 
       {editingProfile ? (
-        <Dialog open onOpenChange={(o) => !o && setEditingProfile(null)} title={`Edit ${editingProfile.email}`}>
+        <Dialog
+          open
+          onOpenChange={(o) => !o && setEditingProfile(null)}
+          title={`Edit ${editingProfile.email}`}
+        >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-700">System Role</label>
-              <Select 
+              <label className="block text-sm font-medium text-zinc-700">
+                System Role
+              </label>
+              <Select
                 className="mt-1"
-                value={editingProfile.role} 
-                onChange={(e) => setEditingProfile({ ...editingProfile, role: e.target.value })}
+                value={editingProfile.role}
+                onChange={(e) =>
+                  setEditingProfile({ ...editingProfile, role: e.target.value })
+                }
               >
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-700">Organization</label>
-              <Select 
+              <label className="block text-sm font-medium text-zinc-700">
+                Organization
+              </label>
+              <Select
                 className="mt-1"
-                value={editingProfile.organizationId || ""} 
-                onChange={(e) => setEditingProfile({ ...editingProfile, organizationId: e.target.value || null })}
+                value={editingProfile.organizationId || ""}
+                onChange={(e) =>
+                  setEditingProfile({
+                    ...editingProfile,
+                    organizationId: e.target.value || null,
+                  })
+                }
               >
                 <option value="">No Organization</option>
                 {data.map((org) => (
-                  <option key={org.id} value={org.id}>{org.name}</option>
+                  <option key={org.id} value={org.id}>
+                    {org.name}
+                  </option>
                 ))}
               </Select>
             </div>
             <div className="flex justify-end gap-2 pt-4 border-t border-zinc-100">
-              <Button variant="outline" onClick={() => setEditingProfile(null)}>Cancel</Button>
-              <Button 
+              <Button variant="outline" onClick={() => setEditingProfile(null)}>
+                Cancel
+              </Button>
+              <Button
                 onClick={() => {
-                  updateProfile.mutate({ id: editingProfile.id, patch: { role: editingProfile.role }, organizationId: editingProfile.organizationId }, {
-                    onSuccess: () => {
-                      toast.success("User updated successfully");
-                      setEditingProfile(null);
+                  updateProfile.mutate(
+                    {
+                      id: editingProfile.id,
+                      patch: { role: editingProfile.role },
+                      organizationId: editingProfile.organizationId,
                     },
-                    onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to update user")
-                  });
+                    {
+                      onSuccess: () => {
+                        toast.success("User updated successfully");
+                        setEditingProfile(null);
+                      },
+                      onError: (err) =>
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "Failed to update user",
+                        ),
+                    },
+                  );
                 }}
               >
                 Save
@@ -2974,7 +3291,11 @@ function PaymentGatewayManagement() {
         }
       } catch (error) {
         if (!cancelled) {
-          toast.error(error instanceof Error ? error.message : "Unable to load payment gateway");
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Unable to load payment gateway",
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -3033,7 +3354,8 @@ function PaymentGatewayManagement() {
     {
       value: "both",
       title: "Duitku + Midtrans",
-      description: "Checkout menampilkan kedua gateway sebagai pilihan pelanggan.",
+      description:
+        "Checkout menampilkan kedua gateway sebagai pilihan pelanggan.",
       badge: "Alternative gateway",
     },
   ];
@@ -3043,7 +3365,8 @@ function PaymentGatewayManagement() {
       <CardHeader>
         <CardTitle>Subscription Payment Gateway</CardTitle>
         <CardDescription>
-          Super Admin controls which payment gateway appears on the subscription checkout page.
+          Super Admin controls which payment gateway appears on the subscription
+          checkout page.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -3102,7 +3425,8 @@ function PaymentGatewayManagement() {
                 ? "Midtrans only"
                 : "Duitku only"}
           </span>
-          . Server-side checkout validation also follows this setting, so hidden gateways cannot be forced from the browser form.
+          . Server-side checkout validation also follows this setting, so hidden
+          gateways cannot be forced from the browser form.
         </div>
 
         <Button onClick={() => void saveGateway()} disabled={loading || saving}>
@@ -3150,14 +3474,17 @@ function SaasPricingManagement() {
                     <div className="text-xs text-zinc-400">{plan.id}</div>
                   </TableCell>
                   <TableCell>
-                    {plan.durationMonths} month{plan.durationMonths > 1 ? "s" : ""}
+                    {plan.durationMonths} month
+                    {plan.durationMonths > 1 ? "s" : ""}
                   </TableCell>
                   <TableCell>{formatCurrency(plan.basePrice)}</TableCell>
                   <TableCell>
-                    {plan.includedDevices} device{plan.includedDevices > 1 ? "s" : ""}
+                    {plan.includedDevices} device
+                    {plan.includedDevices > 1 ? "s" : ""}
                   </TableCell>
                   <TableCell>
-                    {formatCurrency(plan.additionalDevicePriceMonthly)}/device/month
+                    {formatCurrency(plan.additionalDevicePriceMonthly)}
+                    /device/month
                   </TableCell>
                   <TableCell>
                     <Badge variant={plan.isPublic ? "success" : "secondary"}>
@@ -3165,7 +3492,11 @@ function SaasPricingManagement() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" variant="outline" onClick={() => setEditing(plan)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEditing(plan)}
+                    >
                       <Edit2 className="size-4" /> Edit
                     </Button>
                   </TableCell>
@@ -3173,8 +3504,13 @@ function SaasPricingManagement() {
               ))}
               {plans.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-sm text-zinc-400">
-                    {isLoading ? "Loading subscription plans..." : "No subscription plans found."}
+                  <TableCell
+                    colSpan={7}
+                    className="py-8 text-center text-sm text-zinc-400"
+                  >
+                    {isLoading
+                      ? "Loading subscription plans..."
+                      : "No subscription plans found."}
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -3197,7 +3533,9 @@ function SaasPricingManagement() {
                   setEditing(null);
                 },
                 onError: (err) =>
-                  toast.error(err instanceof Error ? err.message : "Update failed"),
+                  toast.error(
+                    err instanceof Error ? err.message : "Update failed",
+                  ),
               },
             );
           }}
@@ -3235,7 +3573,11 @@ function SubscriptionPlanDialog({
   });
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} title={`Edit ${plan.name}`}>
+    <Dialog
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={`Edit ${plan.name}`}
+    >
       <form
         className="grid gap-3 md:grid-cols-2"
         onSubmit={(event) => {
@@ -3267,7 +3609,10 @@ function SubscriptionPlanDialog({
             min={1}
             value={form.durationMonths}
             onChange={(event) =>
-              setForm({ ...form, durationMonths: Math.max(1, Number(event.target.value) || 1) })
+              setForm({
+                ...form,
+                durationMonths: Math.max(1, Number(event.target.value) || 1),
+              })
             }
           />
         </label>
@@ -3280,7 +3625,10 @@ function SubscriptionPlanDialog({
             step={1000}
             value={form.basePrice}
             onChange={(event) =>
-              setForm({ ...form, basePrice: Math.max(0, Number(event.target.value) || 0) })
+              setForm({
+                ...form,
+                basePrice: Math.max(0, Number(event.target.value) || 0),
+              })
             }
           />
         </label>
@@ -3292,7 +3640,10 @@ function SubscriptionPlanDialog({
             min={1}
             value={form.includedDevices}
             onChange={(event) =>
-              setForm({ ...form, includedDevices: Math.max(1, Number(event.target.value) || 1) })
+              setForm({
+                ...form,
+                includedDevices: Math.max(1, Number(event.target.value) || 1),
+              })
             }
           />
         </label>
@@ -3307,7 +3658,10 @@ function SubscriptionPlanDialog({
             onChange={(event) =>
               setForm({
                 ...form,
-                additionalDevicePriceMonthly: Math.max(0, Number(event.target.value) || 0),
+                additionalDevicePriceMonthly: Math.max(
+                  0,
+                  Number(event.target.value) || 0,
+                ),
               })
             }
           />
@@ -3316,17 +3670,22 @@ function SubscriptionPlanDialog({
           <div>
             <div className="text-sm font-medium text-zinc-800">Public plan</div>
             <div className="text-xs leading-5 text-zinc-500">
-              Hidden plans stay in database but should not be shown in public checkout flows.
+              Hidden plans stay in database but should not be shown in public
+              checkout flows.
             </div>
           </div>
           <Switch
             checked={form.isPublic}
-            onCheckedChange={(checked) => setForm({ ...form, isPublic: checked })}
+            onCheckedChange={(checked) =>
+              setForm({ ...form, isPublic: checked })
+            }
           />
         </div>
         <div className="md:col-span-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs leading-5 text-zinc-500">
-          Preview: {formatCurrency(form.basePrice)} for {form.durationMonths} month
-          {form.durationMonths > 1 ? "s" : ""}, includes {form.includedDevices} device
+          Preview: {formatCurrency(form.basePrice)} for {form.durationMonths}{" "}
+          month
+          {form.durationMonths > 1 ? "s" : ""}, includes {form.includedDevices}{" "}
+          device
           {form.includedDevices > 1 ? "s" : ""}. Extra devices cost{" "}
           {formatCurrency(form.additionalDevicePriceMonthly)}/device/month.
         </div>
@@ -3374,10 +3733,14 @@ function TenantFormDialog({
       deviceLimit: rest.deviceLimit || 1,
     } as TenantInput;
   });
-  const selectedSubscriptionPlan = subscriptionPlans.find((plan) => plan.id === form.planId);
+  const selectedSubscriptionPlan = subscriptionPlans.find(
+    (plan) => plan.id === form.planId,
+  );
   const fallbackPlan = pricingPlans.find((plan) => plan.id === form.planId);
   const includedDeviceCount =
-    selectedSubscriptionPlan?.includedDevices ?? fallbackPlan?.includedDevices ?? 1;
+    selectedSubscriptionPlan?.includedDevices ??
+    fallbackPlan?.includedDevices ??
+    1;
   const planOptions = getSubscriptionPlanOptions(subscriptionPlans);
 
   return (
@@ -3410,7 +3773,7 @@ function TenantFormDialog({
             placeholder="PT Photo Device Indonesia"
           />
         </label>
-        
+
         <label className="block text-xs font-medium text-zinc-600">
           Subscription Plan
           <Select
@@ -3425,7 +3788,7 @@ function TenantFormDialog({
               setForm({
                 ...form,
                 planId: val,
-                plan: val === "free" ? "Free" : selected?.name ?? "Free",
+                plan: val === "free" ? "Free" : (selected?.name ?? "Free"),
                 subscriptionStatus:
                   val === "free"
                     ? "free"
@@ -3467,7 +3830,10 @@ function TenantFormDialog({
             className="mt-1"
             value={form.status}
             onChange={(e) =>
-              setForm({ ...form, status: e.target.value as Organization["status"] })
+              setForm({
+                ...form,
+                status: e.target.value as Organization["status"],
+              })
             }
           >
             <option value="active">Active</option>
@@ -3481,11 +3847,19 @@ function TenantFormDialog({
           <Input
             className="mt-1"
             type="date"
-            value={form.subscriptionExpiresAt ? new Date(form.subscriptionExpiresAt).toISOString().slice(0, 10) : ""}
+            value={
+              form.subscriptionExpiresAt
+                ? new Date(form.subscriptionExpiresAt)
+                    .toISOString()
+                    .slice(0, 10)
+                : ""
+            }
             onChange={(e) =>
               setForm({
                 ...form,
-                subscriptionExpiresAt: e.target.value ? new Date(e.target.value).toISOString() : null,
+                subscriptionExpiresAt: e.target.value
+                  ? new Date(e.target.value).toISOString()
+                  : null,
               })
             }
           />
@@ -3599,7 +3973,8 @@ export function SettingsPanel() {
         qris_provider_merchant_id: config.qris_provider_merchant_id ?? "",
         qris_webhook_secret: config.qris_webhook_secret ?? "",
         qris_auto_retry: config.qris_auto_retry ?? true,
-        subscription_payment_gateway: config.subscription_payment_gateway ?? "duitku",
+        subscription_payment_gateway:
+          config.subscription_payment_gateway ?? "duitku",
         printer_name: config.printer_name ?? "POSKART-THERMAL-01",
         booth_timeout_seconds: config.booth_timeout_seconds ?? 90,
         download_expiry_hours: config.download_expiry_hours ?? 72,
@@ -3655,10 +4030,14 @@ export function SettingsPanel() {
               Control kiosk runtime, payment, media, and system behavior.
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-600">
-              Global settings are stored in Supabase and consumed by POSKART dashboard, QRIS/payment flows, and Flutter kiosk startup config.
+              Global settings are stored in Supabase and consumed by POSKART
+              dashboard, QRIS/payment flows, and Flutter kiosk startup config.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <Button onClick={() => void handleSave()} disabled={saveConfig.isPending}>
+              <Button
+                onClick={() => void handleSave()}
+                disabled={saveConfig.isPending}
+              >
                 <ShieldCheck className="size-4" />
                 {saveConfig.isPending ? "Saving..." : "Save settings"}
               </Button>
@@ -3678,7 +4057,9 @@ export function SettingsPanel() {
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
               <Printer className="mb-3 size-4 text-zinc-500" />
               <div className="text-xs text-zinc-500">Printer</div>
-              <div className="mt-1 truncate text-sm font-semibold text-zinc-950">{form.printer_name}</div>
+              <div className="mt-1 truncate text-sm font-semibold text-zinc-950">
+                {form.printer_name}
+              </div>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
               <Timer className="mb-3 size-4 text-zinc-500" />
@@ -4019,7 +4400,6 @@ export function SettingsPanel() {
   );
 }
 
-
 export function OrganizationPanel() {
   const searchParams = useSearchParams();
   const subscriptionRequired = searchParams.get("subscription") === "required";
@@ -4043,7 +4423,7 @@ function OrganizationSettings({
   const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
   const { data: members = [] } = useTenantMembers();
   const { data: invitations = [] } = useTenantInvitations();
-  
+
   const updateName = useUpdateTenantName();
   const inviteUser = useInviteUser();
   const deleteInvitation = useDeleteInvitation();
@@ -4052,17 +4432,25 @@ function OrganizationSettings({
   const [editedName, setEditedName] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [myEmail, setMyEmail] = useState("");
-  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(subscriptionRequired);
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] =
+    useState(subscriptionRequired);
   const confirmRemove = useConfirmDialog();
 
   const supabase = createClient();
   useEffect(() => {
-    supabase.auth.getUser().then((res: { data: { user: { email?: string | null } | null } }) => {
-      if (res.data?.user?.email) setMyEmail(res.data.user.email);
-    });
+    supabase.auth
+      .getUser()
+      .then((res: { data: { user: { email?: string | null } | null } }) => {
+        if (res.data?.user?.email) setMyEmail(res.data.user.email);
+      });
   }, [supabase]);
 
-  if (isLoadingTenant) return <div className="p-8 text-center text-zinc-500">Loading organization details...</div>;
+  if (isLoadingTenant)
+    return (
+      <div className="p-8 text-center text-zinc-500">
+        Loading organization details...
+      </div>
+    );
 
   const organizationName = editedName ?? tenant?.name ?? "";
   const planName = tenant?.plan_name ?? "Free Account";
@@ -4086,9 +4474,9 @@ function OrganizationSettings({
             <div>
               <div className="font-semibold">Active subscription required</div>
               <p className="mt-1 leading-6">
-                Theme, builder, template, devices, analytics, settings,
-                and transaction tools are locked while this organization is on
-                Free Account.
+                Theme, builder, template, devices, analytics, settings, and
+                transaction tools are locked while this organization is on Free
+                Account.
               </p>
             </div>
           </div>
@@ -4102,13 +4490,16 @@ function OrganizationSettings({
               <Badge variant={isFreeAccount ? "warning" : "success"}>
                 {isFreeAccount ? "Free Account" : "Active subscription"}
               </Badge>
-              <Badge variant="secondary">{deviceLimit} device{deviceLimit > 1 ? "s" : ""} allowed</Badge>
+              <Badge variant="secondary">
+                {deviceLimit} device{deviceLimit > 1 ? "s" : ""} allowed
+              </Badge>
             </div>
             <h2 className="text-3xl font-semibold tracking-tight text-zinc-950">
               {organizationName || "POSKART Workspace"}
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-600">
-              Manage workspace identity, subscription access, and team permissions from one place.
+              Manage workspace identity, subscription access, and team
+              permissions from one place.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <button
@@ -4131,12 +4522,16 @@ function OrganizationSettings({
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
               <CreditCard className="mb-3 size-4 text-zinc-500" />
               <div className="text-xs text-zinc-500">Plan</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-950">{planName}</div>
+              <div className="mt-1 text-sm font-semibold text-zinc-950">
+                {planName}
+              </div>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
               <ShieldCheck className="mb-3 size-4 text-zinc-500" />
               <div className="text-xs text-zinc-500">Status</div>
-              <div className="mt-1 text-sm font-semibold capitalize text-zinc-950">{subscriptionStatus}</div>
+              <div className="mt-1 text-sm font-semibold capitalize text-zinc-950">
+                {subscriptionStatus}
+              </div>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
               <Store className="mb-3 size-4 text-zinc-500" />
@@ -4163,25 +4558,41 @@ function OrganizationSettings({
               <div>
                 <CardTitle>Workspace settings</CardTitle>
                 <CardDescription className="mt-1">
-                  Update organization identity and keep the join code ready for staff onboarding.
+                  Update organization identity and keep the join code ready for
+                  staff onboarding.
                 </CardDescription>
               </div>
             </div>
 
             <div className="mt-6 flex max-w-xl items-end gap-3">
               <div className="flex-1 space-y-1">
-                <label className="text-xs font-medium text-zinc-500">Organization Name</label>
-                <Input value={organizationName} onChange={(e) => setEditedName(e.target.value)} placeholder="My Organization" />
+                <label className="text-xs font-medium text-zinc-500">
+                  Organization Name
+                </label>
+                <Input
+                  value={organizationName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  placeholder="My Organization"
+                />
               </div>
-              <Button 
-                disabled={!organizationName.trim() || organizationName === tenant?.name || updateName.isPending}
+              <Button
+                disabled={
+                  !organizationName.trim() ||
+                  organizationName === tenant?.name ||
+                  updateName.isPending
+                }
                 onClick={() => {
                   updateName.mutate(organizationName, {
                     onSuccess: () => {
                       toast.success("Organization name updated");
                       setEditedName(null);
                     },
-                    onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to update name")
+                    onError: (err) =>
+                      toast.error(
+                        err instanceof Error
+                          ? err.message
+                          : "Failed to update name",
+                      ),
                   });
                 }}
               >
@@ -4190,19 +4601,28 @@ function OrganizationSettings({
             </div>
 
             <div className="mt-4 rounded-lg border border-zinc-200 bg-white p-3">
-              <div className="text-xs font-medium text-zinc-500">Organization join code</div>
+              <div className="text-xs font-medium text-zinc-500">
+                Organization join code
+              </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-sm font-semibold tracking-[0.24em] text-zinc-950">
                   {tenant?.join_code ?? "Pending"}
                 </div>
                 <div className="text-xs leading-5 text-zinc-500">
-                  Share this code with staff so they can join this workspace during onboarding.
+                  Share this code with staff so they can join this workspace
+                  during onboarding.
                 </div>
               </div>
             </div>
           </div>
 
-          <div className={isFreeAccount ? "rounded-lg border border-amber-200 bg-amber-50 p-4" : "rounded-lg border border-zinc-200 bg-zinc-50 p-4"}>
+          <div
+            className={
+              isFreeAccount
+                ? "rounded-lg border border-amber-200 bg-amber-50 p-4"
+                : "rounded-lg border border-zinc-200 bg-zinc-50 p-4"
+            }
+          >
             <div className="flex items-center gap-2 text-sm font-semibold">
               {isFreeAccount ? (
                 <LockKeyhole className="size-4 text-amber-700" />
@@ -4230,10 +4650,12 @@ function OrganizationSettings({
       <Card>
         <CardHeader>
           <CardTitle>Team Members</CardTitle>
-          <CardDescription>People with access to this organization.</CardDescription>
+          <CardDescription>
+            People with access to this organization.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form 
+          <form
             className="mb-5 flex max-w-md items-end gap-3"
             onSubmit={(e) => {
               e.preventDefault();
@@ -4243,20 +4665,33 @@ function OrganizationSettings({
                   toast.success(`Invitation sent to ${inviteEmail}`);
                   setInviteEmail("");
                 },
-                onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to invite user")
+                onError: (err) =>
+                  toast.error(
+                    err instanceof Error
+                      ? err.message
+                      : "Failed to invite user",
+                  ),
               });
             }}
           >
             <div className="flex-1 space-y-1">
-              <label className="text-xs font-medium text-zinc-500">Invite Email</label>
-              <Input 
-                type="email" 
-                value={inviteEmail} 
-                onChange={(e) => setInviteEmail(e.target.value)} 
-                placeholder="colleague@example.com" 
+              <label className="text-xs font-medium text-zinc-500">
+                Invite Email
+              </label>
+              <Input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="colleague@example.com"
               />
             </div>
-            <Button disabled={!inviteEmail.trim() || inviteEmail === myEmail || inviteUser.isPending}>
+            <Button
+              disabled={
+                !inviteEmail.trim() ||
+                inviteEmail === myEmail ||
+                inviteUser.isPending
+              }
+            >
               {inviteUser.isPending ? "Sending..." : "Invite"}
             </Button>
           </form>
@@ -4275,10 +4710,16 @@ function OrganizationSettings({
                 <TableRow key={m.id}>
                   <TableCell className="font-medium">
                     {m.email}
-                    {m.email === myEmail && <Badge variant="secondary" className="ml-2 text-[10px]">You</Badge>}
+                    {m.email === myEmail && (
+                      <Badge variant="secondary" className="ml-2 text-[10px]">
+                        You
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={m.role === "admin" ? "warning" : "secondary"}>
+                    <Badge
+                      variant={m.role === "admin" ? "warning" : "secondary"}
+                    >
                       {m.role}
                     </Badge>
                   </TableCell>
@@ -4286,9 +4727,9 @@ function OrganizationSettings({
                     {new Date(m.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       disabled={m.email === myEmail}
                       onClick={() => {
@@ -4300,7 +4741,12 @@ function OrganizationSettings({
                           onConfirm: () => {
                             removeMember.mutate(m.id, {
                               onSuccess: () => toast.success("Member removed"),
-                              onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to remove member")
+                              onError: (err) =>
+                                toast.error(
+                                  err instanceof Error
+                                    ? err.message
+                                    : "Failed to remove member",
+                                ),
                             });
                           },
                         });
@@ -4313,7 +4759,12 @@ function OrganizationSettings({
               ))}
               {members.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-zinc-500 py-6">No members found.</TableCell>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center text-zinc-500 py-6"
+                  >
+                    No members found.
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -4332,16 +4783,21 @@ function OrganizationSettings({
                 <TableBody>
                   {(invitations as OrganizationInvitationRow[]).map((inv) => (
                     <TableRow key={inv.id}>
-                      <TableCell className="font-medium text-zinc-600">{inv.email}</TableCell>
-                      <TableCell className="text-zinc-500">{new Date(inv.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium text-zinc-600">
+                        {inv.email}
+                      </TableCell>
+                      <TableCell className="text-zinc-500">
+                        {new Date(inv.created_at).toLocaleDateString()}
+                      </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={() => {
                             deleteInvitation.mutate(inv.id, {
-                              onSuccess: () => toast.success("Invitation cancelled"),
+                              onSuccess: () =>
+                                toast.success("Invitation cancelled"),
                             });
                           }}
                         >
@@ -4356,7 +4812,10 @@ function OrganizationSettings({
           )}
         </CardContent>
       </Card>
-      <SubscriptionDialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen} />
+      <SubscriptionDialog
+        open={subscriptionDialogOpen}
+        onOpenChange={setSubscriptionDialogOpen}
+      />
     </div>
   );
 }

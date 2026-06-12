@@ -7,6 +7,7 @@ export type Template = {
   status: "published" | "draft" | "archived";
   assignedBooths: number;
   updatedAt: string;
+  displayOrder: number;
   // Flutter frame template fields
   tagline?: string;
   photoCount: number;

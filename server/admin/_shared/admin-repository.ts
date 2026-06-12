@@ -104,9 +104,13 @@ type BoothRow = Omit<
   payment_countdown_seconds: number | null;
 };
 
-type TemplateRow = Omit<Template, "assignedBooths" | "updatedAt"> & {
+type TemplateRow = Omit<
+  Template,
+  "assignedBooths" | "updatedAt" | "displayOrder"
+> & {
   assigned_booths: number;
   updated_at_label: string;
+  display_order: number;
   tagline: string | null;
   photo_count: number;
   accent_color: string;
@@ -155,7 +159,10 @@ type SubscriptionRow = {
   status?: string | null;
   current_period_end?: string | null;
   device_limit?: number | null;
-  subscription_plans?: SubscriptionPlanMetadata | SubscriptionPlanMetadata[] | null;
+  subscription_plans?:
+    | SubscriptionPlanMetadata
+    | SubscriptionPlanMetadata[]
+    | null;
 };
 
 type OrganizationRow = {
@@ -288,7 +295,10 @@ const mapTransaction = (row: TransactionRow): Transaction => ({
   printLastError: row.print_last_error ?? null,
 });
 
-function normalizeAssignmentList(values?: string[] | null, fallback?: string | null) {
+function normalizeAssignmentList(
+  values?: string[] | null,
+  fallback?: string | null,
+) {
   const list = Array.isArray(values) ? values.filter(Boolean) : [];
   if (list.length > 0) return list;
   return fallback ? [fallback] : [];
@@ -306,7 +316,10 @@ const mapBooth = (row: BoothRow): Device => ({
   template: row.template,
   pricingProfile: row.pricing_profile,
   frameTemplates: normalizeAssignmentList(row.frame_templates, row.template),
-  pricingProfiles: normalizeAssignmentList(row.pricing_profiles, row.pricing_profile),
+  pricingProfiles: normalizeAssignmentList(
+    row.pricing_profiles,
+    row.pricing_profile,
+  ),
   sessionCountdownSeconds: row.session_countdown_seconds ?? null,
   paymentCountdownSeconds: row.payment_countdown_seconds ?? null,
 });
@@ -318,6 +331,7 @@ const mapTemplate = (row: TemplateRow): Template => ({
   status: row.status,
   assignedBooths: row.assigned_booths,
   updatedAt: row.updated_at_label,
+  displayOrder: row.display_order ?? 0,
   tagline: row.tagline ?? undefined,
   photoCount: row.photo_count ?? 4,
   accentColor: row.accent_color ?? "#C4121A",
@@ -349,7 +363,6 @@ const mapSubscriptionPlan = (row: SubscriptionPlanRow): SubscriptionPlan => ({
   features: row.features ?? {},
 });
 
-
 type RawTransactionRow = {
   id: string;
   amount: number;
@@ -377,10 +390,29 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
     const organizationId = membership?.organization_id;
 
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    ).toISOString();
+    const startOfThisMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).toISOString();
+    const startOfLastMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() - 1,
+      1,
+    ).toISOString();
+    const endOfLastMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      0,
+      23,
+      59,
+      59,
+    ).toISOString();
 
     let query = supabase
       .from("transactions")
@@ -411,20 +443,31 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
     // Monthly revenue delta
     const monthDelta =
       lastMonthRevenue > 0
-        ? Math.round(((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
+        ? Math.round(
+            ((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100,
+          )
         : 0;
     const monthDeltaStr =
-      monthDelta >= 0 ? `+${monthDelta}% vs last month` : `${monthDelta}% vs last month`;
-    const monthTone: KpiMetric["tone"] = monthDelta >= 0 ? "positive" : "warning";
+      monthDelta >= 0
+        ? `+${monthDelta}% vs last month`
+        : `${monthDelta}% vs last month`;
+    const monthTone: KpiMetric["tone"] =
+      monthDelta >= 0 ? "positive" : "warning";
 
     // QRIS success rate
     const qrisRows = rows.filter((r) => r.provider === "QRIS");
     const qrisSuccess = qrisRows.filter((r) => r.status === "paid").length;
     const qrisRate =
-      qrisRows.length > 0 ? ((qrisSuccess / qrisRows.length) * 100).toFixed(1) : "0.0";
+      qrisRows.length > 0
+        ? ((qrisSuccess / qrisRows.length) * 100).toFixed(1)
+        : "0.0";
     const qrisFailed = qrisRows.length - qrisSuccess;
     const qrisTone: KpiMetric["tone"] =
-      Number(qrisRate) >= 90 ? "positive" : Number(qrisRate) >= 70 ? "warning" : "warning";
+      Number(qrisRate) >= 90
+        ? "positive"
+        : Number(qrisRate) >= 70
+          ? "warning"
+          : "warning";
 
     const formatRp = (n: number) => {
       if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(1)}jt`;
@@ -436,7 +479,10 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
       {
         label: "Revenue today",
         value: formatRp(todayRevenue),
-        delta: todayRows.length > 0 ? `${todayRows.length} transactions` : "No transactions yet",
+        delta:
+          todayRows.length > 0
+            ? `${todayRows.length} transactions`
+            : "No transactions yet",
         tone: todayRevenue > 0 ? "positive" : "neutral",
       },
       {
@@ -448,14 +494,19 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
       {
         label: "Transactions today",
         value: String(todayCount),
-        delta: paidRows.length > 0 ? `${paidRows.length} paid total` : "Waiting for first session",
+        delta:
+          paidRows.length > 0
+            ? `${paidRows.length} paid total`
+            : "Waiting for first session",
         tone: todayCount > 0 ? "positive" : "neutral",
       },
       {
         label: "QRIS success rate",
         value: `${qrisRate}%`,
         delta:
-          qrisRows.length > 0 ? `${qrisFailed} failed QRIS` : "No QRIS transactions yet",
+          qrisRows.length > 0
+            ? `${qrisFailed} failed QRIS`
+            : "No QRIS transactions yet",
         tone: qrisTone,
       },
     ];
@@ -499,13 +550,23 @@ async function getChartPoints(
       if (organizationId) query = query.eq("organization_id", organizationId);
 
       const { data } = await query;
-      const rows = (data ?? []) as { amount: number; status: string; created_at: string }[];
+      const rows = (data ?? []) as {
+        amount: number;
+        status: string;
+        created_at: string;
+      }[];
 
       return Array.from({ length: 7 }, (_, i) => {
         const day = new Date(now);
         day.setDate(now.getDate() - (6 - i));
-        const dayLabel = new Intl.DateTimeFormat("id-ID", { weekday: "short" }).format(day);
-        const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+        const dayLabel = new Intl.DateTimeFormat("id-ID", {
+          weekday: "short",
+        }).format(day);
+        const dayStart = new Date(
+          day.getFullYear(),
+          day.getMonth(),
+          day.getDate(),
+        );
         const dayEnd = new Date(dayStart);
         dayEnd.setDate(dayStart.getDate() + 1);
 
@@ -524,7 +585,20 @@ async function getChartPoints(
       });
     } else {
       // Last 6 months
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "Mei",
+        "Jun",
+        "Jul",
+        "Agu",
+        "Sep",
+        "Okt",
+        "Nov",
+        "Des",
+      ];
       const cutoff = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
       let query = supabase
@@ -534,11 +608,19 @@ async function getChartPoints(
       if (organizationId) query = query.eq("organization_id", organizationId);
 
       const { data } = await query;
-      const rows = (data ?? []) as { amount: number; status: string; created_at: string }[];
+      const rows = (data ?? []) as {
+        amount: number;
+        status: string;
+        created_at: string;
+      }[];
 
       return Array.from({ length: 6 }, (_, i) => {
         const month = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-        const nextMonth = new Date(now.getFullYear(), now.getMonth() - (5 - i) + 1, 1);
+        const nextMonth = new Date(
+          now.getFullYear(),
+          now.getMonth() - (5 - i) + 1,
+          1,
+        );
 
         const monthRows = rows.filter((r) => {
           const d = new Date(r.created_at);
@@ -614,7 +696,9 @@ async function getPosDashboardSummary(): Promise<PosDashboardSummary> {
 
     let queryBuilder = supabase
       .from("pos_sales")
-      .select("id,package_name,print_count,amount,payment_method,notes,created_at")
+      .select(
+        "id,package_name,print_count,amount,payment_method,notes,created_at",
+      )
       .order("created_at", { ascending: false })
       .limit(1000);
 
@@ -632,21 +716,37 @@ async function getPosDashboardSummary(): Promise<PosDashboardSummary> {
     const sales = (data ?? []) as PosDashboardSaleRow[];
 
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const currencyDateFormatter = new Intl.DateTimeFormat("id-ID", {
       dateStyle: "medium",
       timeStyle: "short",
     });
-    const weekdayFormatter = new Intl.DateTimeFormat("id-ID", { weekday: "short" });
+    const weekdayFormatter = new Intl.DateTimeFormat("id-ID", {
+      weekday: "short",
+    });
 
     const totalRevenue = sales.reduce((sum, sale) => sum + sale.amount, 0);
     const totalPrints = sales.reduce((sum, sale) => sum + sale.print_count, 0);
-    const todaySales = sales.filter((sale) => new Date(sale.created_at) >= startOfToday);
-    const monthlySales = sales.filter((sale) => new Date(sale.created_at) >= startOfMonth);
+    const todaySales = sales.filter(
+      (sale) => new Date(sale.created_at) >= startOfToday,
+    );
+    const monthlySales = sales.filter(
+      (sale) => new Date(sale.created_at) >= startOfMonth,
+    );
 
-    const packageTotals = new Map<string, { transactions: number; revenue: number; prints: number }>();
-    const paymentTotals = new Map<"Cash" | "QRIS", { transactions: number; revenue: number }>();
+    const packageTotals = new Map<
+      string,
+      { transactions: number; revenue: number; prints: number }
+    >();
+    const paymentTotals = new Map<
+      "Cash" | "QRIS",
+      { transactions: number; revenue: number }
+    >();
 
     for (const sale of sales) {
       const packageTotal = packageTotals.get(sale.package_name) ?? {
@@ -673,8 +773,16 @@ async function getPosDashboardSummary(): Promise<PosDashboardSummary> {
       date.setDate(now.getDate() - (6 - index));
       const nextDate = new Date(date);
       nextDate.setDate(date.getDate() + 1);
-      const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const dayEnd = new Date(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
+      const dayStart = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+      );
+      const dayEnd = new Date(
+        nextDate.getFullYear(),
+        nextDate.getMonth(),
+        nextDate.getDate(),
+      );
       const daySales = sales.filter((sale) => {
         const createdAt = new Date(sale.created_at);
         return createdAt >= dayStart && createdAt < dayEnd;
@@ -694,15 +802,18 @@ async function getPosDashboardSummary(): Promise<PosDashboardSummary> {
       totalTransactions: sales.length,
       todayTransactions: todaySales.length,
       totalPrints,
-      averageTransaction: sales.length > 0 ? Math.round(totalRevenue / sales.length) : 0,
+      averageTransaction:
+        sales.length > 0 ? Math.round(totalRevenue / sales.length) : 0,
       topPackages: Array.from(packageTotals.entries())
         .map(([name, total]) => ({ name, ...total }))
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5),
-      paymentBreakdown: Array.from(paymentTotals.entries()).map(([method, total]) => ({
-        method,
-        ...total,
-      })),
+      paymentBreakdown: Array.from(paymentTotals.entries()).map(
+        ([method, total]) => ({
+          method,
+          ...total,
+        }),
+      ),
       dailySales,
       recentSales: sales.slice(0, 5).map((sale) => ({
         id: sale.id,
@@ -792,23 +903,16 @@ async function updateTransaction(
 
 async function deleteTransaction(id: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase
-    .from("transactions")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete transaction: ${error.message}`);
 }
 
 async function deleteTransactions(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
   const supabase = createClient();
-  const { error } = await supabase
-    .from("transactions")
-    .delete()
-    .in("id", ids);
+  const { error } = await supabase.from("transactions").delete().in("id", ids);
   if (error) throw new Error(`Unable to delete transactions: ${error.message}`);
 }
-
 
 async function getBooths(): Promise<Device[]> {
   const supabase = createClient();
@@ -829,8 +933,9 @@ async function getTemplates(): Promise<Template[]> {
   const { data, error } = await supabase
     .from("templates")
     .select(
-      "id,name,category,status,assigned_booths,updated_at_label,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default",
+      "id,name,category,status,assigned_booths,updated_at_label,display_order,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default",
     )
+    .order("display_order", { ascending: true })
     .order("updated_at", { ascending: false });
 
   return assertSupabaseResult(
@@ -845,6 +950,18 @@ async function createTemplate(values: TemplateFormValues): Promise<void> {
   const now = new Date().toISOString();
   const id = `TPL-${Date.now()}`;
   const photoCount = countPhotoSlotsFromLayout(values.frameLayout);
+  const { data: lastTemplate, error: orderError } = await supabase
+    .from("templates")
+    .select("display_order")
+    .order("display_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (orderError) {
+    throw new Error(
+      `Unable to determine template order: ${orderError.message}`,
+    );
+  }
+
   const { error } = await supabase.from("templates").insert({
     id,
     name: values.name,
@@ -858,6 +975,7 @@ async function createTemplate(values: TemplateFormValues): Promise<void> {
     frame_image_url: values.frameImageUrl || null,
     frame_layout: values.frameLayout ?? null,
     is_default: values.isDefault,
+    display_order: (lastTemplate?.display_order ?? -1) + 1,
     updated_at: now,
   });
 
@@ -897,6 +1015,18 @@ async function deleteTemplate(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("templates").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete template: ${error.message}`);
+}
+
+async function reorderTemplates(templateIds: string[]): Promise<void> {
+  if (templateIds.length === 0) return;
+
+  const supabase = createClient();
+  const { error } = await supabase.rpc("reorder_templates", {
+    template_ids: templateIds,
+  });
+  if (error) {
+    throw new Error(`Unable to reorder templates: ${error.message}`);
+  }
 }
 
 async function getPricingProducts(): Promise<PricingProduct[]> {
@@ -961,14 +1091,16 @@ async function updateSubscriptionPlan(
     })
     .eq("id", id);
 
-  if (error) throw new Error(`Unable to update subscription plan: ${error.message}`);
+  if (error)
+    throw new Error(`Unable to update subscription plan: ${error.message}`);
 }
 
 async function getTenants(): Promise<Organization[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("organizations")
-    .select(`
+    .select(
+      `
       id,
       name,
       status,
@@ -988,18 +1120,21 @@ async function getTenants(): Promise<Organization[]> {
           additional_device_price_monthly
         )
       )
-    `)
+    `,
+    )
     .order("name", { ascending: true });
 
   if (error) throw new Error(`Unable to load organizations: ${error.message}`);
 
   return ((data ?? []) as OrganizationRow[]).map((row) => {
-    const sub = Array.isArray(row.subscriptions) ? row.subscriptions[0] : row.subscriptions;
+    const sub = Array.isArray(row.subscriptions)
+      ? row.subscriptions[0]
+      : row.subscriptions;
     const planMeta = Array.isArray(sub?.subscription_plans)
       ? sub?.subscription_plans[0]
       : sub?.subscription_plans;
-    const planId = sub?.plan_id || 'free';
-    const subStatus = sub?.status || 'free';
+    const planId = sub?.plan_id || "free";
+    const subStatus = sub?.status || "free";
     const expiresAt = sub?.current_period_end || null;
     const deviceLimit = sub?.device_limit ?? planMeta?.included_devices ?? 1;
     const planName =
@@ -1165,8 +1300,14 @@ async function deletePricingProduct(id: string): Promise<void> {
 async function createBooth(values: BoothInput): Promise<void> {
   const supabase = createClient();
   const id = `BTH-${Date.now()}`;
-  const frameTemplates = normalizeAssignmentList(values.frameTemplates, values.template);
-  const pricingProfiles = normalizeAssignmentList(values.pricingProfiles, values.pricingProfile);
+  const frameTemplates = normalizeAssignmentList(
+    values.frameTemplates,
+    values.template,
+  );
+  const pricingProfiles = normalizeAssignmentList(
+    values.pricingProfiles,
+    values.pricingProfile,
+  );
   const { error } = await supabase.from("devices").insert({
     id,
     name: values.name,
@@ -1204,14 +1345,20 @@ async function updateBooth(
   if (patch.theme !== undefined) dbPatch.theme = patch.theme;
   if (patch.template !== undefined) dbPatch.template = patch.template;
   if (patch.frameTemplates !== undefined) {
-    const frameTemplates = normalizeAssignmentList(patch.frameTemplates, patch.template);
+    const frameTemplates = normalizeAssignmentList(
+      patch.frameTemplates,
+      patch.template,
+    );
     dbPatch.frame_templates = frameTemplates;
     dbPatch.template = frameTemplates[0] ?? "";
   }
   if (patch.pricingProfile !== undefined)
     dbPatch.pricing_profile = patch.pricingProfile;
   if (patch.pricingProfiles !== undefined) {
-    const pricingProfiles = normalizeAssignmentList(patch.pricingProfiles, patch.pricingProfile);
+    const pricingProfiles = normalizeAssignmentList(
+      patch.pricingProfiles,
+      patch.pricingProfile,
+    );
     dbPatch.pricing_profiles = pricingProfiles;
     dbPatch.pricing_profile = pricingProfiles[0] ?? "";
   }
@@ -1233,7 +1380,7 @@ async function deleteBooth(id: string): Promise<void> {
 async function createTenant(values: TenantInput): Promise<void> {
   const supabase = createClient();
   const orgId = `org_${Date.now()}`;
-  
+
   const { error: orgErr } = await supabase.from("organizations").insert({
     id: orgId,
     name: values.name,
@@ -1241,16 +1388,18 @@ async function createTenant(values: TenantInput): Promise<void> {
     renewal_date: values.renewalDate,
     updated_at: new Date().toISOString(),
   });
-  if (orgErr) throw new Error(`Unable to create organization: ${orgErr.message}`);
+  if (orgErr)
+    throw new Error(`Unable to create organization: ${orgErr.message}`);
 
   const { error: subErr } = await supabase.from("subscriptions").insert({
     organization_id: orgId,
-    plan_id: values.planId || 'free',
-    status: values.subscriptionStatus || 'free',
+    plan_id: values.planId || "free",
+    status: values.subscriptionStatus || "free",
     current_period_end: values.subscriptionExpiresAt || null,
     device_limit: values.deviceLimit ?? 1,
   });
-  if (subErr) throw new Error(`Unable to create subscription: ${subErr.message}`);
+  if (subErr)
+    throw new Error(`Unable to create subscription: ${subErr.message}`);
 }
 
 async function updateTenant(
@@ -1264,27 +1413,42 @@ async function updateTenant(
   if (patch.name !== undefined) dbPatch.name = patch.name;
   if (patch.status !== undefined) dbPatch.status = patch.status;
   if (patch.renewalDate !== undefined) dbPatch.renewal_date = patch.renewalDate;
-  
+
   if (Object.keys(dbPatch).length > 1) {
-    const { error } = await supabase.from("organizations").update(dbPatch).eq("id", id);
-    if (error) throw new Error(`Unable to update organization: ${error.message}`);
+    const { error } = await supabase
+      .from("organizations")
+      .update(dbPatch)
+      .eq("id", id);
+    if (error)
+      throw new Error(`Unable to update organization: ${error.message}`);
   }
 
   // Update subscription separately
-  if (patch.planId !== undefined || patch.subscriptionStatus !== undefined || patch.subscriptionExpiresAt !== undefined || patch.deviceLimit !== undefined) {
+  if (
+    patch.planId !== undefined ||
+    patch.subscriptionStatus !== undefined ||
+    patch.subscriptionExpiresAt !== undefined ||
+    patch.deviceLimit !== undefined
+  ) {
     const subPatch: Record<string, unknown> = {};
     if (patch.planId !== undefined) subPatch.plan_id = patch.planId;
-    if (patch.subscriptionStatus !== undefined) subPatch.status = patch.subscriptionStatus;
-    if (patch.subscriptionExpiresAt !== undefined) subPatch.current_period_end = patch.subscriptionExpiresAt;
-    if (patch.deviceLimit !== undefined) subPatch.device_limit = Math.max(1, patch.deviceLimit);
-    
+    if (patch.subscriptionStatus !== undefined)
+      subPatch.status = patch.subscriptionStatus;
+    if (patch.subscriptionExpiresAt !== undefined)
+      subPatch.current_period_end = patch.subscriptionExpiresAt;
+    if (patch.deviceLimit !== undefined)
+      subPatch.device_limit = Math.max(1, patch.deviceLimit);
+
     if (Object.keys(subPatch).length > 0) {
-      const { error } = await supabase.from("subscriptions").update(subPatch).eq("organization_id", id);
+      const { error } = await supabase
+        .from("subscriptions")
+        .update(subPatch)
+        .eq("organization_id", id);
       if (error) {
         await supabase.from("subscriptions").upsert({
           organization_id: id,
-          plan_id: patch.planId || 'free',
-          status: patch.subscriptionStatus || 'free',
+          plan_id: patch.planId || "free",
+          status: patch.subscriptionStatus || "free",
           current_period_end: patch.subscriptionExpiresAt || null,
           device_limit: patch.deviceLimit ?? 1,
         });
@@ -1430,28 +1594,54 @@ async function getDashboard(): Promise<DashboardData> {
     getPosDashboardSummary(),
   ]);
 
-  if (kpiResult.status === "rejected") console.error("[getDashboard] kpiMetrics failed:", kpiResult.reason);
-  if (weeklyResult.status === "rejected") console.error("[getDashboard] weeklyChart failed:", weeklyResult.reason);
-  if (monthlyResult.status === "rejected") console.error("[getDashboard] monthlyChart failed:", monthlyResult.reason);
-  if (transactionsResult.status === "rejected") console.error("[getDashboard] transactions failed:", transactionsResult.reason);
-  if (devicesResult.status === "rejected") console.error("[getDashboard] devices failed:", devicesResult.reason);
-  if (posSummaryResult.status === "rejected") console.error("[getDashboard] posSummary failed:", posSummaryResult.reason);
+  if (kpiResult.status === "rejected")
+    console.error("[getDashboard] kpiMetrics failed:", kpiResult.reason);
+  if (weeklyResult.status === "rejected")
+    console.error("[getDashboard] weeklyChart failed:", weeklyResult.reason);
+  if (monthlyResult.status === "rejected")
+    console.error("[getDashboard] monthlyChart failed:", monthlyResult.reason);
+  if (transactionsResult.status === "rejected")
+    console.error(
+      "[getDashboard] transactions failed:",
+      transactionsResult.reason,
+    );
+  if (devicesResult.status === "rejected")
+    console.error("[getDashboard] devices failed:", devicesResult.reason);
+  if (posSummaryResult.status === "rejected")
+    console.error("[getDashboard] posSummary failed:", posSummaryResult.reason);
 
   return {
     kpiMetrics: kpiResult.status === "fulfilled" ? kpiResult.value : [],
     weeklyChart: weeklyResult.status === "fulfilled" ? weeklyResult.value : [],
-    monthlyChart: monthlyResult.status === "fulfilled" ? monthlyResult.value : [],
-    transactions: transactionsResult.status === "fulfilled" ? transactionsResult.value : [],
+    monthlyChart:
+      monthlyResult.status === "fulfilled" ? monthlyResult.value : [],
+    transactions:
+      transactionsResult.status === "fulfilled" ? transactionsResult.value : [],
     devices: devicesResult.status === "fulfilled" ? devicesResult.value : [],
-    posSummary: posSummaryResult.status === "fulfilled" ? posSummaryResult.value : EMPTY_POS_SUMMARY,
+    posSummary:
+      posSummaryResult.status === "fulfilled"
+        ? posSummaryResult.value
+        : EMPTY_POS_SUMMARY,
   };
 }
 
-async function getSubscriptionStatus(): Promise<{ tier: "Free" | "Pro"; expiry: string | null; planId: string | null; planName: string; deviceLimit: number }> {
+async function getSubscriptionStatus(): Promise<{
+  tier: "Free" | "Pro";
+  expiry: string | null;
+  planId: string | null;
+  planName: string;
+  deviceLimit: number;
+}> {
   const supabase = createClient();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData?.user?.id) {
-    return { tier: "Free", expiry: null, planId: null, planName: "Free", deviceLimit: 1 };
+    return {
+      tier: "Free",
+      expiry: null,
+      planId: null,
+      planName: "Free",
+      deviceLimit: 1,
+    };
   }
 
   const { data: profile } = await supabase
@@ -1462,12 +1652,19 @@ async function getSubscriptionStatus(): Promise<{ tier: "Free" | "Pro"; expiry: 
     .single();
 
   if (!profile?.organization_id) {
-    return { tier: "Free", expiry: null, planId: null, planName: "Free", deviceLimit: 1 };
+    return {
+      tier: "Free",
+      expiry: null,
+      planId: null,
+      planName: "Free",
+      deviceLimit: 1,
+    };
   }
 
   const { data: sub } = await supabase
     .from("subscriptions")
-    .select(`
+    .select(
+      `
       plan_id,
       status,
       device_limit,
@@ -1476,12 +1673,14 @@ async function getSubscriptionStatus(): Promise<{ tier: "Free" | "Pro"; expiry: 
         name,
         included_devices
       )
-    `)
+    `,
+    )
     .eq("organization_id", profile.organization_id)
     .maybeSingle();
 
   const planName = sub?.subscription_plans?.name ?? "Free";
-  const deviceLimit = sub?.device_limit ?? sub?.subscription_plans?.included_devices ?? 1;
+  const deviceLimit =
+    sub?.device_limit ?? sub?.subscription_plans?.included_devices ?? 1;
 
   if (sub && sub.plan_id !== "free" && sub.current_period_end) {
     const expiryTime = new Date(sub.current_period_end).getTime();
@@ -1500,7 +1699,13 @@ async function getSubscriptionStatus(): Promise<{ tier: "Free" | "Pro"; expiry: 
     }
   }
 
-  return { tier: "Free", expiry: null, planId: sub?.plan_id ?? null, planName, deviceLimit };
+  return {
+    tier: "Free",
+    expiry: null,
+    planId: sub?.plan_id ?? null,
+    planName,
+    deviceLimit,
+  };
 }
 
 async function getSubscriptionOrders() {
@@ -1535,7 +1740,8 @@ async function getProfiles() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select(`
+    .select(
+      `
       id,
       email,
       role,
@@ -1548,7 +1754,8 @@ async function getProfiles() {
           name
         )
       )
-    `)
+    `,
+    )
     .order("created_at", { ascending: false });
   if (error) throw error;
   return ((data ?? []) as ProfileWithOrganization[]).map((profile) => {
@@ -1575,7 +1782,7 @@ async function updateProfile({
   organizationId?: string | null;
 }) {
   const supabase = createClient();
-  
+
   const { data: profile, error } = await supabase
     .from("profiles")
     .update({ ...patch, updated_at: new Date().toISOString() })
@@ -1596,7 +1803,10 @@ async function updateProfile({
       if (existing) {
         const { error: mErr } = await supabase
           .from("organization_members")
-          .update({ organization_id: organizationId, updated_at: new Date().toISOString() })
+          .update({
+            organization_id: organizationId,
+            updated_at: new Date().toISOString(),
+          })
           .eq("profile_id", id);
         if (mErr) throw mErr;
       } else {
@@ -1623,10 +1833,7 @@ async function updateProfile({
 
 async function deleteProfile(id: string) {
   const supabase = createClient();
-  const { error } = await supabase
-    .from("profiles")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("profiles").delete().eq("id", id);
   if (error) throw error;
   return true;
 }
@@ -1644,6 +1851,7 @@ export const adminRepository = {
   createTemplate,
   updateTemplate,
   deleteTemplate,
+  reorderTemplates,
   pricing: getPricingProducts,
   createPricingProduct,
   updatePricingProduct,
@@ -1687,7 +1895,9 @@ export const adminRepository = {
 
 async function getMyTenantDetails() {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
   const { data: profile, error: pErr } = await supabase
@@ -1696,11 +1906,13 @@ async function getMyTenantDetails() {
     .eq("profile_id", user.id)
     .limit(1)
     .single();
-  if (pErr || !profile?.organization_id) throw new Error("No organization associated");
+  if (pErr || !profile?.organization_id)
+    throw new Error("No organization associated");
 
   const { data: organization, error: tErr } = await supabase
     .from("organizations")
-    .select(`
+    .select(
+      `
       *,
       subscriptions (
         plan_id,
@@ -1715,7 +1927,8 @@ async function getMyTenantDetails() {
           additional_device_price_monthly
         )
       )
-    `)
+    `,
+    )
     .eq("id", profile.organization_id)
     .single();
   if (tErr) throw tErr;
@@ -1738,14 +1951,17 @@ async function getMyTenantDetails() {
     join_code: organization.join_code ?? null,
     subscription_status: sub?.status ?? "free",
     subscription_expires_at: sub?.current_period_end ?? null,
-    device_limit: sub?.device_limit ?? sub?.subscription_plans?.included_devices ?? 1,
+    device_limit:
+      sub?.device_limit ?? sub?.subscription_plans?.included_devices ?? 1,
     subscription_is_active: subscriptionIsActive,
   };
 }
 
 async function updateMyTenantName(name: string) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
   const { data: profile } = await supabase
@@ -1768,7 +1984,9 @@ async function updateMyTenantName(name: string) {
 
 async function getMyTenantMembers() {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
   const { data: profile } = await supabase
@@ -1781,7 +1999,9 @@ async function getMyTenantMembers() {
 
   const { data, error } = await supabase
     .from("organization_members")
-    .select("id, role, created_at, profile_id, profiles(id, email, role, created_at)")
+    .select(
+      "id, role, created_at, profile_id, profiles(id, email, role, created_at)",
+    )
     .eq("organization_id", profile.organization_id)
     .order("created_at", { ascending: true });
   if (error) throw error;
@@ -1803,7 +2023,9 @@ async function getMyTenantMembers() {
 
 async function getMyTenantInvitations() {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
   const { data: profile } = await supabase
@@ -1825,7 +2047,9 @@ async function getMyTenantInvitations() {
 
 async function inviteUserToTenant(email: string) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
   const { data: profile } = await supabase
@@ -1901,7 +2125,9 @@ async function deleteTenantInvitation(id: string) {
 
 async function removeMemberFromTenant(memberId: string) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
   const { data: currentMembership } = await supabase

@@ -4140,6 +4140,7 @@ export function VisualBuilder() {
                           nodeId: node.id,
                         });
                       }}
+                      onDragStart={() => selectNode(node.id)}
                       onDrag={(_, d) => {
                         const {
                           guides: g,
@@ -4159,6 +4160,7 @@ export function VisualBuilder() {
                         updateNode(node.id, { x: sx, y: sy });
                         clearSnap();
                       }}
+                      onResizeStart={() => selectNode(node.id)}
                       onResizeStop={(_, __, ref, ___, pos) => {
                         const w = snap(ref.offsetWidth);
                         const h = node.lockAspect

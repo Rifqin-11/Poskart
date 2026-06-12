@@ -15,7 +15,8 @@ export function useCreateTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: templateService.createTemplate,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
   });
 }
 
@@ -29,7 +30,8 @@ export function useUpdateTemplate() {
       id: string;
       patch: Parameters<typeof templateService.updateTemplate>[1];
     }) => templateService.updateTemplate(id, patch),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
   });
 }
 
@@ -37,6 +39,16 @@ export function useDeleteTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: templateService.deleteTemplate,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
+  });
+}
+
+export function useReorderTemplates() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: templateService.reorderTemplates,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
   });
 }

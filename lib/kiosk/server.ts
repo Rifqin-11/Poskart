@@ -402,11 +402,12 @@ export async function buildKioskBootstrap(
     context.client
       .from("templates")
       .select(
-        "id,name,category,status,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default",
+        "id,name,category,status,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default,display_order",
       )
       .eq("organization_id", context.organizationId)
       .eq("status", "published")
-      .order("is_default", { ascending: false }),
+      .order("display_order", { ascending: true })
+      .order("updated_at", { ascending: false }),
     context.client
       .from("pricing_products")
       .select(
@@ -531,6 +532,7 @@ export async function buildKioskBootstrap(
       frameImageUrl: template.frame_image_url ?? null,
       frameLayout: template.frame_layout ?? null,
       isDefault: template.is_default,
+      displayOrder: template.display_order,
     })),
     availableTemplates: templates.map((template) => ({
       id: template.id,
@@ -542,6 +544,7 @@ export async function buildKioskBootstrap(
       frameImageUrl: template.frame_image_url ?? null,
       frameLayout: template.frame_layout ?? null,
       isDefault: template.is_default,
+      displayOrder: template.display_order,
     })),
     pricingProducts,
     // The ID of the device resolved/registered for this session.

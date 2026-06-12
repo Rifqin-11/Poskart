@@ -40,10 +40,11 @@ export async function GET() {
         supabase
           .from("templates")
           .select(
-            "id,name,category,status,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default",
+            "id,name,category,status,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default,display_order",
           )
           .eq("status", "published")
-          .order("is_default", { ascending: false }),
+          .order("display_order", { ascending: true })
+          .order("updated_at", { ascending: false }),
       ]);
 
     const config = configResult.data;
@@ -94,6 +95,7 @@ export async function GET() {
         frameImageUrl: t.frame_image_url ?? null,
         frameLayout: t.frame_layout ?? null,
         isDefault: t.is_default,
+        displayOrder: t.display_order,
       })),
     };
 
