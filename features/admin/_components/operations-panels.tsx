@@ -2,7 +2,8 @@
 
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   type DragEndEvent,
   useSensor,
   useSensors,
@@ -258,7 +259,7 @@ function SortableTemplateCard({
             </span>
             <button
               type="button"
-              className="cursor-grab rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 active:cursor-grabbing"
+              className="flex size-9 cursor-grab touch-none items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 active:cursor-grabbing"
               title="Geser untuk mengubah urutan"
               aria-label={`Ubah urutan ${template.name}`}
               {...attributes}
@@ -363,8 +364,11 @@ export function TemplateManagement() {
   const [testTemplate, setTestTemplate] = useState<Template | null>(null);
   const confirmDelete = useConfirmDialog();
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 8 },
     }),
   );
 

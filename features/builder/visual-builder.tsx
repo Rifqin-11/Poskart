@@ -4,7 +4,8 @@ import QRCodeSVG from "react-qr-code";
 import {
   DndContext,
   type DragEndEvent,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -69,6 +70,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { useTouchContextMenu } from "@/lib/hooks/use-touch-context-menu";
 import {
   useActiveLayoutSchema,
   useLayoutSchemas,
@@ -1045,13 +1047,14 @@ function SortableLayer({ node }: { node: BuilderNode }) {
     >
       <button
         className={cn(
-          "cursor-grab",
+          "flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded",
           isSelected ? "text-zinc-400" : "text-zinc-400",
         )}
+        aria-label={`Reorder ${node.id}`}
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="size-3" />
+        <GripVertical className="size-4" />
       </button>
       <button
         className="min-w-0 flex-1 text-left"
@@ -2901,7 +2904,12 @@ function BuilderContextMenu({
 }
 
 export function VisualBuilder() {
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 8 },
+    }),
+  );
   const activePage = useBuilderStore((state) => state.activePage);
   const setActivePage = useBuilderStore((state) => state.setActivePage);
   const selectedId = useBuilderStore((state) => state.selectedId);
@@ -2943,6 +2951,16 @@ export function VisualBuilder() {
     y: number;
     nodeId: string | null;
   } | null>(null);
+  const longPressNodeRef = useRef<string | null>(null);
+  const canvasTouchMenu = useTouchContextMenu(({ x, y }) => {
+    selectNode(null);
+    setContextMenu({ x, y, nodeId: null });
+  });
+  const nodeTouchMenu = useTouchContextMenu(({ x, y }) => {
+    if (longPressNodeRef.current) {
+      setContextMenu({ x, y, nodeId: longPressNodeRef.current });
+    }
+  });
 
   // ── Auto-save & Load ────────────────────────────────
   const [lastAutoSave, setLastAutoSave] = useState<string | null>(
@@ -3652,7 +3670,7 @@ export function VisualBuilder() {
                         next.length === all.length ? undefined : next,
                     });
                   }}
-                  className="absolute -right-1 -top-1 hidden size-3.5 items-center justify-center rounded-full border border-zinc-300 bg-white text-[8px] text-zinc-500 shadow-sm hover:border-zinc-500 hover:text-zinc-900 group-hover:flex"
+                  className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border border-zinc-300 bg-white text-[8px] text-zinc-500 shadow-sm hover:border-zinc-500 hover:text-zinc-900 group-hover:flex group-focus-within:flex [@media(pointer:coarse)]:flex"
                 >
                   {isEnabled ? "●" : "○"}
                 </button>
@@ -3874,6 +3892,15 @@ export function VisualBuilder() {
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
           onMouseLeave={handleCanvasMouseUp}
+          onPointerDown={(event) => {
+            if (!(event.target as HTMLElement).closest(".builder-rnd-node")) {
+              canvasTouchMenu.onPointerDown(event);
+            }
+          }}
+          onPointerMove={canvasTouchMenu.onPointerMove}
+          onPointerUp={canvasTouchMenu.onPointerUp}
+          onPointerCancel={canvasTouchMenu.onPointerCancel}
+          onClickCapture={canvasTouchMenu.onClickCapture}
           onContextMenu={(e) => {
             e.preventDefault();
             selectNode(null);
@@ -4140,6 +4167,17 @@ export function VisualBuilder() {
                           nodeId: node.id,
                         });
                       }}
+                      onPointerDown={(
+                        event: React.PointerEvent<HTMLDivElement>,
+                      ) => {
+                        longPressNodeRef.current = node.id;
+                        selectNode(node.id);
+                        nodeTouchMenu.onPointerDown(event);
+                      }}
+                      onPointerMove={nodeTouchMenu.onPointerMove}
+                      onPointerUp={nodeTouchMenu.onPointerUp}
+                      onPointerCancel={nodeTouchMenu.onPointerCancel}
+                      onClickCapture={nodeTouchMenu.onClickCapture}
                       onDragStart={() => selectNode(node.id)}
                       onDrag={(_, d) => {
                         const {
@@ -4180,7 +4218,7 @@ export function VisualBuilder() {
                         transform: `rotate(${node.rotation}deg)`,
                       }}
                       className={cn(
-                        "group",
+                        "builder-rnd-node group touch-none",
                         selectedId === node.id &&
                           "outline outline-2 outline-offset-1 outline-zinc-950",
                         node.locked && "cursor-not-allowed",
