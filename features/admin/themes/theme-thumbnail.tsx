@@ -168,7 +168,8 @@ export function ThemeThumbnail({
   const nodes = (schema.pages?.[page] ?? [])
     .slice()
     .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
-  const pageBg = canvas.pageBackgrounds?.[page]?.image;
+  const pageBackground = canvas.pageBackgrounds?.[page];
+  const pageBg = pageBackground?.image;
 
   return (
     <div
@@ -185,6 +186,7 @@ export function ThemeThumbnail({
           src={pageBg}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
+          style={{ zIndex: pageBackground?.zIndex ?? 0 }}
         />
       ) : null}
       {nodes.length === 0 ? (

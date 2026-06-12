@@ -3358,12 +3358,12 @@ export function VisualBuilder() {
         opacity: 1,
         locked: true,
         visible: true,
-        zIndex: pageBg.zIndex ?? 1,
+        zIndex: pageBg.zIndex ?? 0,
         props: {},
       };
-      return [...pageNodes, bgVirtualNode].sort((a, b) => a.zIndex - b.zIndex);
+      return [...pageNodes, bgVirtualNode].sort((a, b) => b.zIndex - a.zIndex);
     }
-    return pageNodes.sort((a, b) => a.zIndex - b.zIndex);
+    return pageNodes.sort((a, b) => b.zIndex - a.zIndex);
   }, [nodes, activePage, canvas, isOverlayMode]);
 
   const selectedNode = nodes.find((node) => node.id === selectedId);
@@ -3955,7 +3955,7 @@ export function VisualBuilder() {
                     className="pointer-events-none absolute inset-0 bg-cover bg-center"
                     style={{
                       backgroundImage: `url(${canvas.pageBackgrounds[activePage]!.image})`,
-                      zIndex: canvas.pageBackgrounds?.[activePage]?.zIndex ?? 1,
+                      zIndex: canvas.pageBackgrounds?.[activePage]?.zIndex ?? 0,
                       borderRadius: 28,
                     }}
                   />
@@ -3971,7 +3971,7 @@ export function VisualBuilder() {
                     playsInline
                     className="pointer-events-none absolute inset-0 h-full w-full object-cover"
                     style={{
-                      zIndex: canvas.pageBackgrounds?.[activePage]?.zIndex ?? 1,
+                      zIndex: canvas.pageBackgrounds?.[activePage]?.zIndex ?? 0,
                       borderRadius: 28,
                     }}
                   />
