@@ -35,9 +35,11 @@ import {
   Download,
   Edit2,
   Folder,
+  Grid2X2,
   GripVertical,
   ImagePlus,
   LockKeyhole,
+  List,
   Plus,
   Power,
   Printer,
@@ -211,11 +213,13 @@ function PageHeader({
 
 function SortableTemplateCard({
   template,
+  viewMode,
   onDelete,
   onEdit,
   onTest,
 }: {
   template: Template;
+  viewMode: "grid" | "list";
   onDelete: (template: Template) => void;
   onEdit: (template: Template) => void;
   onTest: (template: Template) => void;
@@ -240,7 +244,14 @@ function SortableTemplateCard({
       className={cn(isDragging && "opacity-70")}
     >
       <Card className="group h-full overflow-hidden">
-        <CardContent className="space-y-4 p-4">
+        <CardContent
+          className={cn(
+            "p-4",
+            viewMode === "grid"
+              ? "space-y-4"
+              : "grid grid-cols-[auto_96px_minmax(0,1fr)_auto] items-center gap-4",
+          )}
+        >
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-medium text-zinc-400">
               Urutan {template.displayOrder + 1}
@@ -258,7 +269,10 @@ function SortableTemplateCard({
           </div>
 
           <div
-            className="relative mx-auto flex aspect-[8/12] h-48 w-32 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm"
+            className={cn(
+              "relative mx-auto flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm",
+              viewMode === "grid" ? "aspect-[8/12] h-48 w-32" : "h-28 w-20",
+            )}
             style={{ backgroundColor: `${template.accentColor}14` }}
           >
             {template.frameImageUrl ? (
@@ -302,7 +316,12 @@ function SortableTemplateCard({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div
+            className={cn(
+              "flex gap-2",
+              viewMode === "grid" ? "flex-wrap" : "flex-col",
+            )}
+          >
             <Button
               variant="outline"
               size="sm"
@@ -340,6 +359,7 @@ export function TemplateManagement() {
   const deleteTemplate = useDeleteTemplate();
   const reorderTemplates = useReorderTemplates();
   const [orderedTemplates, setOrderedTemplates] = useState<Template[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [testTemplate, setTestTemplate] = useState<Template | null>(null);
   const confirmDelete = useConfirmDialog();
   const sensors = useSensors(
@@ -410,9 +430,31 @@ export function TemplateManagement() {
         title="Template Management"
         description="Frame templates for the Flutter photobooth picker screen."
         action={
-          <Button onClick={openAdd}>
-            <CloudUpload className="size-4" /> Add template
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-md border border-zinc-200 bg-white p-1">
+              <Button
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="icon"
+                title="Grid view"
+                aria-label="Grid view"
+                onClick={() => setViewMode("grid")}
+              >
+                <Grid2X2 className="size-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="icon"
+                title="List view"
+                aria-label="List view"
+                onClick={() => setViewMode("list")}
+              >
+                <List className="size-4" />
+              </Button>
+            </div>
+            <Button onClick={openAdd}>
+              <CloudUpload className="size-4" /> Add template
+            </Button>
+          </div>
         }
       />
 
@@ -437,11 +479,19 @@ export function TemplateManagement() {
             items={orderedTemplates.map((template) => template.id)}
             strategy={rectSortingStrategy}
           >
-            <div className="grid max-w-5xl gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div
+              className={cn(
+                "max-w-5xl gap-4",
+                viewMode === "grid"
+                  ? "grid md:grid-cols-2 xl:grid-cols-3"
+                  : "flex flex-col",
+              )}
+            >
               {orderedTemplates.map((template) => (
                 <SortableTemplateCard
                   key={template.id}
                   template={template}
+                  viewMode={viewMode}
                   onDelete={handleDelete}
                   onEdit={openEdit}
                   onTest={setTestTemplate}
