@@ -179,6 +179,8 @@ type OrganizationInvitationRow = {
   created_at: string;
 };
 
+const EMPTY_TEMPLATES: Template[] = [];
+
 function useClientMounted() {
   return useSyncExternalStore(
     () => () => undefined,
@@ -334,7 +336,7 @@ function SortableTemplateCard({
 
 export function TemplateManagement() {
   const router = useRouter();
-  const { data = [] } = useTemplates();
+  const { data = EMPTY_TEMPLATES } = useTemplates();
   const deleteTemplate = useDeleteTemplate();
   const reorderTemplates = useReorderTemplates();
   const [orderedTemplates, setOrderedTemplates] = useState<Template[]>([]);
