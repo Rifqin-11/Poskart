@@ -152,7 +152,7 @@ import type {
   TenantInput,
 } from "@/server/admin/_shared/admin-repository";
 import { uploadLibraryAsset } from "@/lib/services/storage-service";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import type { Device } from "@/types/device";
 import type { PricingProduct, SubscriptionPlan } from "@/types/pricing";
 import type { Template } from "@/types/template";
@@ -1133,6 +1133,7 @@ export function TransactionsMonitoring() {
                   />
                 </TableHead>
                 <TableHead>ID</TableHead>
+                <TableHead>Tanggal & Jam</TableHead>
                 <TableHead>Device</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Package</TableHead>
@@ -1168,6 +1169,9 @@ export function TransactionsMonitoring() {
                   </TableCell>
                   <TableCell className="font-mono text-xs">
                     {transaction.id}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-sm text-zinc-600">
+                    {formatDateTime(transaction.createdAtRaw)}
                   </TableCell>
                   <TableCell>{transaction.device}</TableCell>
                   <TableCell>{transaction.location}</TableCell>

@@ -10,6 +10,7 @@ export type Transaction = {
   status: "paid" | "pending" | "failed" | "refunded";
   provider: "QRIS" | "Cash";
   createdAt: string;
+  createdAtRaw: string;
   printStatus: PrintStatus;
   printAttempts: number;
   printLastError?: string | null;

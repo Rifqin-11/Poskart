@@ -290,6 +290,7 @@ const mapTransaction = (row: TransactionRow): Transaction => ({
   status: row.status,
   provider: row.provider,
   createdAt: row.created_at_label,
+  createdAtRaw: row.created_at,
   printStatus: row.print_status ?? "pending",
   printAttempts: row.print_attempts ?? 0,
   printLastError: row.print_last_error ?? null,
