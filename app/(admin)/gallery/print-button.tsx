@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,11 +15,15 @@ export function PrintSessionButton({
   disabled?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   const handlePrint = async () => {
     setLoading(true);
     try {
       await queueGalleryPrint(sessionId, 1);
+      await queryClient.invalidateQueries({
+        queryKey: ["active-device-print-jobs"],
+      });
       toast.success("Perintah print dikirim ke device");
     } catch (error) {
       toast.error(
