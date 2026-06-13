@@ -34,8 +34,51 @@ export async function GET(request: Request) {
 
     if (photosError) throw photosError;
 
+    const { data: sales, error: salesError } = await context.client
+      .from("pos_sales")
+      .select("package_name,print_count,notes")
+      .eq("organization_id", context.organizationId)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (salesError) throw salesError;
+
+    const { data: transactions, error: transactionsError } = sessionIds.length
+      ? await context.client
+          .from("transactions")
+          .select("id,package_name")
+          .eq("organization_id", context.organizationId)
+          .in("id", sessionIds)
+      : { data: [], error: null };
+
+    if (transactionsError) throw transactionsError;
+
+    const saleBySessionId = new Map<
+      string,
+      NonNullable<typeof sales>[number]
+    >();
+    for (const sale of sales ?? []) {
+      const sessionId = sale.notes?.split(" / ", 1)[0]?.trim();
+      if (sessionId && !saleBySessionId.has(sessionId)) {
+        saleBySessionId.set(sessionId, sale);
+      }
+    }
+    const transactionBySessionId = new Map(
+      (transactions ?? []).map((transaction) => [transaction.id, transaction]),
+    );
+    const enrichedSessions = (sessions ?? []).map((session) => {
+      const sale = saleBySessionId.get(session.id);
+      const transaction = transactionBySessionId.get(session.id);
+      return {
+        ...session,
+        package_name:
+          sale?.package_name ?? transaction?.package_name ?? null,
+        print_count: sale?.print_count ?? 0,
+      };
+    });
+
     return jsonOk({
-      sessions: sessions ?? [],
+      sessions: enrichedSessions,
       photos: photos ?? [],
     });
   } catch (error) {

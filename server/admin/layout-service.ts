@@ -3,6 +3,7 @@ import { adminRepository } from "@/server/admin/_shared/admin-repository";
 export const layoutService = {
   getLayoutSchema: adminRepository.layoutSchema,
   getLayoutSchemas: adminRepository.layoutSchemas,
+  getActiveThemeStatistics: adminRepository.activeThemeStatistics,
   publishLayoutSchema: adminRepository.publishLayoutSchema,
   publishThemeSchema: adminRepository.publishThemeSchema,
   saveLayoutAsTheme: adminRepository.saveLayoutAsTheme,

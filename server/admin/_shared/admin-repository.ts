@@ -85,6 +85,21 @@ export type PosDashboardSummary = {
   }>;
 };
 
+export type ActiveThemeStatistics = {
+  themeName: string;
+  totalSessions: number;
+  totalPrints: number;
+};
+
+type ThemeGallerySessionRow = {
+  id: string;
+};
+
+type ThemePrintSaleRow = {
+  print_count: number;
+  notes: string | null;
+};
+
 type BoothRow = Omit<
   Device,
   | "appVersion"
@@ -1475,6 +1490,65 @@ async function getLayoutSchemas(): Promise<LayoutSchemaRow[]> {
   return (data ?? []) as LayoutSchemaRow[];
 }
 
+async function getActiveThemeStatistics(
+  themeName: string,
+): Promise<ActiveThemeStatistics> {
+  const normalizedThemeName = themeName.trim();
+  if (!normalizedThemeName) {
+    return {
+      themeName: "",
+      totalSessions: 0,
+      totalPrints: 0,
+    };
+  }
+
+  const supabase = createClient();
+  const { data: sessions, error: sessionsError } = await supabase
+    .from("gallery_sessions")
+    .select("id")
+    .eq("template_name", normalizedThemeName);
+
+  if (sessionsError) {
+    throw new Error(
+      `Unable to load theme sessions: ${sessionsError.message}`,
+    );
+  }
+
+  const sessionRows = (sessions ?? []) as ThemeGallerySessionRow[];
+  const sessionIds = new Set(sessionRows.map((session) => session.id));
+  if (sessionIds.size === 0) {
+    return {
+      themeName: normalizedThemeName,
+      totalSessions: 0,
+      totalPrints: 0,
+    };
+  }
+
+  const { data: sales, error: salesError } = await supabase
+    .from("pos_sales")
+    .select("print_count,notes")
+    .order("created_at", { ascending: false })
+    .limit(5000);
+
+  if (salesError) {
+    throw new Error(`Unable to load theme prints: ${salesError.message}`);
+  }
+
+  const saleRows = (sales ?? []) as ThemePrintSaleRow[];
+  const totalPrints = saleRows.reduce<number>((total, sale) => {
+    const sessionId = sale.notes?.split(" / ", 1)[0]?.trim();
+    return sessionId && sessionIds.has(sessionId)
+      ? total + (sale.print_count ?? 0)
+      : total;
+  }, 0);
+
+  return {
+    themeName: normalizedThemeName,
+    totalSessions: sessionIds.size,
+    totalPrints,
+  };
+}
+
 async function saveLayoutAsTheme(
   name: string,
   schema: LayoutSchema,
@@ -1873,6 +1947,7 @@ export const adminRepository = {
   deleteAsset,
   layoutSchema: getLayoutSchema,
   layoutSchemas: getLayoutSchemas,
+  activeThemeStatistics: getActiveThemeStatistics,
   publishLayoutSchema,
   publishThemeSchema,
   saveLayoutAsTheme,

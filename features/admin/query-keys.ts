@@ -11,6 +11,8 @@ export const adminQueryKeys = {
   appConfig: ["app-config"] as const,
   layoutSchema: ["layout-schema", "default-photobooth"] as const,
   layoutSchemas: ["layout-schemas"] as const,
+  activeThemeStatistics: (themeName?: string | null) =>
+    ["active-theme-statistics", themeName ?? null] as const,
   subscriptionPlans: ["subscription-plans"] as const,
   subscriptionStatus: ["subscription-status"] as const,
   subscriptionOrders: ["subscription-orders"] as const,

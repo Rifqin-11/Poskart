@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, ImagePlus, X } from "lucide-react";
+import { Download, Hand, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -117,11 +117,38 @@ function loadImage(src: string) {
   });
 }
 
-function drawCoverImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number) {
+type PhotoPosition = {
+  x: number;
+  y: number;
+};
+
+const CENTER_PHOTO_POSITION: PhotoPosition = { x: 0.5, y: 0.5 };
+
+function drawCoverImage(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  position: PhotoPosition = CENTER_PHOTO_POSITION,
+) {
   const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
-  const drawWidth = image.naturalWidth * scale;
-  const drawHeight = image.naturalHeight * scale;
-  ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+  const sourceWidth = width / scale;
+  const sourceHeight = height / scale;
+  const sourceX = Math.max(0, image.naturalWidth - sourceWidth) * position.x;
+  const sourceY = Math.max(0, image.naturalHeight - sourceHeight) * position.y;
+  ctx.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    x,
+    y,
+    width,
+    height,
+  );
 }
 
 function drawContainImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number) {
@@ -131,23 +158,9 @@ function drawContainImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement
   ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
 }
 
-async function renderFrameToCanvas(canvas: HTMLCanvasElement, layout: FrameLayout, photos: string[]) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = Math.round(layout.canvas.width * dpr);
-  canvas.height = Math.round(layout.canvas.height * dpr);
-  canvas.style.width = `${layout.canvas.width}px`;
-  canvas.style.height = `${layout.canvas.height}px`;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, layout.canvas.width, layout.canvas.height);
-  ctx.fillStyle = layout.canvas.backgroundColor;
-  ctx.fillRect(0, 0, layout.canvas.width, layout.canvas.height);
-
-  const orderedNodes = layout.nodes.slice().sort((a, b) => a.zIndex - b.zIndex);
+function getSortedPhotoSlots(layout: FrameLayout) {
   const photoSlots = layout.nodes.filter((node) => node.type === "photo-slot");
-  const sortedPhotoSlots = [...photoSlots].sort((a, b) => {
+  return [...photoSlots].sort((a, b) => {
     const labelA = String(a.props?.label || "");
     const labelB = String(b.props?.label || "");
     const matchA = /Photo\s+(\d+)/.exec(labelA);
@@ -156,6 +169,27 @@ async function renderFrameToCanvas(canvas: HTMLCanvasElement, layout: FrameLayou
     const idxB = matchB ? parseInt(matchB[1], 10) - 1 : photoSlots.indexOf(b);
     return idxA - idxB;
   });
+}
+
+async function renderFrameToCanvas(
+  canvas: HTMLCanvasElement,
+  layout: FrameLayout,
+  photos: string[],
+  photoPositions: Record<string, PhotoPosition>,
+) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(layout.canvas.width * dpr);
+  canvas.height = Math.round(layout.canvas.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, layout.canvas.width, layout.canvas.height);
+  ctx.fillStyle = layout.canvas.backgroundColor;
+  ctx.fillRect(0, 0, layout.canvas.width, layout.canvas.height);
+
+  const orderedNodes = layout.nodes.slice().sort((a, b) => a.zIndex - b.zIndex);
+  const sortedPhotoSlots = getSortedPhotoSlots(layout);
   const photoSlotIds = sortedPhotoSlots.map((node) => node.id);
   const imageCache = new Map<string, HTMLImageElement>();
 
@@ -201,7 +235,15 @@ async function renderFrameToCanvas(canvas: HTMLCanvasElement, layout: FrameLayou
           image = await loadImage(photo);
           imageCache.set(photo, image);
         }
-        drawCoverImage(ctx, image, x, y, node.width, node.height);
+        drawCoverImage(
+          ctx,
+          image,
+          x,
+          y,
+          node.width,
+          node.height,
+          photoPositions[node.id],
+        );
       } else {
         ctx.fillStyle = readString(node.props.background, "#f4f4f5");
         ctx.fillRect(x, y, node.width, node.height);
@@ -256,34 +298,123 @@ export function FrameTemplateTester({
   onOpenChange: (open: boolean) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    slotId: string;
+    startX: number;
+    startY: number;
+    position: PhotoPosition;
+  } | null>(null);
+  const photosRef = useRef<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [photoPositions, setPhotoPositions] = useState<Record<string, PhotoPosition>>({});
   const layout = useMemo(() => (template ? template.frameLayout ?? makeFallbackLayout(template) : null), [template]);
-  const photoSlotCount = layout?.nodes.filter((node) => node.type === "photo-slot").length ?? template?.photoCount ?? 0;
+  const photoSlots = useMemo(() => (layout ? getSortedPhotoSlots(layout) : []), [layout]);
+  const photoSlotCount = photoSlots.length || template?.photoCount || 0;
 
-  useEffect(() => () => {
-    photos.forEach((url) => URL.revokeObjectURL(url));
+  useEffect(() => {
+    photosRef.current = photos;
   }, [photos]);
+
+  useEffect(
+    () => () => {
+      photosRef.current.forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!canvasRef.current || !layout) return;
     let cancelled = false;
-    renderFrameToCanvas(canvasRef.current, layout, photos).catch(() => {
+    renderFrameToCanvas(canvasRef.current, layout, photos, photoPositions).catch(() => {
       if (!cancelled) toast.error("Some images could not be rendered. Check image URL access.");
     });
     return () => {
       cancelled = true;
     };
-  }, [layout, photos]);
+  }, [layout, photoPositions, photos]);
 
-  const handleFiles = (files?: FileList | null) => {
-    if (!files?.length) return;
-    photos.forEach((url) => URL.revokeObjectURL(url));
-    setPhotos(Array.from(files).slice(0, photoSlotCount).map((file) => URL.createObjectURL(file)));
+  const handleSlotFile = (slotIndex: number, file?: File) => {
+    if (!file) return;
+    const slotId = photoSlots[slotIndex]?.id;
+    setPhotos((current) => {
+      const next = Array.from(
+        { length: photoSlotCount },
+        (_, index) => current[index] ?? "",
+      );
+      if (next[slotIndex]) URL.revokeObjectURL(next[slotIndex]);
+      next[slotIndex] = URL.createObjectURL(file);
+      return next;
+    });
+    if (slotId) {
+      setPhotoPositions((current) => {
+        const next = { ...current };
+        delete next[slotId];
+        return next;
+      });
+    }
   };
 
-  const downloadPreview = () => {
+  const removeSlotPhoto = (slotIndex: number) => {
+    const slotId = photoSlots[slotIndex]?.id;
+    setPhotos((current) => {
+      const next = [...current];
+      if (next[slotIndex]) URL.revokeObjectURL(next[slotIndex]);
+      next[slotIndex] = "";
+      return next;
+    });
+    if (slotId) {
+      setPhotoPositions((current) => {
+        const next = { ...current };
+        delete next[slotId];
+        return next;
+      });
+    }
+  };
+
+  const handlePointerDown = (
+    event: React.PointerEvent<HTMLDivElement>,
+    slotId: string,
+  ) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      slotId,
+      startX: event.clientX,
+      startY: event.clientY,
+      position: photoPositions[slotId] ?? CENTER_PHOTO_POSITION,
+    };
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const deltaX = (event.clientX - drag.startX) / bounds.width;
+    const deltaY = (event.clientY - drag.startY) / bounds.height;
+    setPhotoPositions((current) => ({
+      ...current,
+      [drag.slotId]: {
+        x: Math.min(1, Math.max(0, drag.position.x - deltaX)),
+        y: Math.min(1, Math.max(0, drag.position.y - deltaY)),
+      },
+    }));
+  };
+
+  const handlePointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.pointerId === event.pointerId) {
+      dragRef.current = null;
+    }
+  };
+
+  const downloadPreview = async () => {
     const canvas = canvasRef.current;
-    if (!canvas || !template) return;
+    if (!canvas || !template || !layout) return;
+    await renderFrameToCanvas(canvas, layout, photos, photoPositions);
     const link = document.createElement("a");
     link.download = `${template.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-frame-test.png`;
     link.href = canvas.toDataURL("image/png");
@@ -295,47 +426,114 @@ export function FrameTemplateTester({
       {template && layout ? (
         <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_220px]">
           <div className="overflow-auto rounded-lg border border-zinc-200 bg-zinc-100 p-4">
-            <div className="mx-auto w-fit">
-              <canvas ref={canvasRef} className="max-h-[70vh] max-w-full rounded-md bg-white shadow-xl" />
+            <div
+              className="relative mx-auto w-full max-w-full select-none overflow-hidden rounded-md bg-white shadow-xl"
+              style={{
+                aspectRatio: `${layout.canvas.width} / ${layout.canvas.height}`,
+                width: `min(100%, ${layout.canvas.width}px, ${70 * (layout.canvas.width / layout.canvas.height)}vh)`,
+              }}
+            >
+              <canvas
+                ref={canvasRef}
+                className="block h-full w-full"
+                style={{ aspectRatio: `${layout.canvas.width} / ${layout.canvas.height}` }}
+              />
+              {photoSlots.map((slot, index) =>
+                photos[index] ? (
+                  <div
+                    key={slot.id}
+                    className="absolute cursor-grab touch-none active:cursor-grabbing"
+                    style={{
+                      left: `${(slot.x / layout.canvas.width) * 100}%`,
+                      top: `${(slot.y / layout.canvas.height) * 100}%`,
+                      width: `${(slot.width / layout.canvas.width) * 100}%`,
+                      height: `${(slot.height / layout.canvas.height) * 100}%`,
+                      transform: `rotate(${slot.rotation}deg)`,
+                    }}
+                    title="Geser untuk mengatur posisi foto"
+                    onPointerDown={(event) => handlePointerDown(event, slot.id)}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerEnd}
+                    onPointerCancel={handlePointerEnd}
+                  />
+                ) : null,
+              )}
             </div>
           </div>
           <div className="space-y-4">
             <div>
               <div className="text-sm font-semibold">Upload test photo</div>
               <p className="mt-1 text-xs leading-5 text-zinc-500">
-                Upload up to {photoSlotCount} photo{photoSlotCount > 1 ? "s" : ""}. Photos are placed into frame slots in order.
+                Pilih foto secara terpisah untuk setiap photo slot.
               </p>
             </div>
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-200 p-5 text-center text-sm font-medium text-zinc-600 hover:border-zinc-400">
-              <ImagePlus className="size-5 text-zinc-400" />
-              Choose photo
-              <Input
-                className="sr-only"
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                multiple={photoSlotCount > 1}
-                onChange={(event) => handleFiles(event.target.files)}
-              />
-            </label>
-            {photos.length ? (
-              <div className="flex flex-wrap gap-2">
-                {photos.map((photo, index) => (
-                  <div key={photo} className="relative size-14 overflow-hidden rounded-md border border-zinc-200">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photo} alt={`Photo ${index + 1}`} className="h-full w-full object-cover" />
-                    <button
-                      className="absolute right-0.5 top-0.5 rounded-full bg-white/90 p-0.5 text-zinc-500 shadow"
-                      onClick={() => {
-                        URL.revokeObjectURL(photo);
-                        setPhotos((current) => current.filter((item) => item !== photo));
-                      }}
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </div>
-                ))}
+            {photos.some(Boolean) ? (
+              <div className="flex items-start gap-2 rounded-lg bg-zinc-100 p-3 text-xs leading-5 text-zinc-600">
+                <Hand className="mt-0.5 size-4 shrink-0" />
+                Geser foto langsung pada frame untuk mengatur area crop. Foto tidak akan di-stretch.
               </div>
             ) : null}
+            <div className="max-h-[42vh] space-y-2 overflow-y-auto pr-1">
+              {photoSlots.map((slot, index) => {
+                const photo = photos[index] ?? "";
+                const label = readString(slot.props.label, `Photo ${index + 1}`);
+                return (
+                  <div
+                    key={slot.id}
+                    className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-2"
+                  >
+                    <label className="relative grid size-14 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-md border border-dashed border-zinc-300 bg-zinc-50 hover:border-zinc-500">
+                      {photo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={photo}
+                          alt={label}
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <ImagePlus className="size-5 text-zinc-400" />
+                      )}
+                      <Input
+                        className="sr-only"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={(event) => {
+                          handleSlotFile(index, event.target.files?.[0]);
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-semibold text-zinc-800">
+                        {label}
+                      </p>
+                      <label className="mt-1 inline-flex cursor-pointer text-[11px] font-medium text-zinc-500 hover:text-zinc-900">
+                        {photo ? "Ganti foto" : "Pilih foto"}
+                        <Input
+                          className="sr-only"
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={(event) => {
+                            handleSlotFile(index, event.target.files?.[0]);
+                            event.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {photo ? (
+                      <button
+                        type="button"
+                        className="rounded-md p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600"
+                        onClick={() => removeSlotPhoto(index)}
+                        title={`Hapus ${label}`}
+                      >
+                        <X className="size-4" />
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
             <Button className="w-full" onClick={downloadPreview}>
               <Download className="size-4" />
               Download PNG

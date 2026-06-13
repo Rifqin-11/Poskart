@@ -22,6 +22,15 @@ export function useLayoutSchemas() {
   });
 }
 
+export function useActiveThemeStatistics(themeName: string | null) {
+  return useQuery({
+    queryKey: adminQueryKeys.activeThemeStatistics(themeName),
+    queryFn: () =>
+      layoutService.getActiveThemeStatistics(themeName as string),
+    enabled: Boolean(themeName),
+  });
+}
+
 export function useSaveLayoutAsTheme() {
   const queryClient = useQueryClient();
   return useMutation({
