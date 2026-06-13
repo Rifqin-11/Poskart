@@ -1510,6 +1510,48 @@ export function BoothManagement() {
                   {formatAssignmentList(device.pricingProfiles)}
                 </div>
               </div>
+              <div
+                className={cn(
+                  "rounded-md border p-3 text-sm",
+                  device.printerStatus === "ready"
+                    ? "border-emerald-200 bg-emerald-50"
+                    : device.printerStatus === "unknown"
+                      ? "border-zinc-200 bg-zinc-50"
+                      : "border-red-200 bg-red-50",
+                )}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Printer className="size-4 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold text-zinc-900">
+                        {device.printerName || "Printer belum dikonfigurasi"}
+                      </div>
+                      <div className="text-xs text-zinc-500">
+                        {device.printerBidirectional
+                          ? "Status kertas didukung"
+                          : "Status koneksi saja"}
+                      </div>
+                    </div>
+                  </div>
+                  <Badge
+                    variant={
+                      device.printerStatus === "ready"
+                        ? "success"
+                        : device.printerStatus === "unknown"
+                          ? "secondary"
+                          : "destructive"
+                    }
+                  >
+                    {device.printerStatus.replaceAll("_", " ")}
+                  </Badge>
+                </div>
+                {device.printerLastError ? (
+                  <p className="mt-2 text-xs font-medium text-red-700">
+                    {device.printerLastError}
+                  </p>
+                ) : null}
+              </div>
               <div className="grid gap-2 rounded-md bg-zinc-50 p-3 text-xs text-zinc-600 sm:grid-cols-2">
                 <div className="flex items-center gap-1.5">
                   <Timer className="size-3.5 text-zinc-400" />

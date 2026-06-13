@@ -10,6 +10,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { DeleteSessionButton } from "@/app/(admin)/gallery/delete-button";
+import { PrintSessionButton } from "@/app/(admin)/gallery/print-button";
 
 type GallerySessionRow = {
   id: string;
@@ -193,6 +194,10 @@ export async function GalleryPage() {
                         >
                           <ExternalLink className="size-3.5" />
                         </Link>
+                        <PrintSessionButton
+                          sessionId={session.id}
+                          disabled={!framed || !session.device_id}
+                        />
                         <DeleteSessionButton sessionId={session.id} />
                       </div>
                     </div>

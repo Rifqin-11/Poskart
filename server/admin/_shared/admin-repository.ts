@@ -109,6 +109,11 @@ type BoothRow = Omit<
   | "pricingProfiles"
   | "sessionCountdownSeconds"
   | "paymentCountdownSeconds"
+  | "printerStatus"
+  | "printerName"
+  | "printerLastError"
+  | "printerStatusUpdatedAt"
+  | "printerBidirectional"
 > & {
   app_version: string;
   last_sync: string;
@@ -117,6 +122,11 @@ type BoothRow = Omit<
   pricing_profiles: string[] | null;
   session_countdown_seconds: number | null;
   payment_countdown_seconds: number | null;
+  printer_status: Device["printerStatus"];
+  printer_name: string | null;
+  printer_last_error: string | null;
+  printer_status_updated_at: string | null;
+  printer_bidirectional: boolean;
 };
 
 type TemplateRow = Omit<
@@ -259,7 +269,15 @@ export type PricingProductInput = Omit<PricingProduct, "id">;
 
 export type { SubscriptionPlanInput };
 
-export type BoothInput = Omit<Device, "id">;
+export type BoothInput = Omit<
+  Device,
+  | "id"
+  | "printerStatus"
+  | "printerName"
+  | "printerLastError"
+  | "printerStatusUpdatedAt"
+  | "printerBidirectional"
+>;
 
 export type TenantInput = Omit<Organization, "id">;
 
@@ -339,6 +357,11 @@ const mapBooth = (row: BoothRow): Device => ({
   ),
   sessionCountdownSeconds: row.session_countdown_seconds ?? null,
   paymentCountdownSeconds: row.payment_countdown_seconds ?? null,
+  printerStatus: row.printer_status ?? "unknown",
+  printerName: row.printer_name ?? null,
+  printerLastError: row.printer_last_error ?? null,
+  printerStatusUpdatedAt: row.printer_status_updated_at ?? null,
+  printerBidirectional: row.printer_bidirectional ?? false,
 });
 
 const mapTemplate = (row: TemplateRow): Template => ({
@@ -664,7 +687,7 @@ const TRANSACTION_COLUMNS =
   "id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_status,print_attempts,print_last_error";
 
 const BOOTH_COLUMNS =
-  "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds";
+  "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional";
 
 async function getTransactions(): Promise<Transaction[]> {
   const supabase = createClient();

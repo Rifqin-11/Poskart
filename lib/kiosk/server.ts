@@ -32,6 +32,11 @@ export type KioskDeviceRow = {
   pricing_profiles: string[] | null;
   session_countdown_seconds: number | null;
   payment_countdown_seconds: number | null;
+  printer_status: string;
+  printer_name: string | null;
+  printer_last_error: string | null;
+  printer_status_updated_at: string | null;
+  printer_bidirectional: boolean;
 };
 
 export type KioskRequestContext = {
@@ -204,7 +209,7 @@ export async function requireOrganizationDevice(
   const { data, error } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional",
     )
     .eq("id", normalizedId)
     .eq("organization_id", context.organizationId)
@@ -233,7 +238,7 @@ export async function listOrganizationDevices(context: KioskRequestContext) {
   const { data, error } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional",
     )
     .eq("organization_id", context.organizationId)
     .order("name", { ascending: true });
@@ -272,7 +277,7 @@ export async function upsertDeviceByHardwareId(
   const { data: existing, error: lookupError } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional",
     )
     .eq("organization_id", context.organizationId)
     .eq("hardware_id", normalizedHwId)
@@ -325,7 +330,7 @@ export async function upsertDeviceByHardwareId(
   const { data: fresh, error: refetchError } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional",
     )
     .eq("id", newId)
     .single();

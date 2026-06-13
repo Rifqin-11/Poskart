@@ -11,6 +11,10 @@ type StatusBody = {
   battery?: number;
   appVersion?: string;
   location?: string;
+  printerStatus?: string;
+  printerName?: string | null;
+  printerLastError?: string | null;
+  printerBidirectional?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -36,6 +40,22 @@ export async function POST(request: Request) {
 
     if (body.location !== undefined) {
       patch.location = body.location;
+    }
+
+    const printerStatuses = new Set([
+      "ready",
+      "disconnected",
+      "permission_required",
+      "paper_out",
+      "error",
+      "unknown",
+    ]);
+    if (body.printerStatus && printerStatuses.has(body.printerStatus)) {
+      patch.printer_status = body.printerStatus;
+      patch.printer_name = body.printerName?.trim() || null;
+      patch.printer_last_error = body.printerLastError?.trim() || null;
+      patch.printer_bidirectional = body.printerBidirectional === true;
+      patch.printer_status_updated_at = now;
     }
 
     const { error } = await context.client

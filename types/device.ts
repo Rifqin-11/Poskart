@@ -16,4 +16,15 @@ export type Device = {
   sessionCountdownSeconds?: number | null;
   /** Per-device override for the QRIS payment countdown (seconds). */
   paymentCountdownSeconds?: number | null;
+  printerStatus:
+    | "ready"
+    | "disconnected"
+    | "permission_required"
+    | "paper_out"
+    | "error"
+    | "unknown";
+  printerName?: string | null;
+  printerLastError?: string | null;
+  printerStatusUpdatedAt?: string | null;
+  printerBidirectional: boolean;
 };
