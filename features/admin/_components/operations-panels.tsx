@@ -312,6 +312,9 @@ function SortableTemplateCard({
               </span>
               <span>{template.photoCount} photos</span>
               <span>
+                {template.usageCount.toLocaleString("id-ID")} kali digunakan
+              </span>
+              <span>
                 {template.frameLayout ? "Custom layout" : "Default layout"}
               </span>
             </div>

@@ -121,11 +121,12 @@ type BoothRow = Omit<
 
 type TemplateRow = Omit<
   Template,
-  "assignedBooths" | "updatedAt" | "displayOrder"
+  "assignedBooths" | "updatedAt" | "displayOrder" | "usageCount"
 > & {
   assigned_booths: number;
   updated_at_label: string;
   display_order: number;
+  usage_count: number;
   tagline: string | null;
   photo_count: number;
   accent_color: string;
@@ -348,6 +349,7 @@ const mapTemplate = (row: TemplateRow): Template => ({
   assignedBooths: row.assigned_booths,
   updatedAt: row.updated_at_label,
   displayOrder: row.display_order ?? 0,
+  usageCount: row.usage_count ?? 0,
   tagline: row.tagline ?? undefined,
   photoCount: row.photo_count ?? 4,
   accentColor: row.accent_color ?? "#C4121A",
@@ -949,7 +951,7 @@ async function getTemplates(): Promise<Template[]> {
   const { data, error } = await supabase
     .from("templates")
     .select(
-      "id,name,category,status,assigned_booths,updated_at_label,display_order,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default",
+      "id,name,category,status,assigned_booths,updated_at_label,display_order,usage_count,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default",
     )
     .order("display_order", { ascending: true })
     .order("updated_at", { ascending: false });
@@ -1509,9 +1511,7 @@ async function getActiveThemeStatistics(
     .eq("template_name", normalizedThemeName);
 
   if (sessionsError) {
-    throw new Error(
-      `Unable to load theme sessions: ${sessionsError.message}`,
-    );
+    throw new Error(`Unable to load theme sessions: ${sessionsError.message}`);
   }
 
   const sessionRows = (sessions ?? []) as ThemeGallerySessionRow[];

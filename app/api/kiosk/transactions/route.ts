@@ -14,17 +14,11 @@ type TransactionBody = {
     amount?: number;
     status?: "paid" | "pending" | "failed" | "refunded";
     provider?: "QRIS" | "Cash";
+    templateId?: string;
+    printCount?: number;
     printStatus?: "pending" | "printed" | "failed" | "reprinting";
     printAttempts?: number;
     printLastError?: string | null;
-  };
-  posSale?: {
-    packageCode?: string;
-    packageName?: string;
-    printCount?: number;
-    amount?: number;
-    paymentMethod?: "Cash" | "QRIS";
-    notes?: string | null;
   };
 };
 
@@ -52,6 +46,26 @@ export async function POST(request: Request) {
       );
     }
 
+    const templateId = transaction.templateId?.trim() || null;
+    if (templateId) {
+      const { data: template, error: templateError } = await context.client
+        .from("templates")
+        .select("id")
+        .eq("organization_id", context.organizationId)
+        .eq("id", templateId)
+        .maybeSingle();
+      if (templateError) throw templateError;
+      if (!template) {
+        return jsonOk(
+          {
+            error: "Template is not available for this organization.",
+            code: "KIOSK_TEMPLATE_INVALID",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     const now = new Date().toISOString();
     const { error: transactionError } = await context.client
       .from("transactions")
@@ -65,6 +79,8 @@ export async function POST(request: Request) {
         amount: Math.max(0, Math.round(transaction.amount!)),
         status: transaction.status ?? "paid",
         provider: transaction.provider ?? "QRIS",
+        template_id: templateId,
+        print_count: Math.max(0, Math.round(transaction.printCount ?? 0)),
         created_at_label: now,
         print_status: transaction.printStatus ?? "pending",
         print_attempts: Math.max(0, transaction.printAttempts ?? 0),
@@ -73,22 +89,6 @@ export async function POST(request: Request) {
       });
 
     if (transactionError) throw transactionError;
-
-    if (body.posSale?.packageCode && body.posSale.packageName) {
-      const { error: posError } = await context.client.from("pos_sales").insert({
-        organization_id: context.organizationId,
-        customer_name: transaction.customer?.trim() || "Walk-in",
-        package_code: body.posSale.packageCode,
-        package_name: body.posSale.packageName,
-        print_count: Math.max(1, Math.round(body.posSale.printCount ?? 1)),
-        amount: Math.max(0, Math.round(body.posSale.amount ?? transaction.amount!)),
-        payment_method: body.posSale.paymentMethod ?? "QRIS",
-        notes: body.posSale.notes ?? transaction.id,
-        created_by: context.user.id,
-      });
-
-      if (posError) throw posError;
-    }
 
     return jsonOk({ success: true, transactionId: transaction.id });
   } catch (error) {
@@ -114,9 +114,10 @@ export async function GET(request: Request) {
     if (error) throw error;
 
     // Calculate total money (paid transactions)
-    const totalAmount = transactions
-      ?.filter((t) => t.status === "paid")
-      .reduce((sum, t) => sum + (t.amount ?? 0), 0) ?? 0;
+    const totalAmount =
+      transactions
+        ?.filter((t) => t.status === "paid")
+        .reduce((sum, t) => sum + (t.amount ?? 0), 0) ?? 0;
 
     return jsonOk({
       totalAmount,
@@ -126,4 +127,3 @@ export async function GET(request: Request) {
     return jsonError(error);
   }
 }
-

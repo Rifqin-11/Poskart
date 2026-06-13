@@ -40,7 +40,7 @@ export async function GET() {
         supabase
           .from("templates")
           .select(
-            "id,name,category,status,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default,display_order",
+            "id,name,category,status,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default,display_order,usage_count",
           )
           .eq("status", "published")
           .order("display_order", { ascending: true })
@@ -96,6 +96,7 @@ export async function GET() {
         frameLayout: t.frame_layout ?? null,
         isDefault: t.is_default,
         displayOrder: t.display_order,
+        usageCount: t.usage_count ?? 0,
       })),
     };
 

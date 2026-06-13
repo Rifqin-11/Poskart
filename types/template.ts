@@ -8,6 +8,7 @@ export type Template = {
   assignedBooths: number;
   updatedAt: string;
   displayOrder: number;
+  usageCount: number;
   // Flutter frame template fields
   tagline?: string;
   photoCount: number;
