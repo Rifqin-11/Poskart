@@ -16,7 +16,9 @@ export async function GET(request: Request) {
     // Fetch sessions for this organization
     const { data: sessions, error: sessionsError } = await context.client
       .from("gallery_sessions")
-      .select("id,device_id,template_name,share_url,created_at")
+      .select(
+        "id,device_id,template_name,social_media_consent,share_url,created_at",
+      )
       .eq("organization_id", context.organizationId)
       .order("created_at", { ascending: false })
       .limit(100);

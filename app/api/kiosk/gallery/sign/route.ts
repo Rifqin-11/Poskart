@@ -14,6 +14,7 @@ type SignBody = {
   deviceId?: string;
   sessionId?: string;
   templateName?: string;
+  socialMediaConsent?: boolean;
   files?: CloudinaryUploadDescriptor[];
 };
 
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
         organization_id: context.organizationId,
         device_id: device.id,
         template_name: body.templateName?.trim() ?? "",
+        social_media_consent: body.socialMediaConsent === true,
         share_url: shareUrl,
         updated_at: new Date().toISOString(),
       });

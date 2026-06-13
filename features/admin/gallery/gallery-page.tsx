@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { CalendarDays, ExternalLink, ImageIcon, Images } from "lucide-react";
+import {
+  CalendarDays,
+  CircleCheck,
+  ExternalLink,
+  ImageIcon,
+  Images,
+} from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +15,7 @@ type GallerySessionRow = {
   id: string;
   device_id: string | null;
   template_name: string;
+  social_media_consent: boolean;
   share_url: string | null;
   created_at: string;
 };
@@ -44,7 +51,9 @@ export async function GalleryPage() {
 
   const { data: sessions } = await supabase
     .from("gallery_sessions")
-    .select("id,device_id,template_name,share_url,created_at")
+    .select(
+      "id,device_id,template_name,social_media_consent,share_url,created_at",
+    )
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -69,7 +78,7 @@ export async function GalleryPage() {
     Map<string, { label: string; sessions: GallerySessionRow[] }>
   >((groups, session) => {
     const date = new Date(session.created_at);
-    
+
     // Get year, month, day in Asia/Jakarta timezone
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Jakarta",
@@ -77,7 +86,7 @@ export async function GalleryPage() {
       month: "2-digit",
       day: "2-digit",
     }).formatToParts(date);
-    
+
     const year = parts.find((p) => p.type === "year")?.value || "1970";
     const month = parts.find((p) => p.type === "month")?.value || "01";
     const day = parts.find((p) => p.type === "day")?.value || "01";
@@ -190,6 +199,12 @@ export async function GalleryPage() {
                     <p className="mt-2 truncate text-[11px] text-zinc-400">
                       {session.device_id || "Unknown device"}
                     </p>
+                    {session.social_media_consent && (
+                      <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                        <CircleCheck className="size-3.5" />
+                        Setuju sosial media
+                      </div>
+                    )}
                   </div>
                 </Card>
               );
