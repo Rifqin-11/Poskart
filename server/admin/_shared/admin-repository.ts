@@ -147,11 +147,16 @@ type TemplateRow = Omit<
 
 type PricingProductRow = Omit<
   PricingProduct,
-  "promoPrice" | "printLimit" | "qrisDownload" | "gifEnabled"
+  | "promoPrice"
+  | "printLimit"
+  | "qrisDownload"
+  | "livePhotoEnabled"
+  | "gifEnabled"
 > & {
   promo_price: number | null;
   print_limit: number;
   qris_download: boolean;
+  live_photo_enabled: boolean | null;
   gif_enabled: boolean;
 };
 
@@ -388,7 +393,8 @@ const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({
   promoPrice: row.promo_price ?? undefined,
   printLimit: row.print_limit,
   qrisDownload: row.qris_download,
-  gifEnabled: row.gif_enabled,
+  livePhotoEnabled: row.live_photo_enabled ?? row.gif_enabled,
+  gifEnabled: row.live_photo_enabled == null ? false : row.gif_enabled,
   active: row.active,
 });
 
@@ -1075,7 +1081,7 @@ async function getPricingProducts(): Promise<PricingProduct[]> {
   const { data, error } = await supabase
     .from("pricing_products")
     .select(
-      "id,name,price,promo_price,print_limit,qris_download,gif_enabled,active",
+      "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active",
     )
     .order("price", { ascending: true });
 
@@ -1294,6 +1300,7 @@ async function createPricingProduct(
     promo_price: values.promoPrice ?? null,
     print_limit: values.printLimit,
     qris_download: values.qrisDownload,
+    live_photo_enabled: values.livePhotoEnabled,
     gif_enabled: values.gifEnabled,
     active: values.active,
     updated_at: new Date().toISOString(),
@@ -1317,6 +1324,9 @@ async function updatePricingProduct(
   if (patch.printLimit !== undefined) dbPatch.print_limit = patch.printLimit;
   if (patch.qrisDownload !== undefined)
     dbPatch.qris_download = patch.qrisDownload;
+  if (patch.livePhotoEnabled !== undefined) {
+    dbPatch.live_photo_enabled = patch.livePhotoEnabled;
+  }
   if (patch.gifEnabled !== undefined) dbPatch.gif_enabled = patch.gifEnabled;
   if (patch.active !== undefined) dbPatch.active = patch.active;
 

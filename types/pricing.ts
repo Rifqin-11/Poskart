@@ -5,6 +5,7 @@ export type PricingProduct = {
   promoPrice?: number;
   printLimit: number;
   qrisDownload: boolean;
+  livePhotoEnabled: boolean;
   gifEnabled: boolean;
   active: boolean;
 };

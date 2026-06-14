@@ -35,7 +35,7 @@ insert into public.transactions (id, booth, location, customer, package_name, am
   ('TRX-9251', 'Booth 01', 'PVJ Bandung', 'Raka', 'Double Print', 10000, 'paid', 'QRIS', '2 min ago'),
   ('TRX-9250', 'Booth 03', 'Cihampelas Walk', 'Nadya', 'Single Print', 7000, 'pending', 'QRIS', '6 min ago'),
   ('TRX-9249', 'Booth 02', 'Braga Citywalk', 'Faris', 'Double Print', 10000, 'paid', 'QRIS', '8 min ago'),
-  ('TRX-9248', 'Booth 04', 'Festival Citylink', 'Mira', 'GIF Bundle', 15000, 'failed', 'QRIS', '14 min ago'),
+  ('TRX-9248', 'Booth 04', 'Festival Citylink', 'Mira', 'Live Photo Bundle', 15000, 'failed', 'QRIS', '14 min ago'),
   ('TRX-9247', 'Booth 01', 'PVJ Bandung', 'Dimas', 'Single Print', 7000, 'paid', 'QRIS', '21 min ago')
 on conflict (id) do update set
   booth = excluded.booth,
@@ -75,16 +75,17 @@ on conflict (id) do update set
   assigned_booths = excluded.assigned_booths,
   updated_at_label = excluded.updated_at_label;
 
-insert into public.pricing_products (id, name, price, promo_price, print_limit, qris_download, gif_enabled, active) values
-  ('PRC-01', 'Single Print', 7000, null, 1, true, false, true),
-  ('PRC-02', 'Double Print', 10000, 9000, 2, true, false, true),
-  ('PRC-03', 'GIF Bundle', 15000, null, 2, true, true, true)
+insert into public.pricing_products (id, name, price, promo_price, print_limit, qris_download, live_photo_enabled, gif_enabled, active) values
+  ('PRC-01', 'Single Print', 7000, null, 1, true, false, false, true),
+  ('PRC-02', 'Double Print', 10000, 9000, 2, true, false, false, true),
+  ('PRC-03', 'Live Photo Bundle', 15000, null, 2, true, true, false, true)
 on conflict (id) do update set
   name = excluded.name,
   price = excluded.price,
   promo_price = excluded.promo_price,
   print_limit = excluded.print_limit,
   qris_download = excluded.qris_download,
+  live_photo_enabled = excluded.live_photo_enabled,
   gif_enabled = excluded.gif_enabled,
   active = excluded.active;
 

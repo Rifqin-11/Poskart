@@ -69,7 +69,7 @@ export default async function SharedGalleryPage({
     .eq("session_id", sessionId)
     .order("kind", { ascending: false })
     .order("photo_index", { ascending: true });
-  const framedGif = photos?.find(
+  const framedLivePhoto = photos?.find(
     (photo) => photo.kind === "framed" && photo.photo_index === 1,
   );
   const framedStatic = photos?.find(
@@ -77,9 +77,15 @@ export default async function SharedGalleryPage({
   );
   const raw =
     photos?.filter(
-      (photo) => photo.kind === "raw" && photo.photo_index !== 99,
+      (photo) =>
+        photo.kind === "raw" &&
+        photo.photo_index !== 98 &&
+        photo.photo_index !== 99,
     ) ?? [];
-  const rawGif = photos?.find(
+  const gif = photos?.find(
+    (photo) => photo.kind === "raw" && photo.photo_index === 98,
+  );
+  const rawLivePhoto = photos?.find(
     (photo) => photo.kind === "raw" && photo.photo_index === 99,
   );
   const selectedPhoto = photos?.find((photo) => photo.id === viewPhotoId);
@@ -109,15 +115,14 @@ export default async function SharedGalleryPage({
   const year = expiryDate.getFullYear();
   const formattedExpiryDate = `${day} ${monthName} ${year}`;
 
-  const hasAnyFramed = Boolean(framedGif || framedStatic);
-  const hasAnyRaw = raw.length > 0 || Boolean(rawGif);
+  const hasAnyRaw = raw.length > 0 || Boolean(rawLivePhoto) || Boolean(gif);
 
   const waitingForAssets =
     photoCount === 0 ||
     !framedStatic ||
-    !framedGif ||
+    !framedLivePhoto ||
     raw.length === 0 ||
-    !rawGif;
+    !rawLivePhoto;
 
   const isWithinRefreshWindow = Date.now() < refreshUntil;
   const shouldRefreshWhileProcessing =
@@ -176,19 +181,19 @@ export default async function SharedGalleryPage({
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
           <section className="rounded-[28px] border border-black/10 bg-white p-3 shadow-xl shadow-black/5 md:p-5 grid gap-6">
-            {framedGif && (
+            {framedLivePhoto && (
               <div className="rounded-2xl border border-black/5 bg-zinc-50/50 p-3 md:p-4">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                  Frame Animasi (GIF)
+                  Live Photo Berbingkai
                 </p>
                 <Link
-                  href={`?view=${framedGif.id}`}
+                  href={`?view=${framedLivePhoto.id}`}
                   className="block group relative overflow-hidden rounded-xl cursor-zoom-in bg-zinc-100"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={framedGif.secure_url}
-                    alt={`POSKART ${session.template_name} GIF`}
+                    src={framedLivePhoto.secure_url}
+                    alt={`POSKART ${session.template_name} Live Photo`}
                     className="max-h-[58vh] w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"
                   />
                   <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/10 flex items-center justify-center">
@@ -199,35 +204,35 @@ export default async function SharedGalleryPage({
                 </Link>
                 <div className="mt-3 flex gap-3">
                   <Link
-                    href={`?view=${framedGif.id}`}
+                    href={`?view=${framedLivePhoto.id}`}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-50"
                   >
                     Lihat Animasi
                   </Link>
                   <a
-                    href={`/s/${encodeURIComponent(sessionId)}/download/${framedGif.id}`}
+                    href={`/s/${encodeURIComponent(sessionId)}/download/${framedLivePhoto.id}`}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
                   >
                     <ArrowDownToLine className="size-4" />
-                    Download GIF
+                    Download Live Photo
                   </a>
                 </div>
               </div>
             )}
 
-            {!framedGif && framedStatic && isWithinRefreshWindow && (
+            {!framedLivePhoto && framedStatic && isWithinRefreshWindow && (
               <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/30 p-6 md:p-8 flex flex-col items-center justify-center text-center min-h-[240px]">
                 <div className="relative flex items-center justify-center mb-3">
                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-zinc-200 border-t-zinc-800" />
                   <span className="absolute text-[8px] font-bold uppercase tracking-wider text-zinc-600">
-                    GIF
+                    Live Photo
                   </span>
                 </div>
                 <p className="text-sm font-semibold text-zinc-800">
-                  Frame Animasi (GIF) Sedang Diproses
+                  Live Photo Berbingkai Sedang Diproses
                 </p>
                 <p className="mt-1 text-xs text-zinc-500 max-w-xs leading-relaxed">
-                  Foto sedang dirangkai menjadi animasi GIF. Halaman akan memuat
+                  Foto sedang dirangkai menjadi Live Photo. Halaman akan memuat
                   ulang otomatis ketika siap.
                 </p>
               </div>
@@ -272,7 +277,7 @@ export default async function SharedGalleryPage({
               </div>
             )}
 
-            {!framedGif && !framedStatic && (
+            {!framedLivePhoto && !framedStatic && (
               <div className="grid min-h-96 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center text-zinc-500">
                 Hasil foto sedang disiapkan. Halaman ini akan memperbarui
                 otomatis.
@@ -289,38 +294,36 @@ export default async function SharedGalleryPage({
                 <h2 className="font-semibold">Foto original</h2>
                 <p className="text-xs text-zinc-500">
                   {hasAnyRaw
-                    ? `${raw.length} foto ${rawGif ? "& 1 animasi " : ""}tanpa frame`
+                    ? `${raw.length} foto${rawLivePhoto ? ", 1 Live Photo" : ""}${gif ? ", dan 1 GIF" : ""}`
                     : "Menyiapkan foto original"}
                 </p>
               </div>
             </div>
 
-            {rawGif && (
+            {rawLivePhoto && (
               <div className="mt-5 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/50 p-2.5 transition-colors hover:bg-zinc-50">
                 <Link
-                  href={`?view=${rawGif.id}`}
+                  href={`?view=${rawLivePhoto.id}`}
                   className="flex flex-1 items-center gap-3 min-w-0 cursor-zoom-in"
                 >
                   <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={rawGif.secure_url}
-                      alt="Raw GIF"
+                      src={rawLivePhoto.secure_url}
+                      alt="Live Photo Original"
                       className="size-full object-cover"
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">
-                      Animasi Original (GIF)
-                    </p>
+                    <p className="text-sm font-semibold">Live Photo Original</p>
                     <p className="mt-0.5 text-xs text-zinc-500">
                       Gabungan semua frame kamera
                     </p>
                   </div>
                 </Link>
                 <a
-                  href={`/s/${encodeURIComponent(sessionId)}/download/${rawGif.id}`}
-                  aria-label="Download Animasi Original GIF"
+                  href={`/s/${encodeURIComponent(sessionId)}/download/${rawLivePhoto.id}`}
+                  aria-label="Download Live Photo Original"
                   className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 transition-colors hover:bg-zinc-950 hover:text-white"
                 >
                   <Download className="size-4" />
@@ -328,12 +331,43 @@ export default async function SharedGalleryPage({
               </div>
             )}
 
-            {!rawGif && raw.length > 0 && isWithinRefreshWindow && (
+            {gif && (
+              <div className="mt-3 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/50 p-2.5 transition-colors hover:bg-zinc-50">
+                <Link
+                  href={`?view=${gif.id}`}
+                  className="flex min-w-0 flex-1 cursor-zoom-in items-center gap-3"
+                >
+                  <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={gif.secure_url}
+                      alt="GIF Foto"
+                      className="size-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">GIF Foto</p>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      Berganti dari foto slot pertama sampai terakhir
+                    </p>
+                  </div>
+                </Link>
+                <a
+                  href={`/s/${encodeURIComponent(sessionId)}/download/${gif.id}`}
+                  aria-label="Download GIF Foto"
+                  className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 transition-colors hover:bg-zinc-950 hover:text-white"
+                >
+                  <Download className="size-4" />
+                </a>
+              </div>
+            )}
+
+            {!rawLivePhoto && raw.length > 0 && isWithinRefreshWindow && (
               <div className="mt-5 flex items-center gap-3 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/30 p-3 text-zinc-500">
                 <div className="size-5 shrink-0 rounded-full border border-zinc-300 border-t-zinc-700 animate-spin" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-zinc-750">
-                    Animasi Original (GIF) Sedang Diproses
+                    Live Photo Original Sedang Diproses
                   </p>
                   <p className="text-[10px] text-zinc-500">
                     Sedang diunggah ke server...
@@ -381,7 +415,8 @@ export default async function SharedGalleryPage({
                 ))}
               </div>
             ) : (
-              !rawGif && (
+              !rawLivePhoto &&
+              !gif && (
                 <div className="mt-5 rounded-2xl bg-zinc-50 p-6 text-center text-sm text-zinc-500">
                   Foto original sedang disiapkan. Hasil utama dengan frame bisa
                   diunduh terlebih dahulu.
@@ -435,7 +470,7 @@ export default async function SharedGalleryPage({
             Download
           </a>
 
-          {/* Centered Image / GIF preview */}
+          {/* Centered photo or Live Photo preview */}
           <div className="relative max-h-[80vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

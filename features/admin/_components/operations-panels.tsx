@@ -528,6 +528,7 @@ const EMPTY_PRICING: PricingProductInput = {
   promoPrice: undefined,
   printLimit: 1,
   qrisDownload: true,
+  livePhotoEnabled: false,
   gifEnabled: false,
   active: true,
 };
@@ -542,14 +543,11 @@ export function PricingManagement() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const confirmDelete = useConfirmDialog();
-  const paginatedProducts = data.slice(
-    (page - 1) * pageSize,
-    page * pageSize,
-  );
+  const paginatedProducts = data.slice((page - 1) * pageSize, page * pageSize);
 
   const handleToggle = (
     product: PricingProduct,
-    field: "qrisDownload" | "gifEnabled" | "active",
+    field: "qrisDownload" | "livePhotoEnabled" | "gifEnabled" | "active",
     value: boolean,
   ) => {
     updatePricing.mutate(
@@ -583,7 +581,7 @@ export function PricingManagement() {
       {confirmDelete.dialog}
       <PageHeader
         title="Pricing & Product Management"
-        description="Configure packages, promos, QR download, GIF options, and print limits."
+        description="Configure packages, promos, QR download, Live Photo, multi-slot GIF, and print limits."
         action={
           <Button onClick={() => setCreating(true)}>
             <CreditCard className="size-4" /> Add package
@@ -606,6 +604,7 @@ export function PricingManagement() {
                 <TableHead>Promo</TableHead>
                 <TableHead>Print limit</TableHead>
                 <TableHead>QR Download</TableHead>
+                <TableHead>Live Photo</TableHead>
                 <TableHead>GIF</TableHead>
                 <TableHead>Active</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -627,6 +626,14 @@ export function PricingManagement() {
                       checked={product.qrisDownload}
                       onCheckedChange={(v) =>
                         handleToggle(product, "qrisDownload", v)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={product.livePhotoEnabled}
+                      onCheckedChange={(v) =>
+                        handleToggle(product, "livePhotoEnabled", v)
                       }
                     />
                   </TableCell>
@@ -670,7 +677,7 @@ export function PricingManagement() {
               {data.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={9}
                     className="py-8 text-center text-sm text-zinc-400"
                   >
                     No packages yet. Click <strong>Add package</strong> to
@@ -824,10 +831,17 @@ function PricingFormDialog({
           </label>
           <label className="flex items-center gap-2 text-sm text-zinc-700">
             <Switch
+              checked={form.livePhotoEnabled}
+              onCheckedChange={(v) => setForm({ ...form, livePhotoEnabled: v })}
+            />
+            Live Photo enabled
+          </label>
+          <label className="flex items-center gap-2 text-sm text-zinc-700">
+            <Switch
               checked={form.gifEnabled}
               onCheckedChange={(v) => setForm({ ...form, gifEnabled: v })}
             />
-            GIF enabled
+            GIF enabled (minimal 2 photo slot)
           </label>
           <label className="flex items-center gap-2 text-sm text-zinc-700">
             <Switch

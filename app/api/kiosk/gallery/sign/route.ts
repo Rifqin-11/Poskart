@@ -35,10 +35,10 @@ export async function POST(request: Request) {
         file.photoIndex >= 0,
     );
 
-    if (!sessionId || files.length > 12) {
+    if (!sessionId || files.length > 30) {
       return jsonOk(
         {
-          error: "A session ID and up to 12 valid files are required.",
+          error: "A session ID and up to 30 valid files are required.",
           code: "KIOSK_GALLERY_UPLOAD_INVALID",
         },
         { status: 400 },

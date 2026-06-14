@@ -147,8 +147,14 @@ export async function GalleryPage() {
                 (photo) => photo.kind === "framed",
               );
               const rawCount = sessionPhotos.filter(
-                (photo) => photo.kind === "raw",
+                (photo) =>
+                  photo.kind === "raw" &&
+                  photo.photo_index !== 98 &&
+                  photo.photo_index !== 99,
               ).length;
+              const hasGif = sessionPhotos.some(
+                (photo) => photo.kind === "raw" && photo.photo_index === 98,
+              );
 
               return (
                 <Card
@@ -183,6 +189,7 @@ export async function GalleryPage() {
                           }).format(new Date(session.created_at))}
                           {" · "}
                           {rawCount} raw
+                          {hasGif ? " · GIF" : ""}
                         </p>
                       </div>
                       <div className="flex gap-1.5 shrink-0">

@@ -416,7 +416,7 @@ export async function buildKioskBootstrap(
     context.client
       .from("pricing_products")
       .select(
-        "id,name,price,promo_price,print_limit,qris_download,gif_enabled,active",
+        "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active",
       )
       .eq("active", true)
       .order("price", { ascending: true }),

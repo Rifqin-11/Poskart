@@ -26,6 +26,7 @@ type PosPackageRow = {
   promo_price: number | null;
   print_limit: number;
   qris_download: boolean;
+  live_photo_enabled: boolean | null;
   gif_enabled: boolean;
   active: boolean;
 };
@@ -54,7 +55,8 @@ function mapPosPackage(row: PosPackageRow): PosPackageOption {
     description: [
       `${row.print_limit} print`,
       row.qris_download ? "QR download" : null,
-      row.gif_enabled ? "GIF" : null,
+      (row.live_photo_enabled ?? row.gif_enabled) ? "Live Photo" : null,
+      row.live_photo_enabled != null && row.gif_enabled ? "GIF" : null,
     ]
       .filter(Boolean)
       .join(" + "),
@@ -92,7 +94,9 @@ export async function getPosPackages(): Promise<PosPackageOption[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("pricing_products")
-    .select("id,name,price,promo_price,print_limit,qris_download,gif_enabled,active")
+    .select(
+      "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active",
+    )
     .eq("active", true)
     .order("price", { ascending: true });
 
