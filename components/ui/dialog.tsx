@@ -20,15 +20,26 @@ export function Dialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4 backdrop-blur-sm">
-      <div className={cn("w-full max-w-2xl rounded-xl border border-zinc-200 bg-white shadow-2xl", className)}>
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/30 p-2 backdrop-blur-sm sm:p-4">
+      <div
+        className={cn(
+          "flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]",
+          className,
+        )}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 px-4 py-3 sm:px-5 sm:py-4">
           <h2 className="text-sm font-semibold">{title}</h2>
-          <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onOpenChange(false)}
+          >
             <X className="size-4" />
           </Button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
+          {children}
+        </div>
       </div>
     </div>
   );

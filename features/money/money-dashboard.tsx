@@ -225,10 +225,7 @@ export function MoneyDashboard({
   );
   const paginatedEntries = useMemo(
     () =>
-      filteredEntries.slice(
-        (activePage - 1) * pageSize,
-        activePage * pageSize,
-      ),
+      filteredEntries.slice((activePage - 1) * pageSize, activePage * pageSize),
     [activePage, filteredEntries],
   );
 
@@ -240,24 +237,22 @@ export function MoneyDashboard({
   const exportToExcel = useCallback(() => {
     const headers = [
       "Waktu",
-      "Dompet",
       "Kategori",
+      "Dompet",
       "Judul",
       "Keterangan",
       "Tag",
-      "Jenis",
       "Nominal",
       "Potongan (%)",
       "Bersih",
     ];
     const rows = filteredEntries.map((entry) => [
       formatDate(entry.occurredAt),
-      walletLabels[entry.walletType],
       getCategoryLabel(entry.category),
+      walletLabels[entry.walletType],
       entry.title,
       entry.notes || "",
       entry.tags.map((t) => t.name).join(", "),
-      entry.entryType === "income" ? "Masuk" : "Keluar",
       entry.amount,
       entry.feePercentage || 0,
       entry.entryType === "income" ? getNetAmount(entry) : entry.amount,
@@ -307,10 +302,10 @@ export function MoneyDashboard({
         (entry) => `
       <tr>
         <td style="white-space: nowrap;">${formatDate(entry.occurredAt)}</td>
+        <td>${getCategoryLabel(entry.category)}</td>
         <td><span style="display: inline-block; padding: 2px 6px; border: 1px solid #e4e4e7; border-radius: 4px; background: #fafafa; font-size: 10px;">${
           walletLabels[entry.walletType]
         }</span></td>
-        <td>${getCategoryLabel(entry.category)}</td>
         <td>
           <div style="font-weight: 500;">${entry.title}</div>
           <div style="font-size: 10px; color: #71717a;">${
@@ -318,19 +313,12 @@ export function MoneyDashboard({
           }</div>
         </td>
         <td>${entry.tags.map((t) => t.name).join(", ") || "-"}</td>
-        <td>
-          <span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; background: ${
-            entry.entryType === "income" ? "#ecfdf5" : "#fef2f2"
-          }; color: ${entry.entryType === "income" ? "#047857" : "#b91c1c"}">
-            ${entry.entryType === "income" ? "Masuk" : "Keluar"}
-          </span>
-        </td>
         <td style="text-align: right; font-weight: 600; color: ${
           entry.entryType === "income" ? "#047857" : "#b91c1c"
         }">
           ${entry.entryType === "income" ? "+" : "-"}${formatCurrency(
-          entry.entryType === "income" ? getNetAmount(entry) : entry.amount,
-        )}
+            entry.entryType === "income" ? getNetAmount(entry) : entry.amount,
+          )}
         </td>
       </tr>
     `,
@@ -449,11 +437,10 @@ export function MoneyDashboard({
             <thead>
               <tr>
                 <th>Waktu</th>
-                <th>Dompet</th>
                 <th>Kategori</th>
+                <th>Dompet</th>
                 <th>Catatan</th>
                 <th>Tag</th>
-                <th>Jenis</th>
                 <th style="text-align: right;">Nominal</th>
               </tr>
             </thead>
@@ -478,12 +465,7 @@ export function MoneyDashboard({
 
     printWindow.document.write(content);
     printWindow.document.close();
-  }, [
-    filteredEntries,
-    selectedMonthLabel,
-    selectedWalletLabel,
-    summary,
-  ]);
+  }, [filteredEntries, selectedMonthLabel, selectedWalletLabel, summary]);
 
   const openCreate = () => {
     setEditing(null);
@@ -629,7 +611,10 @@ export function MoneyDashboard({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setCategoryManagerOpen(true)}>
+          <Button
+            variant="outline"
+            onClick={() => setCategoryManagerOpen(true)}
+          >
             <Settings2 className="size-4" />
             Kategori
           </Button>
@@ -690,7 +675,9 @@ export function MoneyDashboard({
       <Card>
         <CardContent className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-[minmax(420px,1fr)_240px_240px] xl:items-end">
           <div className="space-y-1.5">
-            <div className="text-xs font-medium text-zinc-500">Akun keuangan</div>
+            <div className="text-xs font-medium text-zinc-500">
+              Akun keuangan
+            </div>
             <div className="inline-flex w-full rounded-xl border border-zinc-200 bg-zinc-50 p-1">
               <WalletFilterButton
                 active={walletFilter === "all"}
@@ -822,72 +809,30 @@ export function MoneyDashboard({
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0">
           {filteredEntries.length ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Waktu</TableHead>
-                    <TableHead>Dompet</TableHead>
-                    <TableHead>Catatan</TableHead>
-                    <TableHead>Kategori</TableHead>
-                    <TableHead>Tag</TableHead>
-                    <TableHead>Jenis</TableHead>
-                    <TableHead className="text-right">Nominal</TableHead>
-                    <TableHead className="w-24 text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedEntries.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {formatDate(entry.occurredAt)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {entry.walletType === "cash" ? (
-                            <Banknote className="mr-1 size-3.5" />
-                          ) : (
-                            <QrCode className="mr-1 size-3.5" />
-                          )}
-                          {walletLabels[entry.walletType]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">{entry.title}</div>
-                        <div className="max-w-80 truncate text-xs text-zinc-500">
+            <div className="min-w-0 max-w-full">
+              <div className="space-y-3 md:hidden">
+                {paginatedEntries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-xl border border-zinc-200 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-xs text-zinc-500">
+                          {formatDate(entry.occurredAt)}
+                        </div>
+                        <div className="mt-1 font-medium text-zinc-950">
+                          {entry.title}
+                        </div>
+                        <div className="mt-0.5 text-xs text-zinc-500">
                           {entry.notes || "Tanpa keterangan tambahan"}
                         </div>
-                      </TableCell>
-                      <TableCell>{getCategoryLabel(entry.category)}</TableCell>
-                      <TableCell>
-                        {entry.tags.length ? (
-                          <div className="flex max-w-56 flex-wrap gap-1">
-                            {entry.tags.map((tag) => (
-                              <Badge key={tag.id} variant="outline">
-                                {tag.name}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-zinc-400">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            entry.entryType === "income"
-                              ? "success"
-                              : "destructive"
-                          }
-                        >
-                          {entry.entryType === "income" ? "Masuk" : "Keluar"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell
+                      </div>
+                      <div
                         className={cn(
-                          "text-right font-semibold",
+                          "shrink-0 text-right font-semibold",
                           entry.entryType === "income"
                             ? "text-emerald-700"
                             : "text-red-700",
@@ -899,41 +844,161 @@ export function MoneyDashboard({
                             ? getNetAmount(entry)
                             : entry.amount,
                         )}
-                        {entry.walletType === "qris" &&
-                        entry.entryType === "income" &&
-                        entry.feePercentage > 0 ? (
-                          <div className="mt-0.5 text-xs font-normal text-zinc-500">
-                            Bruto {formatCurrency(entry.amount)} · potongan{" "}
-                            {entry.feePercentage}%
-                          </div>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setEditing(entry);
-                            setEditorOpen(true);
-                          }}
-                          aria-label={`Edit ${entry.title}`}
-                        >
-                          <Edit2 className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-zinc-400 hover:bg-red-50 hover:text-red-600"
-                          onClick={() => handleDelete(entry)}
-                          aria-label={`Hapus ${entry.title}`}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </TableCell>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge variant="outline">
+                        {getCategoryLabel(entry.category)}
+                      </Badge>
+                      <Badge variant="outline">
+                        {entry.walletType === "cash" ? (
+                          <Banknote className="mr-1 size-3.5" />
+                        ) : (
+                          <QrCode className="mr-1 size-3.5" />
+                        )}
+                        {walletLabels[entry.walletType]}
+                      </Badge>
+                      {entry.tags.map((tag) => (
+                        <Badge key={tag.id} variant="outline">
+                          {tag.name}
+                        </Badge>
+                      ))}
+                    </div>
+                    {entry.walletType === "qris" &&
+                    entry.entryType === "income" &&
+                    entry.feePercentage > 0 ? (
+                      <div className="mt-2 text-xs text-zinc-500">
+                        Bruto {formatCurrency(entry.amount)} · potongan{" "}
+                        {entry.feePercentage}%
+                      </div>
+                    ) : null}
+                    <div className="mt-3 flex justify-end gap-1 border-t border-zinc-100 pt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditing(entry);
+                          setEditorOpen(true);
+                        }}
+                      >
+                        <Edit2 className="size-4" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-zinc-500 hover:bg-red-50 hover:text-red-600"
+                        onClick={() => handleDelete(entry)}
+                      >
+                        <Trash2 className="size-4" />
+                        Hapus
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden max-w-full overflow-x-auto md:block">
+                <Table className="min-w-[920px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Waktu</TableHead>
+                      <TableHead>Kategori</TableHead>
+                      <TableHead>Dompet</TableHead>
+                      <TableHead>Catatan</TableHead>
+                      <TableHead>Tag</TableHead>
+                      <TableHead className="text-right">Nominal</TableHead>
+                      <TableHead className="w-24 text-right">Aksi</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedEntries.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="whitespace-nowrap">
+                          {formatDate(entry.occurredAt)}
+                        </TableCell>
+                        <TableCell>
+                          {getCategoryLabel(entry.category)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {entry.walletType === "cash" ? (
+                              <Banknote className="mr-1 size-3.5" />
+                            ) : (
+                              <QrCode className="mr-1 size-3.5" />
+                            )}
+                            {walletLabels[entry.walletType]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{entry.title}</div>
+                          <div className="max-w-80 truncate text-xs text-zinc-500">
+                            {entry.notes || "Tanpa keterangan tambahan"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {entry.tags.length ? (
+                            <div className="flex max-w-56 flex-wrap gap-1">
+                              {entry.tags.map((tag) => (
+                                <Badge key={tag.id} variant="outline">
+                                  {tag.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-zinc-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            "text-right font-semibold",
+                            entry.entryType === "income"
+                              ? "text-emerald-700"
+                              : "text-red-700",
+                          )}
+                        >
+                          {entry.entryType === "income" ? "+" : "-"}
+                          {formatCurrency(
+                            entry.entryType === "income"
+                              ? getNetAmount(entry)
+                              : entry.amount,
+                          )}
+                          {entry.walletType === "qris" &&
+                          entry.entryType === "income" &&
+                          entry.feePercentage > 0 ? (
+                            <div className="mt-0.5 text-xs font-normal text-zinc-500">
+                              Bruto {formatCurrency(entry.amount)} · potongan{" "}
+                              {entry.feePercentage}%
+                            </div>
+                          ) : null}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditing(entry);
+                              setEditorOpen(true);
+                            }}
+                            aria-label={`Edit ${entry.title}`}
+                          >
+                            <Edit2 className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-zinc-400 hover:bg-red-50 hover:text-red-600"
+                            onClick={() => handleDelete(entry)}
+                            aria-label={`Hapus ${entry.title}`}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
               <TablePagination
                 page={activePage}
                 pageSize={pageSize}
@@ -1049,9 +1114,7 @@ function MoneyEntryDialog({
     entry?.category ?? "opening_balance",
   );
   const [amount, setAmount] = useState(entry?.amount ?? 0);
-  const [feePercentage, setFeePercentage] = useState(
-    entry?.feePercentage ?? 0,
-  );
+  const [feePercentage, setFeePercentage] = useState(entry?.feePercentage ?? 0);
   const [title, setTitle] = useState(entry?.title ?? "");
   const [notes, setNotes] = useState(entry?.notes ?? "");
   const [selectedTagIds, setSelectedTagIds] = useState(
@@ -1216,9 +1279,7 @@ function MoneyEntryDialog({
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm font-medium">Tag transaksi</span>
-            <span className="text-xs text-zinc-500">
-              Maksimal 10 tag
-            </span>
+            <span className="text-xs text-zinc-500">Maksimal 10 tag</span>
           </div>
           {tags.length ? (
             <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-xl border border-zinc-200 p-3">
