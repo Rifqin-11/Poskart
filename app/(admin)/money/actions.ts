@@ -5,9 +5,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type {
   MoneyActionState,
+  MoneyCategoryInput,
   MoneyCategory,
   MoneyEntryInput,
   MoneyEntryType,
+  MoneyTagInput,
   MoneyWalletType,
 } from "@/types/money";
 
@@ -24,6 +26,17 @@ const expenseCategories = new Set<MoneyCategory>([
   "correction",
   "other_expense",
 ]);
+
+const defaultCategoryNames: Record<MoneyCategory, string> = {
+  opening_balance: "Saldo awal",
+  sales_income: "Pendapatan penjualan",
+  other_income: "Pendapatan lainnya",
+  operational_expense: "Biaya operasional",
+  purchase: "Pembelian",
+  withdrawal: "Penarikan dana",
+  correction: "Penyesuaian saldo",
+  other_expense: "Pengeluaran lainnya",
+};
 
 async function getContext() {
   const supabase = await createClient();
@@ -42,19 +55,31 @@ async function getContext() {
   return { supabase, user, organizationId: membership.organization_id };
 }
 
-function validateMoneyEntry(values: MoneyEntryInput): string | null {
+async function validateMoneyEntry(
+  values: MoneyEntryInput,
+  context: NonNullable<Awaited<ReturnType<typeof getContext>>>,
+): Promise<string | null> {
   const amount = Math.round(Number(values.amount));
   const feePercentage = Number(values.feePercentage);
   if (!["cash", "qris"].includes(values.walletType)) {
     return "Dompet uang tidak valid.";
   }
   if (!["income", "expense"].includes(values.entryType)) {
-    return "Jenis catatan uang tidak valid.";
+    return "Jenis transaksi tidak valid.";
   }
-  const allowed =
+  const defaultAllowed =
     values.entryType === "income" ? incomeCategories : expenseCategories;
-  if (!allowed.has(values.category)) {
-    return "Kategori tidak sesuai dengan jenis transaksi.";
+  if (!defaultAllowed.has(values.category)) {
+    const { data: customCategory } = await context.supabase
+      .from("money_categories")
+      .select("id")
+      .eq("organization_id", context.organizationId)
+      .eq("entry_type", values.entryType)
+      .eq("name", values.category)
+      .maybeSingle();
+    if (!customCategory) {
+      return "Kategori tidak tersedia untuk jenis transaksi ini.";
+    }
   }
   if (!Number.isFinite(amount) || amount <= 0) {
     return "Nominal harus lebih besar dari nol.";
@@ -71,6 +96,20 @@ function validateMoneyEntry(values: MoneyEntryInput): string | null {
   }
   if (values.notes.trim().length > 500) {
     return "Catatan maksimal 500 karakter.";
+  }
+  const uniqueTagIds = Array.from(new Set(values.tagIds));
+  if (uniqueTagIds.length > 10) {
+    return "Maksimal 10 tag untuk setiap transaksi.";
+  }
+  if (uniqueTagIds.length) {
+    const { data: validTags } = await context.supabase
+      .from("money_tags")
+      .select("id")
+      .eq("organization_id", context.organizationId)
+      .in("id", uniqueTagIds);
+    if ((validTags ?? []).length !== uniqueTagIds.length) {
+      return "Satu atau beberapa tag tidak valid untuk organisasi ini.";
+    }
   }
   if (Number.isNaN(new Date(values.occurredAt).getTime())) {
     return "Tanggal transaksi tidak valid.";
@@ -104,12 +143,11 @@ function toDatabasePayload(
 export async function saveMoneyEntry(
   values: MoneyEntryInput,
 ): Promise<MoneyActionState> {
-  const validationError = validateMoneyEntry(values);
-  if (validationError) return { success: false, error: validationError };
-
   const context = await getContext();
   if (!context)
     return { success: false, error: "Sesi atau organisasi tidak valid." };
+  const validationError = await validateMoneyEntry(values, context);
+  if (validationError) return { success: false, error: validationError };
   const payload = toDatabasePayload(
     values,
     context.organizationId,
@@ -122,10 +160,164 @@ export async function saveMoneyEntry(
         .update(payload)
         .eq("id", values.id)
         .eq("organization_id", context.organizationId)
-    : context.supabase.from("money_entries").insert(payload);
-  const { error } = await query;
+        .select("id")
+        .maybeSingle()
+    : context.supabase.from("money_entries").insert(payload).select("id").single();
+  const { data: savedEntry, error } = await query;
   if (error)
-    return { success: false, error: `Gagal menyimpan: ${error.message}` };
+    return {
+      success: false,
+      error: `Gagal menyimpan transaksi: ${error.message}`,
+    };
+  if (!savedEntry)
+    return { success: false, error: "Transaksi tidak ditemukan." };
+
+  const { error: clearTagsError } = await context.supabase
+    .from("money_entry_tags")
+    .delete()
+    .eq("money_entry_id", savedEntry.id)
+    .eq("organization_id", context.organizationId);
+  if (clearTagsError) {
+    return {
+      success: false,
+      error: `Transaksi tersimpan, tetapi tag gagal diperbarui: ${clearTagsError.message}`,
+    };
+  }
+
+  const uniqueTagIds = Array.from(new Set(values.tagIds));
+  if (uniqueTagIds.length) {
+    const { error: tagInsertError } = await context.supabase
+      .from("money_entry_tags")
+      .insert(
+        uniqueTagIds.map((tagId) => ({
+          organization_id: context.organizationId,
+          money_entry_id: savedEntry.id,
+          money_tag_id: tagId,
+        })),
+      );
+    if (tagInsertError) {
+      return {
+        success: false,
+        error: `Transaksi tersimpan, tetapi tag gagal ditambahkan: ${tagInsertError.message}`,
+      };
+    }
+  }
+
+  revalidatePath("/money");
+  return { success: true };
+}
+
+export async function createMoneyTag(
+  values: MoneyTagInput,
+): Promise<MoneyActionState> {
+  const context = await getContext();
+  if (!context)
+    return { success: false, error: "Sesi atau organisasi tidak valid." };
+
+  const name = values.name.trim().replace(/\s+/g, " ");
+  if (name.length < 2 || name.length > 40) {
+    return { success: false, error: "Nama tag harus 2-40 karakter." };
+  }
+
+  const { error } = await context.supabase.from("money_tags").insert({
+    organization_id: context.organizationId,
+    name,
+    created_by: context.user.id,
+  });
+  if (error) {
+    if (error.code === "23505") {
+      return { success: false, error: "Tag dengan nama tersebut sudah ada." };
+    }
+    return { success: false, error: `Gagal membuat tag: ${error.message}` };
+  }
+
+  revalidatePath("/money");
+  return { success: true };
+}
+
+export async function deleteMoneyTag(
+  tagId: string,
+): Promise<MoneyActionState> {
+  const context = await getContext();
+  if (!context)
+    return { success: false, error: "Sesi atau organisasi tidak valid." };
+
+  const { data, error } = await context.supabase
+    .from("money_tags")
+    .delete()
+    .eq("id", tagId)
+    .eq("organization_id", context.organizationId)
+    .select("id")
+    .maybeSingle();
+  if (error)
+    return { success: false, error: `Gagal menghapus tag: ${error.message}` };
+  if (!data) return { success: false, error: "Tag tidak ditemukan." };
+
+  revalidatePath("/money");
+  return { success: true };
+}
+
+export async function createMoneyCategory(
+  values: MoneyCategoryInput,
+): Promise<MoneyActionState> {
+  const context = await getContext();
+  if (!context)
+    return { success: false, error: "Sesi atau organisasi tidak valid." };
+
+  const name = values.name.trim().replace(/\s+/g, " ");
+  if (!["income", "expense"].includes(values.entryType)) {
+    return { success: false, error: "Jenis kategori tidak valid." };
+  }
+  if (name.length < 2 || name.length > 60) {
+    return { success: false, error: "Nama kategori harus 2-60 karakter." };
+  }
+  if (
+    Object.entries(defaultCategoryNames).some(
+      ([key, label]) =>
+        label.toLowerCase() === name.toLowerCase() &&
+        (values.entryType === "income"
+          ? incomeCategories
+          : expenseCategories
+        ).has(key),
+    )
+  ) {
+    return { success: false, error: "Kategori tersebut sudah tersedia." };
+  }
+
+  const { error } = await context.supabase.from("money_categories").insert({
+    organization_id: context.organizationId,
+    entry_type: values.entryType,
+    name,
+    created_by: context.user.id,
+  });
+  if (error) {
+    if (error.code === "23505") {
+      return { success: false, error: "Kategori dengan nama tersebut sudah ada." };
+    }
+    return { success: false, error: `Gagal membuat kategori: ${error.message}` };
+  }
+
+  revalidatePath("/money");
+  return { success: true };
+}
+
+export async function deleteMoneyCategory(
+  categoryId: string,
+): Promise<MoneyActionState> {
+  const context = await getContext();
+  if (!context)
+    return { success: false, error: "Sesi atau organisasi tidak valid." };
+
+  const { data, error } = await context.supabase
+    .from("money_categories")
+    .delete()
+    .eq("id", categoryId)
+    .eq("organization_id", context.organizationId)
+    .select("id")
+    .maybeSingle();
+  if (error)
+    return { success: false, error: `Gagal menghapus kategori: ${error.message}` };
+  if (!data) return { success: false, error: "Kategori tidak ditemukan." };
 
   revalidatePath("/money");
   return { success: true };
@@ -146,8 +338,8 @@ export async function deleteMoneyEntry(
     .select("id")
     .maybeSingle();
   if (error)
-    return { success: false, error: `Gagal menghapus: ${error.message}` };
-  if (!data) return { success: false, error: "Catatan uang tidak ditemukan." };
+    return { success: false, error: `Gagal menghapus transaksi: ${error.message}` };
+  if (!data) return { success: false, error: "Transaksi tidak ditemukan." };
 
   revalidatePath("/money");
   return { success: true };

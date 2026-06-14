@@ -8,6 +8,9 @@ import {
   Plus,
   QrCode,
   Search,
+  Settings2,
+  Tag,
+  Tags,
   Trash2,
   WalletCards,
 } from "lucide-react";
@@ -15,7 +18,14 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { deleteMoneyEntry, saveMoneyEntry } from "@/app/(admin)/money/actions";
+import {
+  createMoneyCategory,
+  createMoneyTag,
+  deleteMoneyCategory,
+  deleteMoneyEntry,
+  deleteMoneyTag,
+  saveMoneyEntry,
+} from "@/app/(admin)/money/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,28 +51,30 @@ import {
 import { cn, formatCurrency } from "@/lib/utils";
 import type {
   MoneyCategory,
+  MoneyCustomCategory,
   MoneyEntry,
   MoneyEntryInput,
   MoneyEntryType,
+  MoneyTag,
   MoneyWalletType,
 } from "@/types/money";
 
 type WalletFilter = "all" | MoneyWalletType;
 
 const walletLabels: Record<MoneyWalletType, string> = {
-  cash: "Cash",
+  cash: "Tunai",
   qris: "QRIS",
 };
 
 const categoryLabels: Record<MoneyCategory, string> = {
   opening_balance: "Saldo awal",
   sales_income: "Pendapatan penjualan",
-  other_income: "Pendapatan lain",
+  other_income: "Pendapatan lainnya",
   operational_expense: "Biaya operasional",
   purchase: "Pembelian",
-  withdrawal: "Penarikan uang",
-  correction: "Koreksi saldo",
-  other_expense: "Pengeluaran lain",
+  withdrawal: "Penarikan dana",
+  correction: "Penyesuaian saldo",
+  other_expense: "Pengeluaran lainnya",
 };
 
 const categories: Record<
@@ -72,15 +84,15 @@ const categories: Record<
   income: [
     { value: "opening_balance", label: "Saldo awal" },
     { value: "sales_income", label: "Pendapatan penjualan" },
-    { value: "other_income", label: "Pendapatan lain" },
-    { value: "correction", label: "Koreksi saldo masuk" },
+    { value: "other_income", label: "Pendapatan lainnya" },
+    { value: "correction", label: "Penyesuaian saldo masuk" },
   ],
   expense: [
     { value: "operational_expense", label: "Biaya operasional" },
     { value: "purchase", label: "Pembelian" },
-    { value: "withdrawal", label: "Penarikan uang" },
-    { value: "correction", label: "Koreksi saldo keluar" },
-    { value: "other_expense", label: "Pengeluaran lain" },
+    { value: "withdrawal", label: "Penarikan dana" },
+    { value: "correction", label: "Penyesuaian saldo keluar" },
+    { value: "other_expense", label: "Pengeluaran lainnya" },
   ],
 };
 
@@ -90,6 +102,25 @@ function formatDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function getMonthKey(value: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date(value));
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  return `${year}-${month}`;
+}
+
+function formatMonthLabel(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "long",
+  }).format(new Date(`${value}-01T12:00:00+07:00`));
 }
 
 function toLocalDateTime(value: string) {
@@ -110,49 +141,82 @@ function getNetAmount(entry: MoneyEntry) {
   return entry.amount - feeAmount;
 }
 
-export function MoneyDashboard({ entries }: { entries: MoneyEntry[] }) {
+function getCategoryLabel(category: MoneyCategory) {
+  return categoryLabels[category] ?? category;
+}
+
+export function MoneyDashboard({
+  entries,
+  categories: customCategories,
+  tags,
+}: {
+  entries: MoneyEntry[];
+  categories: MoneyCustomCategory[];
+  tags: MoneyTag[];
+}) {
   const router = useRouter();
   const confirmDelete = useConfirmDialog();
   const [pending, startTransition] = useTransition();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [editing, setEditing] = useState<MoneyEntry | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | MoneyEntryType>("all");
   const [walletFilter, setWalletFilter] = useState<WalletFilter>("all");
-
-  const walletEntries = useMemo(
+  const [tagFilter, setTagFilter] = useState("all");
+  const monthOptions = useMemo(
     () =>
-      entries.filter(
-        (entry) =>
-          walletFilter === "all" || entry.walletType === walletFilter,
-      ),
-    [entries, walletFilter],
+      Array.from(
+        new Set([
+          getMonthKey(new Date().toISOString()),
+          ...entries.map((entry) => getMonthKey(entry.occurredAt)),
+        ]),
+      )
+        .sort()
+        .reverse(),
+    [entries],
   );
+  const [selectedMonth, setSelectedMonth] = useState("all");
+
+  const scopedEntries = useMemo(() => {
+    return entries.filter(
+      (entry) =>
+        (walletFilter === "all" || entry.walletType === walletFilter) &&
+        (tagFilter === "all" ||
+          entry.tags.some((tag) => tag.id === tagFilter)) &&
+        (selectedMonth === "all" ||
+          getMonthKey(entry.occurredAt) === selectedMonth),
+    );
+  }, [entries, selectedMonth, tagFilter, walletFilter]);
 
   const filteredEntries = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return walletEntries.filter(
+    return scopedEntries.filter(
       (entry) =>
         (typeFilter === "all" || entry.entryType === typeFilter) &&
         (!query ||
           entry.title.toLowerCase().includes(query) ||
           entry.notes?.toLowerCase().includes(query) ||
-          categoryLabels[entry.category].toLowerCase().includes(query)),
+          getCategoryLabel(entry.category).toLowerCase().includes(query) ||
+          entry.tags.some((tag) => tag.name.toLowerCase().includes(query))),
     );
-  }, [search, typeFilter, walletEntries]);
+  }, [scopedEntries, search, typeFilter]);
 
   const summary = useMemo(() => {
-    const income = walletEntries
+    const income = scopedEntries
       .filter((entry) => entry.entryType === "income")
       .reduce((total, entry) => total + getNetAmount(entry), 0);
-    const expense = walletEntries
+    const expense = scopedEntries
       .filter((entry) => entry.entryType === "expense")
       .reduce((total, entry) => total + entry.amount, 0);
     return { income, expense, balance: income - expense };
-  }, [walletEntries]);
+  }, [scopedEntries]);
 
   const selectedWalletLabel =
-    walletFilter === "all" ? "Gabungan" : walletLabels[walletFilter];
+    walletFilter === "all" ? "Keseluruhan" : walletLabels[walletFilter];
+  const selectedMonthLabel =
+    selectedMonth === "all" ? "Semua bulan" : formatMonthLabel(selectedMonth);
 
   const openCreate = () => {
     setEditing(null);
@@ -161,7 +225,7 @@ export function MoneyDashboard({ entries }: { entries: MoneyEntry[] }) {
 
   const handleDelete = (entry: MoneyEntry) => {
     confirmDelete.confirm({
-      title: "Hapus catatan uang?",
+      title: "Hapus transaksi?",
       description: `Hapus "${entry.title}" senilai ${formatCurrency(entry.amount)}?`,
       confirmLabel: "Hapus",
       destructive: true,
@@ -169,10 +233,10 @@ export function MoneyDashboard({ entries }: { entries: MoneyEntry[] }) {
         startTransition(async () => {
           const result = await deleteMoneyEntry(entry.id);
           if (!result.success) {
-            toast.error(result.error ?? "Catatan gagal dihapus.");
+            toast.error(result.error ?? "Transaksi gagal dihapus.");
             return;
           }
-          toast.success("Catatan uang berhasil dihapus.");
+          toast.success("Transaksi berhasil dihapus.");
           router.refresh();
         });
       },
@@ -185,22 +249,99 @@ export function MoneyDashboard({ entries }: { entries: MoneyEntry[] }) {
       {editorOpen ? (
         <MoneyEntryDialog
           entry={editing}
+          customCategories={customCategories}
+          tags={tags}
           pending={pending}
           onClose={() => setEditorOpen(false)}
           onSubmit={(values) => {
             startTransition(async () => {
               const result = await saveMoneyEntry(values);
               if (!result.success) {
-                toast.error(result.error ?? "Catatan gagal disimpan.");
+                toast.error(result.error ?? "Transaksi gagal disimpan.");
                 return;
               }
               toast.success(
                 editing
-                  ? "Catatan uang berhasil diubah."
-                  : "Catatan uang berhasil ditambahkan.",
+                  ? "Transaksi berhasil diperbarui."
+                  : "Transaksi berhasil ditambahkan.",
               );
               setEditorOpen(false);
               router.refresh();
+            });
+          }}
+        />
+      ) : null}
+      {tagManagerOpen ? (
+        <TagManagerDialog
+          tags={tags}
+          pending={pending}
+          onClose={() => setTagManagerOpen(false)}
+          onCreate={(name) => {
+            startTransition(async () => {
+              const result = await createMoneyTag({ name });
+              if (!result.success) {
+                toast.error(result.error ?? "Tag gagal dibuat.");
+                return;
+              }
+              toast.success("Tag berhasil ditambahkan.");
+              router.refresh();
+            });
+          }}
+          onDelete={(tag) => {
+            confirmDelete.confirm({
+              title: "Hapus tag?",
+              description: `Tag "${tag.name}" akan dihapus dari seluruh transaksi yang menggunakannya.`,
+              confirmLabel: "Hapus tag",
+              destructive: true,
+              onConfirm: () => {
+                startTransition(async () => {
+                  const result = await deleteMoneyTag(tag.id);
+                  if (!result.success) {
+                    toast.error(result.error ?? "Tag gagal dihapus.");
+                    return;
+                  }
+                  if (tagFilter === tag.id) setTagFilter("all");
+                  toast.success("Tag berhasil dihapus.");
+                  router.refresh();
+                });
+              },
+            });
+          }}
+        />
+      ) : null}
+      {categoryManagerOpen ? (
+        <CategoryManagerDialog
+          categories={customCategories}
+          pending={pending}
+          onClose={() => setCategoryManagerOpen(false)}
+          onCreate={(entryType, name) => {
+            startTransition(async () => {
+              const result = await createMoneyCategory({ entryType, name });
+              if (!result.success) {
+                toast.error(result.error ?? "Kategori gagal dibuat.");
+                return;
+              }
+              toast.success("Kategori berhasil ditambahkan.");
+              router.refresh();
+            });
+          }}
+          onDelete={(category) => {
+            confirmDelete.confirm({
+              title: "Hapus kategori?",
+              description: `Kategori "${category.name}" tidak lagi muncul pada pilihan transaksi. Riwayat lama tetap tersimpan.`,
+              confirmLabel: "Hapus kategori",
+              destructive: true,
+              onConfirm: () => {
+                startTransition(async () => {
+                  const result = await deleteMoneyCategory(category.id);
+                  if (!result.success) {
+                    toast.error(result.error ?? "Kategori gagal dihapus.");
+                    return;
+                  }
+                  toast.success("Kategori berhasil dihapus.");
+                  router.refresh();
+                });
+              },
             });
           }}
         />
@@ -210,58 +351,129 @@ export function MoneyDashboard({ entries }: { entries: MoneyEntry[] }) {
         <div>
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
             <WalletCards className="size-3.5" />
-            Money Management
+            Keuangan Operasional
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Uang yang Dipegang
+            Manajemen Keuangan
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Catatan kas mandiri. Data ini tidak terhubung dengan POS atau
-            transaksi photobooth.
+            Pantau saldo, pemasukan, dan pengeluaran operasional dalam satu
+            laporan terpusat.
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="size-4" />
-          Tambah catatan
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setCategoryManagerOpen(true)}>
+            <Settings2 className="size-4" />
+            Kategori
+          </Button>
+          <Button variant="outline" onClick={() => setTagManagerOpen(true)}>
+            <Tags className="size-4" />
+            Tag
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="size-4" />
+            Tambah transaksi
+          </Button>
+        </div>
       </div>
 
-      <div className="inline-flex w-full rounded-xl border border-zinc-200 bg-zinc-50 p-1 sm:w-auto">
-        <WalletFilterButton
-          active={walletFilter === "all"}
-          label="Gabungan"
-          icon={WalletCards}
-          onClick={() => setWalletFilter("all")}
-        />
-        <WalletFilterButton
-          active={walletFilter === "cash"}
-          label="Cash"
-          icon={Banknote}
-          onClick={() => setWalletFilter("cash")}
-        />
-        <WalletFilterButton
-          active={walletFilter === "qris"}
-          label="QRIS"
-          icon={QrCode}
-          onClick={() => setWalletFilter("qris")}
-        />
-      </div>
+      <Card>
+        <CardContent className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-[minmax(420px,1fr)_240px_240px] xl:items-end">
+          <div className="space-y-1.5">
+            <div className="text-xs font-medium text-zinc-500">Akun keuangan</div>
+            <div className="inline-flex w-full rounded-xl border border-zinc-200 bg-zinc-50 p-1">
+              <WalletFilterButton
+                active={walletFilter === "all"}
+                label="Semua akun"
+                icon={WalletCards}
+                onClick={() => setWalletFilter("all")}
+              />
+              <WalletFilterButton
+                active={walletFilter === "cash"}
+                label="Tunai"
+                icon={Banknote}
+                onClick={() => setWalletFilter("cash")}
+              />
+              <WalletFilterButton
+                active={walletFilter === "qris"}
+                label="QRIS"
+                icon={QrCode}
+                onClick={() => setWalletFilter("qris")}
+              />
+            </div>
+          </div>
+          <label className="space-y-1.5 text-xs font-medium text-zinc-500">
+            Bulan
+            <Select
+              value={selectedMonth}
+              onChange={(event) => setSelectedMonth(event.target.value)}
+              className="w-full text-sm text-zinc-900"
+            >
+              <option value="all">Semua bulan</option>
+              {monthOptions.map((month) => (
+                <option key={month} value={month}>
+                  {formatMonthLabel(month)}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="space-y-1.5 text-xs font-medium text-zinc-500">
+            Filter tag
+            <Select
+              value={tagFilter}
+              onChange={(event) => setTagFilter(event.target.value)}
+              className="w-full text-sm text-zinc-900"
+            >
+              <option value="all">Semua tag</option>
+              {tags.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <div className="text-xs text-zinc-500 md:col-span-2 xl:col-span-3">
+            Menampilkan data{" "}
+            <span className="font-medium text-zinc-900">
+              {selectedWalletLabel}
+            </span>{" "}
+            pada{" "}
+            <span className="font-medium text-zinc-900">
+              {selectedMonthLabel}
+            </span>
+            {tagFilter !== "all" ? (
+              <>
+                {" "}
+                dengan tag{" "}
+                <span className="font-medium text-zinc-900">
+                  {tags.find((tag) => tag.id === tagFilter)?.name}
+                </span>
+              </>
+            ) : null}
+            .
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard
-          label={`Saldo ${selectedWalletLabel}`}
+          label={
+            selectedMonth === "all"
+              ? `Saldo ${selectedWalletLabel}`
+              : `Arus bersih ${selectedWalletLabel}`
+          }
           value={formatCurrency(summary.balance)}
           icon={WalletCards}
           tone={summary.balance < 0 ? "danger" : "neutral"}
         />
         <SummaryCard
-          label={`Uang masuk ${selectedWalletLabel}`}
+          label={`Total pemasukan ${selectedWalletLabel}`}
           value={formatCurrency(summary.income)}
           icon={ArrowUpCircle}
           tone="success"
         />
         <SummaryCard
-          label={`Uang keluar ${selectedWalletLabel}`}
+          label={`Total pengeluaran ${selectedWalletLabel}`}
           value={formatCurrency(summary.expense)}
           icon={ArrowDownCircle}
           tone="danger"
@@ -272,9 +484,9 @@ export function MoneyDashboard({ entries }: { entries: MoneyEntry[] }) {
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <CardTitle>Riwayat uang</CardTitle>
+              <CardTitle>Riwayat transaksi</CardTitle>
               <CardDescription>
-                Semua pemasukan dan pengeluaran yang dicatat manual.
+                Rincian aktivitas keuangan berdasarkan akun dan kategori.
               </CardDescription>
             </div>
             <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_160px]">
@@ -307,9 +519,10 @@ export function MoneyDashboard({ entries }: { entries: MoneyEntry[] }) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Waktu</TableHead>
-                    <TableHead>Catatan</TableHead>
                     <TableHead>Dompet</TableHead>
+                    <TableHead>Catatan</TableHead>
                     <TableHead>Kategori</TableHead>
+                    <TableHead>Tag</TableHead>
                     <TableHead>Jenis</TableHead>
                     <TableHead className="text-right">Nominal</TableHead>
                     <TableHead className="w-24 text-right">Aksi</TableHead>
@@ -322,12 +535,6 @@ export function MoneyDashboard({ entries }: { entries: MoneyEntry[] }) {
                         {formatDate(entry.occurredAt)}
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{entry.title}</div>
-                        <div className="max-w-80 truncate text-xs text-zinc-500">
-                          {entry.notes || "Tanpa catatan"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
                         <Badge variant="outline">
                           {entry.walletType === "cash" ? (
                             <Banknote className="mr-1 size-3.5" />
@@ -337,7 +544,26 @@ export function MoneyDashboard({ entries }: { entries: MoneyEntry[] }) {
                           {walletLabels[entry.walletType]}
                         </Badge>
                       </TableCell>
-                      <TableCell>{categoryLabels[entry.category]}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{entry.title}</div>
+                        <div className="max-w-80 truncate text-xs text-zinc-500">
+                          {entry.notes || "Tanpa keterangan tambahan"}
+                        </div>
+                      </TableCell>
+                      <TableCell>{getCategoryLabel(entry.category)}</TableCell>
+                      <TableCell>
+                        {entry.tags.length ? (
+                          <div className="flex max-w-56 flex-wrap gap-1">
+                            {entry.tags.map((tag) => (
+                              <Badge key={tag.id} variant="outline">
+                                {tag.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-zinc-400">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -404,10 +630,10 @@ export function MoneyDashboard({ entries }: { entries: MoneyEntry[] }) {
               <div>
                 <Banknote className="mx-auto size-8 text-zinc-400" />
                 <h3 className="mt-3 text-sm font-semibold">
-                  Belum ada catatan uang
+                  Belum ada transaksi
                 </h3>
                 <p className="mt-1 text-sm text-zinc-500">
-                  Tambahkan saldo awal atau transaksi uang pertama.
+                  Tambahkan saldo awal atau transaksi pertama untuk memulai.
                 </p>
               </div>
             </div>
@@ -484,11 +710,15 @@ function SummaryCard({
 
 function MoneyEntryDialog({
   entry,
+  customCategories,
+  tags,
   pending,
   onClose,
   onSubmit,
 }: {
   entry: MoneyEntry | null;
+  customCategories: MoneyCustomCategory[];
+  tags: MoneyTag[];
   pending: boolean;
   onClose: () => void;
   onSubmit: (values: MoneyEntryInput) => void;
@@ -508,6 +738,9 @@ function MoneyEntryDialog({
   );
   const [title, setTitle] = useState(entry?.title ?? "");
   const [notes, setNotes] = useState(entry?.notes ?? "");
+  const [selectedTagIds, setSelectedTagIds] = useState(
+    entry?.tags.map((tag) => tag.id) ?? [],
+  );
   const [occurredAt, setOccurredAt] = useState(
     toLocalDateTime(entry?.occurredAt ?? new Date().toISOString()),
   );
@@ -516,12 +749,18 @@ function MoneyEntryDialog({
     setEntryType(nextType);
     setCategory(categories[nextType][0].value);
   };
+  const availableCategories = [
+    ...categories[entryType],
+    ...customCategories
+      .filter((item) => item.entryType === entryType)
+      .map((item) => ({ value: item.name, label: item.name })),
+  ];
 
   return (
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={entry ? "Edit catatan uang" : "Tambah catatan uang"}
+      title={entry ? "Edit transaksi" : "Tambah transaksi"}
     >
       <form
         className="space-y-4"
@@ -536,6 +775,7 @@ function MoneyEntryDialog({
             feePercentage,
             title,
             notes,
+            tagIds: selectedTagIds,
             occurredAt,
           });
         }}
@@ -547,7 +787,7 @@ function MoneyEntryDialog({
             onClick={() => changeType("income")}
           >
             <ArrowUpCircle className="size-4" />
-            Uang masuk
+            Pemasukan
           </Button>
           <Button
             type="button"
@@ -555,21 +795,9 @@ function MoneyEntryDialog({
             onClick={() => changeType("expense")}
           >
             <ArrowDownCircle className="size-4" />
-            Uang keluar
+            Pengeluaran
           </Button>
         </div>
-        <label className="block space-y-1.5 text-sm font-medium">
-          Dompet
-          <Select
-            value={walletType}
-            onChange={(event) =>
-              setWalletType(event.target.value as MoneyWalletType)
-            }
-          >
-            <option value="cash">Cash</option>
-            <option value="qris">QRIS</option>
-          </Select>
-        </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5 text-sm font-medium">
             Kategori
@@ -579,7 +807,7 @@ function MoneyEntryDialog({
                 setCategory(event.target.value as MoneyCategory)
               }
             >
-              {categories[entryType].map((option) => (
+              {availableCategories.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -587,13 +815,37 @@ function MoneyEntryDialog({
             </Select>
           </label>
           <label className="space-y-1.5 text-sm font-medium">
-            Nominal
+            Nominal transaksi
             <Input
               type="number"
               min={1}
               value={amount || ""}
               onChange={(event) => setAmount(Number(event.target.value))}
               placeholder="0"
+              required
+            />
+          </label>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="space-y-1.5 text-sm font-medium">
+            Dompet
+            <Select
+              value={walletType}
+              onChange={(event) =>
+                setWalletType(event.target.value as MoneyWalletType)
+              }
+            >
+              <option value="cash">Tunai</option>
+              <option value="qris">QRIS</option>
+            </Select>
+          </label>
+          <label className="space-y-1.5 text-sm font-medium">
+            Catatan transaksi
+            <Input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              maxLength={120}
+              placeholder="Contoh: Pendapatan acara"
               required
             />
           </label>
@@ -628,16 +880,6 @@ function MoneyEntryDialog({
           </label>
         ) : null}
         <label className="block space-y-1.5 text-sm font-medium">
-          Judul
-          <Input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            maxLength={120}
-            placeholder="Contoh: Saldo kas awal"
-            required
-          />
-        </label>
-        <label className="block space-y-1.5 text-sm font-medium">
           Waktu
           <Input
             type="datetime-local"
@@ -647,23 +889,255 @@ function MoneyEntryDialog({
           />
         </label>
         <label className="block space-y-1.5 text-sm font-medium">
-          Catatan
+          Keterangan tambahan
           <Textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             maxLength={500}
-            placeholder="Keterangan tambahan"
+            placeholder="Informasi opsional mengenai transaksi"
           />
         </label>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium">Tag transaksi</span>
+            <span className="text-xs text-zinc-500">
+              Maksimal 10 tag
+            </span>
+          </div>
+          {tags.length ? (
+            <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-xl border border-zinc-200 p-3">
+              {tags.map((tag) => {
+                const selected = selectedTagIds.includes(tag.id);
+                return (
+                  <Button
+                    key={tag.id}
+                    type="button"
+                    size="sm"
+                    variant={selected ? "default" : "outline"}
+                    onClick={() =>
+                      setSelectedTagIds((current) =>
+                        selected
+                          ? current.filter((id) => id !== tag.id)
+                          : current.length < 10
+                            ? [...current, tag.id]
+                            : current,
+                      )
+                    }
+                  >
+                    <Tag className="size-3.5" />
+                    {tag.name}
+                  </Button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
+              Belum ada tag. Tambahkan melalui tombol Tag pada halaman utama.
+            </div>
+          )}
+        </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>
             Batal
           </Button>
           <Button type="submit" disabled={pending}>
-            {pending ? "Menyimpan..." : "Simpan catatan"}
+            {pending ? "Menyimpan..." : "Simpan transaksi"}
           </Button>
         </div>
       </form>
+    </Dialog>
+  );
+}
+
+function TagManagerDialog({
+  tags,
+  pending,
+  onClose,
+  onCreate,
+  onDelete,
+}: {
+  tags: MoneyTag[];
+  pending: boolean;
+  onClose: () => void;
+  onCreate: (name: string) => void;
+  onDelete: (tag: MoneyTag) => void;
+}) {
+  const [name, setName] = useState("");
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title="Kelola tag transaksi"
+    >
+      <div className="space-y-5">
+        <p className="text-sm text-zinc-500">
+          Tag dapat dipakai pada beberapa transaksi sekaligus untuk
+          pengelompokan dan penyaringan laporan.
+        </p>
+        <form
+          className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:flex-row"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onCreate(name);
+            setName("");
+          }}
+        >
+          <Input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            minLength={2}
+            maxLength={40}
+            placeholder="Contoh: CFD, Cabang A, Event Juni"
+            required
+          />
+          <Button type="submit" disabled={pending || name.trim().length < 2}>
+            <Plus className="size-4" />
+            Tambah tag
+          </Button>
+        </form>
+        {tags.length ? (
+          <div className="max-h-72 divide-y overflow-y-auto rounded-xl border border-zinc-200">
+            {tags.map((tag) => (
+              <div
+                key={tag.id}
+                className="flex items-center justify-between gap-3 px-4 py-3"
+              >
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Tag className="size-4 text-zinc-400" />
+                  {tag.name}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="text-zinc-400 hover:bg-red-50 hover:text-red-600"
+                  onClick={() => onDelete(tag)}
+                  aria-label={`Hapus tag ${tag.name}`}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center text-sm text-zinc-500">
+            Belum ada tag kustom.
+          </div>
+        )}
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Selesai
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+function CategoryManagerDialog({
+  categories: customCategories,
+  pending,
+  onClose,
+  onCreate,
+  onDelete,
+}: {
+  categories: MoneyCustomCategory[];
+  pending: boolean;
+  onClose: () => void;
+  onCreate: (entryType: MoneyEntryType, name: string) => void;
+  onDelete: (category: MoneyCustomCategory) => void;
+}) {
+  const [entryType, setEntryType] = useState<MoneyEntryType>("income");
+  const [name, setName] = useState("");
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title="Kelola kategori transaksi"
+    >
+      <div className="space-y-5">
+        <p className="text-sm text-zinc-500">
+          Buat kategori khusus untuk kebutuhan operasional organisasi Anda.
+          Kategori bawaan tetap tersedia untuk menjaga konsistensi laporan.
+        </p>
+        <form
+          className="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:grid-cols-[150px_1fr_auto]"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onCreate(entryType, name);
+            setName("");
+          }}
+        >
+          <Select
+            value={entryType}
+            onChange={(event) =>
+              setEntryType(event.target.value as MoneyEntryType)
+            }
+            aria-label="Jenis kategori"
+          >
+            <option value="income">Pemasukan</option>
+            <option value="expense">Pengeluaran</option>
+          </Select>
+          <Input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            minLength={2}
+            maxLength={60}
+            placeholder="Contoh: Sewa peralatan"
+            required
+          />
+          <Button type="submit" disabled={pending || name.trim().length < 2}>
+            <Plus className="size-4" />
+            Tambah
+          </Button>
+        </form>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Tags className="size-4" />
+            Kategori kustom
+          </div>
+          {customCategories.length ? (
+            <div className="max-h-72 divide-y overflow-y-auto rounded-xl border border-zinc-200">
+              {customCategories.map((category) => (
+                <div
+                  key={category.id}
+                  className="flex items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div>
+                    <div className="text-sm font-medium">{category.name}</div>
+                    <div className="text-xs text-zinc-500">
+                      {category.entryType === "income"
+                        ? "Pemasukan"
+                        : "Pengeluaran"}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-zinc-400 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => onDelete(category)}
+                    aria-label={`Hapus kategori ${category.name}`}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center text-sm text-zinc-500">
+              Belum ada kategori kustom.
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Selesai
+          </Button>
+        </div>
+      </div>
     </Dialog>
   );
 }

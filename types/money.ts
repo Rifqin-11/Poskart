@@ -1,15 +1,27 @@
 export type MoneyEntryType = "income" | "expense";
 export type MoneyWalletType = "cash" | "qris";
 
-export type MoneyCategory =
-  | "opening_balance"
-  | "sales_income"
-  | "other_income"
-  | "operational_expense"
-  | "purchase"
-  | "withdrawal"
-  | "correction"
-  | "other_expense";
+export type MoneyCategory = string;
+
+export type MoneyCustomCategory = {
+  id: string;
+  entryType: MoneyEntryType;
+  name: string;
+};
+
+export type MoneyCategoryInput = {
+  entryType: MoneyEntryType;
+  name: string;
+};
+
+export type MoneyTag = {
+  id: string;
+  name: string;
+};
+
+export type MoneyTagInput = {
+  name: string;
+};
 
 export type MoneyEntry = {
   id: string;
@@ -20,6 +32,7 @@ export type MoneyEntry = {
   feePercentage: number;
   title: string;
   notes: string | null;
+  tags: MoneyTag[];
   occurredAt: string;
   createdAt: string;
 };
@@ -33,6 +46,7 @@ export type MoneyEntryInput = {
   feePercentage: number;
   title: string;
   notes: string;
+  tagIds: string[];
   occurredAt: string;
 };
 

@@ -47,7 +47,7 @@ const navItems = [
   },
   {
     href: "/money",
-    label: "Money Management",
+    label: "Keuangan",
     icon: WalletCards,
     requiresSubscription: true,
   },
