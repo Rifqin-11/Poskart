@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Blocks,
   ChevronDown,
   CreditCard,
   Gauge,
@@ -56,12 +55,6 @@ const navItems = [
     href: "/themes",
     label: "Themes",
     icon: Palette,
-    requiresSubscription: true,
-  },
-  {
-    href: "/builder",
-    label: "Builder",
-    icon: Blocks,
     requiresSubscription: true,
   },
   {

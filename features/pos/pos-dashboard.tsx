@@ -40,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { cn, formatCurrency } from "@/lib/utils";
 import type {
   PosPackageCode,
@@ -99,6 +100,8 @@ export function PosDashboard({
   );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingSale, setEditingSale] = useState<PosSale | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const hasPackages = packages.length > 0;
 
   const filteredSales = useMemo(() => {
@@ -127,6 +130,18 @@ export function PosDashboard({
       transactions: filteredSales.length,
     }),
     [filteredSales],
+  );
+  const activePage = Math.min(
+    page,
+    Math.max(1, Math.ceil(filteredSales.length / pageSize)),
+  );
+  const paginatedSales = useMemo(
+    () =>
+      filteredSales.slice(
+        (activePage - 1) * pageSize,
+        activePage * pageSize,
+      ),
+    [activePage, filteredSales],
   );
 
   function handleSubmit(formData: FormData) {
@@ -551,7 +566,7 @@ export function PosDashboard({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredSales.map((sale) => (
+                    {paginatedSales.map((sale) => (
                       <TableRow
                         key={sale.id}
                         className={
@@ -634,6 +649,12 @@ export function PosDashboard({
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  page={activePage}
+                  pageSize={pageSize}
+                  totalItems={filteredSales.length}
+                  onPageChange={setPage}
+                />
               </div>
             ) : (
               <div className="grid min-h-64 place-items-center rounded-lg border border-dashed border-zinc-200 bg-zinc-50/60 p-8 text-center">

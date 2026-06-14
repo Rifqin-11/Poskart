@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Camera,
   CreditCard,
+  Download,
   ImageIcon,
   Layers3,
   MonitorSmartphone,
@@ -19,6 +20,7 @@ import {
   PublicHeader,
 } from "@/features/root/shell/public-site-shell";
 import type { PricingPlan } from "@/lib/constants/business";
+import type { LatestAppRelease } from "@/server/releases/github-release";
 
 const operatorFeatures = [
   {
@@ -89,7 +91,13 @@ const operationHighlights = [
   { title: "Print queue", value: "Ready", icon: Printer },
 ];
 
-export function HomePage({ plans }: { plans: PricingPlan[] }) {
+export function HomePage({
+  plans,
+  latestRelease,
+}: {
+  plans: PricingPlan[];
+  latestRelease: LatestAppRelease | null;
+}) {
   const starterPlan = plans.find((plan) => plan.id === "monthly") ?? plans[0];
 
   return (
@@ -98,48 +106,51 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="relative isolate overflow-hidden border-b border-zinc-200 bg-white">
-        <div className="absolute inset-x-0 top-0 -z-20 h-[38rem] bg-[radial-gradient(circle_at_50%_8%,rgba(251,146,60,0.18),transparent_32%),linear-gradient(to_bottom,#fff8ef,#ffffff_78%)]" />
+        <div className="absolute inset-x-0 top-0 -z-20 h-[48rem] bg-[radial-gradient(circle_at_50%_18%,rgba(251,146,60,0.2),transparent_38%),linear-gradient(to_bottom,#fffaf4,#ffffff_82%)]" />
 
-        <div className="mx-auto max-w-7xl px-4 pt-10 pb-20 text-center sm:px-6 lg:px-8 lg:pt-14 lg:pb-24">
-          <div className="relative mx-auto max-w-5xl animate-[fade-up_0.8s_ease-out_both]">
-            <div className="absolute inset-x-16 top-20 bottom-8 -z-10 rounded-[3rem] bg-orange-200/35 blur-3xl" />
-            <div className="relative min-h-[19rem] sm:min-h-[28rem] lg:min-h-[36rem]">
-              <div className="absolute inset-x-0 top-0 mx-auto w-[72%] max-w-3xl">
+        <div className="mx-auto max-w-[90rem] px-4 pb-12 pt-6 text-center sm:px-6 lg:px-8 lg:pb-16 lg:pt-8">
+          <div className="relative mx-auto max-w-6xl animate-[fade-up_0.8s_ease-out_both]">
+            <div className="absolute inset-x-40 bottom-4 top-8 -z-10 rounded-[4rem] bg-orange-200/20 blur-[60px]" />
+            <div className="relative min-h-[10rem] sm:min-h-[14rem] lg:min-h-[20rem]">
+              {/* Web Dashboard (Centered) */}
+              <div className="absolute inset-x-0 top-0 mx-auto w-[46%] sm:w-[50%] lg:w-[52%] max-w-xl z-10">
                 <Image
                   src="/POSKART Photobooth.png"
-                  alt="POSKART photobooth kiosk"
+                  alt="POSKART dashboard overview"
                   width={1500}
                   height={1000}
                   priority
-                  className="mx-auto h-auto w-full object-contain drop-shadow-2xl"
+                  className="mx-auto h-auto w-full object-contain"
                 />
               </div>
 
-              <div className="absolute left-[21%] top-[42%] w-[48%] max-w-lg sm:top-[44%] lg:top-[45%]">
+              {/* iPad Builder (Left Overlay) */}
+              <div className="absolute bottom-[4%] left-[6%] sm:left-[8%] w-[22%] sm:w-[25%] lg:w-[26%] max-w-[220px] z-20">
                 <Image
                   src="/iPad Pro 11.png"
-                  alt="POSKART admin dashboard on iPad Pro"
+                  alt="POSKART dashboard and visual builder"
                   width={1100}
                   height={760}
                   priority
-                  className="h-auto w-full drop-shadow-2xl"
+                  className="h-auto w-full object-contain"
                 />
               </div>
 
-              <div className="absolute right-[18%] top-[39%] w-[16%] max-w-40 sm:top-[41%] lg:top-[42%]">
+              {/* iPhone Customer (Right Overlay) */}
+              <div className="absolute bottom-[2%] right-[10%] sm:right-[12%] w-[9%] sm:w-[10%] lg:w-[11%] max-w-[90px] z-20">
                 <Image
                   src="/iPhone 13 Pro.png"
                   alt="POSKART customer download screen on iPhone"
                   width={420}
                   height={820}
                   priority
-                  className="h-auto w-full drop-shadow-2xl"
+                  className="h-auto w-full object-contain"
                 />
               </div>
             </div>
           </div>
 
-          <div className="mx-auto mt-2 inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1.5 text-xs font-semibold text-orange-700 shadow-sm shadow-orange-900/5">
+          <div className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 shadow-sm">
             <Image
               src="/app-logo.png"
               alt="POSKART app icon"
@@ -147,30 +158,29 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
               height={20}
               className="size-5 rounded-md object-cover"
             />
-            Aplikasi photobooth untuk capture, print, QRIS, dan dashboard
+            Photobooth OS untuk Android
           </div>
 
-          <h1 className="mx-auto mt-6 max-w-3xl text-balance text-4xl font-semibold tracking-[-0.055em] sm:text-5xl lg:text-[4rem] lg:leading-[0.95]">
-            Jalankan photobooth dari sesi foto sampai cetak.
+          <h1 className="mx-auto mt-4 max-w-5xl text-balance text-4xl font-semibold tracking-[-0.060em] sm:text-5xl lg:text-[4.2rem] lg:leading-[0.95]">
+            Photobooth lebih mudah dikelola, dari kamera sampai cetak.
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-7 text-zinc-600 sm:text-lg">
-            POSKART menyatukan layar booth, kamera, template frame, pilihan
-            paket print, pembayaran QRIS, dan monitoring perangkat dalam satu
-            aplikasi yang siap dipakai operator photobooth.
+          <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-6 text-zinc-500 sm:text-base sm:leading-7">
+            Satu aplikasi untuk menjalankan booth, mengatur tampilan, menerima
+            pembayaran, mencetak foto, dan memantau seluruh perangkat.
           </p>
 
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/register"
+          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <a
+              href="/download/app"
               className={buttonVariants({
                 size: "lg",
                 className:
-                  "h-12 rounded-full bg-zinc-950 px-6 text-white shadow-xl shadow-zinc-950/20 transition-transform hover:-translate-y-px hover:bg-zinc-800 active:translate-y-0",
+                  "h-12 rounded-full bg-zinc-950 px-7 text-white shadow-xl shadow-zinc-950/20 transition-transform hover:-translate-y-px hover:bg-zinc-800 active:translate-y-0",
               })}
             >
-              Mulai setup booth
-              <ArrowRight className="size-4" />
-            </Link>
+              <Download className="size-4" />
+              Download {latestRelease?.version ?? "aplikasi"}
+            </a>
             <Link
               href="/subscriptions"
               className={buttonVariants({
@@ -180,10 +190,16 @@ export function HomePage({ plans }: { plans: PricingPlan[] }) {
                   "h-12 rounded-full border-zinc-200 bg-white/80 px-6 transition-transform hover:-translate-y-px active:translate-y-0",
               })}
             >
-              Lihat paket photobooth
-              <Layers3 className="size-4" />
+              Lihat harga
+              <ArrowRight className="size-4" />
             </Link>
           </div>
+          <p className="mt-4 text-xs text-zinc-400">
+            APK Android dari GitHub release terbaru
+            {latestRelease
+              ? ` · ${Math.round(latestRelease.fileSize / 1024 / 1024)} MB`
+              : ""}
+          </p>
 
           <a
             href="#platform"

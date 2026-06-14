@@ -5,6 +5,9 @@ import {
   ArrowUpCircle,
   Banknote,
   Edit2,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
   Plus,
   QrCode,
   Search,
@@ -14,7 +17,7 @@ import {
   Trash2,
   WalletCards,
 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -48,6 +51,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { cn, formatCurrency } from "@/lib/utils";
 import type {
   MoneyCategory,
@@ -165,6 +169,8 @@ export function MoneyDashboard({
   const [typeFilter, setTypeFilter] = useState<"all" | MoneyEntryType>("all");
   const [walletFilter, setWalletFilter] = useState<WalletFilter>("all");
   const [tagFilter, setTagFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const monthOptions = useMemo(
     () =>
       Array.from(
@@ -178,6 +184,7 @@ export function MoneyDashboard({
     [entries],
   );
   const [selectedMonth, setSelectedMonth] = useState("all");
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
 
   const scopedEntries = useMemo(() => {
     return entries.filter(
@@ -212,11 +219,271 @@ export function MoneyDashboard({
       .reduce((total, entry) => total + entry.amount, 0);
     return { income, expense, balance: income - expense };
   }, [scopedEntries]);
+  const activePage = Math.min(
+    page,
+    Math.max(1, Math.ceil(filteredEntries.length / pageSize)),
+  );
+  const paginatedEntries = useMemo(
+    () =>
+      filteredEntries.slice(
+        (activePage - 1) * pageSize,
+        activePage * pageSize,
+      ),
+    [activePage, filteredEntries],
+  );
 
   const selectedWalletLabel =
     walletFilter === "all" ? "Keseluruhan" : walletLabels[walletFilter];
   const selectedMonthLabel =
     selectedMonth === "all" ? "Semua bulan" : formatMonthLabel(selectedMonth);
+
+  const exportToExcel = useCallback(() => {
+    const headers = [
+      "Waktu",
+      "Dompet",
+      "Kategori",
+      "Judul",
+      "Keterangan",
+      "Tag",
+      "Jenis",
+      "Nominal",
+      "Potongan (%)",
+      "Bersih",
+    ];
+    const rows = filteredEntries.map((entry) => [
+      formatDate(entry.occurredAt),
+      walletLabels[entry.walletType],
+      getCategoryLabel(entry.category),
+      entry.title,
+      entry.notes || "",
+      entry.tags.map((t) => t.name).join(", "),
+      entry.entryType === "income" ? "Masuk" : "Keluar",
+      entry.amount,
+      entry.feePercentage || 0,
+      entry.entryType === "income" ? getNetAmount(entry) : entry.amount,
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) =>
+        row
+          .map((val) => {
+            const str = String(val).replace(/"/g, '""');
+            return str.includes(",") || str.includes("\n") || str.includes('"')
+              ? `"${str}"`
+              : str;
+          })
+          .join(","),
+      ),
+    ].join("\n");
+
+    const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `laporan_keuangan_${selectedMonth}_${Date.now()}.csv`,
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Laporan Excel (CSV) berhasil diekspor.");
+  }, [filteredEntries, selectedMonth]);
+
+  const exportToPDF = useCallback(() => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Gagal membuka jendela cetak. Pastikan pop-up diizinkan.");
+      return;
+    }
+
+    const titleText = `Laporan Keuangan POSKART - ${selectedMonthLabel}`;
+    const tableRows = filteredEntries
+      .map(
+        (entry) => `
+      <tr>
+        <td style="white-space: nowrap;">${formatDate(entry.occurredAt)}</td>
+        <td><span style="display: inline-block; padding: 2px 6px; border: 1px solid #e4e4e7; border-radius: 4px; background: #fafafa; font-size: 10px;">${
+          walletLabels[entry.walletType]
+        }</span></td>
+        <td>${getCategoryLabel(entry.category)}</td>
+        <td>
+          <div style="font-weight: 500;">${entry.title}</div>
+          <div style="font-size: 10px; color: #71717a;">${
+            entry.notes || "-"
+          }</div>
+        </td>
+        <td>${entry.tags.map((t) => t.name).join(", ") || "-"}</td>
+        <td>
+          <span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; background: ${
+            entry.entryType === "income" ? "#ecfdf5" : "#fef2f2"
+          }; color: ${entry.entryType === "income" ? "#047857" : "#b91c1c"}">
+            ${entry.entryType === "income" ? "Masuk" : "Keluar"}
+          </span>
+        </td>
+        <td style="text-align: right; font-weight: 600; color: ${
+          entry.entryType === "income" ? "#047857" : "#b91c1c"
+        }">
+          ${entry.entryType === "income" ? "+" : "-"}${formatCurrency(
+          entry.entryType === "income" ? getNetAmount(entry) : entry.amount,
+        )}
+        </td>
+      </tr>
+    `,
+      )
+      .join("");
+
+    const content = `
+      <html>
+        <head>
+          <title>${titleText}</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              color: #18181b;
+              padding: 24px;
+              font-size: 12px;
+            }
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 2px solid #e4e4e7;
+              padding-bottom: 16px;
+              margin-bottom: 24px;
+            }
+            .title {
+              font-size: 20px;
+              font-weight: 700;
+              margin: 0;
+            }
+            .subtitle {
+              color: #71717a;
+              margin-top: 4px;
+              font-size: 12px;
+            }
+            .summary-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 16px;
+              margin-bottom: 24px;
+            }
+            .summary-card {
+              border: 1px solid #e4e4e7;
+              border-radius: 8px;
+              padding: 12px;
+              background-color: #fafafa;
+            }
+            .summary-label {
+              font-size: 10px;
+              color: #71717a;
+              text-transform: uppercase;
+              font-weight: 600;
+            }
+            .summary-value {
+              font-size: 16px;
+              font-weight: 700;
+              margin-top: 4px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 16px;
+            }
+            th {
+              background-color: #f4f4f5;
+              text-align: left;
+              padding: 8px 12px;
+              font-weight: 600;
+              border-bottom: 1px solid #e4e4e7;
+            }
+            td {
+              padding: 8px 12px;
+              border-bottom: 1px solid #f4f4f5;
+              vertical-align: top;
+            }
+            @media print {
+              body { padding: 0; }
+              @page { margin: 1.5cm; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1 class="title">POSKART</h1>
+              <div class="subtitle">Laporan Manajemen Keuangan Operasional</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 600;">Filter: ${selectedWalletLabel}</div>
+              <div class="subtitle">Periode: ${selectedMonthLabel}</div>
+            </div>
+          </div>
+
+          <div class="summary-grid">
+            <div class="summary-card">
+              <div class="summary-label">Arus Bersih / Saldo</div>
+              <div class="summary-value" style="color: ${
+                summary.balance < 0 ? "#b91c1c" : "#18181b"
+              }">${formatCurrency(summary.balance)}</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Total Pemasukan</div>
+              <div class="summary-value" style="color: #047857">${formatCurrency(
+                summary.income,
+              )}</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Total Pengeluaran</div>
+              <div class="summary-value" style="color: #b91c1c">${formatCurrency(
+                summary.expense,
+              )}</div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>Dompet</th>
+                <th>Kategori</th>
+                <th>Catatan</th>
+                <th>Tag</th>
+                <th>Jenis</th>
+                <th style="text-align: right;">Nominal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+
+          <div style="margin-top: 40px; text-align: right; color: #a1a1aa; font-size: 10px;">
+            Dicetak secara otomatis pada ${new Date().toLocaleString("id-ID")}
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(content);
+    printWindow.document.close();
+  }, [
+    filteredEntries,
+    selectedMonthLabel,
+    selectedWalletLabel,
+    summary,
+  ]);
 
   const openCreate = () => {
     setEditing(null);
@@ -370,6 +637,49 @@ export function MoneyDashboard({
             <Tags className="size-4" />
             Tag
           </Button>
+
+          <div className="relative">
+            <Button
+              variant="outline"
+              onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
+            >
+              <FileDown className="size-4" />
+              Ekspor
+            </Button>
+            {exportDropdownOpen ? (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setExportDropdownOpen(false)}
+                />
+                <div className="absolute right-0 top-11 z-40 w-48 rounded-xl border border-zinc-200 bg-white p-1.5 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                    onClick={() => {
+                      exportToExcel();
+                      setExportDropdownOpen(false);
+                    }}
+                  >
+                    <FileSpreadsheet className="size-4 text-emerald-600" />
+                    Ekspor Excel (.csv)
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                    onClick={() => {
+                      exportToPDF();
+                      setExportDropdownOpen(false);
+                    }}
+                  >
+                    <FileText className="size-4 text-rose-600" />
+                    Ekspor PDF (.pdf)
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
+
           <Button onClick={openCreate}>
             <Plus className="size-4" />
             Tambah transaksi
@@ -529,7 +839,7 @@ export function MoneyDashboard({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEntries.map((entry) => (
+                  {paginatedEntries.map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell className="whitespace-nowrap">
                         {formatDate(entry.occurredAt)}
@@ -624,6 +934,12 @@ export function MoneyDashboard({
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={activePage}
+                pageSize={pageSize}
+                totalItems={filteredEntries.length}
+                onPageChange={setPage}
+              />
             </div>
           ) : (
             <div className="grid min-h-64 place-items-center rounded-lg border border-dashed border-zinc-200 bg-zinc-50/60 p-8 text-center">

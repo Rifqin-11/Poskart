@@ -4,7 +4,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   Check,
-  ExternalLink,
   Layers,
   Loader2,
   MoreVertical,
@@ -12,6 +11,7 @@ import {
   Power,
   PowerOff,
   Printer,
+  Plus,
   RefreshCw,
   ScanLine,
   Smartphone,
@@ -337,11 +337,10 @@ export function BuilderThemesPage() {
         </div>
         <a
           href="/builder"
-          className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800"
         >
-          <Layers className="size-4" />
-          Open Builder
-          <ExternalLink className="size-3 text-zinc-400" />
+          <Plus className="size-4" />
+          Create Theme
         </a>
       </div>
 
@@ -445,14 +444,15 @@ export function BuilderThemesPage() {
             No themes saved yet
           </p>
           <p className="mt-1 text-xs text-zinc-400">
-            Open the Visual Builder and click <strong>Save theme</strong> to
-            create your first layout.
+            Create your first theme, customize the kiosk experience, then save
+            it to this library.
           </p>
           <a
             href="/builder"
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
           >
-            Open Builder
+            <Plus className="size-4" />
+            Create Theme
           </a>
         </div>
       )}

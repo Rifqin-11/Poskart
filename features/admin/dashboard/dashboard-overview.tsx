@@ -370,7 +370,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent className="space-y-3">
             {hasTransactions ? (
-              dashboardData.transactions.map((transaction) => (
+              dashboardData.transactions.slice(0, 5).map((transaction) => (
                 <div key={transaction.id} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
                   <div>
                     <div className="text-sm font-medium">{transaction.packageName}</div>

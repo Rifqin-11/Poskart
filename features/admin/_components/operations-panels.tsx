@@ -80,6 +80,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FrameTemplateTester } from "@/features/admin/templates/frame-template-tester";
 import { SubscriptionDialog } from "@/features/billing/subscription/subscription-dialog";
@@ -538,7 +539,13 @@ export function PricingManagement() {
   const deletePricing = useDeletePricing();
   const [editing, setEditing] = useState<PricingProduct | null>(null);
   const [creating, setCreating] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const confirmDelete = useConfirmDialog();
+  const paginatedProducts = data.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
 
   const handleToggle = (
     product: PricingProduct,
@@ -605,7 +612,7 @@ export function PricingManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((product) => (
+              {paginatedProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{formatCurrency(product.price)}</TableCell>
@@ -673,6 +680,12 @@ export function PricingManagement() {
               ) : null}
             </TableBody>
           </Table>
+          <TablePagination
+            page={page}
+            pageSize={pageSize}
+            totalItems={data.length}
+            onPageChange={setPage}
+          />
         </CardContent>
       </Card>
 
@@ -859,6 +872,8 @@ export function TransactionsMonitoring() {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [editForm, setEditForm] = useState<TransactionEditForm>({
     booth: "",
     location: "",
@@ -879,6 +894,14 @@ export function TransactionsMonitoring() {
     const matchStatus = statusFilter === "all" || t.status === statusFilter;
     return matchSearch && matchStatus;
   });
+  const activePage = Math.min(
+    page,
+    Math.max(1, Math.ceil(filtered.length / pageSize)),
+  );
+  const paginatedTransactions = filtered.slice(
+    (activePage - 1) * pageSize,
+    activePage * pageSize,
+  );
 
   function openEdit(t: Transaction) {
     setEditing(t);
@@ -1072,11 +1095,17 @@ export function TransactionsMonitoring() {
               <Input
                 placeholder="Search by ID, device, customer…"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
               />
               <Select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
               >
                 <option value="all">All status</option>
                 <option value="paid">Paid</option>
@@ -1146,7 +1175,7 @@ export function TransactionsMonitoring() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((transaction: Transaction) => (
+              {paginatedTransactions.map((transaction: Transaction) => (
                 <TableRow
                   key={transaction.id}
                   className={
@@ -1264,6 +1293,12 @@ export function TransactionsMonitoring() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            page={activePage}
+            pageSize={pageSize}
+            totalItems={filtered.length}
+            onPageChange={setPage}
+          />
         </CardContent>
       </Card>
     </div>
@@ -3039,7 +3074,18 @@ export function TenantManagement() {
     null,
   );
   const [creating, setCreating] = useState(false);
+  const [organizationPage, setOrganizationPage] = useState(1);
+  const [userPage, setUserPage] = useState(1);
+  const pageSize = 10;
   const confirmDelete = useConfirmDialog();
+  const paginatedOrganizations = data.slice(
+    (organizationPage - 1) * pageSize,
+    organizationPage * pageSize,
+  );
+  const paginatedProfiles = (profiles as AdminUserProfile[]).slice(
+    (userPage - 1) * pageSize,
+    userPage * pageSize,
+  );
 
   const handleDelete = (organization: Organization) => {
     confirmDelete.confirm({
@@ -3093,7 +3139,7 @@ export function TenantManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.map((organization) => (
+                  {paginatedOrganizations.map((organization) => (
                     <TableRow key={organization.id}>
                       <TableCell className="font-medium">
                         {organization.name}
@@ -3166,6 +3212,12 @@ export function TenantManagement() {
                   ) : null}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={organizationPage}
+                pageSize={pageSize}
+                totalItems={data.length}
+                onPageChange={setOrganizationPage}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -3189,7 +3241,7 @@ export function TenantManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(profiles as AdminUserProfile[]).map((profile) => (
+                  {paginatedProfiles.map((profile) => (
                     <TableRow key={profile.id}>
                       <TableCell className="font-medium">
                         {profile.email}
@@ -3232,6 +3284,12 @@ export function TenantManagement() {
                   )}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={userPage}
+                pageSize={pageSize}
+                totalItems={profiles.length}
+                onPageChange={setUserPage}
+              />
             </CardContent>
           </Card>
         </TabsContent>
