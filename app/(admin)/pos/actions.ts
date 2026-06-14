@@ -2,12 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { PosActionState, PosPackageCode, PosPaymentMethod } from "@/types/pos";
+import type {
+  PosActionState,
+  PosPackageCode,
+  PosPaymentMethod,
+  PosSaleUpdate,
+} from "@/types/pos";
 
 export async function createPosSale(
   formData: FormData,
 ): Promise<PosActionState> {
-  const packageCode = String(formData.get("packageCode") ?? "") as PosPackageCode;
+  const packageCode = String(
+    formData.get("packageCode") ?? "",
+  ) as PosPackageCode;
   const paymentMethod = String(
     formData.get("paymentMethod") ?? "",
   ) as PosPaymentMethod;
@@ -28,7 +35,10 @@ export async function createPosSale(
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { success: false, error: "Sesi login tidak valid. Silakan login kembali." };
+    return {
+      success: false,
+      error: "Sesi login tidak valid. Silakan login kembali.",
+    };
   }
 
   const { data: membership, error: membershipError } = await supabase
@@ -50,7 +60,10 @@ export async function createPosSale(
     .maybeSingle();
 
   if (packageError) {
-    return { success: false, error: `Gagal memuat paket: ${packageError.message}` };
+    return {
+      success: false,
+      error: `Gagal memuat paket: ${packageError.message}`,
+    };
   }
 
   if (!selectedPackage) {
@@ -69,7 +82,10 @@ export async function createPosSale(
   });
 
   if (error) {
-    return { success: false, error: `Gagal menyimpan transaksi: ${error.message}` };
+    return {
+      success: false,
+      error: `Gagal menyimpan transaksi: ${error.message}`,
+    };
   }
 
   revalidatePath("/pos");
@@ -88,7 +104,10 @@ export async function deletePosSale(saleId: string): Promise<PosActionState> {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { success: false, error: "Sesi login tidak valid. Silakan login kembali." };
+    return {
+      success: false,
+      error: "Sesi login tidak valid. Silakan login kembali.",
+    };
   }
 
   const { data, error } = await supabase
@@ -99,18 +118,100 @@ export async function deletePosSale(saleId: string): Promise<PosActionState> {
     .maybeSingle();
 
   if (error) {
-    return { success: false, error: `Gagal menghapus transaksi: ${error.message}` };
+    return {
+      success: false,
+      error: `Gagal menghapus transaksi: ${error.message}`,
+    };
   }
 
   if (!data) {
-    return { success: false, error: "Transaksi tidak ditemukan atau tidak dapat dihapus." };
+    return {
+      success: false,
+      error: "Transaksi tidak ditemukan atau tidak dapat dihapus.",
+    };
   }
 
   revalidatePath("/pos");
   return { success: true };
 }
 
-export async function deletePosSales(saleIds: string[]): Promise<PosActionState> {
+export async function updatePosSale(
+  values: PosSaleUpdate,
+): Promise<PosActionState> {
+  const notes = values.notes.trim();
+  const amount = Math.round(Number(values.amount));
+  const printCount = Math.round(Number(values.printCount));
+
+  if (!values.saleId || !values.packageCode) {
+    return { success: false, error: "Data transaksi tidak lengkap." };
+  }
+  if (!["Cash", "QRIS"].includes(values.paymentMethod)) {
+    return { success: false, error: "Metode pembayaran tidak valid." };
+  }
+  if (!Number.isFinite(amount) || amount < 0) {
+    return { success: false, error: "Nominal transaksi tidak valid." };
+  }
+  if (!Number.isFinite(printCount) || printCount < 1 || printCount > 100) {
+    return { success: false, error: "Jumlah print harus antara 1-100." };
+  }
+  if (notes.length > 500) {
+    return { success: false, error: "Catatan maksimal 500 karakter." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Sesi login tidak valid." };
+
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership?.organization_id) {
+    return { success: false, error: "Akun belum terhubung ke organisasi." };
+  }
+
+  const { data: selectedPackage, error: packageError } = await supabase
+    .from("pricing_products")
+    .select("id,name")
+    .eq("id", values.packageCode)
+    .maybeSingle();
+  if (packageError || !selectedPackage) {
+    return { success: false, error: "Paket print tidak ditemukan." };
+  }
+
+  const { data, error } = await supabase
+    .from("pos_sales")
+    .update({
+      package_code: selectedPackage.id,
+      package_name: selectedPackage.name,
+      print_count: printCount,
+      amount,
+      payment_method: values.paymentMethod,
+      notes: notes || null,
+    })
+    .eq("id", values.saleId)
+    .eq("organization_id", membership.organization_id)
+    .select("id")
+    .maybeSingle();
+
+  if (error)
+    return {
+      success: false,
+      error: `Gagal mengubah transaksi: ${error.message}`,
+    };
+  if (!data) return { success: false, error: "Transaksi tidak ditemukan." };
+
+  revalidatePath("/pos");
+  return { success: true };
+}
+
+export async function deletePosSales(
+  saleIds: string[],
+): Promise<PosActionState> {
   if (!saleIds || saleIds.length === 0) {
     return { success: false, error: "ID transaksi tidak valid." };
   }
@@ -122,19 +223,21 @@ export async function deletePosSales(saleIds: string[]): Promise<PosActionState>
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { success: false, error: "Sesi login tidak valid. Silakan login kembali." };
+    return {
+      success: false,
+      error: "Sesi login tidak valid. Silakan login kembali.",
+    };
   }
 
-  const { error } = await supabase
-    .from("pos_sales")
-    .delete()
-    .in("id", saleIds);
+  const { error } = await supabase.from("pos_sales").delete().in("id", saleIds);
 
   if (error) {
-    return { success: false, error: `Gagal menghapus transaksi: ${error.message}` };
+    return {
+      success: false,
+      error: `Gagal menghapus transaksi: ${error.message}`,
+    };
   }
 
   revalidatePath("/pos");
   return { success: true };
 }
-

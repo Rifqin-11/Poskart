@@ -25,3 +25,12 @@ export type PosActionState = {
   success: boolean;
   error?: string;
 };
+
+export type PosSaleUpdate = {
+  saleId: string;
+  packageCode: PosPackageCode;
+  printCount: number;
+  amount: number;
+  paymentMethod: PosPaymentMethod;
+  notes: string;
+};

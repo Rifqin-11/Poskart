@@ -1501,56 +1501,52 @@ export function BoothManagement() {
                   <Battery className="mb-2 size-4" />
                   {device.battery}% battery
                 </div>
-                <div className="rounded-md bg-zinc-50 p-3">
-                  <BadgeCheck className="mb-2 size-4" />
-                  {device.lastSync}
+                <div
+                  className={cn(
+                    "rounded-md border p-3",
+                    device.printerStatus === "ready"
+                      ? "border-emerald-200 bg-emerald-50"
+                      : device.printerStatus === "unknown"
+                        ? "border-zinc-200 bg-zinc-50"
+                        : "border-red-200 bg-red-50",
+                  )}
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <Printer className="size-4 shrink-0" />
+                    <Badge
+                      variant={
+                        device.printerStatus === "ready"
+                          ? "success"
+                          : device.printerStatus === "unknown"
+                            ? "secondary"
+                            : "destructive"
+                      }
+                      className="max-w-full truncate px-1.5 text-[10px]"
+                    >
+                      {device.printerStatus.replaceAll("_", " ")}
+                    </Badge>
+                  </div>
+                  <div className="truncate font-medium text-zinc-900">
+                    {device.printerName || "Printer belum dikonfigurasi"}
+                  </div>
+                  <div
+                    className={cn(
+                      "mt-0.5 line-clamp-2 text-[11px]",
+                      device.printerLastError
+                        ? "font-medium text-red-700"
+                        : "text-zinc-500",
+                    )}
+                  >
+                    {device.printerLastError ||
+                      (device.printerBidirectional
+                        ? "Status kertas didukung"
+                        : "Status koneksi saja")}
+                  </div>
                 </div>
                 <div className="rounded-md bg-zinc-50 p-3">
                   <Store className="mb-2 size-4" />
                   {formatAssignmentList(device.pricingProfiles)}
                 </div>
-              </div>
-              <div
-                className={cn(
-                  "rounded-md border p-3 text-sm",
-                  device.printerStatus === "ready"
-                    ? "border-emerald-200 bg-emerald-50"
-                    : device.printerStatus === "unknown"
-                      ? "border-zinc-200 bg-zinc-50"
-                      : "border-red-200 bg-red-50",
-                )}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Printer className="size-4 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="truncate font-semibold text-zinc-900">
-                        {device.printerName || "Printer belum dikonfigurasi"}
-                      </div>
-                      <div className="text-xs text-zinc-500">
-                        {device.printerBidirectional
-                          ? "Status kertas didukung"
-                          : "Status koneksi saja"}
-                      </div>
-                    </div>
-                  </div>
-                  <Badge
-                    variant={
-                      device.printerStatus === "ready"
-                        ? "success"
-                        : device.printerStatus === "unknown"
-                          ? "secondary"
-                          : "destructive"
-                    }
-                  >
-                    {device.printerStatus.replaceAll("_", " ")}
-                  </Badge>
-                </div>
-                {device.printerLastError ? (
-                  <p className="mt-2 text-xs font-medium text-red-700">
-                    {device.printerLastError}
-                  </p>
-                ) : null}
               </div>
               <div className="grid gap-2 rounded-md bg-zinc-50 p-3 text-xs text-zinc-600 sm:grid-cols-2">
                 <div className="flex items-center gap-1.5">
@@ -1591,6 +1587,13 @@ export function BoothManagement() {
                   <span className="text-zinc-500">Price:</span>
                   <span className="font-medium text-zinc-700">
                     {formatAssignmentList(device.pricingProfiles)}
+                  </span>
+                </div>
+                <div className="col-span-2 flex min-w-0 items-center gap-1.5">
+                  <BadgeCheck className="size-3.5 shrink-0 text-zinc-400" />
+                  <span className="shrink-0 text-zinc-500">Last sync:</span>
+                  <span className="truncate font-medium text-zinc-700">
+                    {device.lastSync}
                   </span>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import {
   Banknote,
   Check,
   Download,
+  Edit2,
   Printer,
   ReceiptText,
   Search,
@@ -12,7 +13,12 @@ import {
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { createPosSale, deletePosSale, deletePosSales } from "@/app/(admin)/pos/actions";
+import {
+  createPosSale,
+  deletePosSale,
+  deletePosSales,
+  updatePosSale,
+} from "@/app/(admin)/pos/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -24,6 +30,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import {
   Table,
@@ -34,7 +41,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn, formatCurrency } from "@/lib/utils";
-import type { PosPackageCode, PosPackageOption, PosPaymentMethod, PosSale } from "@/types/pos";
+import type {
+  PosPackageCode,
+  PosPackageOption,
+  PosPaymentMethod,
+  PosSale,
+} from "@/types/pos";
 
 function csvCell(value: string | number) {
   return `"${String(value).replaceAll('"', '""')}"`;
@@ -73,16 +85,20 @@ export function PosDashboard({
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const confirmDelete = useConfirmDialog();
-  const [selectedPackage, setSelectedPackage] =
-    useState<PosPackageCode>(packages[0]?.code ?? "");
+  const [selectedPackage, setSelectedPackage] = useState<PosPackageCode>(
+    packages[0]?.code ?? "",
+  );
   const [search, setSearch] = useState("");
   const [packageFilter, setPackageFilter] = useState("all");
-  const [paymentFilter, setPaymentFilter] = useState<"all" | PosPaymentMethod>("all");
+  const [paymentFilter, setPaymentFilter] = useState<"all" | PosPaymentMethod>(
+    "all",
+  );
   const [dateMode, setDateMode] = useState<"all" | "date">("all");
-  const [selectedDate, setSelectedDate] = useState(
-    () => getLocalDateKey(new Date().toISOString()),
+  const [selectedDate, setSelectedDate] = useState(() =>
+    getLocalDateKey(new Date().toISOString()),
   );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [editingSale, setEditingSale] = useState<PosSale | null>(null);
   const hasPackages = packages.length > 0;
 
   const filteredSales = useMemo(() => {
@@ -135,7 +151,15 @@ export function PosDashboard({
     }
 
     const rows = [
-      ["ID", "Tanggal", "Paket", "Jumlah Print", "Pendapatan", "Pembayaran", "Catatan"],
+      [
+        "ID",
+        "Tanggal",
+        "Paket",
+        "Jumlah Print",
+        "Pendapatan",
+        "Pembayaran",
+        "Catatan",
+      ],
       ...filteredSales.map((sale) => [
         sale.id,
         formatDate(sale.createdAt),
@@ -200,17 +224,38 @@ export function PosDashboard({
     });
   }
 
-
   return (
     <div className="space-y-6">
       {confirmDelete.dialog}
+      {editingSale ? (
+        <EditPosSaleDialog
+          sale={editingSale}
+          packages={packages}
+          pending={isPending}
+          onClose={() => setEditingSale(null)}
+          onSubmit={(values) => {
+            startTransition(async () => {
+              const result = await updatePosSale(values);
+              if (!result.success) {
+                toast.error(result.error ?? "Transaksi gagal diubah.");
+                return;
+              }
+              toast.success("Transaksi POS berhasil diubah.");
+              setEditingSale(null);
+              router.refresh();
+            });
+          }}
+        />
+      ) : null}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-medium text-red-700">
             <ReceiptText className="size-3.5" />
             Point of Sale
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Kasir Foto & Print</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Kasir Foto & Print
+          </h1>
           <p className="mt-1 text-sm text-zinc-500">
             Pilih paket print dan pantau hasil penjualan dalam satu halaman.
           </p>
@@ -218,7 +263,9 @@ export function PosDashboard({
         <div className="flex flex-col gap-2 sm:flex-row">
           <Select
             value={dateMode}
-            onChange={(event) => setDateMode(event.target.value as "all" | "date")}
+            onChange={(event) =>
+              setDateMode(event.target.value as "all" | "date")
+            }
             className="sm:w-40"
             aria-label="Filter periode dashboard"
           >
@@ -257,7 +304,11 @@ export function PosDashboard({
         <MetricCard
           title="Total transaksi"
           value={metrics.transactions.toLocaleString("id-ID")}
-          description={dateMode === "all" ? "Semua transaksi tercatat" : "Transaksi pada tanggal terpilih"}
+          description={
+            dateMode === "all"
+              ? "Semua transaksi tercatat"
+              : "Transaksi pada tanggal terpilih"
+          }
           icon={ReceiptText}
         />
       </div>
@@ -311,7 +362,11 @@ export function PosDashboard({
                                 : "border-zinc-200 bg-zinc-50",
                             )}
                           >
-                            {active ? <Check className="size-4" /> : item.printCount}
+                            {active ? (
+                              <Check className="size-4" />
+                            ) : (
+                              item.printCount
+                            )}
                           </div>
                           <div className="font-semibold">{item.name}</div>
                         </div>
@@ -337,16 +392,24 @@ export function PosDashboard({
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-6 text-sm text-zinc-500">
-                  Belum ada paket aktif. Tambahkan atau aktifkan paket dari halaman Pricing.
+                  Belum ada paket aktif. Tambahkan atau aktifkan paket dari
+                  halaman Pricing.
                 </div>
               )}
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label htmlFor="paymentMethod" className="text-sm font-medium">
+                  <label
+                    htmlFor="paymentMethod"
+                    className="text-sm font-medium"
+                  >
                     Metode pembayaran
                   </label>
-                  <Select id="paymentMethod" name="paymentMethod" defaultValue="Cash">
+                  <Select
+                    id="paymentMethod"
+                    name="paymentMethod"
+                    defaultValue="Cash"
+                  >
                     <option value="Cash">Cash</option>
                     <option value="QRIS">QRIS</option>
                   </Select>
@@ -354,7 +417,10 @@ export function PosDashboard({
 
                 <div className="space-y-2">
                   <label htmlFor="notes" className="text-sm font-medium">
-                    Catatan <span className="font-normal text-zinc-400">(opsional)</span>
+                    Catatan{" "}
+                    <span className="font-normal text-zinc-400">
+                      (opsional)
+                    </span>
                   </label>
                   <Input
                     id="notes"
@@ -365,7 +431,12 @@ export function PosDashboard({
                 </div>
               </div>
 
-              <Button type="submit" className="w-full md:w-auto" size="lg" disabled={isPending || !hasPackages}>
+              <Button
+                type="submit"
+                className="w-full md:w-auto"
+                size="lg"
+                disabled={isPending || !hasPackages}
+              >
                 <ReceiptText className="size-4" />
                 {isPending ? "Menyimpan transaksi..." : "Simpan transaksi"}
               </Button>
@@ -391,7 +462,8 @@ export function PosDashboard({
                     className="flex items-center gap-1.5 animate-in fade-in duration-200"
                     disabled={isPending}
                   >
-                    <Trash2 className="size-3.5" /> Hapus Terpilih ({selectedIds.length})
+                    <Trash2 className="size-3.5" /> Hapus Terpilih (
+                    {selectedIds.length})
                   </Button>
                 )}
               </div>
@@ -420,7 +492,9 @@ export function PosDashboard({
                 <Select
                   value={paymentFilter}
                   onChange={(event) =>
-                    setPaymentFilter(event.target.value as "all" | PosPaymentMethod)
+                    setPaymentFilter(
+                      event.target.value as "all" | PosPaymentMethod,
+                    )
                   }
                   aria-label="Filter metode pembayaran"
                 >
@@ -441,7 +515,12 @@ export function PosDashboard({
                         <input
                           type="checkbox"
                           className="size-4 rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950 accent-zinc-950 cursor-pointer"
-                          checked={filteredSales.length > 0 && filteredSales.every((t) => selectedIds.includes(t.id))}
+                          checked={
+                            filteredSales.length > 0 &&
+                            filteredSales.every((t) =>
+                              selectedIds.includes(t.id),
+                            )
+                          }
                           onChange={(e) => {
                             if (e.target.checked) {
                               setSelectedIds((prev) => {
@@ -452,7 +531,12 @@ export function PosDashboard({
                                 return newIds;
                               });
                             } else {
-                              setSelectedIds((prev) => prev.filter((id) => !filteredSales.some((t) => t.id === id)));
+                              setSelectedIds((prev) =>
+                                prev.filter(
+                                  (id) =>
+                                    !filteredSales.some((t) => t.id === id),
+                                ),
+                              );
                             }
                           }}
                           aria-label="Pilih semua transaksi POS"
@@ -463,12 +547,17 @@ export function PosDashboard({
                       <TableHead>Catatan</TableHead>
                       <TableHead>Bayar</TableHead>
                       <TableHead className="text-right">Pendapatan</TableHead>
-                      <TableHead className="w-16 text-right">Aksi</TableHead>
+                      <TableHead className="w-24 text-right">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredSales.map((sale) => (
-                      <TableRow key={sale.id} className={selectedIds.includes(sale.id) ? "bg-zinc-50/60" : ""}>
+                      <TableRow
+                        key={sale.id}
+                        className={
+                          selectedIds.includes(sale.id) ? "bg-zinc-50/60" : ""
+                        }
+                      >
                         <TableCell className="w-12">
                           <input
                             type="checkbox"
@@ -478,7 +567,9 @@ export function PosDashboard({
                               if (e.target.checked) {
                                 setSelectedIds((prev) => [...prev, sale.id]);
                               } else {
-                                setSelectedIds((prev) => prev.filter((id) => id !== sale.id));
+                                setSelectedIds((prev) =>
+                                  prev.filter((id) => id !== sale.id),
+                                );
                               }
                             }}
                             aria-label={`Pilih transaksi POS ${sale.id.slice(0, 8)}`}
@@ -502,7 +593,13 @@ export function PosDashboard({
                           {sale.notes || "-"}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={sale.paymentMethod === "QRIS" ? "success" : "secondary"}>
+                          <Badge
+                            variant={
+                              sale.paymentMethod === "QRIS"
+                                ? "success"
+                                : "secondary"
+                            }
+                          >
                             {sale.paymentMethod}
                           </Badge>
                         </TableCell>
@@ -510,6 +607,17 @@ export function PosDashboard({
                           {formatCurrency(sale.amount)}
                         </TableCell>
                         <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-zinc-400 hover:bg-zinc-100 hover:text-zinc-950"
+                            onClick={() => setEditingSale(sale)}
+                            disabled={isPending}
+                            aria-label={`Edit transaksi ${sale.id.slice(0, 8)}`}
+                          >
+                            <Edit2 className="size-4" />
+                          </Button>
                           <Button
                             type="button"
                             variant="ghost"
@@ -533,7 +641,9 @@ export function PosDashboard({
                   <div className="mx-auto grid size-11 place-items-center rounded-full bg-white shadow-sm">
                     <ReceiptText className="size-5 text-zinc-400" />
                   </div>
-                  <h3 className="mt-4 text-sm font-semibold">Belum ada transaksi</h3>
+                  <h3 className="mt-4 text-sm font-semibold">
+                    Belum ada transaksi
+                  </h3>
                   <p className="mt-1 text-sm text-zinc-500">
                     Transaksi yang disimpan akan muncul di sini.
                   </p>
@@ -544,6 +654,124 @@ export function PosDashboard({
         </Card>
       </div>
     </div>
+  );
+}
+
+function EditPosSaleDialog({
+  sale,
+  packages,
+  pending,
+  onClose,
+  onSubmit,
+}: {
+  sale: PosSale;
+  packages: PosPackageOption[];
+  pending: boolean;
+  onClose: () => void;
+  onSubmit: (values: {
+    saleId: string;
+    packageCode: string;
+    printCount: number;
+    amount: number;
+    paymentMethod: PosPaymentMethod;
+    notes: string;
+  }) => void;
+}) {
+  const [packageCode, setPackageCode] = useState(sale.packageCode);
+  const [printCount, setPrintCount] = useState(sale.printCount);
+  const [amount, setAmount] = useState(sale.amount);
+  const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>(
+    sale.paymentMethod,
+  );
+  const [notes, setNotes] = useState(sale.notes ?? "");
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title="Edit transaksi POS"
+    >
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit({
+            saleId: sale.id,
+            packageCode,
+            printCount,
+            amount,
+            paymentMethod,
+            notes,
+          });
+        }}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="space-y-1.5 text-sm font-medium">
+            Paket
+            <Select
+              value={packageCode}
+              onChange={(event) => setPackageCode(event.target.value)}
+            >
+              {packages.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="space-y-1.5 text-sm font-medium">
+            Metode pembayaran
+            <Select
+              value={paymentMethod}
+              onChange={(event) =>
+                setPaymentMethod(event.target.value as PosPaymentMethod)
+              }
+            >
+              <option value="Cash">Cash</option>
+              <option value="QRIS">QRIS</option>
+            </Select>
+          </label>
+          <label className="space-y-1.5 text-sm font-medium">
+            Jumlah print
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={printCount}
+              onChange={(event) => setPrintCount(Number(event.target.value))}
+              required
+            />
+          </label>
+          <label className="space-y-1.5 text-sm font-medium">
+            Nominal
+            <Input
+              type="number"
+              min={0}
+              value={amount}
+              onChange={(event) => setAmount(Number(event.target.value))}
+              required
+            />
+          </label>
+        </div>
+        <label className="block space-y-1.5 text-sm font-medium">
+          Catatan
+          <Input
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            maxLength={500}
+            placeholder="Catatan transaksi"
+          />
+        </label>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Batal
+          </Button>
+          <Button type="submit" disabled={pending || !packageCode}>
+            {pending ? "Menyimpan..." : "Simpan perubahan"}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -561,7 +789,9 @@ function MetricCard({
   return (
     <Card className="min-w-[78vw] snap-start sm:min-w-[280px] md:min-w-0">
       <CardHeader className="flex-row items-center justify-between space-y-0 p-4 pb-1 md:p-5 md:pb-2">
-        <CardTitle className="text-xs font-medium text-zinc-500">{title}</CardTitle>
+        <CardTitle className="text-xs font-medium text-zinc-500">
+          {title}
+        </CardTitle>
         <div className="grid size-8 place-items-center rounded-lg bg-zinc-100">
           <Icon className="size-4 text-zinc-600" />
         </div>

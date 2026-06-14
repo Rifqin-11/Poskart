@@ -23,6 +23,7 @@ import {
   Shield,
   UserRound,
   Ticket,
+  WalletCards,
 } from "lucide-react";
 import { useState } from "react";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
@@ -38,23 +39,88 @@ import { useBuilderStore } from "@/stores/builder-store";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
-  { href: "/pos", label: "POS Kasir", icon: PanelsTopLeft, requiresSubscription: true },
+  {
+    href: "/pos",
+    label: "POS Kasir",
+    icon: PanelsTopLeft,
+    requiresSubscription: true,
+  },
+  {
+    href: "/money",
+    label: "Money Management",
+    icon: WalletCards,
+    requiresSubscription: true,
+  },
   { href: "/organization", label: "Organization", icon: Building },
-  { href: "/themes", label: "Themes", icon: Palette, requiresSubscription: true },
-  { href: "/builder", label: "Builder", icon: Blocks, requiresSubscription: true },
-  { href: "/templates", label: "Templates", icon: LayoutTemplate, requiresSubscription: true },
-  { href: "/pricing", label: "Pricing", icon: CreditCard, requiresSubscription: true },
-  { href: "/transactions", label: "Transactions", icon: Store, requiresSubscription: true },
-  { href: "/gallery", label: "Gallery", icon: Images, requiresSubscription: true },
-  { href: "/devices", label: "Devices", icon: MonitorSmartphone, requiresSubscription: true },
-  { href: "/vouchers", label: "Vouchers", icon: Ticket, requiresSubscription: true },
-  { href: "/superadmin", label: "Super Admin", icon: Shield, superAdminOnly: true },
-  { href: "/settings", label: "Settings", icon: Settings, requiresSubscription: true },
+  {
+    href: "/themes",
+    label: "Themes",
+    icon: Palette,
+    requiresSubscription: true,
+  },
+  {
+    href: "/builder",
+    label: "Builder",
+    icon: Blocks,
+    requiresSubscription: true,
+  },
+  {
+    href: "/templates",
+    label: "Templates",
+    icon: LayoutTemplate,
+    requiresSubscription: true,
+  },
+  {
+    href: "/pricing",
+    label: "Pricing",
+    icon: CreditCard,
+    requiresSubscription: true,
+  },
+  {
+    href: "/transactions",
+    label: "Transactions",
+    icon: Store,
+    requiresSubscription: true,
+  },
+  {
+    href: "/gallery",
+    label: "Gallery",
+    icon: Images,
+    requiresSubscription: true,
+  },
+  {
+    href: "/devices",
+    label: "Devices",
+    icon: MonitorSmartphone,
+    requiresSubscription: true,
+  },
+  {
+    href: "/vouchers",
+    label: "Vouchers",
+    icon: Ticket,
+    requiresSubscription: true,
+  },
+  {
+    href: "/superadmin",
+    label: "Super Admin",
+    icon: Shield,
+    superAdminOnly: true,
+  },
+  {
+    href: "/settings",
+    label: "Settings",
+    icon: Settings,
+    requiresSubscription: true,
+  },
 ];
 
 function isSuperAdmin(email?: string | null): boolean {
   if (!email) return false;
-  const adminEmails = ["rifqinaufal9009@gmail.com", "admin@poskart.id", "admin@poskart.my.id"];
+  const adminEmails = [
+    "rifqinaufal9009@gmail.com",
+    "admin@poskart.id",
+    "admin@poskart.my.id",
+  ];
   return adminEmails.includes(email.toLowerCase());
 }
 
@@ -75,11 +141,17 @@ function SidebarContent({
 
   const adminMode = isSuperAdmin(userEmail);
   const hasActiveSubscription = adminMode || tier === "Pro";
-  const filteredNavItems = navItems.filter((item) => !item.superAdminOnly || adminMode);
+  const filteredNavItems = navItems.filter(
+    (item) => !item.superAdminOnly || adminMode,
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <Link href="/dashboard" className="mb-6 flex items-center gap-3" onClick={onNavigate}>
+      <Link
+        href="/dashboard"
+        className="mb-6 flex items-center gap-3"
+        onClick={onNavigate}
+      >
         <div className="grid size-9 place-items-center overflow-hidden rounded-lg">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -98,7 +170,9 @@ function SidebarContent({
         {filteredNavItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href;
-          const locked = Boolean(item.requiresSubscription && !hasActiveSubscription);
+          const locked = Boolean(
+            item.requiresSubscription && !hasActiveSubscription,
+          );
           if (locked) {
             return (
               <Link
@@ -122,7 +196,8 @@ function SidebarContent({
               onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950",
-                active && "bg-zinc-950 text-white hover:bg-zinc-950 hover:text-white",
+                active &&
+                  "bg-zinc-950 text-white hover:bg-zinc-950 hover:text-white",
               )}
             >
               <Icon className="size-4" />
@@ -175,7 +250,9 @@ function SidebarContent({
                   <span
                     className={cn(
                       "font-medium",
-                      hasActiveSubscription ? "text-emerald-700" : "text-amber-700",
+                      hasActiveSubscription
+                        ? "text-emerald-700"
+                        : "text-amber-700",
                     )}
                   >
                     {hasActiveSubscription ? "Active" : "Locked"}
@@ -229,12 +306,22 @@ export function AdminShell({
         />
       </Sheet>
 
-      <div className={cn("transition-all duration-200", builderFullView ? "lg:pl-0" : "lg:pl-72")}>
+      <div
+        className={cn(
+          "transition-all duration-200",
+          builderFullView ? "lg:pl-0" : "lg:pl-72",
+        )}
+      >
         {/* Topbar — hidden in builder full-view */}
         {!builderFullView && (
           <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/85 px-4 backdrop-blur-xl lg:px-8">
             <div className="flex h-16 items-center gap-4">
-              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(true)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                onClick={() => setOpen(true)}
+              >
                 <Menu />
               </Button>
               <div className="hidden w-full max-w-md md:block">
@@ -243,7 +330,9 @@ export function AdminShell({
               <div className="ml-auto flex items-center gap-3">
                 <div className="hidden text-right md:block">
                   <div className="text-xs text-zinc-500">Signed in as</div>
-                  <div className="max-w-48 truncate text-sm font-medium">{userEmail ?? "POSKART Photobooth"}</div>
+                  <div className="max-w-48 truncate text-sm font-medium">
+                    {userEmail ?? "POSKART Photobooth"}
+                  </div>
                 </div>
                 <Button
                   variant="outline"
@@ -272,7 +361,9 @@ export function AdminShell({
                       className="absolute right-0 top-12 z-50 w-64 rounded-lg border border-zinc-200 bg-white p-2 shadow-xl"
                     >
                       <div className="border-b border-zinc-100 px-3 py-2">
-                        <div className="text-xs text-zinc-500">Signed in as</div>
+                        <div className="text-xs text-zinc-500">
+                          Signed in as
+                        </div>
                         <div className="truncate text-sm font-medium text-zinc-950">
                           {userEmail ?? "POSKART Photobooth"}
                         </div>
@@ -319,9 +410,14 @@ export function AdminShell({
             </div>
           </header>
         )}
-        <main className={cn(builderFullView ? "p-0" : "px-4 py-6 lg:px-8")}>{children}</main>
+        <main className={cn(builderFullView ? "p-0" : "px-4 py-6 lg:px-8")}>
+          {children}
+        </main>
       </div>
-      <SubscriptionDialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen} />
+      <SubscriptionDialog
+        open={subscriptionDialogOpen}
+        onOpenChange={setSubscriptionDialogOpen}
+      />
     </div>
   );
 }
