@@ -30,9 +30,13 @@ export async function GET(
 
   const extension = safeFilename(photo.format || "jpg");
   const label =
-    photo.kind === "framed"
-      ? "poskart-framed"
-      : `poskart-raw-${photo.photo_index + 1}`;
+    photo.kind === "framed" && photo.photo_index === 1
+      ? "poskart-live-photo"
+      : photo.kind === "framed"
+        ? "poskart-framed"
+        : photo.photo_index === 98
+          ? "poskart-gif"
+          : `poskart-raw-${photo.photo_index + 1}`;
 
   return new Response(cloudinaryResponse.body, {
     headers: {

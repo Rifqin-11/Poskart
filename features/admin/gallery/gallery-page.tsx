@@ -155,13 +155,20 @@ export async function GalleryPage() {
               const hasGif = sessionPhotos.some(
                 (photo) => photo.kind === "raw" && photo.photo_index === 98,
               );
+              const gif = sessionPhotos.find(
+                (photo) => photo.kind === "raw" && photo.photo_index === 98,
+              );
+              const framedLivePhoto = sessionPhotos.find(
+                (photo) =>
+                  photo.kind === "framed" && photo.photo_index === 1,
+              );
 
               return (
                 <Card
                   key={session.id}
                   className="group overflow-hidden rounded-xl border-zinc-200 py-0 shadow-sm transition-shadow hover:shadow-md"
                 >
-                  <div className="aspect-[4/3] bg-zinc-100">
+                  <div className="relative aspect-[4/3] bg-zinc-100">
                     {framed ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -173,6 +180,24 @@ export async function GalleryPage() {
                       <div className="grid size-full place-items-center text-zinc-400">
                         <ImageIcon className="size-7" />
                       </div>
+                    )}
+                    {gif && (
+                      <Link
+                        href={session.share_url || `/s/${session.id}`}
+                        target="_blank"
+                        className="absolute right-2 bottom-2 size-16 overflow-hidden rounded-lg border-2 border-white bg-zinc-900 shadow-md"
+                        aria-label="Buka GIF sesi"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={gif.secure_url}
+                          alt="GIF sesi"
+                          className="size-full object-cover"
+                        />
+                        <span className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-[9px] font-bold text-white">
+                          GIF
+                        </span>
+                      </Link>
                     )}
                   </div>
                   <div className="p-3">
@@ -190,6 +215,7 @@ export async function GalleryPage() {
                           {" · "}
                           {rawCount} raw
                           {hasGif ? " · GIF" : ""}
+                          {framedLivePhoto ? " · Live Photo" : ""}
                         </p>
                       </div>
                       <div className="flex gap-1.5 shrink-0">

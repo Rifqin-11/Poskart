@@ -85,9 +85,6 @@ export default async function SharedGalleryPage({
   const gif = photos?.find(
     (photo) => photo.kind === "raw" && photo.photo_index === 98,
   );
-  const rawLivePhoto = photos?.find(
-    (photo) => photo.kind === "raw" && photo.photo_index === 99,
-  );
   const selectedPhoto = photos?.find((photo) => photo.id === viewPhotoId);
   const photoCount = photos?.length ?? 0;
   const refreshUntil = new Date(session.created_at).getTime() + 120_000;
@@ -115,18 +112,16 @@ export default async function SharedGalleryPage({
   const year = expiryDate.getFullYear();
   const formattedExpiryDate = `${day} ${monthName} ${year}`;
 
-  const hasAnyRaw = raw.length > 0 || Boolean(rawLivePhoto) || Boolean(gif);
+  const hasAnyRaw = raw.length > 0 || Boolean(gif);
 
   const waitingForAssets =
     photoCount === 0 ||
     !framedStatic ||
     !framedLivePhoto ||
-    raw.length === 0 ||
-    !rawLivePhoto;
+    raw.length === 0;
 
-  const isWithinRefreshWindow = Date.now() < refreshUntil;
   const shouldRefreshWhileProcessing =
-    !selectedPhoto && waitingForAssets && isWithinRefreshWindow;
+    !selectedPhoto && waitingForAssets;
 
   return (
     <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10">
@@ -220,7 +215,7 @@ export default async function SharedGalleryPage({
               </div>
             )}
 
-            {!framedLivePhoto && framedStatic && isWithinRefreshWindow && (
+            {!framedLivePhoto && framedStatic && (
               <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/30 p-6 md:p-8 flex flex-col items-center justify-center text-center min-h-[240px]">
                 <div className="relative flex items-center justify-center mb-3">
                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-zinc-200 border-t-zinc-800" />
@@ -294,45 +289,14 @@ export default async function SharedGalleryPage({
                 <h2 className="font-semibold">Foto original</h2>
                 <p className="text-xs text-zinc-500">
                   {hasAnyRaw
-                    ? `${raw.length} foto${rawLivePhoto ? ", 1 Live Photo" : ""}${gif ? ", dan 1 GIF" : ""}`
+                    ? `${raw.length} foto${gif ? " dan 1 GIF" : ""}`
                     : "Menyiapkan foto original"}
                 </p>
               </div>
             </div>
 
-            {rawLivePhoto && (
-              <div className="mt-5 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/50 p-2.5 transition-colors hover:bg-zinc-50">
-                <Link
-                  href={`?view=${rawLivePhoto.id}`}
-                  className="flex flex-1 items-center gap-3 min-w-0 cursor-zoom-in"
-                >
-                  <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={rawLivePhoto.secure_url}
-                      alt="Live Photo Original"
-                      className="size-full object-cover"
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">Live Photo Original</p>
-                    <p className="mt-0.5 text-xs text-zinc-500">
-                      Gabungan semua frame kamera
-                    </p>
-                  </div>
-                </Link>
-                <a
-                  href={`/s/${encodeURIComponent(sessionId)}/download/${rawLivePhoto.id}`}
-                  aria-label="Download Live Photo Original"
-                  className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 transition-colors hover:bg-zinc-950 hover:text-white"
-                >
-                  <Download className="size-4" />
-                </a>
-              </div>
-            )}
-
             {gif && (
-              <div className="mt-3 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/50 p-2.5 transition-colors hover:bg-zinc-50">
+              <div className="mt-5 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/50 p-2.5 transition-colors hover:bg-zinc-50">
                 <Link
                   href={`?view=${gif.id}`}
                   className="flex min-w-0 flex-1 cursor-zoom-in items-center gap-3"
@@ -362,12 +326,12 @@ export default async function SharedGalleryPage({
               </div>
             )}
 
-            {!rawLivePhoto && raw.length > 0 && isWithinRefreshWindow && (
+            {!gif && raw.length > 0 && (
               <div className="mt-5 flex items-center gap-3 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/30 p-3 text-zinc-500">
                 <div className="size-5 shrink-0 rounded-full border border-zinc-300 border-t-zinc-700 animate-spin" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-zinc-750">
-                    Live Photo Original Sedang Diproses
+                    GIF Sedang Diproses
                   </p>
                   <p className="text-[10px] text-zinc-500">
                     Sedang diunggah ke server...
@@ -415,7 +379,6 @@ export default async function SharedGalleryPage({
                 ))}
               </div>
             ) : (
-              !rawLivePhoto &&
               !gif && (
                 <div className="mt-5 rounded-2xl bg-zinc-50 p-6 text-center text-sm text-zinc-500">
                   Foto original sedang disiapkan. Hasil utama dengan frame bisa

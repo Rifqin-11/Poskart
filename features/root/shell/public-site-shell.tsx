@@ -73,19 +73,38 @@ export async function PublicHeader() {
 }
 
 export function PublicFooter({ className }: { className?: string }) {
+  const legalLinks = [
+    { href: "/terms", label: "Terms of Service" },
+    { href: "/privacy", label: "Privacy Policy" },
+    { href: "/refund-policy", label: "Refund Policy" },
+  ];
+
   return (
     <footer
       className={cn("overflow-hidden bg-white", className)}
     >
       <div className="mx-auto flex min-h-[300px] max-w-7xl flex-col px-4 py-7 sm:min-h-[360px] sm:px-6 lg:min-h-[384px] lg:px-8">
-        <div className="flex flex-col gap-4 text-sm text-zinc-500 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-5 text-sm text-zinc-500 sm:flex-row sm:items-start sm:justify-between">
           <p>© 2026 {businessProfile.legalName}. All rights reserved.</p>
-          <Link
-            href="/contact"
-            className="inline-flex h-10 w-fit items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-900 shadow-[0_1px_2px_rgba(24,24,27,0.02)] transition-colors hover:bg-zinc-50"
-          >
-            Contact Support
-          </Link>
+          <div className="flex flex-col items-start gap-4 sm:items-end">
+            <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2">
+              {legalLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="transition-colors hover:text-zinc-950"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+            <Link
+              href="/contact"
+              className="inline-flex h-10 w-fit items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-900 shadow-[0_1px_2px_rgba(24,24,27,0.02)] transition-colors hover:bg-zinc-50"
+            >
+              Contact Support
+            </Link>
+          </div>
         </div>
 
         <div className="mt-auto w-full select-none overflow-hidden pt-16 sm:pt-20">
