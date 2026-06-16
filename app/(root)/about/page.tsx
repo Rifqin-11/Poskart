@@ -60,6 +60,8 @@ export default function AboutPage() {
           <div className="mt-4 grid gap-4 text-sm text-zinc-600 md:grid-cols-2">
             <p><span className="font-medium text-zinc-950">Brand:</span> {businessProfile.brandName}</p>
             <p><span className="font-medium text-zinc-950">Legal name:</span> {businessProfile.legalName}</p>
+            <p><span className="font-medium text-zinc-950">Jenis Usaha:</span> {businessProfile.businessType}</p>
+            <p><span className="font-medium text-zinc-950">Pemilik:</span> {businessProfile.businessOwner}</p>
             <p><span className="font-medium text-zinc-950">Email:</span> {businessProfile.email}</p>
             <p><span className="font-medium text-zinc-950">Phone:</span> {businessProfile.phone}</p>
             <p className="md:col-span-2"><span className="font-medium text-zinc-950">Address:</span> {businessProfile.address}</p>

@@ -10,6 +10,8 @@ export const businessProfile = {
   whatsapp: "+62 85846626622",
   whatsappUrl: "https://wa.me/6285846626622",
   address: "Banjarnegara, Jawa Tengah",
+  businessType: "Usaha Perorangan",
+  businessOwner: "Rifqi Naufal",
   supportHours: "Monday-Friday, 09:00-18:00 WIB",
   domain: "https://poskart.my.id",
   taxNote:

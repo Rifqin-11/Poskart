@@ -11,7 +11,6 @@ const navLinks = [
   { href: "/#builder", label: "Builder" },
   { href: "/subscriptions", label: "Pricing" },
   { href: "/contact", label: "Contact" },
-  { href: "/terms", label: "Terms" },
 ];
 
 export async function PublicHeader() {
@@ -26,7 +25,7 @@ export async function PublicHeader() {
     : "PK";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-zinc-100 bg-white/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3">
           <div className="grid size-9 place-items-center overflow-hidden rounded-lg">
@@ -38,14 +37,18 @@ export async function PublicHeader() {
             />
           </div>
           <div>
-            <div className="text-sm font-semibold tracking-tight">{businessProfile.brandName}</div>
-            <div className="text-xs text-zinc-500">Photobooth OS</div>
+            <div className="text-sm font-semibold tracking-tight text-zinc-950">{businessProfile.brandName}</div>
+            <div className="text-[10px] uppercase tracking-widest text-zinc-400">Photobooth OS</div>
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm text-zinc-600 md:flex">
+        <nav className="hidden items-center gap-7 text-sm text-zinc-500 md:flex">
           {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="hover:text-zinc-950">
+            <Link
+              key={link.href}
+              href={link.href}
+              className="transition-colors hover:text-zinc-950"
+            >
               {link.label}
             </Link>
           ))}
@@ -53,18 +56,32 @@ export async function PublicHeader() {
 
         {userEmail ? (
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className={buttonVariants({ size: "sm" })}>
+            <Link
+              href="/dashboard"
+              className={buttonVariants({
+                size: "sm",
+                className:
+                  "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
+              })}
+            >
               Dashboard
-              <ArrowRight className="size-4" />
+              <ArrowRight className="size-3.5" />
             </Link>
             <Link href="/dashboard" aria-label={`Open dashboard as ${userEmail}`} title={userEmail}>
               <Avatar name={initials} />
             </Link>
           </div>
         ) : (
-          <Link href="/login" className={buttonVariants({ size: "sm" })}>
+          <Link
+            href="/login"
+            className={buttonVariants({
+              size: "sm",
+              className:
+                "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
+            })}
+          >
             Login
-            <ArrowRight className="size-4" />
+            <ArrowRight className="size-3.5" />
           </Link>
         )}
       </div>
@@ -83,9 +100,26 @@ export function PublicFooter({ className }: { className?: string }) {
     <footer
       className={cn("overflow-hidden bg-white", className)}
     >
-      <div className="mx-auto flex min-h-[300px] max-w-7xl flex-col px-4 py-7 sm:min-h-[360px] sm:px-6 lg:min-h-[384px] lg:px-8">
-        <div className="flex flex-col gap-5 text-sm text-zinc-500 sm:flex-row sm:items-start sm:justify-between">
-          <p>© 2026 {businessProfile.legalName}. All rights reserved.</p>
+      <div className="section-divider" />
+      <div className="mx-auto flex min-h-[300px] max-w-7xl flex-col px-4 py-8 sm:min-h-[360px] sm:px-6 lg:min-h-[384px] lg:px-8">
+        <div className="flex flex-col gap-6 text-sm text-zinc-500 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="mb-3 flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/Logo Poskart.png"
+                alt="POSKART Logo"
+                className="size-6 object-contain"
+              />
+              <span className="text-sm font-semibold text-zinc-950">{businessProfile.brandName}</span>
+            </div>
+            <p className="max-w-xs text-xs leading-5 text-zinc-400">
+              SaaS dashboard dan visual builder untuk mengelola photobooth kiosk, template, QRIS, dan analytics.
+            </p>
+            <p className="mt-4 text-xs text-zinc-400">
+              © 2026 {businessProfile.legalName}. All rights reserved.
+            </p>
+          </div>
           <div className="flex flex-col items-start gap-4 sm:items-end">
             <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2">
               {legalLinks.map((link) => (
