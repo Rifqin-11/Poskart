@@ -89,6 +89,7 @@ async function sendEmail(input: DeliveryInput): Promise<ChannelResult> {
         `masukan, saran, atau kendala, silakan hubungi tim kami.\n\n` +
         `${sentAt}\n\n` +
         `Download softfile:\n${input.shareUrl}\n\n` +
+        `Contact Support: https://wa.me/6285846626622\n\n` +
         `Follow @poskart.id for more updates`,
       html: `
         <!doctype html>
@@ -132,6 +133,7 @@ async function sendEmail(input: DeliveryInput): Promise<ChannelResult> {
                     </tr>
                     <tr>
                       <td style="padding:18px 28px;background:#ffffff;border-top:1px solid #e5e7eb;">
+                        <p style="margin:0 0 10px;font-size:12px;line-height:1.5;text-align:center;font-weight:700;"><a href="https://wa.me/6285846626622" target="_blank" rel="noopener noreferrer" style="color:#18181b;text-decoration:underline;">Contact Support via WhatsApp</a></p>
                         <p style="margin:0 0 6px;font-size:12px;line-height:1.5;color:#18181b;text-align:center;font-weight:700;">Follow <a href="https://www.instagram.com/poskart.id" target="_blank" rel="noopener noreferrer" style="color:#18181b;text-decoration:none;font-weight:700;">@poskart.id</a> for more updates</p>
                         <p style="margin:0;font-size:11px;line-height:1.5;color:#71717a;text-align:center;">Email ini dikirim otomatis oleh POSKART.</p>
                       </td>
