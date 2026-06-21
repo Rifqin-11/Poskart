@@ -114,14 +114,8 @@ export default async function SharedGalleryPage({
 
   const hasAnyRaw = raw.length > 0 || Boolean(gif);
 
-  const waitingForAssets =
-    photoCount === 0 ||
-    !framedStatic ||
-    !framedLivePhoto ||
-    raw.length === 0;
-
-  const shouldRefreshWhileProcessing =
-    !selectedPhoto && waitingForAssets;
+  const waitingForAssets = photoCount === 0;
+  const shouldRefreshWhileProcessing = !selectedPhoto && waitingForAssets;
 
   return (
     <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10">
@@ -215,24 +209,6 @@ export default async function SharedGalleryPage({
               </div>
             )}
 
-            {!framedLivePhoto && framedStatic && (
-              <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/30 p-6 md:p-8 flex flex-col items-center justify-center text-center min-h-[240px]">
-                <div className="relative flex items-center justify-center mb-3">
-                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-zinc-200 border-t-zinc-800" />
-                  <span className="absolute text-[8px] font-bold uppercase tracking-wider text-zinc-600">
-                    Live Photo
-                  </span>
-                </div>
-                <p className="text-sm font-semibold text-zinc-800">
-                  Live Photo Berbingkai Sedang Diproses
-                </p>
-                <p className="mt-1 text-xs text-zinc-500 max-w-xs leading-relaxed">
-                  Foto sedang dirangkai menjadi Live Photo. Halaman akan memuat
-                  ulang otomatis ketika siap.
-                </p>
-              </div>
-            )}
-
             {framedStatic && (
               <div className="rounded-2xl border border-black/5 bg-zinc-50/50 p-3 md:p-4">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
@@ -274,8 +250,9 @@ export default async function SharedGalleryPage({
 
             {!framedLivePhoto && !framedStatic && (
               <div className="grid min-h-96 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center text-zinc-500">
-                Hasil foto sedang disiapkan. Halaman ini akan memperbarui
-                otomatis.
+                {waitingForAssets
+                  ? "Hasil foto sedang disiapkan. Halaman ini akan memperbarui otomatis."
+                  : "Foto berbingkai tidak tersedia. Foto original dapat diunduh dari daftar di samping."}
               </div>
             )}
           </section>
@@ -290,7 +267,9 @@ export default async function SharedGalleryPage({
                 <p className="text-xs text-zinc-500">
                   {hasAnyRaw
                     ? `${raw.length} foto${gif ? " dan 1 GIF" : ""}`
-                    : "Menyiapkan foto original"}
+                    : waitingForAssets
+                      ? "Menyiapkan foto original"
+                      : "Tidak ada foto original"}
                 </p>
               </div>
             </div>
@@ -323,20 +302,6 @@ export default async function SharedGalleryPage({
                 >
                   <Download className="size-4" />
                 </a>
-              </div>
-            )}
-
-            {!gif && raw.length > 0 && (
-              <div className="mt-5 flex items-center gap-3 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/30 p-3 text-zinc-500">
-                <div className="size-5 shrink-0 rounded-full border border-zinc-300 border-t-zinc-700 animate-spin" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-zinc-750">
-                    GIF Sedang Diproses
-                  </p>
-                  <p className="text-[10px] text-zinc-500">
-                    Sedang diunggah ke server...
-                  </p>
-                </div>
               </div>
             )}
 
@@ -381,8 +346,9 @@ export default async function SharedGalleryPage({
             ) : (
               !gif && (
                 <div className="mt-5 rounded-2xl bg-zinc-50 p-6 text-center text-sm text-zinc-500">
-                  Foto original sedang disiapkan. Hasil utama dengan frame bisa
-                  diunduh terlebih dahulu.
+                  {waitingForAssets
+                    ? "Foto original sedang disiapkan. Hasil utama dengan frame bisa diunduh terlebih dahulu."
+                    : "Foto original tidak tersedia untuk sesi ini."}
                 </div>
               )
             )}
