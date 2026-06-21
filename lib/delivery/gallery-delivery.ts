@@ -83,21 +83,23 @@ async function sendEmail(input: DeliveryInput): Promise<ChannelResult> {
       to: [to],
       subject: `Softfile foto ${sentAt}`,
       text:
-        `Halo Kak, softfile foto Anda telah siap untuk diunduh.\n\n` +
-        `Terima kasih telah mempercayakan sesi foto Anda kepada POSKART. ` +
-        `Kami harap hasil fotonya sesuai dengan harapan. Apabila terdapat ` +
-        `masukan, saran, atau kendala, silakan hubungi tim kami.\n\n` +
+        `Hi there!\n\n` +
+        `Your Poskart softfiles are ready to download.\n\n` +
+        `Download Softfiles:\n${input.shareUrl}\n\n` +
+        `Thank you for stopping by our booth and creating memories with us. ` +
+        `We hope you enjoyed the experience as much as we did.\n\n` +
+        `See you at the next Poskart session!\n\n` +
+        `Love,\nPoskart\n\n` +
         `${sentAt}\n\n` +
-        `Download softfile:\n${input.shareUrl}\n\n` +
         `Contact Support: https://wa.me/6285846626622\n\n` +
         `Follow @poskart.id for more updates`,
       html: `
         <!doctype html>
-        <html lang="id">
+        <html lang="en">
           <head>
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1" />
-            <title>Softfile Foto POSKART</title>
+            <title>Your memories have arrived | POSKART</title>
           </head>
           <body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#18181b;">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#ffffff;padding:32px 16px;">
@@ -107,35 +109,38 @@ async function sendEmail(input: DeliveryInput): Promise<ChannelResult> {
                     <tr>
                       <td style="background:#18181b;padding:26px 28px;color:#ffffff;">
                         <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#f7c7bd;font-weight:700;">POSKART</div>
-                        <h1 style="margin:8px 0 0;font-size:28px;line-height:1.2;font-weight:800;">Softfile Poskart Photobooth</h1>
+                        <h1 style="margin:8px 0 0;font-size:28px;line-height:1.2;font-weight:800;">Your memories have arrived 📮✨</h1>
                       </td>
                     </tr>
                     <tr>
                       <td style="padding:30px 28px 10px;">
-                        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;">Halo Kak, softfile foto Anda telah siap untuk diunduh.</p>
-                        <p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:#52525b;">Terima kasih telah mempercayakan sesi foto Anda kepada POSKART. Kami harap hasil fotonya sesuai dengan harapan. Apabila terdapat masukan, saran, atau kendala, silakan hubungi tim kami.</p>
-                        <p style="margin:0 0 22px;font-size:13px;line-height:1.6;color:#71717a;">${escapeHtml(sentAt)}</p>
-                        <table role="presentation" cellspacing="0" cellpadding="0" style="margin:28px 0;">
+                        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;">Hi there!</p>
+                        <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#52525b;">Your Poskart softfiles are ready to download.</p>
+                        <table role="presentation" cellspacing="0" cellpadding="0" style="margin:26px 0;">
                           <tr>
                             <td style="background:#c4121a;border-radius:999px;">
-                              <a href="${escapeHtml(input.shareUrl)}" target="_blank" style="display:inline-block;padding:14px 24px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:800;">Download Softfile</a>
+                              <a href="${escapeHtml(input.shareUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:14px 24px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:800;">Download Softfiles</a>
                             </td>
                           </tr>
                         </table>
-                        <p style="margin:0 0 8px;font-size:13px;color:#71717a;">Jika tombol tidak bisa dibuka, salin link berikut:</p>
+                        <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#52525b;">Thank you for stopping by our booth and creating memories with us. We hope you enjoyed the experience as much as we did 💘</p>
+                        <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#52525b;">See you at the next Poskart session!</p>
+                        <p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:#18181b;">Love,<br /><strong>Poskart</strong></p>
+                        <p style="margin:0 0 22px;font-size:13px;line-height:1.6;color:#71717a;">${escapeHtml(sentAt)}</p>
+                        <p style="margin:0 0 8px;font-size:13px;color:#71717a;">If the button does not work, please copy and open the link below:</p>
                         <p style="margin:0;padding:12px 14px;background:#ffffff;border-radius:10px;border:1px solid #e5e7eb;font-size:12px;line-height:1.5;word-break:break-all;color:#3f3f46;">${escapeHtml(input.shareUrl)}</p>
                       </td>
                     </tr>
                     <tr>
                       <td style="padding:24px 28px 30px;">
-                        <p style="margin:0;font-size:12px;line-height:1.6;color:#71717a;">Simpan link ini selama masih tersedia ya, kak. Kalau ada kendala saat membuka file, hubungi tim POSKART.</p>
+                        <p style="margin:0;font-size:12px;line-height:1.6;color:#71717a;">Please save this link while it is still available. If you have any trouble accessing your files, feel free to contact the Poskart team.</p>
                       </td>
                     </tr>
                     <tr>
                       <td style="padding:18px 28px;background:#ffffff;border-top:1px solid #e5e7eb;">
                         <p style="margin:0 0 10px;font-size:12px;line-height:1.5;text-align:center;font-weight:700;"><a href="https://wa.me/6285846626622" target="_blank" rel="noopener noreferrer" style="color:#18181b;text-decoration:underline;">Contact Support via WhatsApp</a></p>
                         <p style="margin:0 0 6px;font-size:12px;line-height:1.5;color:#18181b;text-align:center;font-weight:700;">Follow <a href="https://www.instagram.com/poskart.id" target="_blank" rel="noopener noreferrer" style="color:#18181b;text-decoration:none;font-weight:700;">@poskart.id</a> for more updates</p>
-                        <p style="margin:0;font-size:11px;line-height:1.5;color:#71717a;text-align:center;">Email ini dikirim otomatis oleh POSKART.</p>
+                        <p style="margin:0;font-size:11px;line-height:1.5;color:#71717a;text-align:center;">This email was sent automatically by POSKART.</p>
                       </td>
                     </tr>
                   </table>
