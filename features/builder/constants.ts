@@ -18,7 +18,11 @@ import {
 import type { BuilderComponentType, BuilderPage } from "@/types/builder";
 
 /** Semantic roles Flutter uses to bind the correct action handler to each button */
-export const SEMANTIC_ROLES: { value: string; label: string; screen: string }[] = [
+export const SEMANTIC_ROLES: {
+  value: string;
+  label: string;
+  screen: string;
+}[] = [
   {
     value: "landing.start_session",
     label: "Start Session (fullscreen tap)",
@@ -56,7 +60,7 @@ export const SEMANTIC_ROLES: { value: string; label: string; screen: string }[] 
   { value: "preview.finish", label: "Finish / Done", screen: "preview" },
   {
     value: "preview.share",
-    label: "Share / Download - planned",
+    label: "Kirim Link Softfile",
     screen: "preview",
   },
   {
@@ -117,11 +121,50 @@ export const COMPONENT_META: Record<
 
 /** Components available per page. Only show relevant items in Add panel. */
 export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
-  landing: ["text", "image", "button", "social-handle", "background-decoration"],
-  template: ["text", "image", "button", "template-preview", "template-list", "background-decoration"],
-  camera: ["text", "image", "camera-view", "photo-result", "button", "social-handle", "background-decoration"],
-  preview: ["text", "image", "button", "qr", "receipt-preview", "frame-preview", "social-handle", "background-decoration"],
-  thanks: ["text", "image", "button", "qr", "frame-preview", "social-handle", "background-decoration", "return-countdown"],
+  landing: [
+    "text",
+    "image",
+    "button",
+    "social-handle",
+    "background-decoration",
+  ],
+  template: [
+    "text",
+    "image",
+    "button",
+    "template-preview",
+    "template-list",
+    "background-decoration",
+  ],
+  camera: [
+    "text",
+    "image",
+    "camera-view",
+    "photo-result",
+    "button",
+    "social-handle",
+    "background-decoration",
+  ],
+  preview: [
+    "text",
+    "image",
+    "button",
+    "qr",
+    "receipt-preview",
+    "frame-preview",
+    "social-handle",
+    "background-decoration",
+  ],
+  thanks: [
+    "text",
+    "image",
+    "button",
+    "qr",
+    "frame-preview",
+    "social-handle",
+    "background-decoration",
+    "return-countdown",
+  ],
 };
 
 /** Semantic roles shown per page in the Properties dropdown */
@@ -134,7 +177,13 @@ export const PAGE_ROLES: Record<BuilderPage | "generic", string[]> = {
     "camera.retake",
     "camera.photo_result",
   ],
-  preview: ["preview.print", "preview.finish", "preview.share", "preview.qr_download", "preview.retake"],
+  preview: [
+    "preview.print",
+    "preview.finish",
+    "preview.share",
+    "preview.qr_download",
+    "preview.retake",
+  ],
   thanks: ["thanks.return_home", "thanks.countdown_timer"],
   generic: ["generic.action"],
 };
@@ -145,20 +194,72 @@ export const HOTSPOT_COLORS: Record<
   { bg: string; border: string; text: string }
 > = {
   button: { bg: "rgba(59,130,246,0.22)", border: "#3b82f6", text: "#1d4ed8" },
-  "camera-view": { bg: "rgba(15,15,25,0.45)", border: "#a1a1aa", text: "#ffffff" },
-  "photo-result": { bg: "rgba(20,184,166,0.25)", border: "#14b8a6", text: "#0d9488" },
+  "camera-view": {
+    bg: "rgba(15,15,25,0.45)",
+    border: "#a1a1aa",
+    text: "#ffffff",
+  },
+  "photo-result": {
+    bg: "rgba(20,184,166,0.25)",
+    border: "#14b8a6",
+    text: "#0d9488",
+  },
   text: { bg: "rgba(139,92,246,0.15)", border: "#8b5cf6", text: "#6d28d9" },
-  "social-handle": { bg: "rgba(139,92,246,0.12)", border: "#a78bfa", text: "#7c3aed" },
-  "qr-placeholder": { bg: "rgba(245,158,11,0.22)", border: "#f59e0b", text: "#b45309" },
-  "receipt-preview": { bg: "rgba(168,85,247,0.20)", border: "#a855f7", text: "#7e22ce" },
+  "social-handle": {
+    bg: "rgba(139,92,246,0.12)",
+    border: "#a78bfa",
+    text: "#7c3aed",
+  },
+  "qr-placeholder": {
+    bg: "rgba(245,158,11,0.22)",
+    border: "#f59e0b",
+    text: "#b45309",
+  },
+  "receipt-preview": {
+    bg: "rgba(168,85,247,0.20)",
+    border: "#a855f7",
+    text: "#7e22ce",
+  },
   qr: { bg: "rgba(245,158,11,0.18)", border: "#fbbf24", text: "#92400e" },
-  "qr-link": { bg: "rgba(245,158,11,0.20)", border: "#fbbf24", text: "#92400e" },
+  "qr-link": {
+    bg: "rgba(245,158,11,0.20)",
+    border: "#fbbf24",
+    text: "#92400e",
+  },
   image: { bg: "rgba(16,185,129,0.18)", border: "#10b981", text: "#065f46" },
-  "frame-preview": { bg: "rgba(16,185,129,0.14)", border: "#34d399", text: "#065f46" },
-  "template-list": { bg: "rgba(234,88,12,0.18)", border: "#ea580c", text: "#9a3412" },
-  "template-preview": { bg: "rgba(234,88,12,0.12)", border: "#fb923c", text: "#9a3412" },
-  "background-decoration": { bg: "rgba(100,116,139,0.15)", border: "#94a3b8", text: "#475569" },
-  "return-countdown": { bg: "rgba(99,102,241,0.15)", border: "#6366f1", text: "#4338ca" },
-  "session-countdown": { bg: "rgba(244,63,94,0.15)", border: "#f43f5e", text: "#9f1239" },
-  "payment-countdown": { bg: "rgba(34,197,94,0.15)", border: "#22c55e", text: "#15803d" },
+  "frame-preview": {
+    bg: "rgba(16,185,129,0.14)",
+    border: "#34d399",
+    text: "#065f46",
+  },
+  "template-list": {
+    bg: "rgba(234,88,12,0.18)",
+    border: "#ea580c",
+    text: "#9a3412",
+  },
+  "template-preview": {
+    bg: "rgba(234,88,12,0.12)",
+    border: "#fb923c",
+    text: "#9a3412",
+  },
+  "background-decoration": {
+    bg: "rgba(100,116,139,0.15)",
+    border: "#94a3b8",
+    text: "#475569",
+  },
+  "return-countdown": {
+    bg: "rgba(99,102,241,0.15)",
+    border: "#6366f1",
+    text: "#4338ca",
+  },
+  "session-countdown": {
+    bg: "rgba(244,63,94,0.15)",
+    border: "#f43f5e",
+    text: "#9f1239",
+  },
+  "payment-countdown": {
+    bg: "rgba(34,197,94,0.15)",
+    border: "#22c55e",
+    text: "#15803d",
+  },
 };
