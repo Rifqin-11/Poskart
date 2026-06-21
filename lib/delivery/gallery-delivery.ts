@@ -5,16 +5,23 @@ type DeliveryInput = {
   shareUrl: string;
   email?: string;
   phone?: string;
+  emailAttachment?: EmailAttachment;
 };
 
 type ChannelResult = {
   sent: boolean;
   error?: string;
+  attachmentSent?: boolean;
 };
 
 type DeliveryResult = {
   email?: ChannelResult;
   whatsapp?: ChannelResult;
+};
+
+type EmailAttachment = {
+  filename: string;
+  contentBase64: string;
 };
 
 function escapeHtml(value: string) {
@@ -57,6 +64,14 @@ async function sendEmail(input: DeliveryInput): Promise<ChannelResult> {
   }
 
   const sentAt = formatSentAt();
+  const attachments = input.emailAttachment
+    ? [
+        {
+          filename: input.emailAttachment.filename,
+          content: input.emailAttachment.contentBase64,
+        },
+      ]
+    : undefined;
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -127,6 +142,7 @@ async function sendEmail(input: DeliveryInput): Promise<ChannelResult> {
           </body>
         </html>
       `,
+      ...(attachments ? { attachments } : {}),
     }),
   });
 
@@ -138,7 +154,7 @@ async function sendEmail(input: DeliveryInput): Promise<ChannelResult> {
     };
   }
 
-  return { sent: true };
+  return { sent: true, attachmentSent: Boolean(input.emailAttachment) };
 }
 
 async function sendWhatsApp(input: DeliveryInput): Promise<ChannelResult> {
