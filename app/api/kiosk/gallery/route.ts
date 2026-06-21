@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     const { data: sessions, error: sessionsError } = await context.client
       .from("gallery_sessions")
       .select(
-        "id,device_id,template_name,social_media_consent,share_url,created_at",
+        "id,device_id,template_name,theme_name,social_media_consent,share_url,created_at",
       )
       .eq("organization_id", context.organizationId)
       .order("created_at", { ascending: false })

@@ -1538,16 +1538,33 @@ async function getActiveThemeStatistics(
   }
 
   const supabase = createClient();
-  const { data: sessions, error: sessionsError } = await supabase
+  const { data: themeSessions, error: themeSessionsError } = await supabase
     .from("gallery_sessions")
     .select("id")
-    .eq("template_name", normalizedThemeName);
+    .eq("theme_name", normalizedThemeName);
 
-  if (sessionsError) {
-    throw new Error(`Unable to load theme sessions: ${sessionsError.message}`);
+  if (themeSessionsError) {
+    throw new Error(
+      `Unable to load theme sessions: ${themeSessionsError.message}`,
+    );
   }
 
-  const sessionRows = (sessions ?? []) as ThemeGallerySessionRow[];
+  const { data: legacyTemplateSessions, error: legacySessionsError } =
+    await supabase
+      .from("gallery_sessions")
+      .select("id")
+      .eq("template_name", normalizedThemeName);
+
+  if (legacySessionsError) {
+    throw new Error(
+      `Unable to load legacy theme sessions: ${legacySessionsError.message}`,
+    );
+  }
+
+  const sessionRows = [
+    ...((themeSessions ?? []) as ThemeGallerySessionRow[]),
+    ...((legacyTemplateSessions ?? []) as ThemeGallerySessionRow[]),
+  ];
   const sessionIds = new Set(sessionRows.map((session) => session.id));
   if (sessionIds.size === 0) {
     return {
