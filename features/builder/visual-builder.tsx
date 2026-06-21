@@ -51,6 +51,7 @@ import {
   Save,
   Scissors,
   SendToBack,
+  Share2,
   Smartphone,
   Trash2,
   Type,
@@ -488,7 +489,7 @@ function NodeRenderer({
 
     return (
       <div
-        className="flex h-full w-full flex-col items-center justify-between border border-zinc-300 p-3"
+        className="relative flex h-full w-full flex-col items-center justify-between overflow-visible border border-zinc-300 p-3"
         style={{
           borderRadius: readNumber(node.props.radius, 12),
           backgroundColor: qrBgColor,
@@ -520,13 +521,14 @@ function NodeRenderer({
         )}
         {showShareButton && (
           <div
-            className="mt-2 flex min-h-8 w-full items-center justify-center rounded-full px-3 text-center text-[11px] font-bold"
+            className="absolute -right-2 -top-2 flex size-8 items-center justify-center rounded-full border border-white/80 shadow-lg"
             style={{
               backgroundColor: shareButtonBackground,
               color: shareButtonColor,
             }}
+            title={shareButtonLabel}
           >
-            <span className="truncate">{shareButtonLabel}</span>
+            <Share2 className="size-3.5" aria-hidden="true" />
           </div>
         )}
       </div>
@@ -992,6 +994,46 @@ function NodeRenderer({
     );
   }
 
+  if (node.type === "preview-media-toggle") {
+    const photoLabel = readString(node.props.photoLabel, "Photo");
+    const gifLabel = readString(node.props.gifLabel, "GIF");
+    const livePhotoLabel = readString(node.props.livePhotoLabel, "Live");
+    const activeMode = readString(node.props.defaultMode, "photo");
+    const items = [
+      { value: "photo", label: photoLabel, icon: ImageIcon },
+      { value: "gif", label: gifLabel, icon: Film },
+      { value: "livePhoto", label: livePhotoLabel, icon: Camera },
+    ];
+
+    return (
+      <div
+        className="flex h-full w-full items-center gap-1 overflow-hidden rounded-full border border-white/55 bg-white/35 p-1 shadow-[0_12px_35px_rgba(15,23,42,0.16)] backdrop-blur-xl"
+        style={{
+          fontFamily: "'Manrope', 'Outfit', 'Inter', sans-serif",
+        }}
+      >
+        {items.map((item) => {
+          const Icon = item.icon;
+          const active = activeMode === item.value;
+          return (
+            <div
+              key={item.value}
+              className={cn(
+                "flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full border px-2 text-[11px] font-bold transition-colors",
+                active
+                  ? "border-white/70 bg-white/65 text-zinc-950 shadow-sm"
+                  : "border-transparent bg-white/0 text-zinc-700/80",
+              )}
+            >
+              <Icon className="size-3.5 shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div
       className="h-full w-full overflow-hidden"
@@ -1044,6 +1086,7 @@ function SortableLayer({ node }: { node: BuilderNode }) {
     qr: "bg-amber-100 text-amber-700",
     image: "bg-emerald-100 text-emerald-700",
     "frame-preview": "bg-emerald-100 text-emerald-700",
+    "preview-media-toggle": "bg-sky-100 text-sky-700",
     "receipt-preview": "bg-violet-100 text-violet-700",
     "template-list": "bg-orange-100 text-orange-700",
     "template-preview": "bg-orange-50 text-orange-600",
@@ -2185,7 +2228,7 @@ function PropertiesPanel({
                     Show Share Button
                   </span>
                   <span className="block text-[10px] text-zinc-400">
-                    Display a share button below the QR code.
+                    Display a small share icon on the QR corner.
                   </span>
                 </div>
                 <Switch

@@ -454,6 +454,26 @@ const initialNodes: BuilderNode[] = [
     props: { src: "", alt: "Preview Frame", radius: 8 },
   },
   {
+    id: "pv-media-toggle",
+    type: "preview-media-toggle",
+    page: "preview",
+    x: 244,
+    y: 72,
+    width: 240,
+    height: 48,
+    rotation: 0,
+    opacity: 1,
+    locked: false,
+    visible: true,
+    zIndex: 12,
+    props: {
+      defaultMode: "photo",
+      photoLabel: "Photo",
+      gifLabel: "GIF",
+      livePhotoLabel: "Live",
+    },
+  },
+  {
     id: "pv-scan-label",
     type: "text",
     page: "preview",
@@ -838,6 +858,15 @@ function defaultProps(type: BuilderNode["type"]) {
     };
   }
 
+  if (type === "preview-media-toggle") {
+    return {
+      defaultMode: "photo",
+      photoLabel: "Photo",
+      gifLabel: "GIF",
+      livePhotoLabel: "Live",
+    };
+  }
+
   if (type === "camera-view") {
     return { label: "Camera" };
   }
@@ -1065,6 +1094,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
           ? 220
           : type === "return-countdown"
             ? 320
+            : type === "preview-media-toggle"
+              ? 240
             : type === "qr-link"
               ? 320
               : 140;
@@ -1074,6 +1105,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
           ? 54
           : type === "return-countdown"
             ? 72
+            : type === "preview-media-toggle"
+              ? 48
             : type === "qr-link"
               ? 48
               : 140;

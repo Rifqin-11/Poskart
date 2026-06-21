@@ -16,6 +16,7 @@ export type BuilderComponentType =
   | "photo-result" // Captured photo result slot on camera page
   | "receipt-preview"
   | "frame-preview"
+  | "preview-media-toggle"
   | "template-list" // Grid of frame templates on the /template picker page
   | "template-preview" // Large single-template preview panel
   | "social-handle"

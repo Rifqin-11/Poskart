@@ -76,6 +76,7 @@ function MiniNode({
     "receipt-preview",
     "template-list",
     "template-preview",
+    "preview-media-toggle",
     "qr",
     "qr-placeholder",
   ].includes(node.type);

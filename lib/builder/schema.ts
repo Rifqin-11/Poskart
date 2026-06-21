@@ -29,6 +29,7 @@ const overlaySchemaComponentTypes = new Set<BuilderComponentType>([
   "photo-result",
   "receipt-preview",
   "frame-preview",
+  "preview-media-toggle",
   "template-list",
   "template-preview",
   "return-countdown",
