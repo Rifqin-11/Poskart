@@ -474,6 +474,16 @@ function NodeRenderer({
       "#27272a",
     );
     const showQrLink = node.props.showQrLink !== false;
+    const showShareButton = node.props.showShareButton === true;
+    const shareButtonLabel = readString(node.props.shareButtonLabel, "Share");
+    const shareButtonBackground = readString(
+      node.props.shareButtonBackground,
+      "#18181b",
+    );
+    const shareButtonColor = readString(
+      node.props.shareButtonColor,
+      "#ffffff",
+    );
     const sampleUrl = "https://poskart.my.id/s/MQ6V8EJW-4TSQZ";
 
     return (
@@ -506,6 +516,17 @@ function NodeRenderer({
             style={{ color: qrTextColor }}
           >
             {sampleUrl}
+          </div>
+        )}
+        {showShareButton && (
+          <div
+            className="mt-2 flex min-h-8 w-full items-center justify-center rounded-full px-3 text-center text-[11px] font-bold"
+            style={{
+              backgroundColor: shareButtonBackground,
+              color: shareButtonColor,
+            }}
+          >
+            <span className="truncate">{shareButtonLabel}</span>
           </div>
         )}
       </div>
@@ -2153,6 +2174,24 @@ function PropertiesPanel({
                   checked={selectedNode.props.showQrLink !== false}
                   onCheckedChange={(v) =>
                     updateNodeProps(selectedNode.id, { showQrLink: v })
+                  }
+                />
+              </label>
+            )}
+            {selectedNode.type === "qr" && (
+              <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-100 bg-zinc-50 p-2.5">
+                <div>
+                  <span className="block text-xs font-medium text-zinc-700">
+                    Show Share Button
+                  </span>
+                  <span className="block text-[10px] text-zinc-400">
+                    Display a share button below the QR code.
+                  </span>
+                </div>
+                <Switch
+                  checked={selectedNode.props.showShareButton === true}
+                  onCheckedChange={(v) =>
+                    updateNodeProps(selectedNode.id, { showShareButton: v })
                   }
                 />
               </label>

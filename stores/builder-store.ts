@@ -487,7 +487,15 @@ const initialNodes: BuilderNode[] = [
     locked: false,
     visible: true,
     zIndex: 10,
-    props: { label: "Download", semanticRole: "preview.qr_download" },
+    props: {
+      label: "Download",
+      semanticRole: "preview.qr_download",
+      showQrLink: true,
+      showShareButton: false,
+      shareButtonLabel: "Share",
+      shareButtonBackground: "#18181b",
+      shareButtonColor: "#ffffff",
+    },
   },
   {
     id: "pv-url",
@@ -816,6 +824,18 @@ function defaultProps(type: BuilderNode["type"]) {
 
   if (type === "qr-placeholder") {
     return { label: "QRIS" };
+  }
+
+  if (type === "qr") {
+    return {
+      label: "Download",
+      semanticRole: "preview.qr_download",
+      showQrLink: true,
+      showShareButton: false,
+      shareButtonLabel: "Share",
+      shareButtonBackground: "#18181b",
+      shareButtonColor: "#ffffff",
+    };
   }
 
   if (type === "camera-view") {
