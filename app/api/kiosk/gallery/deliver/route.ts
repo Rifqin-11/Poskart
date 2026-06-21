@@ -19,7 +19,7 @@ type DeliverBody = {
   };
 };
 
-const MAX_EMAIL_ATTACHMENT_BYTES = 18 * 1024 * 1024;
+const MAX_EMAIL_ATTACHMENT_BYTES = 4 * 1024 * 1024;
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -39,10 +39,33 @@ function safeAttachmentFilename(value: string) {
   return sanitized || "poskart-framed-photo.png";
 }
 
+function attachmentExtension(content: Buffer) {
+  const isJpeg =
+    content.length >= 3 &&
+    content[0] === 0xff &&
+    content[1] === 0xd8 &&
+    content[2] === 0xff;
+  if (isJpeg) return "jpg";
+
+  const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  const isPng =
+    content.length >= pngSignature.length &&
+    pngSignature.every((byte, index) => content[index] === byte);
+  if (isPng) return "png";
+
+  return null;
+}
+
 async function readDeliverBody(request: Request): Promise<DeliverBody> {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("multipart/form-data")) {
-    return (await request.json()) as DeliverBody;
+    const body = (await request.json()) as DeliverBody;
+    return {
+      deviceId: body.deviceId,
+      sessionId: body.sessionId,
+      email: body.email,
+      phone: body.phone,
+    };
   }
 
   const form = await request.formData();
@@ -55,13 +78,6 @@ async function readDeliverBody(request: Request): Promise<DeliverBody> {
 
   const framedPhoto = form.get("framedPhoto");
   if (framedPhoto instanceof File && framedPhoto.size > 0) {
-    if (!framedPhoto.type.startsWith("image/")) {
-      throw new KioskApiError(
-        "Lampiran foto harus berupa file gambar.",
-        400,
-        "KIOSK_GALLERY_DELIVERY_ATTACHMENT_INVALID",
-      );
-    }
     if (framedPhoto.size > MAX_EMAIL_ATTACHMENT_BYTES) {
       throw new KioskApiError(
         "File foto terlalu besar untuk dikirim via email.",
@@ -70,13 +86,21 @@ async function readDeliverBody(request: Request): Promise<DeliverBody> {
       );
     }
 
+    const content = Buffer.from(await framedPhoto.arrayBuffer());
+    const extension = attachmentExtension(content);
+    if (!extension) {
+      throw new KioskApiError(
+        "Lampiran foto harus berupa file JPEG atau PNG.",
+        400,
+        "KIOSK_GALLERY_DELIVERY_ATTACHMENT_INVALID",
+      );
+    }
+
     body.emailAttachment = {
       filename: safeAttachmentFilename(
-        framedPhoto.name || `${body.sessionId || "poskart"}-framed-photo.png`,
+        `${body.sessionId || "poskart"}-framed-photo.${extension}`,
       ),
-      contentBase64: Buffer.from(await framedPhoto.arrayBuffer()).toString(
-        "base64",
-      ),
+      contentBase64: content.toString("base64"),
     };
   }
 

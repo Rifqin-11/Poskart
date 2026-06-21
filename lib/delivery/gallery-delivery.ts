@@ -83,9 +83,10 @@ async function sendEmail(input: DeliveryInput): Promise<ChannelResult> {
       to: [to],
       subject: `Softfile foto ${sentAt}`,
       text:
-        `Halo kak, ini file fotonya yaa. Terima kasih sudah menunggu.\n\n` +
-        `Terima kasih sudah foto di POSKART. Semoga senang dengan hasilnya. ` +
-        `Jika ada kritik dan saran, boleh banget disampaikan ke tim kami.\n\n` +
+        `Halo Kak, softfile foto Anda telah siap untuk diunduh.\n\n` +
+        `Terima kasih telah mempercayakan sesi foto Anda kepada POSKART. ` +
+        `Kami harap hasil fotonya sesuai dengan harapan. Apabila terdapat ` +
+        `masukan, saran, atau kendala, silakan hubungi tim kami.\n\n` +
         `${sentAt}\n\n` +
         `Download softfile:\n${input.shareUrl}\n\n` +
         `Follow @poskart.id for more updates`,
@@ -97,22 +98,22 @@ async function sendEmail(input: DeliveryInput): Promise<ChannelResult> {
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <title>Softfile Foto POSKART</title>
           </head>
-          <body style="margin:0;padding:0;background:#f5f1e8;font-family:Arial,Helvetica,sans-serif;color:#18181b;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f5f1e8;padding:32px 16px;">
+          <body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#18181b;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#ffffff;padding:32px 16px;">
               <tr>
                 <td align="center">
-                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fffaf2;border-radius:18px;overflow:hidden;border:1px solid #eadfce;">
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
                     <tr>
                       <td style="background:#18181b;padding:26px 28px;color:#ffffff;">
                         <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#f7c7bd;font-weight:700;">POSKART</div>
-                        <h1 style="margin:8px 0 0;font-size:28px;line-height:1.2;font-weight:800;">Softfile fotonya sudah siap</h1>
+                        <h1 style="margin:8px 0 0;font-size:28px;line-height:1.2;font-weight:800;">Softfile Poskart Photobooth</h1>
                       </td>
                     </tr>
                     <tr>
                       <td style="padding:30px 28px 10px;">
-                        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;">Halo kak, ini file fotonya yaa. Terima kasih sudah menunggu.</p>
-                        <p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:#52525b;">Terima kasih sudah foto di POSKART. Semoga senang dengan hasilnya. Jika ada kritik dan saran, boleh banget disampaikan ke tim kami.</p>
-                        <p style="margin:0 0 22px;font-size:13px;line-height:1.6;color:#8a6a4a;">${escapeHtml(sentAt)}</p>
+                        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;">Halo Kak, softfile foto Anda telah siap untuk diunduh.</p>
+                        <p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:#52525b;">Terima kasih telah mempercayakan sesi foto Anda kepada POSKART. Kami harap hasil fotonya sesuai dengan harapan. Apabila terdapat masukan, saran, atau kendala, silakan hubungi tim kami.</p>
+                        <p style="margin:0 0 22px;font-size:13px;line-height:1.6;color:#71717a;">${escapeHtml(sentAt)}</p>
                         <table role="presentation" cellspacing="0" cellpadding="0" style="margin:28px 0;">
                           <tr>
                             <td style="background:#c4121a;border-radius:999px;">
@@ -121,7 +122,7 @@ async function sendEmail(input: DeliveryInput): Promise<ChannelResult> {
                           </tr>
                         </table>
                         <p style="margin:0 0 8px;font-size:13px;color:#71717a;">Jika tombol tidak bisa dibuka, salin link berikut:</p>
-                        <p style="margin:0;padding:12px 14px;background:#f4efe6;border-radius:10px;border:1px solid #eadfce;font-size:12px;line-height:1.5;word-break:break-all;color:#3f3f46;">${escapeHtml(input.shareUrl)}</p>
+                        <p style="margin:0;padding:12px 14px;background:#ffffff;border-radius:10px;border:1px solid #e5e7eb;font-size:12px;line-height:1.5;word-break:break-all;color:#3f3f46;">${escapeHtml(input.shareUrl)}</p>
                       </td>
                     </tr>
                     <tr>
@@ -130,8 +131,8 @@ async function sendEmail(input: DeliveryInput): Promise<ChannelResult> {
                       </td>
                     </tr>
                     <tr>
-                      <td style="padding:18px 28px;background:#fff3ef;border-top:1px solid #eadfce;">
-                        <p style="margin:0 0 6px;font-size:12px;line-height:1.5;color:#18181b;text-align:center;font-weight:700;">Follow @poskart.id for more updates</p>
+                      <td style="padding:18px 28px;background:#ffffff;border-top:1px solid #e5e7eb;">
+                        <p style="margin:0 0 6px;font-size:12px;line-height:1.5;color:#18181b;text-align:center;font-weight:700;">Follow <a href="https://www.instagram.com/poskart.id" target="_blank" rel="noopener noreferrer" style="color:#18181b;text-decoration:none;font-weight:700;">@poskart.id</a> for more updates</p>
                         <p style="margin:0;font-size:11px;line-height:1.5;color:#71717a;text-align:center;">Email ini dikirim otomatis oleh POSKART.</p>
                       </td>
                     </tr>
