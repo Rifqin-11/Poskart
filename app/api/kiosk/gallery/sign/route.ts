@@ -31,7 +31,9 @@ export async function POST(request: Request) {
     const sessionId = body.sessionId?.trim() ?? "";
     const files = (body.files ?? []).filter(
       (file) =>
-        (file.kind === "raw" || file.kind === "framed") &&
+        (file.kind === "raw" ||
+          file.kind === "framed" ||
+          file.kind === "live_source") &&
         Number.isInteger(file.photoIndex) &&
         file.photoIndex >= 0,
     );

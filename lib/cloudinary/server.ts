@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { KioskApiError } from "@/lib/kiosk/server";
 
 export type CloudinaryUploadDescriptor = {
-  kind: "raw" | "framed";
+  kind: "raw" | "framed" | "live_source";
   photoIndex: number;
 };
 

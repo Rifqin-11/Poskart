@@ -69,6 +69,11 @@ export default async function SharedGalleryPage({
     .eq("session_id", sessionId)
     .order("kind", { ascending: false })
     .order("photo_index", { ascending: true });
+  const { data: livePhotoJob } = await supabase
+    .from("live_photo_render_jobs")
+    .select("status")
+    .eq("session_id", sessionId)
+    .maybeSingle();
   const framedLivePhoto = photos?.find(
     (photo) => photo.kind === "framed" && photo.photo_index === 1,
   );
@@ -115,7 +120,12 @@ export default async function SharedGalleryPage({
   const hasAnyRaw = raw.length > 0 || Boolean(gif);
 
   const waitingForAssets = photoCount === 0;
-  const shouldRefreshWhileProcessing = !selectedPhoto && waitingForAssets;
+  const livePhotoProcessing =
+    !framedLivePhoto &&
+    (livePhotoJob?.status === "queued" ||
+      livePhotoJob?.status === "processing");
+  const shouldRefreshWhileProcessing =
+    !selectedPhoto && (waitingForAssets || livePhotoProcessing);
 
   return (
     <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10">
@@ -206,6 +216,18 @@ export default async function SharedGalleryPage({
                     Download Live Photo
                   </a>
                 </div>
+              </div>
+            )}
+
+            {livePhotoProcessing && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left">
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-800">
+                  Live Photo sedang diproses
+                </p>
+                <p className="mt-2 text-sm leading-6 text-amber-900/80">
+                  Foto berbingkai sudah bisa diunduh. Live Photo sedang dibuat
+                  oleh server dan halaman ini akan memperbarui otomatis.
+                </p>
               </div>
             )}
 
