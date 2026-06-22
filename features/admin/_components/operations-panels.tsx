@@ -4319,6 +4319,15 @@ const DEFAULT_SETTINGS_FORM: SettingsForm = {
   maintenance_mode: false,
 };
 
+function expiryHoursToDays(hours: number) {
+  return Math.max(1, Math.round(hours / 24));
+}
+
+function expiryDaysToHours(days: number) {
+  if (!Number.isFinite(days)) return 168;
+  return Math.max(1, Math.min(30, Math.round(days))) * 24;
+}
+
 export function SettingsPanel() {
   const { data: config } = useAppConfig();
   const saveConfig = useSaveAppConfig();
@@ -4518,17 +4527,19 @@ export function SettingsPanel() {
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-4">
               <label className="block text-xs font-medium text-zinc-600">
-                Share link expiry (hours)
+                Share link expiry (days)
                 <Input
                   className="mt-1"
                   type="number"
                   min={1}
-                  max={720}
-                  value={form.download_expiry_hours}
+                  max={30}
+                  value={expiryHoursToDays(form.download_expiry_hours)}
                   onChange={(e) =>
                     setForm((f) => ({
                       ...f,
-                      download_expiry_hours: Number(e.target.value),
+                      download_expiry_hours: expiryDaysToHours(
+                        Number(e.target.value),
+                      ),
                     }))
                   }
                 />
