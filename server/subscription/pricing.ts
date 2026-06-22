@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { pricingPlans, type PricingPlan } from "@/lib/constants/business";
+import {
+  PRICING_PLAN_ORDER,
+  pricingPlans,
+  type PricingPlan,
+} from "@/lib/constants/business";
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 
@@ -14,8 +18,6 @@ type SubscriptionPlanRow = {
   is_public: boolean;
 };
 
-const PLAN_ORDER = ["monthly", "quarterly", "semiannual", "yearly", "business"];
-
 export async function getPublicSubscriptionPricingPlans(
   supabaseClient?: SupabaseClient,
 ): Promise<PricingPlan[]> {
@@ -25,23 +27,21 @@ export async function getPublicSubscriptionPricingPlans(
     .select(
       "id,name,duration_months,base_price,included_devices,additional_device_price_monthly,is_public",
     )
-    .in("id", PLAN_ORDER)
+    .in("id", PRICING_PLAN_ORDER)
     .eq("is_public", true)
     .order("duration_months", { ascending: true });
-
-  const staticBusinessPlan = pricingPlans.find((p) => p.id === "business")!;
 
   if (error || !data?.length) {
     return pricingPlans;
   }
 
   const mapped = (data as SubscriptionPlanRow[])
-    .sort((left, right) => PLAN_ORDER.indexOf(left.id) - PLAN_ORDER.indexOf(right.id))
+    .sort((left, right) => {
+      return (
+        PRICING_PLAN_ORDER.indexOf(left.id) - PRICING_PLAN_ORDER.indexOf(right.id)
+      );
+    })
     .map(mapDbPlanToPricingPlan);
-
-  if (!mapped.some((p) => p.id === "business")) {
-    mapped.push(staticBusinessPlan);
-  }
 
   return mapped;
 }
@@ -57,18 +57,21 @@ function mapDbPlanToPricingPlan(row: SubscriptionPlanRow): PricingPlan {
   return {
     id: row.id,
     name: row.name,
-    price: row.id === "business" ? "Contact sales" : formatCompactCurrency(row.base_price),
+    tierId: fallback?.tierId,
+    audience: fallback?.audience,
+    price: formatCurrency(row.base_price),
     amount: row.base_price,
+    compareAtAmount: fallback?.compareAtAmount,
     durationMonths: row.duration_months,
     includedDevices: row.included_devices,
     additionalDevicePriceMonthly: row.additional_device_price_monthly,
-    period: row.id === "business" ? "" : periodLabel(row.duration_months),
+    period: fallback?.period ?? periodLabel(row.duration_months),
     duration: `${durationLabel} access`,
     description:
       fallback?.description ??
       `Subscription package for ${durationLabel} POSKART access.`,
     cta: fallback?.cta ?? `Subscribe ${row.name}`,
-    highlighted: row.id === "yearly",
+    highlighted: fallback?.highlighted ?? row.included_devices === 3,
     features: fallback?.features ?? [
       "POSKART dashboard",
       "Visual layout builder",
@@ -82,15 +85,7 @@ function mapDbPlanToPricingPlan(row: SubscriptionPlanRow): PricingPlan {
 }
 
 function periodLabel(durationMonths: number) {
-  if (durationMonths === 1) return "/month";
-  if (durationMonths === 12) return "/year";
-  return `/${durationMonths} months`;
-}
-
-function formatCompactCurrency(amount: number) {
-  if (amount >= 1000 && amount % 1000 === 0) {
-    return `Rp ${amount / 1000}K`;
-  }
-
-  return formatCurrency(amount);
+  if (durationMonths === 1) return "/bulan";
+  if (durationMonths === 12) return "/tahun";
+  return `/${durationMonths} bulan`;
 }

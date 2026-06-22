@@ -1,10 +1,16 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { motion, useInView, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
+import { motion, useInView, useScroll, useMotionValueEvent } from "framer-motion";
 import {
+  BarChart3,
   Camera,
+  CheckCircle2,
+  ChevronDown,
+  CloudUpload,
   CreditCard,
+  GalleryHorizontal,
+  Headphones,
   MonitorSmartphone,
   Palette,
   Printer,
@@ -13,6 +19,10 @@ import {
   QrCode,
   ArrowRight,
   ImageIcon,
+  LockKeyhole,
+  ReceiptText,
+  Smartphone,
+  Timer,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -110,6 +120,155 @@ const operationHighlights = [
   { title: "Booth online", value: "3", icon: MonitorSmartphone },
   { title: "QRIS success", value: "98%", icon: QrCode },
   { title: "Print queue", value: "Ready", icon: Printer },
+];
+
+const workflowSteps = [
+  {
+    title: "Atur event",
+    description:
+      "Buat template, tema, paket harga, voucher, dan aturan print dari dashboard.",
+    icon: Palette,
+  },
+  {
+    title: "Jalankan booth",
+    description:
+      "Tablet Android menampilkan flow customer: pilih template, ambil foto, preview, dan bayar.",
+    icon: Smartphone,
+  },
+  {
+    title: "Terima pembayaran",
+    description:
+      "Gunakan QRIS, voucher, atau POS kasir manual sesuai kebutuhan event.",
+    icon: CreditCard,
+  },
+  {
+    title: "Kirim hasil",
+    description:
+      "Foto, GIF, dan Live Photo tersimpan ke gallery cloud dengan link download yang bisa diatur.",
+    icon: CloudUpload,
+  },
+];
+
+const featureGroups = [
+  {
+    title: "Kiosk & Capture",
+    eyebrow: "Untuk pengalaman customer",
+    icon: Camera,
+    accent: "text-rose-500 bg-rose-50",
+    items: [
+      "Android kiosk app",
+      "Camera countdown & preview",
+      "Foto, GIF, dan Live Photo",
+      "Custom landing sampai thank-you screen",
+      "Landscape dan tablet-friendly layout",
+    ],
+  },
+  {
+    title: "Template & Branding",
+    eyebrow: "Untuk event yang beda-beda",
+    icon: Palette,
+    accent: "text-orange-500 bg-orange-50",
+    items: [
+      "Visual layout builder",
+      "Frame template manager",
+      "Theme, logo, warna, dan asset event",
+      "Publish layout ke booth",
+      "Preview template sebelum dipakai",
+    ],
+  },
+  {
+    title: "Payment & Voucher",
+    eyebrow: "Untuk monetisasi booth",
+    icon: QrCode,
+    accent: "text-emerald-600 bg-emerald-50",
+    items: [
+      "QRIS self-payment",
+      "Status bayar real-time",
+      "Voucher event dan voucher gratis",
+      "POS cash/manual payment",
+      "Log transaksi dan retry payment",
+    ],
+  },
+  {
+    title: "Print & Operations",
+    eyebrow: "Untuk operator lapangan",
+    icon: Printer,
+    accent: "text-amber-600 bg-amber-50",
+    items: [
+      "Paket single/double/triple print",
+      "Print queue dan retry print",
+      "Device monitor",
+      "Session timer dan auto-return",
+      "Dashboard kasir harian",
+    ],
+  },
+  {
+    title: "Cloud Gallery",
+    eyebrow: "Untuk softfile customer",
+    icon: GalleryHorizontal,
+    accent: "text-sky-600 bg-sky-50",
+    items: [
+      "Upload Cloudinary otomatis",
+      "QR/link download customer",
+      "Email dan WhatsApp delivery",
+      "Masa aktif link bisa diatur",
+      "Auto cleanup file lama",
+    ],
+  },
+  {
+    title: "Admin & Team",
+    eyebrow: "Untuk bisnis yang tumbuh",
+    icon: ShieldCheck,
+    accent: "text-violet-600 bg-violet-50",
+    items: [
+      "Organization workspace",
+      "Subscription dan device limit",
+      "Super admin control",
+      "Analytics transaksi",
+      "Settings lock dan konfigurasi cloud",
+    ],
+  },
+];
+
+const capabilityRows = [
+  ["Visual builder", "Layout screen + frame", "Web admin"],
+  ["Payment", "QRIS, voucher, cash/POS", "Duitku"],
+  ["Media output", "Foto, GIF, Live Photo", "Cloudinary"],
+  ["Delivery", "Gallery link, email, WhatsApp", "Configurable"],
+  ["Operations", "Device monitor, print queue, transactions", "Realtime sync"],
+  ["Retention", "Link expiry + auto cleanup file", "Cron ready"],
+];
+
+const techSpecs = [
+  { label: "Kiosk", value: "Flutter Android", icon: Smartphone },
+  { label: "Dashboard", value: "Next.js admin web", icon: MonitorSmartphone },
+  { label: "Payment", value: "QRIS + voucher", icon: ReceiptText },
+  { label: "Storage", value: "Cloudinary gallery", icon: CloudUpload },
+  { label: "Database", value: "Supabase", icon: BarChart3 },
+  { label: "Support", value: "WhatsApp + email", icon: Headphones },
+];
+
+const faqs = [
+  {
+    question: "Apakah POSKART bisa dipakai tanpa operator?",
+    answer:
+      "Bisa untuk flow self-service seperti pilih paket, QRIS, foto, preview, dan link gallery. Operator tetap bisa memantau dari dashboard jika event membutuhkan kontrol tambahan.",
+  },
+  {
+    question: "Apakah hasil foto customer langsung tersedia?",
+    answer:
+      "Foto dan softfile diunggah ke cloud gallery. Customer bisa membuka QR/link download, sementara GIF dan Live Photo dapat diproses di background.",
+  },
+  {
+    question: "Apakah bisa pakai voucher selain QRIS?",
+    answer:
+      "Bisa. POSKART mendukung voucher event, voucher gratis, dan transaksi POS manual agar booth tetap fleksibel untuk CFD, wedding, brand activation, atau internal event.",
+  },
+  {
+    question: "Apakah file lama bisa dihapus otomatis?",
+    answer:
+      "Bisa. Admin dapat mengatur masa aktif link dan retention Cloudinary dari Settings, lalu cleanup dijalankan melalui cron.",
+  },
 ];
 
 /* ── Animated wrapper ─────────────────────────────────────────────── */
@@ -522,6 +681,252 @@ export function BentoFeaturesSection() {
             })}
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Section: Full Feature List ────────────────────────────────────── */
+
+export function CompleteFeaturesSection() {
+  return (
+    <section id="features" className="relative bg-white">
+      <div className="section-divider" />
+
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <AnimatedSection>
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-orange-600">
+              <span className="size-1.5 rounded-full bg-orange-500" />
+              Fitur POSKART
+            </p>
+            <h2 className="mt-4 text-balance text-3xl font-bold tracking-[-0.04em] text-zinc-950 sm:text-4xl lg:text-5xl">
+              Bukan cuma aplikasi foto, tapi{" "}
+              <span className="text-gradient-warm">operating system booth.</span>
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-zinc-500">
+              Dari inspirasi dashboard photobooth modern sampai kebutuhan
+              operasional lapangan, POSKART menyatukan desain, payment, print,
+              gallery, dan monitoring dalam satu workflow.
+            </p>
+          </div>
+        </AnimatedSection>
+
+        <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {featureGroups.map((group, index) => {
+            const Icon = group.icon;
+            return (
+              <AnimatedSection key={group.title} delay={index * 0.04}>
+                <div className="group h-full rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-colors hover:bg-zinc-50">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-zinc-400">
+                        {group.eyebrow}
+                      </p>
+                      <h3 className="mt-2 text-lg font-semibold tracking-tight text-zinc-950">
+                        {group.title}
+                      </h3>
+                    </div>
+                    <span
+                      className={cn(
+                        "grid size-11 shrink-0 place-items-center rounded-xl",
+                        group.accent,
+                      )}
+                    >
+                      <Icon className="size-5" />
+                    </span>
+                  </div>
+
+                  <ul className="mt-6 space-y-3">
+                    {group.items.map((item) => (
+                      <li
+                        key={item}
+                        className="flex items-start gap-3 text-sm leading-6 text-zinc-600"
+                      >
+                        <CheckCircle2 className="mt-1 size-4 shrink-0 text-emerald-500" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </AnimatedSection>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Section: Workflow & Capabilities ──────────────────────────────── */
+
+export function WorkflowSection() {
+  return (
+    <section className="relative bg-zinc-50/50">
+      <div className="section-divider" />
+
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
+          <AnimatedSection>
+            <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
+              <span className="size-1.5 rounded-full bg-zinc-400" />
+              Cara kerja
+            </p>
+            <h2 className="mt-4 max-w-xl text-balance text-3xl font-bold tracking-[-0.04em] text-zinc-950 sm:text-4xl">
+              Mulai dari setup event sampai customer menerima softfile.
+            </h2>
+            <p className="mt-4 max-w-lg text-sm leading-7 text-zinc-500">
+              POSKART dibuat agar operator tidak perlu berpindah-pindah tools:
+              konfigurasi event, transaksi, print, dan gallery berjalan dari
+              satu sistem yang sama.
+            </p>
+
+            <div className="mt-8 grid gap-3">
+              {workflowSteps.map((step, index) => {
+                const Icon = step.icon;
+                return (
+                  <div
+                    key={step.title}
+                    className="flex gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"
+                  >
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-zinc-950 text-white">
+                      <Icon className="size-5" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-mono text-zinc-400">
+                        0{index + 1}
+                      </p>
+                      <h3 className="mt-1 text-sm font-semibold text-zinc-950">
+                        {step.title}
+                      </h3>
+                      <p className="mt-1 text-xs leading-5 text-zinc-500">
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </AnimatedSection>
+
+          <AnimatedSection delay={0.12}>
+            <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
+              <div className="border-b border-zinc-100 p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                  Capability map
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+                  Yang sudah terhubung di POSKART.
+                </h3>
+              </div>
+
+              <div className="divide-y divide-zinc-100">
+                {capabilityRows.map(([area, capability, runtime]) => (
+                  <div
+                    key={area}
+                    className="grid gap-2 p-5 text-sm sm:grid-cols-[0.65fr_1fr_0.75fr] sm:items-center"
+                  >
+                    <p className="font-semibold text-zinc-950">{area}</p>
+                    <p className="text-zinc-500">{capability}</p>
+                    <p className="font-mono text-xs text-zinc-400">{runtime}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              {[
+                { value: "4", label: "core flow customer", icon: Layers3 },
+                { value: "3", label: "metode payment", icon: CreditCard },
+                { value: "14d", label: "default file retention", icon: Timer },
+              ].map(({ value, label, icon: Icon }) => (
+                <div
+                  key={label}
+                  className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                >
+                  <Icon className="mb-4 size-5 text-orange-500" />
+                  <p className="text-2xl font-bold tracking-tight text-zinc-950">
+                    {value}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">
+                    {label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </AnimatedSection>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Section: Specs & FAQ ──────────────────────────────────────────── */
+
+export function SpecsFaqSection() {
+  return (
+    <section className="relative bg-white">
+      <div className="section-divider" />
+
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-28">
+        <AnimatedSection>
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-sky-600">
+            <span className="size-1.5 rounded-full bg-sky-500" />
+            Detail teknis
+          </p>
+          <h2 className="mt-4 max-w-xl text-balance text-3xl font-bold tracking-[-0.04em] text-zinc-950 sm:text-4xl">
+            Siap untuk booth Android, dashboard cloud, dan event harian.
+          </h2>
+          <p className="mt-4 max-w-lg text-sm leading-7 text-zinc-500">
+            Informasi ini membantu calon pengguna memahami apa yang mereka
+            dapatkan sebelum mencoba POSKART di perangkat booth.
+          </p>
+
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            {techSpecs.map(({ label, value, icon: Icon }) => (
+              <div
+                key={label}
+                className="rounded-2xl border border-zinc-200 bg-zinc-50/60 p-5"
+              >
+                <Icon className="mb-4 size-5 text-zinc-500" />
+                <p className="text-xs text-zinc-400">{label}</p>
+                <p className="mt-1 text-sm font-semibold text-zinc-950">
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </AnimatedSection>
+
+        <AnimatedSection delay={0.12}>
+          <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                  FAQ
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+                  Pertanyaan umum.
+                </h3>
+              </div>
+              <LockKeyhole className="size-5 text-zinc-400" />
+            </div>
+
+            <div className="divide-y divide-zinc-100">
+              {faqs.map((faq) => (
+                <details key={faq.question} className="group py-4">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-zinc-950">
+                    {faq.question}
+                    <ChevronDown className="size-4 shrink-0 text-zinc-400 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <p className="mt-3 text-sm leading-7 text-zinc-500">
+                    {faq.answer}
+                  </p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </AnimatedSection>
       </div>
     </section>
   );

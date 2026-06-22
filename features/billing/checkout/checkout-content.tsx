@@ -51,15 +51,15 @@ export function CheckoutContent({
   duitkuPopScriptUrl?: string;
 }) {
   const searchParams = useSearchParams();
-  const selectedPlanId = searchParams.get("plan") ?? "yearly";
+  const selectedPlanId = searchParams.get("plan") ?? "starter-monthly";
   const successMessage = searchParams.get("success");
   const errorMessage = searchParams.get("error");
   const visiblePlans = plans.length > 0 ? plans : fallbackPricingPlans;
   const plan =
     visiblePlans.find((item) => item.id === selectedPlanId) ??
-    visiblePlans.find((item) => item.id === "yearly") ??
+    visiblePlans.find((item) => item.id === "starter-monthly") ??
     visiblePlans[0] ??
-    fallbackPricingPlans[3];
+    fallbackPricingPlans[0];
   const [deviceCount, setDeviceCount] = useState<number>(plan.includedDevices);
   const [paymentGateway, setPaymentGateway] = useState<PaymentGateway>(
     gatewayMode === "midtrans" ? "midtrans" : "duitku",
@@ -119,49 +119,6 @@ export function CheckoutContent({
     });
   }
 
-  if (plan.id === "business") {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-lg md:p-12">
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-            POSKART Enterprise Plan
-          </h1>
-          <p className="mt-4 text-sm leading-7 text-zinc-600">
-            Terima kasih atas ketertarikan Anda pada paket Business/Enterprise POSKART. Paket ini dirancang khusus untuk jaringan photobooth berskala besar dengan kebutuhan custom.
-          </p>
-          <div className="mt-6 space-y-3 text-left max-w-md mx-auto">
-            {[
-              "Uncapped devices configuration & deployment",
-              "Custom organization dashboard & multi-tenant permissions",
-              "SLA support 24/7 & priority assistance",
-              "Custom visual builder features & themes development",
-              "Hardware setup & printer diagnostic consultations",
-            ].map((feat) => (
-              <div key={feat} className="flex items-start gap-2.5 text-sm text-zinc-600">
-                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                <span>{feat}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
-            <Link
-              href={`mailto:${businessProfile.salesEmail}?subject=POSKART Enterprise Subscription Request`}
-              className={buttonVariants({ size: "lg" })}
-            >
-              Contact Sales Team
-            </Link>
-            <Link
-              href="/subscriptions"
-              className={buttonVariants({ variant: "outline", size: "lg" })}
-            >
-              View standard plans
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <form
       onSubmit={handleSubmit}
@@ -219,7 +176,8 @@ export function CheckoutContent({
           <p className="mt-2 text-sm leading-6 text-zinc-500">
             This plan includes {plan.includedDevices} device
             {plan.includedDevices > 1 ? "s" : ""}. Additional devices are
-            charged Rp 50K per device per month.
+            charged {formatCurrency(plan.additionalDevicePriceMonthly)} per
+            device per month.
           </p>
           <label className="mt-5 block max-w-xs text-xs font-medium text-zinc-500">
             Total devices
@@ -461,7 +419,7 @@ export function CheckoutContent({
           <CreditCard className="size-4" />
         </Button>
         <Link
-          href="/organization?subscription=required"
+          href="/subscriptions"
           className={buttonVariants({
             variant: "outline",
             size: "lg",

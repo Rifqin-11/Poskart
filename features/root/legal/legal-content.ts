@@ -134,7 +134,7 @@ export const legalDocuments = [
       {
         title: "3. Subscription dan Pembayaran",
         body: [
-          `Subscription POSKART tersedia dalam pilihan 1 bulan, 3 bulan, 6 bulan, dan 1 tahun untuk 1 device. Device tambahan ditagihkan per device per bulan. ${businessProfile.taxNote}`,
+          `Subscription POSKART tersedia dalam paket Starter, Growth, dan Business dengan pilihan 1 bulan, 3 bulan, 6 bulan, dan 12 bulan. Device tambahan ditagihkan per device per bulan. ${businessProfile.taxNote}`,
           "Pembayaran subscription dilakukan melalui invoice, payment link, transfer, atau metode pembayaran resmi lain yang disediakan POSKART.",
           "Akses layanan dapat dihentikan sementara jika invoice jatuh tempo tidak dibayar sesuai periode yang tercantum pada invoice atau kontrak.",
         ],

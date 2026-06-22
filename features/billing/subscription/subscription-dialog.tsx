@@ -3,6 +3,7 @@
 import { PricingCards } from "@/features/billing/pricing/pricing-cards";
 import { Dialog } from "@/components/ui/dialog";
 import { useSubscriptionPlans } from "@/features/admin/pricing/use-pricing";
+import { pricingPlans as fallbackPricingPlans } from "@/lib/constants/business";
 import { formatCurrency } from "@/lib/utils";
 
 export function SubscriptionDialog({
@@ -21,21 +22,27 @@ export function SubscriptionDialog({
       const deviceLabel =
         plan.includedDevices === 1 ? "1 device" : `${plan.includedDevices} devices`;
       const addOnLabel = `${formatCurrency(plan.additionalDevicePriceMonthly)}/device/month`;
+      const fallback = fallbackPricingPlans.find((item) => item.id === plan.id);
 
       return {
         id: plan.id,
         name: plan.name,
-        price: formatCompactCurrency(plan.basePrice),
+        tierId: fallback?.tierId,
+        audience: fallback?.audience,
+        price: formatCurrency(plan.basePrice),
         amount: plan.basePrice,
+        compareAtAmount: fallback?.compareAtAmount,
         durationMonths: plan.durationMonths,
         includedDevices: plan.includedDevices,
         additionalDevicePriceMonthly: plan.additionalDevicePriceMonthly,
-        period: periodLabel(plan.durationMonths),
+        period: fallback?.period ?? periodLabel(plan.durationMonths),
         duration: `${durationLabel} access`,
-        description: `Paket subscription POSKART untuk ${durationLabel} dengan ${deviceLabel}.`,
-        cta: `Subscribe ${plan.name}`,
-        highlighted: plan.id === "yearly",
-        features: [
+        description:
+          fallback?.description ??
+          `Paket subscription POSKART untuk ${durationLabel} dengan ${deviceLabel}.`,
+        cta: fallback?.cta ?? `Subscribe ${plan.name}`,
+        highlighted: fallback?.highlighted ?? plan.includedDevices === 3,
+        features: fallback?.features ?? [
           "POSKART dashboard",
           "Visual layout builder",
           "Theme and template CMS",
@@ -43,7 +50,11 @@ export function SubscriptionDialog({
           `${deviceLabel} included`,
           `Additional device ${addOnLabel}`,
         ],
-        limits: [`${durationLabel} access`, `${deviceLabel} included`, `Add-on ${addOnLabel}`],
+        limits: fallback?.limits ?? [
+          `${durationLabel} access`,
+          `${deviceLabel} included`,
+          `Add-on ${addOnLabel}`,
+        ],
       };
     });
 
@@ -63,7 +74,7 @@ export function SubscriptionDialog({
         </div>
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
+            {Array.from({ length: 3 }).map((_, index) => (
               <div key={index} className="h-80 animate-pulse rounded-lg border border-zinc-200 bg-zinc-50" />
             ))}
           </div>
@@ -76,15 +87,7 @@ export function SubscriptionDialog({
 }
 
 function periodLabel(durationMonths: number) {
-  if (durationMonths === 1) return "/month";
-  if (durationMonths === 12) return "/year";
-  return `/${durationMonths} months`;
-}
-
-function formatCompactCurrency(amount: number) {
-  if (amount >= 1000 && amount % 1000 === 0) {
-    return `Rp ${amount / 1000}K`;
-  }
-
-  return formatCurrency(amount);
+  if (durationMonths === 1) return "/bulan";
+  if (durationMonths === 12) return "/tahun";
+  return `/${durationMonths} bulan`;
 }

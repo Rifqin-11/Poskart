@@ -72,14 +72,18 @@ export type SubscriptionCheckoutActionResult =
     };
 
 export async function createSubscriptionOrderAction(formData: FormData) {
-  const planId = valueFromForm(formData, "planId") || "yearly";
+  const planId = valueFromForm(formData, "planId") || "starter-monthly";
   const requestedPaymentGateway = normalizePaymentGateway(valueFromForm(formData, "paymentGateway"));
   const supabase = await createClient();
   const plans = await getPublicSubscriptionPricingPlans(supabase);
   const plan = plans.find((item) => item.id === planId);
 
   if (!plan) {
-    redirectWithStatus("yearly", "error", "Selected subscription plan is invalid.");
+    redirectWithStatus(
+      "starter-monthly",
+      "error",
+      "Selected subscription plan is invalid.",
+    );
   }
 
   const { data: authData, error: authError } = await supabase.auth.getUser();

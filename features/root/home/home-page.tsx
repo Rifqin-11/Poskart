@@ -6,7 +6,10 @@ import { HeroSection } from "@/features/root/home/hero-section";
 import { ScrollyFeatures } from "@/features/root/home/scrolly-features";
 import {
   BentoFeaturesSection,
+  CompleteFeaturesSection,
   CTASection,
+  SpecsFaqSection,
+  WorkflowSection,
 } from "@/features/root/home/feature-sections";
 import type { PricingPlan } from "@/lib/constants/business";
 import type { LatestAppRelease } from "@/server/releases/github-release";
@@ -18,7 +21,8 @@ export function HomePage({
   plans: PricingPlan[];
   latestRelease: LatestAppRelease | null;
 }) {
-  const starterPlan = plans.find((plan) => plan.id === "monthly") ?? plans[0];
+  const starterPlan =
+    plans.find((plan) => plan.id === "starter-monthly") ?? plans[0];
 
   const planLabel = starterPlan
     ? `${starterPlan.name} mulai ${starterPlan.price} untuk ${starterPlan.includedDevices} device.`
@@ -55,6 +59,11 @@ export function HomePage({
 
       {/* Bento feature grid */}
       <BentoFeaturesSection />
+
+      {/* Complete feature and workflow details */}
+      <CompleteFeaturesSection />
+      <WorkflowSection />
+      <SpecsFaqSection />
 
       {/* CTA */}
       <CTASection planLabel={planLabel} />

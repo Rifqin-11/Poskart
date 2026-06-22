@@ -13,6 +13,7 @@ import type { Organization } from "@/types/organization";
 import type { ThemePreset, ThemeSchema } from "@/types/theme";
 import type { Transaction } from "@/types/transaction";
 import type { FrameLayout } from "@/types/frame-template";
+import { PRICING_PLAN_ORDER, pricingPlans } from "@/lib/constants/business";
 
 type KpiMetricRow = KpiMetric & { sort_order: number };
 
@@ -1099,7 +1100,7 @@ async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
     .select(
       "id,name,max_devices,duration_months,base_price,included_devices,additional_device_price_monthly,is_public,features",
     )
-    .in("id", ["monthly", "quarterly", "semiannual", "yearly"])
+    .in("id", PRICING_PLAN_ORDER)
     .order("duration_months", { ascending: true });
 
   return assertSupabaseResult(
@@ -1188,15 +1189,7 @@ async function getTenants(): Promise<Organization[]> {
       planMeta?.name ??
       (planId === "free"
         ? "Free"
-        : planId === "monthly"
-          ? "1 Month"
-          : planId === "quarterly"
-            ? "3 Months"
-            : planId === "semiannual"
-              ? "6 Months"
-              : planId === "yearly"
-                ? "1 Year"
-                : planId);
+        : pricingPlans.find((plan) => plan.id === planId)?.name ?? planId);
 
     // Get count value from counts response structure
     const devicesCount = row.devices?.[0]?.count ?? 0;
