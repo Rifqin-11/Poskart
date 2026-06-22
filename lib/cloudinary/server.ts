@@ -7,6 +7,7 @@ import { KioskApiError } from "@/lib/kiosk/server";
 export type CloudinaryUploadDescriptor = {
   kind: "raw" | "framed" | "live_source";
   photoIndex: number;
+  resourceType?: "image" | "video";
 };
 
 function cloudinaryConfig() {
@@ -26,7 +27,10 @@ function cloudinaryConfig() {
 }
 
 function safeSegment(value: string) {
-  return value.trim().replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 96);
+  return value
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "-")
+    .slice(0, 96);
 }
 
 export function createCloudinaryUploadSignatures({
@@ -52,6 +56,7 @@ export function createCloudinaryUploadSignatures({
     uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
     uploads: files.map((file) => {
       const publicId = `${file.kind}-${Math.max(0, file.photoIndex)}`;
+      const resourceType = file.resourceType === "video" ? "video" : "image";
       const parameters = {
         folder,
         public_id: publicId,
@@ -64,6 +69,8 @@ export function createCloudinaryUploadSignatures({
 
       return {
         ...file,
+        resourceType,
+        uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
         ...parameters,
         signature: createHash("sha1")
           .update(`${signaturePayload}${apiSecret}`)
@@ -89,22 +96,27 @@ export async function deleteCloudinaryAssets(publicIds: string[]) {
     formData.append("api_key", apiKey);
     formData.append("signature", signature);
 
-    try {
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`,
-        {
-          method: "POST",
-          body: formData,
+    for (const resourceType of ["image", "video"] as const) {
+      try {
+        const res = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/destroy`,
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
+        if (!res.ok) {
+          console.error(
+            `Failed to delete ${resourceType} asset ${publicId} from Cloudinary:`,
+            await res.text(),
+          );
         }
-      );
-      if (!res.ok) {
+      } catch (e) {
         console.error(
-          `Failed to delete asset ${publicId} from Cloudinary:`,
-          await res.text()
+          `Error deleting ${resourceType} asset ${publicId} from Cloudinary:`,
+          e,
         );
       }
-    } catch (e) {
-      console.error(`Error deleting asset ${publicId} from Cloudinary:`, e);
     }
   }
 }

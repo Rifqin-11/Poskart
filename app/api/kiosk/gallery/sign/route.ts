@@ -34,6 +34,9 @@ export async function POST(request: Request) {
         (file.kind === "raw" ||
           file.kind === "framed" ||
           file.kind === "live_source") &&
+        (file.resourceType == null ||
+          file.resourceType === "image" ||
+          file.resourceType === "video") &&
         Number.isInteger(file.photoIndex) &&
         file.photoIndex >= 0,
     );

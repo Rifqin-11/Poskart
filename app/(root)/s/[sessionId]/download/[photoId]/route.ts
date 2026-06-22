@@ -29,13 +29,16 @@ export async function GET(
   }
 
   const extension = safeFilename(photo.format || "jpg");
+  const isMp4 = extension.toLowerCase() === "mp4";
   const label =
     photo.kind === "framed" && photo.photo_index === 1
       ? "poskart-live-photo"
       : photo.kind === "framed"
         ? "poskart-framed"
         : photo.photo_index === 98
-          ? "poskart-gif"
+          ? isMp4
+            ? "poskart-video"
+            : "poskart-gif"
           : `poskart-raw-${photo.photo_index + 1}`;
 
   return new Response(cloudinaryResponse.body, {

@@ -65,7 +65,7 @@ export default async function SharedGalleryPage({
 
   const { data: photos } = await supabase
     .from("gallery_photos")
-    .select("id,kind,photo_index,secure_url")
+    .select("id,kind,photo_index,secure_url,format")
     .eq("session_id", sessionId)
     .order("kind", { ascending: false })
     .order("photo_index", { ascending: true });
@@ -189,9 +189,8 @@ export default async function SharedGalleryPage({
                   href={`?view=${framedLivePhoto.id}`}
                   className="block group relative overflow-hidden rounded-xl cursor-zoom-in bg-zinc-100"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={framedLivePhoto.secure_url}
+                  <GalleryAsset
+                    asset={framedLivePhoto}
                     alt={`POSKART ${session.template_name} Live Photo`}
                     className="max-h-[58vh] w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"
                   />
@@ -288,7 +287,7 @@ export default async function SharedGalleryPage({
                 <h2 className="font-semibold">Foto original</h2>
                 <p className="text-xs text-zinc-500">
                   {hasAnyRaw
-                    ? `${raw.length} foto${gif ? " dan 1 GIF" : ""}`
+                    ? `${raw.length} foto${gif ? " dan 1 video" : ""}`
                     : waitingForAssets
                       ? "Menyiapkan foto original"
                       : "Tidak ada foto original"}
@@ -303,15 +302,14 @@ export default async function SharedGalleryPage({
                   className="flex min-w-0 flex-1 cursor-zoom-in items-center gap-3"
                 >
                   <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={gif.secure_url}
-                      alt="GIF Foto"
+                    <GalleryAsset
+                      asset={gif}
+                      alt="Video MP4"
                       className="size-full object-cover"
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">GIF Foto</p>
+                    <p className="text-sm font-semibold">Video MP4</p>
                     <p className="mt-0.5 text-xs text-zinc-500">
                       Berganti dari foto slot pertama sampai terakhir
                     </p>
@@ -319,7 +317,7 @@ export default async function SharedGalleryPage({
                 </Link>
                 <a
                   href={`/s/${encodeURIComponent(sessionId)}/download/${gif.id}`}
-                  aria-label="Download GIF Foto"
+                  aria-label="Download Video MP4"
                   className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 transition-colors hover:bg-zinc-950 hover:text-white"
                 >
                   <Download className="size-4" />
@@ -423,17 +421,56 @@ export default async function SharedGalleryPage({
 
           {/* Centered photo or Live Photo preview */}
           <div className="relative max-h-[80vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={selectedPhoto.secure_url}
+            <GalleryAsset
+              asset={selectedPhoto}
               alt="Pratinjau Foto"
               className="max-h-[80vh] max-w-[90vw] object-contain"
+              controls
             />
           </div>
         </div>
       )}
     </main>
   );
+}
+
+function GalleryAsset({
+  asset,
+  alt,
+  className,
+  controls = false,
+}: {
+  asset: { secure_url: string; format?: string | null };
+  alt: string;
+  className?: string;
+  controls?: boolean;
+}) {
+  if (isVideoAsset(asset)) {
+    return (
+      <video
+        className={className}
+        controls={controls}
+        autoPlay={!controls}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+      >
+        <source src={asset.secure_url} type="video/mp4" />
+        {alt}
+      </video>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={asset.secure_url} alt={alt} className={className} />
+  );
+}
+
+function isVideoAsset(asset: { secure_url: string; format?: string | null }) {
+  const format = asset.format?.toLowerCase();
+  return format === "mp4" || asset.secure_url.toLowerCase().includes(".mp4");
 }
 
 function ProcessingRefresh({ refreshUntil }: { refreshUntil: number }) {

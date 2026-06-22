@@ -15,6 +15,7 @@ type UploadedAsset = {
   height?: number;
   bytes?: number;
   format?: string;
+  resourceType?: "image" | "video";
 };
 
 type CompleteBody = {
