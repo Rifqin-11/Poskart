@@ -377,7 +377,13 @@ export function TemplateManagement() {
   );
 
   useEffect(() => {
-    setOrderedTemplates(data);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setOrderedTemplates(data);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [data]);
 
   const openAdd = () => router.push("/templates/builder/new");
@@ -4306,8 +4312,8 @@ const DEFAULT_SETTINGS_FORM: SettingsForm = {
   subscription_payment_gateway: "duitku",
   printer_name: "POSKART-THERMAL-01",
   booth_timeout_seconds: 90,
-  download_expiry_hours: 72,
-  gallery_retention_days: 30,
+  download_expiry_hours: 168,
+  gallery_retention_days: 14,
   storage_provider: "Supabase Storage",
   watermark_enabled: true,
   maintenance_mode: false,
@@ -4341,8 +4347,8 @@ export function SettingsPanel() {
           config.subscription_payment_gateway ?? "duitku",
         printer_name: config.printer_name ?? "POSKART-THERMAL-01",
         booth_timeout_seconds: config.booth_timeout_seconds ?? 90,
-        download_expiry_hours: config.download_expiry_hours ?? 72,
-        gallery_retention_days: config.gallery_retention_days ?? 30,
+        download_expiry_hours: config.download_expiry_hours ?? 168,
+        gallery_retention_days: config.gallery_retention_days ?? 14,
         storage_provider: config.storage_provider ?? "Supabase Storage",
         watermark_enabled: config.watermark_enabled ?? true,
         maintenance_mode: config.maintenance_mode ?? false,
@@ -4506,12 +4512,13 @@ export function SettingsPanel() {
             <CardHeader>
               <CardTitle>Download policy</CardTitle>
               <CardDescription>
-                Expiration, watermark, and storage provider.
+                Masa aktif link download, auto cleanup Cloudinary, watermark,
+                and storage provider.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-4">
               <label className="block text-xs font-medium text-zinc-600">
-                Download expiry (hours)
+                Share link expiry (hours)
                 <Input
                   className="mt-1"
                   type="number"
@@ -4527,7 +4534,7 @@ export function SettingsPanel() {
                 />
               </label>
               <label className="block text-xs font-medium text-zinc-600">
-                Gallery retention (days)
+                Cloudinary retention (days)
                 <Input
                   className="mt-1"
                   type="number"

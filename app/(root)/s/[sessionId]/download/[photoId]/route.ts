@@ -1,4 +1,8 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  getGalleryRetentionConfig,
+  isGalleryLinkExpired,
+} from "@/lib/gallery/retention";
 
 function safeFilename(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 120);
@@ -10,6 +14,21 @@ export async function GET(
 ) {
   const { sessionId, photoId } = await context.params;
   const supabase = createSupabaseAdminClient();
+  const { data: session } = await supabase
+    .from("gallery_sessions")
+    .select("created_at")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (!session) {
+    return new Response("Gallery session not found.", { status: 404 });
+  }
+
+  const { linkExpiryHours } = await getGalleryRetentionConfig();
+  if (isGalleryLinkExpired(session.created_at, linkExpiryHours)) {
+    return new Response("Gallery link has expired.", { status: 410 });
+  }
+
   const { data: photo } = await supabase
     .from("gallery_photos")
     .select("kind,photo_index,secure_url,format")

@@ -27,12 +27,18 @@ DUITKU_API_KEY=your-duitku-api-key
 DUITKU_PAYMENT_METHOD=SQ
 NEXT_PUBLIC_SITE_URL=https://www.poskart.my.id
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+CRON_SECRET=your-cron-secret
 CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
 CLOUDINARY_API_KEY=your-cloudinary-api-key
 CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 ```
 
 `DUITKU_PAYMENT_METHOD=SQ` directs subscription checkout to ShopeePay QRIS.
+
+Gallery cleanup is scheduled by `vercel.json` through
+`/api/cron/gallery-cleanup`. The endpoint deletes Cloudinary assets and
+gallery records older than the Media settings retention window. Set
+`CRON_SECRET` in production so only the scheduler can run cleanup.
 
 The checkout flow is:
 

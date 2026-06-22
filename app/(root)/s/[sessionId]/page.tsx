@@ -8,6 +8,11 @@ import {
 } from "lucide-react";
 
 import { businessProfile } from "@/lib/constants/business";
+import {
+  getGalleryLinkExpiryDate,
+  getGalleryRetentionConfig,
+  isGalleryLinkExpired,
+} from "@/lib/gallery/retention";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +68,18 @@ export default async function SharedGalleryPage({
     );
   }
 
+  const { linkExpiryHours } = await getGalleryRetentionConfig();
+  const expiryDate = getGalleryLinkExpiryDate(
+    session.created_at,
+    linkExpiryHours,
+  );
+  const formattedExpiryDate = formatIndonesianDate(expiryDate);
+  const expiryDurationLabel = formatExpiryDuration(linkExpiryHours);
+
+  if (isGalleryLinkExpired(session.created_at, linkExpiryHours)) {
+    return <ExpiredGalleryPage formattedExpiryDate={formattedExpiryDate} />;
+  }
+
   const { data: photos } = await supabase
     .from("gallery_photos")
     .select("id,kind,photo_index,secure_url,format")
@@ -93,29 +110,6 @@ export default async function SharedGalleryPage({
   const selectedPhoto = photos?.find((photo) => photo.id === viewPhotoId);
   const photoCount = photos?.length ?? 0;
   const refreshUntil = new Date(session.created_at).getTime() + 120_000;
-
-  // Expiry date calculation (7 days after creation)
-  const expiryDate = new Date(
-    new Date(session.created_at).getTime() + 7 * 24 * 60 * 60 * 1000,
-  );
-  const day = expiryDate.getDate().toString().padStart(2, "0");
-  const months = [
-    "Januari",
-    "Februari",
-    "Maret",
-    "April",
-    "Mei",
-    "Juni",
-    "Juli",
-    "Agustus",
-    "September",
-    "Oktober",
-    "November",
-    "Desember",
-  ];
-  const monthName = months[expiryDate.getMonth()];
-  const year = expiryDate.getFullYear();
-  const formattedExpiryDate = `${day} ${monthName} ${year}`;
 
   const hasAnyRaw = raw.length > 0 || Boolean(gif);
 
@@ -173,7 +167,8 @@ export default async function SharedGalleryPage({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full size-1.5 bg-amber-500"></span>
               </span>
-              Tautan ini aktif selama 7 hari (sampai {formattedExpiryDate})
+              Tautan ini aktif selama {expiryDurationLabel} (sampai{" "}
+              {formattedExpiryDate})
             </span>
           </div>
         </section>
@@ -434,6 +429,38 @@ export default async function SharedGalleryPage({
   );
 }
 
+function ExpiredGalleryPage({
+  formattedExpiryDate,
+}: {
+  formattedExpiryDate: string;
+}) {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center bg-white px-5 py-10 text-center text-zinc-950">
+      <span className="grid size-16 place-items-center overflow-hidden rounded-2xl border border-black/5 bg-zinc-50">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/Logo Poskart.png"
+          alt="POSKART Logo"
+          className="size-10 object-contain"
+        />
+      </span>
+      <h1 className="mt-6 text-2xl font-semibold tracking-tight text-zinc-900">
+        Tautan galeri sudah kadaluarsa.
+      </h1>
+      <p className="mt-3 max-w-md text-sm leading-6 text-zinc-500">
+        Link download untuk sesi ini aktif sampai {formattedExpiryDate}. Untuk
+        bantuan akses ulang, silakan hubungi tim POSKART.
+      </p>
+      <Link
+        href="/contact"
+        className="mt-8 inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+      >
+        Contact Support
+      </Link>
+    </main>
+  );
+}
+
 function GalleryAsset({
   asset,
   alt,
@@ -471,6 +498,33 @@ function GalleryAsset({
 function isVideoAsset(asset: { secure_url: string; format?: string | null }) {
   const format = asset.format?.toLowerCase();
   return format === "mp4" || asset.secure_url.toLowerCase().includes(".mp4");
+}
+
+function formatIndonesianDate(date: Date) {
+  const day = date.getDate().toString().padStart(2, "0");
+  const months = [
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
+    "Mei",
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
+  ];
+  return `${day} ${months[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function formatExpiryDuration(hours: number) {
+  if (hours % 24 === 0) {
+    const days = hours / 24;
+    return `${days} hari`;
+  }
+  return `${hours} jam`;
 }
 
 function ProcessingRefresh({ refreshUntil }: { refreshUntil: number }) {
