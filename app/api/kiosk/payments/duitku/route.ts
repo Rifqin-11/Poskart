@@ -272,6 +272,7 @@ function formatStatus(transaction: TransactionRow) {
     status: expired ? "failed" : transaction.status,
     merchantOrderId: transaction.merchant_order_id,
     reference: transaction.payment_reference,
+    qrString: transaction.duitku_qr_string,
     amount: transaction.amount,
     expiresAt,
   };
