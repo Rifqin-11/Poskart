@@ -156,7 +156,10 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     company_name: companyName || null,
     status: "pending",
     payment_gateway: paymentGateway,
-    payment_method: paymentGateway === "midtrans" ? "snap" : duitkuConfig?.paymentMethod ?? "VC",
+    payment_method:
+      paymentGateway === "midtrans"
+        ? "snap"
+        : duitkuConfig?.paymentMethod ?? "SQ",
     merchant_order_id: merchantOrderId,
   });
 

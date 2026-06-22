@@ -92,7 +92,7 @@ export function getDuitkuConfig() {
   const merchantCode = process.env.DUITKU_MERCHANT_CODE?.trim();
   const apiKey = process.env.DUITKU_API_KEY?.trim();
   const sandbox = process.env.DUITKU_SANDBOX !== "false";
-  const paymentMethod = process.env.DUITKU_PAYMENT_METHOD?.trim() || "VC";
+  const paymentMethod = process.env.DUITKU_PAYMENT_METHOD?.trim() || "SQ";
 
   if (!merchantCode || !apiKey) {
     return null;

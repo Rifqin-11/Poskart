@@ -287,7 +287,7 @@ export default async function SharedGalleryPage({
                 <h2 className="font-semibold">Foto original</h2>
                 <p className="text-xs text-zinc-500">
                   {hasAnyRaw
-                    ? `${raw.length} foto${gif ? " dan 1 video" : ""}`
+                    ? `${raw.length} foto${gif ? " dan 1 GIF" : ""}`
                     : waitingForAssets
                       ? "Menyiapkan foto original"
                       : "Tidak ada foto original"}
@@ -304,12 +304,12 @@ export default async function SharedGalleryPage({
                   <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
                     <GalleryAsset
                       asset={gif}
-                      alt="Video MP4"
+                      alt="GIF"
                       className="size-full object-cover"
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">Video MP4</p>
+                    <p className="text-sm font-semibold">GIF</p>
                     <p className="mt-0.5 text-xs text-zinc-500">
                       Berganti dari foto slot pertama sampai terakhir
                     </p>
@@ -317,7 +317,7 @@ export default async function SharedGalleryPage({
                 </Link>
                 <a
                   href={`/s/${encodeURIComponent(sessionId)}/download/${gif.id}`}
-                  aria-label="Download Video MP4"
+                  aria-label="Download GIF"
                   className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 transition-colors hover:bg-zinc-950 hover:text-white"
                 >
                   <Download className="size-4" />

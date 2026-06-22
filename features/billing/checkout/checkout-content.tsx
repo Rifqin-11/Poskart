@@ -306,7 +306,8 @@ export function CheckoutContent({
                         paymentGateway === "duitku" ? "text-zinc-300" : "text-zinc-500",
                       ].join(" ")}
                     >
-                      Checkout through the configured Duitku payment page and callback.
+                      Pembayaran langsung melalui ShopeePay QRIS pada popup
+                      Duitku.
                     </span>
                   </span>
                 </div>
