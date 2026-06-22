@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Script from "next/script";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { type FormEvent, useState, useTransition } from "react";
 import { CheckCircle2, CreditCard, LockKeyhole, ReceiptText, ShieldCheck, WalletCards } from "lucide-react";
 import { createSubscriptionOrderAction } from "@/app/(admin)/checkout/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -17,13 +18,37 @@ import { formatCurrency } from "@/lib/utils";
 
 type PaymentGateway = "duitku" | "midtrans";
 type GatewayMode = PaymentGateway | "both";
+type DuitkuCheckoutResult = {
+  resultCode?: string;
+  merchantOrderId?: string;
+  reference?: string;
+};
+
+declare global {
+  interface Window {
+    checkout?: {
+      process: (
+        reference: string,
+        options: {
+          defaultLanguage?: "id" | "en";
+          successEvent?: (result: DuitkuCheckoutResult) => void;
+          pendingEvent?: (result: DuitkuCheckoutResult) => void;
+          errorEvent?: (result: DuitkuCheckoutResult) => void;
+          closeEvent?: (result: DuitkuCheckoutResult) => void;
+        },
+      ) => void;
+    };
+  }
+}
 
 export function CheckoutContent({
   gatewayMode = "duitku",
   plans = fallbackPricingPlans,
+  duitkuPopScriptUrl = "https://app-prod.duitku.com/lib/js/duitku.js",
 }: {
   gatewayMode?: GatewayMode;
   plans?: PricingPlan[];
+  duitkuPopScriptUrl?: string;
 }) {
   const searchParams = useSearchParams();
   const selectedPlanId = searchParams.get("plan") ?? "yearly";
@@ -39,10 +64,60 @@ export function CheckoutContent({
   const [paymentGateway, setPaymentGateway] = useState<PaymentGateway>(
     gatewayMode === "midtrans" ? "midtrans" : "duitku",
   );
+  const [isPending, startTransition] = useTransition();
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [duitkuScriptReady, setDuitkuScriptReady] = useState(false);
+  const [duitkuScriptFailed, setDuitkuScriptFailed] = useState(false);
   const quote = calculateSubscriptionTotal(plan, deviceCount);
   const selectedGatewayLabel = paymentGateway === "midtrans" ? "Midtrans" : "Duitku";
   const showDuitku = gatewayMode === "duitku" || gatewayMode === "both";
   const showMidtrans = gatewayMode === "midtrans" || gatewayMode === "both";
+  const visibleError = checkoutError ?? errorMessage;
+  const waitingForDuitkuScript =
+    paymentGateway === "duitku" && !duitkuScriptReady && !duitkuScriptFailed;
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setCheckoutError(null);
+    setCheckoutMessage(null);
+
+    startTransition(async () => {
+      const result = await createSubscriptionOrderAction(formData);
+
+      if (!result.ok) {
+        setCheckoutError(result.message);
+        return;
+      }
+
+      if (result.gateway === "midtrans") {
+        window.location.href = result.paymentUrl;
+        return;
+      }
+
+      if (!duitkuScriptReady || duitkuScriptFailed || !window.checkout?.process) {
+        window.location.href = appendDuitkuLanguage(result.paymentUrl);
+        return;
+      }
+
+      window.checkout.process(result.reference, {
+        defaultLanguage: "id",
+        successEvent: (response) => {
+          window.location.href = buildDuitkuReturnUrl(result.returnUrl, response, "00");
+        },
+        pendingEvent: (response) => {
+          window.location.href = buildDuitkuReturnUrl(result.returnUrl, response, "01");
+        },
+        errorEvent: (response) => {
+          window.location.href = buildDuitkuReturnUrl(result.returnUrl, response, "02");
+        },
+        closeEvent: () => {
+          setCheckoutMessage("Payment popup closed. Your order is still pending if no payment was completed.");
+        },
+      });
+    });
+  }
 
   if (plan.id === "business") {
     return (
@@ -89,9 +164,23 @@ export function CheckoutContent({
 
   return (
     <form
-      action={createSubscriptionOrderAction}
+      onSubmit={handleSubmit}
       className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_420px] lg:px-8"
     >
+      {showDuitku ? (
+        <Script
+          id="duitku-pop-script"
+          src={duitkuPopScriptUrl}
+          strategy="afterInteractive"
+          onReady={() => {
+            setDuitkuScriptReady(true);
+            setDuitkuScriptFailed(false);
+          }}
+          onError={() => {
+            setDuitkuScriptFailed(true);
+          }}
+        />
+      ) : null}
       <input type="hidden" name="planId" value={plan.id} />
       <input type="hidden" name="paymentGateway" value={paymentGateway} />
       <div className="space-y-6">
@@ -114,9 +203,14 @@ export function CheckoutContent({
             {successMessage}
           </div>
         ) : null}
-        {errorMessage ? (
+        {visibleError ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
-            {errorMessage}
+            {visibleError}
+          </div>
+        ) : null}
+        {checkoutMessage ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
+            {checkoutMessage}
           </div>
         ) : null}
 
@@ -352,8 +446,17 @@ export function CheckoutContent({
           ))}
         </div>
 
-        <Button type="submit" className="mt-6 w-full" size="lg">
-          Continue to {paymentGateway === "midtrans" ? "Midtrans" : "Duitku"}
+        <Button
+          type="submit"
+          className="mt-6 w-full"
+          size="lg"
+          disabled={isPending || waitingForDuitkuScript}
+        >
+          {isPending
+            ? "Preparing secure payment..."
+            : waitingForDuitkuScript
+              ? "Loading secure payment..."
+              : `Continue to ${paymentGateway === "midtrans" ? "Midtrans" : "Duitku"}`}
           <CreditCard className="size-4" />
         </Button>
         <Link
@@ -388,4 +491,28 @@ export function CheckoutContent({
       </aside>
     </form>
   );
+}
+
+function appendDuitkuLanguage(paymentUrl: string) {
+  const url = new URL(paymentUrl, window.location.origin);
+  if (!url.searchParams.has("lang")) {
+    url.searchParams.set("lang", "id");
+  }
+  return url.toString();
+}
+
+function buildDuitkuReturnUrl(
+  returnUrl: string,
+  response: DuitkuCheckoutResult,
+  fallbackResultCode: string,
+) {
+  const url = new URL(returnUrl, window.location.origin);
+  url.searchParams.set("resultCode", response.resultCode ?? fallbackResultCode);
+  if (response.merchantOrderId) {
+    url.searchParams.set("merchantOrderId", response.merchantOrderId);
+  }
+  if (response.reference) {
+    url.searchParams.set("reference", response.reference);
+  }
+  return url.toString();
 }

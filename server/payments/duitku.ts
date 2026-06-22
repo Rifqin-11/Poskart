@@ -2,13 +2,16 @@ import crypto from "node:crypto";
 
 import { businessProfile, type PricingPlan } from "@/lib/constants/business";
 
-const SANDBOX_INQUIRY_URL = "https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry";
-const PRODUCTION_INQUIRY_URL = "https://passport.duitku.com/webapi/api/merchant/v2/inquiry";
+const SANDBOX_CREATE_INVOICE_URL = "https://api-sandbox.duitku.com/api/merchant/createInvoice";
+const PRODUCTION_CREATE_INVOICE_URL = "https://api-prod.duitku.com/api/merchant/createInvoice";
+const SANDBOX_POP_SCRIPT_URL = "https://app-sandbox.duitku.com/lib/js/duitku.js";
+const PRODUCTION_POP_SCRIPT_URL = "https://app-prod.duitku.com/lib/js/duitku.js";
 
 export type DuitkuInquiryResult = {
   merchantOrderId: string;
   reference?: string;
   paymentUrl?: string;
+  popScriptUrl: string;
   raw: Record<string, unknown>;
 };
 
@@ -51,7 +54,8 @@ export function getDuitkuConfig() {
     merchantCode,
     apiKey,
     paymentMethod,
-    inquiryUrl: sandbox ? SANDBOX_INQUIRY_URL : PRODUCTION_INQUIRY_URL,
+    createInvoiceUrl: sandbox ? SANDBOX_CREATE_INVOICE_URL : PRODUCTION_CREATE_INVOICE_URL,
+    popScriptUrl: sandbox ? SANDBOX_POP_SCRIPT_URL : PRODUCTION_POP_SCRIPT_URL,
   };
 }
 
@@ -63,25 +67,21 @@ export async function createDuitkuPayment(input: CreateDuitkuPaymentInput): Prom
   const config = getDuitkuConfig();
 
   if (!config) {
-    throw new Error("Duitku Sandbox belum dikonfigurasi. Isi DUITKU_MERCHANT_CODE dan DUITKU_API_KEY.");
+    throw new Error("Duitku belum dikonfigurasi. Isi DUITKU_MERCHANT_CODE dan DUITKU_API_KEY.");
   }
 
-  const signature = createInquirySignature(
-    config.merchantCode,
-    input.merchantOrderId,
-    input.amount,
-    config.apiKey,
-  );
+  const timestamp = Date.now().toString();
+  const signature = createCreateInvoiceSignature(config.merchantCode, timestamp, config.apiKey);
 
   const body = {
-    merchantCode: config.merchantCode,
     paymentAmount: input.amount,
-    paymentMethod: config.paymentMethod,
     merchantOrderId: input.merchantOrderId,
     productDetails: `POSKART ${input.plan.name} Subscription`,
-    email: input.email,
+    additionalParam: "",
     merchantUserInfo: input.email,
+    paymentMethod: config.paymentMethod,
     customerVaName: input.customerName.slice(0, 20),
+    email: input.email,
     itemDetails: [
       {
         name: `${input.plan.name} Subscription (${input.deviceCount} device)`,
@@ -95,7 +95,6 @@ export async function createDuitkuPayment(input: CreateDuitkuPaymentInput): Prom
     },
     returnUrl: input.returnUrl,
     callbackUrl: input.callbackUrl,
-    signature,
     expiryPeriod: 60,
   };
 
@@ -104,10 +103,13 @@ export async function createDuitkuPayment(input: CreateDuitkuPaymentInput): Prom
     Object.assign(body.customerDetail, { phoneNumber: input.phoneNumber });
   }
 
-  const response = await fetch(config.inquiryUrl, {
+  const response = await fetch(config.createInvoiceUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "x-duitku-merchantcode": config.merchantCode,
+      "x-duitku-signature": signature,
+      "x-duitku-timestamp": timestamp,
     },
     body: JSON.stringify(body),
     cache: "no-store",
@@ -131,6 +133,7 @@ export async function createDuitkuPayment(input: CreateDuitkuPaymentInput): Prom
     merchantOrderId: input.merchantOrderId,
     reference: reference ?? undefined,
     paymentUrl,
+    popScriptUrl: config.popScriptUrl,
     raw,
   };
 }
@@ -146,9 +149,10 @@ export function verifyDuitkuCallbackSignature(payload: DuitkuCallbackPayload) {
     return false;
   }
 
-  const expected = createMd5Signature(`${merchantCode}${amount}${merchantOrderId}${config.apiKey}`);
+  const hmacExpected = createHmacSha256Signature(`${merchantCode}${amount}${merchantOrderId}`, config.apiKey);
+  const md5Expected = createMd5Signature(`${merchantCode}${amount}${merchantOrderId}${config.apiKey}`);
 
-  return timingSafeEqual(expected, signature);
+  return timingSafeEqual(hmacExpected, signature) || timingSafeEqual(md5Expected, signature);
 }
 
 export function mapDuitkuResultCode(resultCode?: string) {
@@ -167,13 +171,12 @@ export function getDuitkuSupportSummary() {
   };
 }
 
-function createInquirySignature(
-  merchantCode: string,
-  merchantOrderId: string,
-  paymentAmount: number,
-  apiKey: string,
-) {
-  return createMd5Signature(`${merchantCode}${merchantOrderId}${paymentAmount}${apiKey}`);
+function createCreateInvoiceSignature(merchantCode: string, timestamp: string, apiKey: string) {
+  return createHmacSha256Signature(`${merchantCode}${timestamp}`, apiKey);
+}
+
+function createHmacSha256Signature(value: string, apiKey: string) {
+  return crypto.createHmac("sha256", apiKey).update(value).digest("hex");
 }
 
 function createMd5Signature(value: string) {

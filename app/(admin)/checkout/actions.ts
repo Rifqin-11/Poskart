@@ -49,6 +49,28 @@ function stringFromMetadata(metadata: Record<string, unknown> | undefined, keys:
   return "";
 }
 
+export type SubscriptionCheckoutActionResult =
+  | {
+      ok: true;
+      gateway: "duitku";
+      merchantOrderId: string;
+      reference: string;
+      paymentUrl: string;
+      popScriptUrl: string;
+      returnUrl: string;
+    }
+  | {
+      ok: true;
+      gateway: "midtrans";
+      merchantOrderId: string;
+      paymentUrl: string;
+    }
+  | {
+      ok: false;
+      message: string;
+      planId: string;
+    };
+
 export async function createSubscriptionOrderAction(formData: FormData) {
   const planId = valueFromForm(formData, "planId") || "yearly";
   const requestedPaymentGateway = normalizePaymentGateway(valueFromForm(formData, "paymentGateway"));
@@ -91,7 +113,11 @@ export async function createSubscriptionOrderAction(formData: FormData) {
   );
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    redirectWithStatus(plan.id, "error", "Please enter a valid billing email.");
+    return {
+      ok: false,
+      message: "Please enter a valid billing email.",
+      planId: plan.id,
+    } satisfies SubscriptionCheckoutActionResult;
   }
 
   const merchantOrderId = createMerchantOrderId();
@@ -104,7 +130,11 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     .maybeSingle();
 
   if (!membership?.organization_id) {
-    redirectWithStatus(plan.id, "error", "Please create or join an organization before subscribing.");
+    return {
+      ok: false,
+      message: "Please create or join an organization before subscribing.",
+      planId: plan.id,
+    } satisfies SubscriptionCheckoutActionResult;
   }
 
   const { error } = await supabase.from("subscription_orders").insert({
@@ -131,12 +161,14 @@ export async function createSubscriptionOrderAction(formData: FormData) {
   });
 
   if (error) {
-    redirectWithStatus(plan.id, "error", error.message);
+    return {
+      ok: false,
+      message: error.message,
+      planId: plan.id,
+    } satisfies SubscriptionCheckoutActionResult;
   }
 
   const siteUrl = await getSiteUrl();
-
-  let paymentUrl = "";
 
   try {
     const returnUrl = `${siteUrl}/checkout/return?order=${encodeURIComponent(merchantOrderId)}`;
@@ -152,7 +184,6 @@ export async function createSubscriptionOrderAction(formData: FormData) {
         deviceCount: quote.deviceCount,
         returnUrl,
       });
-      paymentUrl = payment.paymentUrl;
       await supabase
         .from("subscription_orders")
         .update({
@@ -162,6 +193,12 @@ export async function createSubscriptionOrderAction(formData: FormData) {
           updated_at: new Date().toISOString(),
         })
         .eq("merchant_order_id", merchantOrderId);
+      return {
+        ok: true,
+        gateway: "midtrans",
+        merchantOrderId,
+        paymentUrl: payment.paymentUrl,
+      } satisfies SubscriptionCheckoutActionResult;
     } else {
       const payment = await createDuitkuPayment({
         merchantOrderId,
@@ -174,7 +211,13 @@ export async function createSubscriptionOrderAction(formData: FormData) {
         returnUrl,
         callbackUrl: `${siteUrl}/api/payments/duitku/callback`,
       });
-      paymentUrl = payment.paymentUrl ?? "";
+      if (!payment.reference || !payment.paymentUrl) {
+        return {
+          ok: false,
+          message: "Duitku tidak mengembalikan payment reference.",
+          planId: plan.id,
+        } satisfies SubscriptionCheckoutActionResult;
+      }
       await supabase
         .from("subscription_orders")
         .update({
@@ -184,12 +227,23 @@ export async function createSubscriptionOrderAction(formData: FormData) {
           updated_at: new Date().toISOString(),
         })
         .eq("merchant_order_id", merchantOrderId);
+      return {
+        ok: true,
+        gateway: "duitku",
+        merchantOrderId,
+        reference: payment.reference,
+        paymentUrl: payment.paymentUrl,
+        popScriptUrl: payment.popScriptUrl,
+        returnUrl,
+      } satisfies SubscriptionCheckoutActionResult;
     }
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Payment gateway could not be started.";
-    redirectWithStatus(plan.id, "error", message);
+    return {
+      ok: false,
+      message,
+      planId: plan.id,
+    } satisfies SubscriptionCheckoutActionResult;
   }
-
-  redirect(paymentUrl);
 }
