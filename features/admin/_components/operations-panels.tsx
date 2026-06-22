@@ -874,6 +874,38 @@ type TransactionEditForm = {
   provider: "QRIS" | "Cash";
 };
 
+function getTransactionPaymentMethod(transaction: Transaction) {
+  const location = transaction.location.trim().toUpperCase();
+  if (location.includes("VOUCHER")) return "Voucher";
+  return transaction.provider;
+}
+
+function renderTransactionStatus(status: Transaction["status"]) {
+  return (
+    <Badge
+      variant={
+        status === "paid"
+          ? "success"
+          : status === "pending"
+            ? "warning"
+            : "destructive"
+      }
+    >
+      {status}
+    </Badge>
+  );
+}
+
+function renderPaymentMethod(
+  method: ReturnType<typeof getTransactionPaymentMethod>,
+) {
+  return (
+    <Badge variant={method === "Voucher" ? "secondary" : "outline"}>
+      {method}
+    </Badge>
+  );
+}
+
 export function TransactionsMonitoring() {
   const { data = [] } = useTransactions();
   const updateTransaction = useUpdateTransaction();
@@ -1105,7 +1137,7 @@ export function TransactionsMonitoring() {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-1 gap-3 max-w-xl">
+            <div className="flex w-full flex-col gap-3 sm:flex-row md:max-w-xl">
               <Input
                 placeholder="Search by ID, device, customer…"
                 value={search}
@@ -1147,59 +1179,199 @@ export function TransactionsMonitoring() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <input
-                    type="checkbox"
-                    className="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950 accent-zinc-900 cursor-pointer"
-                    checked={
-                      filtered.length > 0 &&
-                      filtered.every((t) => selectedIds.includes(t.id))
-                    }
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedIds((prev) => {
-                          const newIds = [...prev];
-                          filtered.forEach((t) => {
-                            if (!newIds.includes(t.id)) newIds.push(t.id);
-                          });
-                          return newIds;
-                        });
-                      } else {
-                        setSelectedIds((prev) =>
-                          prev.filter(
-                            (id) => !filtered.some((t) => t.id === id),
-                          ),
-                        );
-                      }
-                    }}
-                    aria-label="Pilih semua transaksi"
-                  />
-                </TableHead>
-                <TableHead>ID</TableHead>
-                <TableHead>Tanggal & Jam</TableHead>
-                <TableHead>Device</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Package</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedTransactions.map((transaction: Transaction) => (
-                <TableRow
-                  key={transaction.id}
-                  className={
-                    selectedIds.includes(transaction.id) ? "bg-zinc-50/60" : ""
-                  }
-                >
-                  <TableCell className="w-12">
+          <div className="hidden xl:block overflow-x-auto">
+            <Table className="min-w-[1120px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
                     <input
                       type="checkbox"
                       className="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950 accent-zinc-900 cursor-pointer"
+                      checked={
+                        filtered.length > 0 &&
+                        filtered.every((t) => selectedIds.includes(t.id))
+                      }
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds((prev) => {
+                            const newIds = [...prev];
+                            filtered.forEach((t) => {
+                              if (!newIds.includes(t.id)) newIds.push(t.id);
+                            });
+                            return newIds;
+                          });
+                        } else {
+                          setSelectedIds((prev) =>
+                            prev.filter(
+                              (id) => !filtered.some((t) => t.id === id),
+                            ),
+                          );
+                        }
+                      }}
+                      aria-label="Pilih semua transaksi"
+                    />
+                  </TableHead>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Tanggal & Jam</TableHead>
+                  <TableHead>Device</TableHead>
+                  <TableHead>Payment Method</TableHead>
+                  <TableHead>Package</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedTransactions.map((transaction: Transaction) => {
+                  const paymentMethod =
+                    getTransactionPaymentMethod(transaction);
+
+                  return (
+                    <TableRow
+                      key={transaction.id}
+                      className={
+                        selectedIds.includes(transaction.id)
+                          ? "bg-zinc-50/60"
+                          : ""
+                      }
+                    >
+                      <TableCell className="w-12">
+                        <input
+                          type="checkbox"
+                          className="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950 accent-zinc-900 cursor-pointer"
+                          checked={selectedIds.includes(transaction.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedIds((prev) => [
+                                ...prev,
+                                transaction.id,
+                              ]);
+                            } else {
+                              setSelectedIds((prev) =>
+                                prev.filter((id) => id !== transaction.id),
+                              );
+                            }
+                          }}
+                          aria-label={`Pilih transaksi ${transaction.id.slice(0, 8)}`}
+                        />
+                      </TableCell>
+                      <TableCell className="max-w-[120px] font-mono text-xs break-words">
+                        {transaction.id}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-zinc-600">
+                        {formatDateTime(transaction.createdAtRaw)}
+                      </TableCell>
+                      <TableCell className="max-w-[220px] break-words">
+                        {transaction.device}
+                      </TableCell>
+                      <TableCell>{renderPaymentMethod(paymentMethod)}</TableCell>
+                      <TableCell className="max-w-[160px] break-words">
+                        {transaction.packageName}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {formatCurrency(transaction.amount)}
+                      </TableCell>
+                      <TableCell>
+                        {renderTransactionStatus(transaction.status)}
+                      </TableCell>
+                      <TableCell>
+                        {deletingId === transaction.id ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-zinc-500">
+                              Delete?
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={deleteTransaction.isPending}
+                              onClick={() => void handleDelete(transaction.id)}
+                            >
+                              {deleteTransaction.isPending ? "…" : "Yes"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDeletingId(null)}
+                            >
+                              No
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openEdit(transaction)}
+                            >
+                              <Edit2 className="size-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => setDeletingId(transaction.id)}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                            <DropdownMenu
+                              items={[
+                                {
+                                  label: "Manual verify",
+                                  onClick: () =>
+                                    toast.success("Payment verified"),
+                                },
+                                {
+                                  label: "Retry QRIS",
+                                  onClick: () => toast.message("Retry sent"),
+                                },
+                                {
+                                  label: "Refund",
+                                  destructive: true,
+                                  onClick: () => toast.error("Refund queued"),
+                                },
+                              ]}
+                            />
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={9}
+                      className="py-10 text-center text-sm text-zinc-400"
+                    >
+                      No transactions found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="space-y-3 xl:hidden">
+            {paginatedTransactions.map((transaction: Transaction) => {
+              const paymentMethod = getTransactionPaymentMethod(transaction);
+
+              return (
+                <div
+                  key={transaction.id}
+                  className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {renderPaymentMethod(paymentMethod)}
+                        {renderTransactionStatus(transaction.status)}
+                      </div>
+                      <p className="mt-2 break-all font-mono text-xs text-zinc-500">
+                        {transaction.id}
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-4 shrink-0 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950 accent-zinc-900 cursor-pointer"
                       checked={selectedIds.includes(transaction.id)}
                       onChange={(e) => {
                         if (e.target.checked) {
@@ -1212,34 +1384,49 @@ export function TransactionsMonitoring() {
                       }}
                       aria-label={`Pilih transaksi ${transaction.id.slice(0, 8)}`}
                     />
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {transaction.id}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm text-zinc-600">
-                    {formatDateTime(transaction.createdAtRaw)}
-                  </TableCell>
-                  <TableCell>{transaction.device}</TableCell>
-                  <TableCell>{transaction.location}</TableCell>
-                  <TableCell>{transaction.packageName}</TableCell>
-                  <TableCell>{formatCurrency(transaction.amount)}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        transaction.status === "paid"
-                          ? "success"
-                          : transaction.status === "pending"
-                            ? "warning"
-                            : "destructive"
-                      }
-                    >
-                      {transaction.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-zinc-500">Tanggal</p>
+                      <p className="mt-1 text-zinc-700">
+                        {formatDateTime(transaction.createdAtRaw)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-zinc-500">Device</p>
+                      <p className="mt-1 break-words text-zinc-900">
+                        {transaction.device}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-zinc-500">Package</p>
+                      <p className="mt-1 break-words text-zinc-900">
+                        {transaction.packageName}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-zinc-500">Amount</p>
+                      <p className="mt-1 font-medium text-zinc-900">
+                        {formatCurrency(transaction.amount)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-zinc-500">Customer</p>
+                      <p className="mt-1 break-words text-zinc-900">
+                        {transaction.customer}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-zinc-500">Payment</p>
+                      <p className="mt-1 text-zinc-900">{paymentMethod}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
                     {deletingId === transaction.id ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-zinc-500">Delete?</span>
+                      <>
+                        <span className="mr-auto text-xs text-zinc-500">
+                          Delete?
+                        </span>
                         <Button
                           size="sm"
                           variant="destructive"
@@ -1255,23 +1442,25 @@ export function TransactionsMonitoring() {
                         >
                           No
                         </Button>
-                      </div>
+                      </>
                     ) : (
-                      <div className="flex items-center gap-1">
+                      <>
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => openEdit(transaction)}
                         >
                           <Edit2 className="size-3.5" />
+                          Edit
                         </Button>
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           className="text-red-500 hover:text-red-700"
                           onClick={() => setDeletingId(transaction.id)}
                         >
                           <Trash2 className="size-3.5" />
+                          Delete
                         </Button>
                         <DropdownMenu
                           items={[
@@ -1290,23 +1479,18 @@ export function TransactionsMonitoring() {
                             },
                           ]}
                         />
-                      </div>
+                      </>
                     )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filtered.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={8}
-                    className="py-10 text-center text-sm text-zinc-400"
-                  >
-                    No transactions found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                  </div>
+                </div>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div className="rounded-lg border border-dashed border-zinc-200 px-4 py-10 text-center text-sm text-zinc-400">
+                No transactions found.
+              </div>
+            )}
+          </div>
           <TablePagination
             page={activePage}
             pageSize={pageSize}
