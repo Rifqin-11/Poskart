@@ -5,15 +5,29 @@ Live Photo GIFs outside the Flutter kiosk device.
 
 ## Railway service
 
-Create a separate Railway service from this repository and use:
+The recommended setup is an isolated Railway service from this repository:
+
+```text
+Root Directory: /workers
+Start Command: npm start
+```
+
+The `workers` directory has its own `package.json`, so Railway installs only the
+dependencies required by the Live Photo worker. The following command is also
+available when a custom start command is preferred:
 
 ```bash
 npm run worker:live-photo
 ```
 
-Install `ffmpeg` in the Railway environment. With Nixpacks, add `ffmpeg` to the
-service setup packages from the Railway dashboard, or use a service-level
-Nixpacks config that includes `ffmpeg`.
+If the service deploys from the repository root instead, leave Root Directory
+empty and use `npm run worker:live-photo` from the root `package.json`.
+
+Install `ffmpeg` in the final Railway image by adding this service variable:
+
+```bash
+RAILPACK_DEPLOY_APT_PACKAGES=ffmpeg
+```
 
 ## Required variables
 

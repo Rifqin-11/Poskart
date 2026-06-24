@@ -1,0 +1,17 @@
+{
+  "name": "poskart-live-photo-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node live-photo-worker.mjs",
+    "worker:live-photo": "node live-photo-worker.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.1",
+    "sharp": "^0.35.2"
+  }
+}
