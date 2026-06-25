@@ -4,12 +4,14 @@ import {
   requireKioskContext,
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
+import { resolveKioskPricingProduct } from "@/lib/kiosk/pricing";
 
 type TransactionBody = {
   deviceId?: string;
   transaction?: {
     id?: string;
     customer?: string;
+    packageCode?: string;
     packageName?: string;
     amount?: number;
     status?: "paid" | "pending" | "failed" | "refunded";
@@ -34,17 +36,22 @@ export async function POST(request: Request) {
 
     if (
       !transaction?.id ||
-      !transaction.packageName ||
-      !Number.isFinite(transaction.amount)
+      !(transaction.packageCode || transaction.packageName)
     ) {
       return jsonOk(
         {
-          error: "Transaction ID, package name, and amount are required.",
+          error: "Transaction ID and package code are required.",
           code: "KIOSK_TRANSACTION_INVALID",
         },
         { status: 400 },
       );
     }
+
+    const product = await resolveKioskPricingProduct(
+      context,
+      device,
+      transaction.packageCode?.trim() || transaction.packageName?.trim() || "",
+    );
 
     const templateId = transaction.templateId?.trim() || null;
     if (templateId) {
@@ -67,6 +74,8 @@ export async function POST(request: Request) {
     }
 
     const now = new Date().toISOString();
+    const provider = transaction.provider === "Cash" ? "Cash" : "QRIS";
+    const status = provider === "Cash" ? "paid" : "pending";
     const { error: transactionError } = await context.client
       .from("transactions")
       .upsert({
@@ -75,12 +84,12 @@ export async function POST(request: Request) {
         booth: device.name,
         location: device.location,
         customer: transaction.customer?.trim() || "Walk-in",
-        package_name: transaction.packageName,
-        amount: Math.max(0, Math.round(transaction.amount!)),
-        status: transaction.status ?? "paid",
-        provider: transaction.provider ?? "QRIS",
+        package_name: product.name,
+        amount: product.amount,
+        status,
+        provider,
         template_id: templateId,
-        print_count: Math.max(0, Math.round(transaction.printCount ?? 0)),
+        print_count: product.printCount,
         created_at_label: now,
         print_status: transaction.printStatus ?? "pending",
         print_attempts: Math.max(0, transaction.printAttempts ?? 0),

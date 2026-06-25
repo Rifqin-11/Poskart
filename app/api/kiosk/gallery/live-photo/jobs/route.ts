@@ -14,6 +14,7 @@ type LivePhotoSourceAsset = {
   height?: number;
   bytes?: number;
   format?: string;
+  mirrorHorizontal?: boolean;
 };
 
 type LivePhotoJobBody = {
@@ -25,6 +26,8 @@ type LivePhotoJobBody = {
   template?: Record<string, unknown>;
   assets?: LivePhotoSourceAsset[];
 };
+
+const MAX_LIVE_PHOTO_SOURCE_BYTES = 25 * 1024 * 1024;
 
 export async function POST(request: Request) {
   try {
@@ -41,7 +44,7 @@ export async function POST(request: Request) {
         Number.isInteger(asset.slotIndex) &&
         (asset.slotIndex ?? -1) >= 0 &&
         Boolean(asset.publicId?.trim()) &&
-        Boolean(asset.secureUrl?.startsWith("https://")),
+        isAllowedSourceAsset(asset),
     );
 
     if (!sessionId || assets.length === 0) {
@@ -90,9 +93,19 @@ export async function POST(request: Request) {
             height: asset.height ?? null,
             bytes: asset.bytes ?? null,
             format: asset.format?.trim() || null,
+            mirrorHorizontal: asset.mirrorHorizontal === true,
           })),
           status: "queued",
+          attempts: 0,
+          output_public_id: null,
+          output_secure_url: null,
+          output_width: null,
+          output_height: null,
+          output_bytes: null,
+          output_format: null,
           error_message: null,
+          started_at: null,
+          completed_at: null,
           updated_at: now,
         },
         { onConflict: "session_id" },
@@ -110,5 +123,33 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return jsonError(error);
+  }
+}
+
+function isAllowedSourceAsset(asset: LivePhotoSourceAsset) {
+  const secureUrl = asset.secureUrl?.trim();
+  if (!secureUrl || !isAllowedCloudinaryUrl(secureUrl)) return false;
+
+  const bytes = Number(asset.bytes ?? 0);
+  if (Number.isFinite(bytes) && bytes > MAX_LIVE_PHOTO_SOURCE_BYTES) {
+    return false;
+  }
+
+  const format = asset.format?.trim().toLowerCase();
+  if (!format) return true;
+  return ["mp4", "mov", "webm", "jpg", "jpeg", "png", "webp"].includes(format);
+}
+
+function isAllowedCloudinaryUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    if (url.hostname !== "res.cloudinary.com") return false;
+
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+    if (!cloudName) return true;
+    return url.pathname.startsWith(`/${cloudName}/`);
+  } catch {
+    return false;
   }
 }

@@ -706,8 +706,6 @@ export function FrameTemplateBuilder({
   const latestZoomRef = useRef(zoom);
   const latestPanRef = useRef(pan);
   const longPressNodeRef = useRef<string | null>(null);
-  latestZoomRef.current = zoom;
-  latestPanRef.current = pan;
   const selectedNode = layout.nodes.find((node) => node.id === selectedId);
   const contextNode = contextMenu?.nodeId
     ? layout.nodes.find((node) => node.id === contextMenu.nodeId)
@@ -719,6 +717,11 @@ export function FrameTemplateBuilder({
       activationConstraint: { delay: 180, tolerance: 8 },
     }),
   );
+
+  useEffect(() => {
+    latestZoomRef.current = zoom;
+    latestPanRef.current = pan;
+  }, [pan, zoom]);
   const canvasTouchMenu = useTouchContextMenu(({ x, y }) => {
     setSelectedId(null);
     setContextMenu({ x, y, nodeId: null });

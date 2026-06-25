@@ -6,6 +6,7 @@ import { createDuitkuPayment, createMerchantOrderId, getDuitkuConfig } from "@/s
 import { createMidtransPayment } from "@/server/payments/midtrans";
 import { getPublicSubscriptionPricingPlans } from "@/server/subscription/pricing";
 import { getSiteUrl } from "@/lib/auth/site-url";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 function redirectWithStatus(planId: string, type: "success" | "error", message: string): never {
@@ -176,6 +177,7 @@ export async function createSubscriptionOrderAction(formData: FormData) {
   }
 
   const siteUrl = await getSiteUrl();
+  const paymentMetadataClient = createSupabaseAdminClient();
 
   try {
     const returnUrl = `${siteUrl}/checkout/return?order=${encodeURIComponent(merchantOrderId)}`;
@@ -191,7 +193,7 @@ export async function createSubscriptionOrderAction(formData: FormData) {
         deviceCount: quote.deviceCount,
         returnUrl,
       });
-      await supabase
+      const { error: paymentUpdateError } = await paymentMetadataClient
         .from("subscription_orders")
         .update({
           payment_url: payment.paymentUrl,
@@ -200,6 +202,7 @@ export async function createSubscriptionOrderAction(formData: FormData) {
           updated_at: new Date().toISOString(),
         })
         .eq("merchant_order_id", merchantOrderId);
+      if (paymentUpdateError) throw paymentUpdateError;
       return {
         ok: true,
         gateway: "midtrans",
@@ -225,7 +228,7 @@ export async function createSubscriptionOrderAction(formData: FormData) {
           planId: plan.id,
         } satisfies SubscriptionCheckoutActionResult;
       }
-      await supabase
+      const { error: paymentUpdateError } = await paymentMetadataClient
         .from("subscription_orders")
         .update({
           payment_url: payment.paymentUrl,
@@ -234,6 +237,7 @@ export async function createSubscriptionOrderAction(formData: FormData) {
           updated_at: new Date().toISOString(),
         })
         .eq("merchant_order_id", merchantOrderId);
+      if (paymentUpdateError) throw paymentUpdateError;
       return {
         ok: true,
         gateway: "duitku",

@@ -3,6 +3,7 @@ import { CheckCircle2, Clock3, XCircle } from "lucide-react";
 
 import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export default async function CheckoutReturnPage({
   searchParams,
@@ -19,17 +20,23 @@ export default async function CheckoutReturnPage({
 }) {
   const params = await searchParams;
   const orderId = params.order ?? params.merchantOrderId ?? params.order_id;
-  const paid =
+  const orderStatus = orderId ? await getOrderStatus(orderId) : null;
+  const gatewayPaid =
     params.resultCode === "00" ||
     params.transaction_status === "settlement" ||
     params.transaction_status === "capture" ||
     params.status_code === "200";
-  const failed =
+  const gatewayFailed =
     params.resultCode === "01" ||
     params.transaction_status === "deny" ||
     params.transaction_status === "expire" ||
     params.transaction_status === "cancel" ||
     params.transaction_status === "failure";
+  const paid = orderStatus === "paid";
+  const failed =
+    orderStatus === "failed" ||
+    orderStatus === "cancelled" ||
+    (!orderStatus && !gatewayPaid && gatewayFailed);
 
   return (
     <main className="min-h-screen bg-white text-zinc-950">
@@ -78,4 +85,20 @@ export default async function CheckoutReturnPage({
       <PublicFooter />
     </main>
   );
+}
+
+async function getOrderStatus(orderId: string) {
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from("subscription_orders")
+      .select("status")
+      .eq("merchant_order_id", orderId)
+      .maybeSingle();
+
+    if (error) return null;
+    return data?.status as "pending" | "paid" | "failed" | "cancelled" | null;
+  } catch {
+    return null;
+  }
 }

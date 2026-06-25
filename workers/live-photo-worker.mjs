@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { hostname, tmpdir } from "node:os";
 import path from "node:path";
 
 import { createClient } from "@supabase/supabase-js";
@@ -21,6 +21,22 @@ const MAX_ATTEMPTS = Number.parseInt(
   process.env.LIVE_PHOTO_WORKER_MAX_ATTEMPTS ?? "3",
   10,
 );
+const LEASE_TIMEOUT_SECONDS = Number.parseInt(
+  process.env.LIVE_PHOTO_WORKER_LEASE_TIMEOUT_SECONDS ?? "900",
+  10,
+);
+const FETCH_TIMEOUT_MS = Number.parseInt(
+  process.env.LIVE_PHOTO_FETCH_TIMEOUT_MS ?? "30000",
+  10,
+);
+const MAX_SOURCE_BYTES = Number.parseInt(
+  process.env.LIVE_PHOTO_MAX_SOURCE_BYTES ?? `${25 * 1024 * 1024}`,
+  10,
+);
+const WORKER_ID =
+  process.env.RAILWAY_REPLICA_ID ??
+  process.env.RAILWAY_DEPLOYMENT_ID ??
+  `${hostname()}-${process.pid}`;
 
 const supabaseUrl = requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
 const supabaseServiceKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
@@ -59,34 +75,16 @@ function sleep(ms) {
 }
 
 async function claimNextJob() {
-  const { data: candidates, error: selectError } = await supabase
-    .from("live_photo_render_jobs")
-    .select("*")
-    .eq("status", "queued")
-    .lt("attempts", MAX_ATTEMPTS)
-    .order("created_at", { ascending: true })
-    .limit(1);
-  if (selectError) throw selectError;
-
-  const candidate = candidates?.[0];
-  if (!candidate) return null;
-
-  const now = new Date().toISOString();
-  const { data: claimed, error: claimError } = await supabase
-    .from("live_photo_render_jobs")
-    .update({
-      status: "processing",
-      attempts: (candidate.attempts ?? 0) + 1,
-      started_at: now,
-      updated_at: now,
-      error_message: null,
-    })
-    .eq("id", candidate.id)
-    .eq("status", "queued")
-    .select("*")
-    .maybeSingle();
+  const { data, error: claimError } = await supabase.rpc(
+    "claim_live_photo_render_job",
+    {
+      max_attempts: MAX_ATTEMPTS,
+      lease_timeout_seconds: LEASE_TIMEOUT_SECONDS,
+      worker_identifier: WORKER_ID,
+    },
+  );
   if (claimError) throw claimError;
-  return claimed;
+  return data?.[0] ?? null;
 }
 
 async function processJob(job) {
@@ -131,8 +129,16 @@ function normalizeSourceAssets(value) {
       slotIndex: Number.isInteger(asset?.slotIndex) ? asset.slotIndex : -1,
       secureUrl: typeof asset?.secureUrl === "string" ? asset.secureUrl : "",
       publicId: typeof asset?.publicId === "string" ? asset.publicId : "",
+      format: typeof asset?.format === "string" ? asset.format.toLowerCase() : "",
+      bytes: Number.isFinite(asset?.bytes) ? asset.bytes : null,
+      mirrorHorizontal: asset?.mirrorHorizontal === true,
     }))
-    .filter((asset) => asset.slotIndex >= 0 && asset.secureUrl.startsWith("https://"))
+    .filter(
+      (asset) =>
+        asset.slotIndex >= 0 &&
+        isAllowedCloudinaryUrl(asset.secureUrl) &&
+        (asset.bytes === null || asset.bytes <= MAX_SOURCE_BYTES),
+    )
     .sort((left, right) => left.slotIndex - right.slotIndex);
 }
 
@@ -168,11 +174,21 @@ async function prepareSourceFrames(sourceAssets, workDir) {
   const sourceFrames = new Map();
 
   for (const asset of sourceAssets) {
-    const inputPath = path.join(workDir, `source-${asset.slotIndex}.gif`);
+    const inputExtension = /^[a-z0-9]{2,5}$/.test(asset.format)
+      ? asset.format
+      : "media";
+    const inputPath = path.join(
+      workDir,
+      `source-${asset.slotIndex}.${inputExtension}`,
+    );
     const outputDir = path.join(workDir, `source-${asset.slotIndex}-frames`);
     await downloadToFile(asset.secureUrl, inputPath);
     await mkdir(outputDir, { recursive: true });
-    const frames = await extractGifFrames(inputPath, outputDir);
+    const frames = await extractSourceFrames(
+      inputPath,
+      outputDir,
+      asset.mirrorHorizontal,
+    );
     if (frames.length > 0) {
       sourceFrames.set(asset.slotIndex, frames);
     }
@@ -185,19 +201,31 @@ async function prepareSourceFrames(sourceAssets, workDir) {
 }
 
 async function downloadToFile(url, filePath) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Unable to download ${url}: ${response.status}`);
-  }
-  const bytes = Buffer.from(await response.arrayBuffer());
+  const bytes = await fetchBuffer(url, `source asset ${url}`);
   await writeFile(filePath, bytes);
 }
 
-async function extractGifFrames(inputPath, outputDir) {
+async function extractSourceFrames(inputPath, outputDir, mirrorHorizontal) {
   const pattern = path.join(outputDir, "frame-%03d.png");
   try {
-    await run("ffmpeg", ["-y", "-i", inputPath, "-vsync", "0", pattern]);
-  } catch {
+    const sourceFrameRate = (FRAME_COUNT / 3).toFixed(3);
+    const videoFilter = [mirrorHorizontal ? "hflip" : null, `fps=${sourceFrameRate}`]
+      .filter(Boolean)
+      .join(",");
+    await run("ffmpeg", [
+      "-y",
+      "-i",
+      inputPath,
+      "-vf",
+      videoFilter,
+      "-frames:v",
+      `${FRAME_COUNT}`,
+      pattern,
+    ]);
+  } catch (error) {
+    if (!isImagePath(inputPath)) {
+      throw error;
+    }
     const fallbackPath = path.join(outputDir, "frame-001.png");
     await sharp(inputPath, { animated: false }).png().toFile(fallbackPath);
   }
@@ -322,7 +350,7 @@ async function renderNodeOverlay({ node, frameIndex, sourceFrames, scale, imageC
     const color = readColor(readProp(node, "color", null), "#18181b");
     const weight = readProp(node, "fontWeight", "") === "bold" ? "700" : "400";
     const input = Buffer.from(
-      `<svg width="${width}" height="${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;display:flex;align-items:center;justify-content:center;text-align:center;font-family:Arial,sans-serif;font-size:${fontSize}px;font-weight:${weight};color:${escapeXml(color)};line-height:1.1;">${escapeXml(text)}</div></foreignObject></svg>`,
+      `<svg width="${width}" height="${height}"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="${weight}" fill="${escapeXml(color)}">${escapeXml(text)}</text></svg>`,
     );
     return { input, left, top, opacity };
   }
@@ -348,9 +376,10 @@ function readImageSource(node) {
 
 async function loadImageBuffer(src, cache) {
   if (cache.has(src)) return cache.get(src);
-  const response = await fetch(src);
-  if (!response.ok) throw new Error(`Unable to download image node: ${src}`);
-  const buffer = Buffer.from(await response.arrayBuffer());
+  if (!isAllowedCloudinaryUrl(src)) {
+    throw new Error(`Image node URL is not allowed: ${src}`);
+  }
+  const buffer = await fetchBuffer(src, `image node ${src}`);
   cache.set(src, buffer);
   return buffer;
 }
@@ -368,7 +397,13 @@ function readColor(value, fallback) {
   if (typeof value !== "string") return fallback;
   const trimmed = value.trim();
   if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) return trimmed;
-  if (/^#[0-9a-fA-F]{8}$/.test(trimmed)) return `#${trimmed.slice(3)}`;
+  if (/^#[0-9a-fA-F]{8}$/.test(trimmed)) {
+    const red = Number.parseInt(trimmed.slice(1, 3), 16);
+    const green = Number.parseInt(trimmed.slice(3, 5), 16);
+    const blue = Number.parseInt(trimmed.slice(5, 7), 16);
+    const alpha = Number.parseInt(trimmed.slice(7, 9), 16) / 255;
+    return `rgba(${red}, ${green}, ${blue}, ${alpha.toFixed(3)})`;
+  }
   return fallback;
 }
 
@@ -479,6 +514,52 @@ function escapeXml(value) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+async function fetchBuffer(url, label) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`Unable to download ${label}: HTTP ${response.status}`);
+    }
+
+    const contentLength = Number(response.headers.get("content-length") ?? 0);
+    if (Number.isFinite(contentLength) && contentLength > MAX_SOURCE_BYTES) {
+      throw new Error(`Download too large for ${label}: ${contentLength} bytes`);
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.byteLength > MAX_SOURCE_BYTES) {
+      throw new Error(`Download too large for ${label}: ${buffer.byteLength} bytes`);
+    }
+    return buffer;
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(`Download timed out for ${label}`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function isAllowedCloudinaryUrl(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    if (url.hostname !== "res.cloudinary.com") return false;
+    return url.pathname.startsWith(`/${cloudinaryCloudName}/`);
+  } catch {
+    return false;
+  }
+}
+
+function isImagePath(filePath) {
+  return [".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(
+    path.extname(filePath).toLowerCase(),
+  );
 }
 
 function run(command, args) {

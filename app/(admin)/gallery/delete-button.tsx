@@ -15,8 +15,10 @@ export function DeleteSessionButton({ sessionId }: { sessionId: string }) {
     try {
       await deleteGallerySession(sessionId);
       toast.success("Foto berhasil dihapus");
-    } catch (error: any) {
-      toast.error(error.message || "Gagal menghapus foto");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Gagal menghapus foto",
+      );
     } finally {
       setLoading(false);
     }

@@ -11,6 +11,7 @@ import {
   createMerchantOrderId,
   mapDuitkuTransactionStatusCode,
 } from "@/server/payments/duitku";
+import { resolveKioskPricingProduct } from "@/lib/kiosk/pricing";
 
 type CreatePaymentBody = {
   deviceId?: string;
@@ -43,19 +44,23 @@ export async function POST(request: Request) {
       body.deviceId ?? "",
     );
     const sessionId = body.sessionId?.trim() ?? "";
-    const packageName = body.packageName?.trim() ?? "";
-    const amount = Math.max(0, Math.round(body.amount ?? 0));
-    const printCount = Math.max(1, Math.round(body.printCount ?? 1));
+    const packageCode = body.packageCode?.trim() || body.packageName?.trim() || "";
 
-    if (!sessionId || !packageName || amount <= 0) {
+    if (!sessionId || !packageCode) {
       return jsonOk(
         {
-          error: "Session ID, package name, and amount are required.",
+          error: "Session ID and package code are required.",
           code: "KIOSK_DUITKU_PAYMENT_INVALID",
         },
         { status: 400 },
       );
     }
+
+    const product = await resolveKioskPricingProduct(
+      context,
+      device,
+      packageCode,
+    );
 
     const existing = await loadTransaction(context, sessionId);
     if (existing && existing.status === "paid") {
@@ -90,8 +95,8 @@ export async function POST(request: Request) {
     const merchantOrderId = createMerchantOrderId();
     const payment = await createDuitkuDirectPayment({
       merchantOrderId,
-      amount,
-      productDetails: `POSKART ${packageName}`,
+      amount: product.amount,
+      productDetails: `POSKART ${product.name}`,
       customerName: body.customerName?.trim() || "POSKART Customer",
       email: context.user.email ?? "kiosk@poskart.my.id",
       callbackUrl: `${siteUrl}/api/payments/duitku/callback`,
@@ -107,8 +112,8 @@ export async function POST(request: Request) {
       booth: device.name,
       location: device.location,
       customer: body.customerName?.trim() || "Walk-in",
-      package_name: packageName,
-      amount,
+      package_name: product.name,
+      amount: product.amount,
       status: "pending",
       provider: "QRIS",
       payment_gateway: "duitku",
@@ -121,7 +126,7 @@ export async function POST(request: Request) {
       payment_expires_at: payment.expiresAt,
       gateway_response: payment.raw,
       template_id: templateId,
-      print_count: printCount,
+      print_count: product.printCount,
       created_at_label: now,
       print_status: "pending",
       print_attempts: 0,
@@ -138,7 +143,7 @@ export async function POST(request: Request) {
         merchantOrderId: payment.merchantOrderId,
         reference: payment.reference ?? null,
         qrString: payment.qrString,
-        amount,
+        amount: product.amount,
         expiresAt: payment.expiresAt,
       },
       { status: 201 },

@@ -709,7 +709,7 @@ function MonitorCard() {
                       <div className="my-auto space-y-3">
                         <div className="rounded-xl border border-zinc-200 bg-white p-3">
                           <div className="flex items-center justify-between text-[8px]">
-                            <span className="font-semibold text-zinc-800">Deploying 'Layout Frame A'</span>
+                            <span className="font-semibold text-zinc-800">Deploying &apos;Layout Frame A&apos;</span>
                             <span className="text-zinc-500 font-mono">85%</span>
                           </div>
                           <div className="mt-2 h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">

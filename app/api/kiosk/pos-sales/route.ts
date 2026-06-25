@@ -4,6 +4,7 @@ import {
   requireKioskContext,
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
+import { resolveKioskPricingProduct } from "@/lib/kiosk/pricing";
 
 type PosSaleBody = {
   deviceId?: string;
@@ -20,31 +21,33 @@ export async function POST(request: Request) {
   try {
     const context = await requireKioskContext(request);
     const body = (await request.json()) as PosSaleBody;
-    await requireOrganizationDevice(context, body.deviceId ?? "");
+    const device = await requireOrganizationDevice(context, body.deviceId ?? "");
 
-    if (
-      !body.packageCode ||
-      !body.packageName ||
-      !Number.isFinite(body.amount)
-    ) {
+    if (!body.packageCode) {
       return jsonOk(
         {
-          error: "Package code, package name, and amount are required.",
+          error: "Package code is required.",
           code: "KIOSK_POS_SALE_INVALID",
         },
         { status: 400 },
       );
     }
 
+    const product = await resolveKioskPricingProduct(
+      context,
+      device,
+      body.packageCode,
+    );
+
     const { data, error } = await context.client
       .from("pos_sales")
       .insert({
         organization_id: context.organizationId,
         customer_name: body.customerName?.trim() || "Walk-in",
-        package_code: body.packageCode,
-        package_name: body.packageName,
-        print_count: Math.max(1, Math.round(body.printCount ?? 1)),
-        amount: Math.max(0, Math.round(body.amount!)),
+        package_code: product.id,
+        package_name: product.name,
+        print_count: product.printCount,
+        amount: product.amount,
         payment_method: body.paymentMethod ?? "QRIS",
         notes: body.notes ?? null,
         created_by: context.user.id,
