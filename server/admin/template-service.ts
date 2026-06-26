@@ -1,9 +1,15 @@
-import { adminRepository } from "@/server/admin/_shared/admin-repository";
+import {
+  getTemplates,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
+  reorderTemplates,
+} from "@/server/admin/actions/template-actions";
 
 export const templateService = {
-  getTemplates: adminRepository.templates,
-  createTemplate: adminRepository.createTemplate,
-  updateTemplate: adminRepository.updateTemplate,
-  deleteTemplate: adminRepository.deleteTemplate,
-  reorderTemplates: adminRepository.reorderTemplates,
+  getTemplates,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
+  reorderTemplates,
 };

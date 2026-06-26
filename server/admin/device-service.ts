@@ -1,10 +1,17 @@
-import { adminRepository } from "@/server/admin/_shared/admin-repository";
+import {
+  getDevices,
+  createDevice,
+  updateDevice,
+  deleteDevice,
+  approveVoucherRequest,
+  rejectVoucherRequest,
+} from "@/server/admin/actions/device-actions";
 
 export const deviceService = {
-  getDevices: adminRepository.devices,
-  createDevice: adminRepository.createBooth,
-  updateDevice: adminRepository.updateBooth,
-  deleteDevice: adminRepository.deleteBooth,
-  approveVoucherRequest: adminRepository.approveVoucherRequest,
-  rejectVoucherRequest: adminRepository.rejectVoucherRequest,
+  getDevices,
+  createDevice,
+  updateDevice,
+  deleteDevice,
+  approveVoucherRequest,
+  rejectVoucherRequest,
 };

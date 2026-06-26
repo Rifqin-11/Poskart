@@ -30,7 +30,7 @@ import {
   useDeleteLayout,
 } from "@/features/admin/layout/use-layout";
 import { useBooths, useUpdateBooth } from "@/features/admin/devices/use-devices";
-import type { LayoutSchemaRow } from "@/server/admin/_shared/admin-repository";
+import type { LayoutSchemaRow } from "@/server/admin/_shared/admin-types";
 import type { Device } from "@/types/device";
 import { cn } from "@/lib/utils";
 

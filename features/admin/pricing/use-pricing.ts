@@ -6,10 +6,10 @@ import { pricingService } from "@/server/admin/pricing-service";
 import type {
   PricingProductInput,
   SubscriptionPlanInput,
-} from "@/server/admin/_shared/admin-repository";
+} from "@/server/admin/_shared/admin-types";
 
 export function usePricing() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof pricingService.getPricingProducts>>, Error>({
     queryKey: adminQueryKeys.pricing,
     queryFn: pricingService.getPricingProducts,
   });
@@ -41,7 +41,7 @@ export function useDeletePricing() {
 }
 
 export function useSubscriptionPlans() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof pricingService.getSubscriptionPlans>>, Error>({
     queryKey: adminQueryKeys.subscriptionPlans,
     queryFn: pricingService.getSubscriptionPlans,
   });

@@ -1,9 +1,17 @@
-import { adminRepository } from "@/server/admin/_shared/admin-repository";
+import {
+  getSubscriptionStatus,
+  getSubscriptionOrders,
+  updateSubscriptionOrderStatus,
+} from "@/server/admin/actions/dashboard-actions";
+import {
+  getSubscriptionPlans,
+  updateSubscriptionPlan,
+} from "@/server/admin/actions/pricing-actions";
 
 export const subscriptionService = {
-  getStatus: adminRepository.getSubscriptionStatus,
-  getOrders: adminRepository.getSubscriptionOrders,
-  updateOrderStatus: adminRepository.updateSubscriptionOrderStatus,
-  getPlans: adminRepository.subscriptionPlans,
-  updatePlan: adminRepository.updateSubscriptionPlan,
+  getStatus: getSubscriptionStatus,
+  getOrders: getSubscriptionOrders,
+  updateOrderStatus: updateSubscriptionOrderStatus,
+  getPlans: getSubscriptionPlans,
+  updatePlan: updateSubscriptionPlan,
 };

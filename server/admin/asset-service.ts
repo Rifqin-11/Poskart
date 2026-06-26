@@ -1,8 +1,13 @@
-import { adminRepository } from "@/server/admin/_shared/admin-repository";
+import {
+  getAssets,
+  createAsset,
+  updateAsset,
+  deleteAsset,
+} from "@/server/admin/actions/asset-actions";
 
 export const assetService = {
-  getAssets: adminRepository.assets,
-  createAsset: adminRepository.createAsset,
-  updateAsset: adminRepository.updateAsset,
-  deleteAsset: adminRepository.deleteAsset,
+  getAssets,
+  createAsset,
+  updateAsset,
+  deleteAsset,
 };

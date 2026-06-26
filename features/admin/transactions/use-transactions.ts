@@ -5,14 +5,14 @@ import { adminQueryKeys } from "@/features/admin/query-keys";
 import { transactionService } from "@/server/admin/transaction-service";
 
 export function useTransactions() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof transactionService.getTransactions>>, Error>({
     queryKey: adminQueryKeys.transactions,
     queryFn: transactionService.getTransactions,
   });
 }
 
 export function useFailedPrintsByBooth(boothName: string | null) {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof transactionService.getFailedPrintsByBooth>>, Error>({
     queryKey: adminQueryKeys.failedPrints(boothName),
     queryFn: () =>
       transactionService.getFailedPrintsByBooth(boothName as string),

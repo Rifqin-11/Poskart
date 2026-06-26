@@ -6,14 +6,14 @@ import { layoutService } from "@/server/admin/layout-service";
 import type { LayoutSchema } from "@/types/builder";
 
 export function useActiveLayoutSchema() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof layoutService.getLayoutSchema>>, Error>({
     queryKey: adminQueryKeys.layoutSchema,
     queryFn: layoutService.getLayoutSchema,
   });
 }
 
 export function useLayoutSchemas() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof layoutService.getLayoutSchemas>>, Error>({
     queryKey: adminQueryKeys.layoutSchemas,
     queryFn: layoutService.getLayoutSchemas,
     // Poll every 30 s as fallback when Realtime is unavailable
@@ -23,7 +23,7 @@ export function useLayoutSchemas() {
 }
 
 export function useActiveThemeStatistics(themeName: string | null) {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof layoutService.getActiveThemeStatistics>>, Error>({
     queryKey: adminQueryKeys.activeThemeStatistics(themeName),
     queryFn: () =>
       layoutService.getActiveThemeStatistics(themeName as string),

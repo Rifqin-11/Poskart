@@ -6,7 +6,7 @@ import { configService } from "@/server/config/config-service";
 import type { AppConfigRow } from "@/types/app-config";
 
 export function useAppConfig() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof configService.get>>, Error>({
     queryKey: adminQueryKeys.appConfig,
     queryFn: configService.get,
   });

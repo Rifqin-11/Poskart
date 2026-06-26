@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isSuperAdminEmail } from "@/lib/auth/admin";
 
 export async function updateSession(request: NextRequest) {
   if (request.nextUrl.pathname === "/" && request.nextUrl.searchParams.has("code")) {
@@ -61,7 +62,6 @@ export async function updateSession(request: NextRequest) {
     "/analytics",
     "/settings",
   ];
-  const adminEmails = ["rifqinaufal9009@gmail.com", "admin@poskart.id", "admin@poskart.my.id"];
   const pathname = request.nextUrl.pathname;
 
   const isProtectedCheckoutRoute = pathname === "/checkout";
@@ -111,7 +111,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isSubscriptionRoute) {
     const email = typeof user.email === "string" ? user.email.toLowerCase() : "";
-    const isSuperAdmin = adminEmails.includes(email);
+    const isSuperAdmin = isSuperAdminEmail(email);
 
     if (!isSuperAdmin) {
       const { data: member } = await supabase

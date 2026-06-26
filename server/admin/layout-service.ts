@@ -1,14 +1,25 @@
-import { adminRepository } from "@/server/admin/_shared/admin-repository";
+import {
+  getLayoutSchema,
+  getLayoutSchemas,
+  getActiveThemeStatistics,
+  publishLayoutSchema,
+  publishThemeSchema,
+  saveLayoutAsTheme,
+  setActiveLayout,
+  deactivateLayout,
+  deleteLayout,
+  getThemes,
+} from "@/server/admin/actions/layout-actions";
 
 export const layoutService = {
-  getLayoutSchema: adminRepository.layoutSchema,
-  getLayoutSchemas: adminRepository.layoutSchemas,
-  getActiveThemeStatistics: adminRepository.activeThemeStatistics,
-  publishLayoutSchema: adminRepository.publishLayoutSchema,
-  publishThemeSchema: adminRepository.publishThemeSchema,
-  saveLayoutAsTheme: adminRepository.saveLayoutAsTheme,
-  setActiveLayout: adminRepository.setActiveLayout,
-  deactivateLayout: adminRepository.deactivateLayout,
-  deleteLayout: adminRepository.deleteLayout,
-  getThemes: adminRepository.themes,
+  getLayoutSchema,
+  getLayoutSchemas,
+  getActiveThemeStatistics,
+  publishLayoutSchema,
+  publishThemeSchema,
+  saveLayoutAsTheme,
+  setActiveLayout,
+  deactivateLayout,
+  deleteLayout,
+  getThemes,
 };

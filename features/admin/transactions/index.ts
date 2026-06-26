@@ -1,1 +1,1 @@
-export { TransactionsMonitoring } from "@/features/admin/_components/operations-panels";
+export { TransactionsMonitoring } from "./transactions-monitoring";

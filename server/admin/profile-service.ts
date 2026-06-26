@@ -1,7 +1,11 @@
-import { adminRepository } from "@/server/admin/_shared/admin-repository";
+import {
+  getProfiles,
+  updateProfile,
+  deleteProfile,
+} from "@/server/admin/actions/profile-actions";
 
 export const profileService = {
-  getProfiles: adminRepository.getProfiles,
-  updateProfile: adminRepository.updateProfile,
-  deleteProfile: adminRepository.deleteProfile,
+  getProfiles,
+  updateProfile,
+  deleteProfile,
 };

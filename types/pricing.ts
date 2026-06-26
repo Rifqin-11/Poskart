@@ -10,6 +10,8 @@ export type PricingProduct = {
   active: boolean;
 };
 
+export type PricingProductInput = Omit<PricingProduct, "id">;
+
 export type SubscriptionPlan = {
   id: string;
   name: string;

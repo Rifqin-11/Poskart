@@ -5,7 +5,7 @@ import { adminQueryKeys } from "@/features/admin/query-keys";
 import { organizationService } from "@/server/admin/organization-service";
 
 export function useTenantDetails() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof organizationService.getMyOrganizationDetails>>, Error>({
     queryKey: adminQueryKeys.organizationDetails,
     queryFn: organizationService.getMyOrganizationDetails,
   });
@@ -23,14 +23,14 @@ export function useUpdateTenantName() {
 }
 
 export function useTenantMembers() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof organizationService.getMyOrganizationMembers>>, Error>({
     queryKey: adminQueryKeys.organizationMembers,
     queryFn: organizationService.getMyOrganizationMembers,
   });
 }
 
 export function useTenantInvitations() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof organizationService.getMyOrganizationInvitations>>, Error>({
     queryKey: adminQueryKeys.organizationInvitations,
     queryFn: organizationService.getMyOrganizationInvitations,
   });

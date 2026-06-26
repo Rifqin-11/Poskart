@@ -3,10 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { assetService } from "@/server/admin/asset-service";
-import type { AssetInput } from "@/server/admin/_shared/admin-repository";
+import type { AssetInput, AssetItem } from "@/server/admin/_shared/admin-types";
 
 export function useAssets() {
-  return useQuery({
+  return useQuery<AssetItem[], Error>({
     queryKey: adminQueryKeys.assets,
     queryFn: assetService.getAssets,
   });

@@ -107,15 +107,6 @@ const navItems = [
   },
 ];
 
-function isSuperAdmin(email?: string | null): boolean {
-  if (!email) return false;
-  const adminEmails = [
-    "rifqinaufal9009@gmail.com",
-    "admin@poskart.id",
-    "admin@poskart.my.id",
-  ];
-  return adminEmails.includes(email.toLowerCase());
-}
 
 function formatShortExpiry(value?: string | null) {
   if (!value) return null;
@@ -132,9 +123,11 @@ function formatShortExpiry(value?: string | null) {
 
 function SidebarContent({
   userEmail,
+  isSuperAdmin = false,
   onNavigate,
 }: {
   userEmail?: string;
+  isSuperAdmin?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -149,7 +142,7 @@ function SidebarContent({
     sub?.expiry ??
     "No expiry";
 
-  const adminMode = isSuperAdmin(userEmail);
+  const adminMode = isSuperAdmin;
   const hasActiveSubscription = adminMode || tier === "Pro";
   const filteredNavItems = navItems.filter(
     (item) => !item.superAdminOnly || adminMode,
@@ -276,9 +269,11 @@ function SidebarContent({
 export function AdminShell({
   children,
   userEmail,
+  isSuperAdmin = false,
 }: {
   children: React.ReactNode;
   userEmail?: string;
+  isSuperAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -303,13 +298,14 @@ export function AdminShell({
       {/* App sidebar — hidden in builder full-view */}
       {!builderFullView && (
         <aside className="fixed inset-y-4 left-4 hidden w-64 overflow-hidden rounded-[2rem] border border-zinc-200/70 bg-white p-4 shadow-xl shadow-zinc-950/[0.05] lg:block xl:w-72">
-          <SidebarContent userEmail={userEmail} />
+          <SidebarContent userEmail={userEmail} isSuperAdmin={isSuperAdmin} />
         </aside>
       )}
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SidebarContent
           userEmail={userEmail}
+          isSuperAdmin={isSuperAdmin}
           onNavigate={() => setOpen(false)}
         />
       </Sheet>

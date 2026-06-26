@@ -1,1 +1,1 @@
-export { BoothManagement } from "@/features/admin/_components/operations-panels";
+export { BoothManagement } from "./booth-management";

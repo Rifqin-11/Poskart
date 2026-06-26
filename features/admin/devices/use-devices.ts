@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { deviceService } from "@/server/admin/device-service";
 import { transactionService } from "@/server/admin/transaction-service";
-import type { BoothInput } from "@/server/admin/_shared/admin-repository";
+import type { BoothInput } from "@/server/admin/_shared/admin-types";
 import type { Device } from "@/types/device";
 
 export function useBooths() {
@@ -60,7 +60,7 @@ export function useRejectVoucherRequest() {
 }
 
 export function useFailedPrintsByBooth(boothName: string | null) {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof transactionService.getFailedPrintsByBooth>>, Error>({
     queryKey: adminQueryKeys.failedPrints(boothName),
     queryFn: () => transactionService.getFailedPrintsByBooth(boothName as string),
     enabled: Boolean(boothName),

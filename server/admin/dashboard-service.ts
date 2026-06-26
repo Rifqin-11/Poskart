@@ -1,5 +1,13 @@
-import { adminRepository } from "@/server/admin/_shared/admin-repository";
+import {
+  getDashboard,
+  getSubscriptionStatus,
+  getSubscriptionOrders,
+  updateSubscriptionOrderStatus,
+} from "@/server/admin/actions/dashboard-actions";
 
 export const dashboardService = {
-  getDashboard: adminRepository.dashboard,
+  getDashboard,
+  getSubscriptionStatus,
+  getSubscriptionOrders,
+  updateSubscriptionOrderStatus,
 };

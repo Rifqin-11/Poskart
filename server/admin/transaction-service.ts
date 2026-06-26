@@ -1,14 +1,21 @@
-import { adminRepository } from "@/server/admin/_shared/admin-repository";
-import type { TransactionPatch } from "@/server/admin/_shared/admin-repository";
+import {
+  getTransactions,
+  getFailedPrintsByBooth,
+  retryPrint,
+  updateTransaction,
+  deleteTransaction,
+  deleteTransactions,
+} from "@/server/admin/actions/transaction-actions";
+import type { TransactionPatch } from "@/server/admin/_shared/admin-types";
 
-export { TransactionPatch };
+export type { TransactionPatch };
 
 export const transactionService = {
-  getTransactions: adminRepository.transactions,
-  getFailedPrintsByBooth: adminRepository.failedPrintsByBooth,
-  retryPrint: adminRepository.retryPrint,
+  getTransactions,
+  getFailedPrintsByBooth,
+  retryPrint,
   updateTransaction: ({ id, patch }: { id: string; patch: TransactionPatch }) =>
-    adminRepository.updateTransaction(id, patch),
-  deleteTransaction: (id: string) => adminRepository.deleteTransaction(id),
-  deleteTransactions: (ids: string[]) => adminRepository.deleteTransactions(ids),
+    updateTransaction(id, patch),
+  deleteTransaction: (id: string) => deleteTransaction(id),
+  deleteTransactions: (ids: string[]) => deleteTransactions(ids),
 };

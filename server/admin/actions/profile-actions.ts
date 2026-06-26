@@ -1,0 +1,115 @@
+"use server";
+
+import { createClient } from "@/lib/supabase/server";
+import { type ProfileWithOrganization } from "../_shared/admin-types";
+
+async function verifyAuth() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  return { supabase, user };
+}
+
+export async function getProfiles() {
+  const { supabase } = await verifyAuth();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(
+      `
+      id,
+      email,
+      role,
+      created_at,
+      organization_members (
+        role,
+        organization_id,
+        organizations (
+          id,
+          name
+        )
+      )
+    `,
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return ((data ?? []) as any[]).map((profile) => {
+    const memberInfo = profile.organization_members?.[0];
+    return {
+      id: profile.id,
+      email: profile.email,
+      role: profile.role,
+      created_at: profile.created_at,
+      organizationId: memberInfo?.organization_id || null,
+      organizationName: memberInfo?.organizations?.name || null,
+      memberRole: memberInfo?.role || null,
+    };
+  });
+}
+
+export async function updateProfile({
+  id,
+  patch,
+  organizationId,
+}: {
+  id: string;
+  patch: Record<string, unknown>;
+  organizationId?: string | null;
+}) {
+  const { supabase } = await verifyAuth();
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+
+  if (organizationId !== undefined) {
+    if (organizationId) {
+      const { data: existing } = await supabase
+        .from("organization_members")
+        .select("id")
+        .eq("profile_id", id)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        const { error: mErr } = await supabase
+          .from("organization_members")
+          .update({
+            organization_id: organizationId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("profile_id", id);
+        if (mErr) throw mErr;
+      } else {
+        const { error: mErr } = await supabase
+          .from("organization_members")
+          .insert({
+            organization_id: organizationId,
+            profile_id: id,
+            role: "staff",
+          });
+        if (mErr) throw mErr;
+      }
+    } else {
+      const { error: mErr } = await supabase
+        .from("organization_members")
+        .delete()
+        .eq("profile_id", id);
+      if (mErr) throw mErr;
+    }
+  }
+
+  return profile;
+}
+
+export async function deleteProfile(id: string) {
+  const { supabase } = await verifyAuth();
+  const { error } = await supabase.from("profiles").delete().eq("id", id);
+  if (error) throw error;
+  return true;
+}

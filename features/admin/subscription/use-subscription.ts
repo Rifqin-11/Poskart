@@ -5,14 +5,14 @@ import { adminQueryKeys } from "@/features/admin/query-keys";
 import { subscriptionService } from "@/server/subscription/subscription-service";
 
 export function useSubscriptionStatus() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof subscriptionService.getStatus>>, Error>({
     queryKey: adminQueryKeys.subscriptionStatus,
     queryFn: subscriptionService.getStatus,
   });
 }
 
 export function useSubscriptionOrders() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof subscriptionService.getOrders>>, Error>({
     queryKey: adminQueryKeys.subscriptionOrders,
     queryFn: subscriptionService.getOrders,
   });

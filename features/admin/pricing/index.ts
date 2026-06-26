@@ -1,1 +1,1 @@
-export { PricingManagement } from "@/features/admin/_components/operations-panels";
+export { PricingManagement } from "./pricing-management";

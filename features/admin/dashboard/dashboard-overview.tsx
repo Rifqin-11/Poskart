@@ -21,12 +21,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData, useSubscriptionStatus } from "@/features/admin/dashboard/use-dashboard";
-import type { DashboardData } from "@/server/admin/_shared/admin-repository";
+import type { DashboardData, Device, Transaction, PosRecentSale, KpiMetric } from "@/server/admin/_shared/admin-types";
 import { formatCurrency } from "@/lib/utils";
 
 const icons = [CircleDollarSign, CircleDollarSign, Activity, Download];
 
-const emptyMetrics = [
+const emptyMetrics: KpiMetric[] = [
   { label: "Revenue today", value: "Rp 0", delta: "No transactions yet", tone: "neutral" as const },
   { label: "Revenue this month", value: "Rp 0", delta: "No monthly data yet", tone: "neutral" as const },
   { label: "Transactions today", value: "0", delta: "Waiting for first session", tone: "neutral" as const },
@@ -72,7 +72,7 @@ export function DashboardOverview() {
   }
 
   const dashboardData = data ?? emptyDashboardData;
-  const activeBooths = dashboardData.devices.filter((device) => device.status === "online").length;
+  const activeBooths = dashboardData.devices.filter((device: Device) => device.status === "online").length;
   const metrics = dashboardData.kpiMetrics.length > 0 ? dashboardData.kpiMetrics : emptyMetrics;
   const hasWeeklyChart = dashboardData.weeklyChart.length > 0;
   const hasMonthlyChart = dashboardData.monthlyChart.length > 0;
@@ -154,7 +154,7 @@ export function DashboardOverview() {
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric, index) => {
+        {metrics.map((metric: KpiMetric, index: number) => {
           const Icon = icons[index] ?? Activity;
           return (
             <motion.div
@@ -228,7 +228,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent className="space-y-3">
             {hasPosSales ? (
-              dashboardData.posSummary.recentSales.map((sale) => (
+              dashboardData.posSummary.recentSales.map((sale: PosRecentSale) => (
                 <div key={sale.id} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
                   <div>
                     <div className="text-sm font-medium">{sale.packageName}</div>
@@ -294,7 +294,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent className="space-y-4">
             {hasDevices ? (
-              dashboardData.devices.map((device) => (
+              dashboardData.devices.map((device: Device) => (
                 <div key={device.id} className="rounded-lg border border-zinc-100 p-3">
                   <div className="flex items-center justify-between">
                     <div>
@@ -370,7 +370,7 @@ export function DashboardOverview() {
           </CardHeader>
           <CardContent className="space-y-3">
             {hasTransactions ? (
-              dashboardData.transactions.slice(0, 5).map((transaction) => (
+              dashboardData.transactions.slice(0, 5).map((transaction: Transaction) => (
                 <div key={transaction.id} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
                   <div>
                     <div className="text-sm font-medium">{transaction.packageName}</div>
@@ -424,7 +424,7 @@ function DashboardLoadingState() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
+        {Array.from({ length: 4 }).map((_, index: number) => (
           <Card key={index}>
             <CardHeader className="space-y-2 pb-2">
               <Skeleton className="h-4 w-28" />
@@ -453,7 +453,7 @@ function DashboardLoadingState() {
             <Skeleton className="h-4 w-48" />
           </CardHeader>
           <CardContent className="space-y-3">
-            {Array.from({ length: 3 }).map((_, index) => (
+            {Array.from({ length: 3 }).map((_, index: number) => (
               <Skeleton key={index} className="h-20" />
             ))}
           </CardContent>

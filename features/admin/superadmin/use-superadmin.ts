@@ -4,10 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { organizationService } from "@/server/admin/organization-service";
 import { profileService } from "@/server/admin/profile-service";
-import type { TenantInput } from "@/server/admin/_shared/admin-repository";
+import type { TenantInput } from "@/server/admin/_shared/admin-types";
+import type { Organization } from "@/types/organization";
 
 export function useTenants() {
-  return useQuery({
+  return useQuery<Organization[], Error>({
     queryKey: adminQueryKeys.organizations,
     queryFn: organizationService.getOrganizations,
   });
@@ -39,7 +40,7 @@ export function useDeleteTenant() {
 }
 
 export function useProfiles() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof profileService.getProfiles>>, Error>({
     queryKey: adminQueryKeys.profiles,
     queryFn: profileService.getProfiles,
   });

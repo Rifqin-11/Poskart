@@ -1,1 +1,1 @@
-export { SettingsPanel } from "@/features/admin/_components/operations-panels";
+export { SettingsPanel } from "./settings-panel";

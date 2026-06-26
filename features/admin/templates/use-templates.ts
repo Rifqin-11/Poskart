@@ -5,7 +5,7 @@ import { adminQueryKeys } from "@/features/admin/query-keys";
 import { templateService } from "@/server/admin/template-service";
 
 export function useTemplates() {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof templateService.getTemplates>>, Error>({
     queryKey: adminQueryKeys.templates,
     queryFn: templateService.getTemplates,
   });
