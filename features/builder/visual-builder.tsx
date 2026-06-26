@@ -3705,7 +3705,7 @@ export function VisualBuilder() {
         "flex flex-col overflow-hidden",
         fullView
           ? "fixed inset-0 z-[100]" /* cover everything — shell is hidden */
-          : "-mx-4 -my-6 lg:-mx-8" /* cancel main padding as before */,
+          : "-mx-4 -my-5 lg:-mx-5 xl:-mx-8 xl:-my-6" /* cancel shell content padding */,
       )}
       style={{ height: fullView ? "100vh" : "calc(100vh - 4rem)" }}
     >

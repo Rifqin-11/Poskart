@@ -122,7 +122,7 @@ export function CheckoutContent({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_420px] lg:px-8"
+      className="mx-auto grid max-w-7xl gap-6 px-3 py-6 sm:px-5 lg:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:gap-8 xl:px-8 xl:py-10"
     >
       {showDuitku ? (
         <Script
@@ -146,7 +146,7 @@ export function CheckoutContent({
             <CreditCard className="size-3.5 text-red-500" />
             Checkout
           </div>
-          <h1 className="text-4xl font-semibold tracking-tight">
+          <h1 className="max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl xl:text-5xl">
             Complete your POSKART subscription.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600">
@@ -171,7 +171,7 @@ export function CheckoutContent({
           </div>
         ) : null}
 
-        <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
           <h2 className="text-lg font-semibold">Subscription devices</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-500">
             This plan includes {plan.includedDevices} device
@@ -201,7 +201,7 @@ export function CheckoutContent({
           </label>
         </div>
 
-        <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold">Payment gateway</h2>
@@ -216,7 +216,7 @@ export function CheckoutContent({
             ) : null}
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="mt-5 grid gap-3 2xl:grid-cols-2">
             {showDuitku ? (
               <label
                 className={[
@@ -316,7 +316,7 @@ export function CheckoutContent({
           </div>
         </div>
 
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-5 text-sm leading-7 text-zinc-600">
+        <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5 text-sm leading-7 text-zinc-600">
           <div className="mb-2 flex items-center gap-2 font-medium text-zinc-950">
             <LockKeyhole className="size-4" />
             Payment Gateway
@@ -327,14 +327,14 @@ export function CheckoutContent({
         </div>
       </div>
 
-      <aside className="h-fit rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+      <aside className="h-fit rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex items-center gap-2">
           <ReceiptText className="size-5 text-zinc-500" />
           <h2 className="text-lg font-semibold">Order summary</h2>
         </div>
 
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-          <div className="flex items-start justify-between gap-4">
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="text-sm font-semibold">{plan.name}</div>
               <div className="mt-1 text-xs text-zinc-500">
@@ -382,11 +382,11 @@ export function CheckoutContent({
         </div>
 
         <div className="mt-5 space-y-3">
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
             Payment gateway:{" "}
             <span className="font-medium text-zinc-950">{selectedGatewayLabel}</span>
           </div>
-          <div className="flex items-start gap-2 rounded-lg border border-zinc-200 bg-white p-4 text-sm text-zinc-600">
+          <div className="flex items-start gap-2 rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
             <span>
               {paymentGateway === "duitku"

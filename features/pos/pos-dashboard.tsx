@@ -264,10 +264,6 @@ export function PosDashboard({
       ) : null}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-medium text-red-700">
-            <ReceiptText className="size-3.5" />
-            Point of Sale
-          </div>
           <h1 className="text-2xl font-semibold tracking-tight">
             Kasir Foto & Print
           </h1>

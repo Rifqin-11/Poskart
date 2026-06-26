@@ -302,7 +302,7 @@ export function AdminShell({
     >
       {/* App sidebar — hidden in builder full-view */}
       {!builderFullView && (
-        <aside className="fixed inset-y-4 left-4 hidden w-72 overflow-hidden rounded-[2rem] border border-zinc-200/70 bg-white p-4 shadow-xl shadow-zinc-950/[0.05] lg:block">
+        <aside className="fixed inset-y-4 left-4 hidden w-64 overflow-hidden rounded-[2rem] border border-zinc-200/70 bg-white p-4 shadow-xl shadow-zinc-950/[0.05] lg:block xl:w-72">
           <SidebarContent userEmail={userEmail} />
         </aside>
       )}
@@ -317,7 +317,7 @@ export function AdminShell({
       <div
         className={cn(
           "transition-all duration-200",
-          builderFullView ? "lg:pl-0" : "lg:pl-[18.75rem]",
+          builderFullView ? "lg:pl-0" : "lg:pl-[17.25rem] xl:pl-[18.75rem]",
         )}
       >
         {/* Topbar — hidden in builder full-view */}
@@ -464,7 +464,7 @@ export function AdminShell({
           className={cn(
             builderFullView
               ? "p-0"
-              : "mx-3 mt-4 rounded-[2rem] border border-zinc-200/70 bg-white px-4 py-6 shadow-lg shadow-zinc-950/[0.035] lg:mx-4 lg:px-8",
+              : "mx-3 mt-4 px-4 py-5 lg:mx-4 lg:px-5 xl:px-8 xl:py-6",
           )}
         >
           {children}

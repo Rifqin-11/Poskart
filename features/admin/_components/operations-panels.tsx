@@ -3320,12 +3320,14 @@ export function TenantManagement() {
         }
       />
       <Tabs defaultValue="organizations">
-        <TabsList className="mb-4">
-          <TabsTrigger value="organizations">Organizations</TabsTrigger>
-          <TabsTrigger value="users">Registered Users</TabsTrigger>
-          <TabsTrigger value="saas-pricing">SaaS Pricing</TabsTrigger>
-          <TabsTrigger value="payment-gateway">Payment Gateway</TabsTrigger>
-        </TabsList>
+        <div className="mb-4 w-full bg-white p-2 rounded-full">
+          <TabsList className="">
+            <TabsTrigger value="organizations">Organizations</TabsTrigger>
+            <TabsTrigger value="users">Registered Users</TabsTrigger>
+            <TabsTrigger value="saas-pricing">SaaS Pricing</TabsTrigger>
+            <TabsTrigger value="payment-gateway">Payment Gateway</TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="organizations">
           <Card>
             <CardContent className="pt-5">

@@ -5,7 +5,6 @@ import {
   useBooths,
   useUpdateBooth,
 } from "@/features/admin/devices/use-devices";
-import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
 import type { Device } from "@/types/device";
 import {
   Card,
@@ -27,7 +26,6 @@ import {
   RefreshCw,
   Send,
   Loader2,
-  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,7 +39,7 @@ function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div className="mb-6 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="mt-1 text-sm text-zinc-500">{description}</p>
@@ -155,7 +153,7 @@ export function VoucherApproval() {
         </h2>
 
         {waitingDevices.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-2">
             {waitingDevices.map((device: Device) => (
               <Card
                 key={device.id}
@@ -164,10 +162,10 @@ export function VoucherApproval() {
                 {/* Pulsing top border decorator */}
                 <div className="absolute top-0 inset-x-0 h-1 bg-yellow-400 animate-pulse" />
                 <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
                       <CardTitle className="flex items-center gap-2 text-lg">
-                        <MonitorSmartphone className="size-5 text-yellow-600" />
+                        <MonitorSmartphone className="size-5 shrink-0 text-yellow-600" />
                         {device.name}
                       </CardTitle>
                       <CardDescription className="mt-1">
@@ -191,9 +189,9 @@ export function VoucherApproval() {
                       them to proceed.
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                     <Button
-                      className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold shadow-sm"
+                      className="bg-yellow-600 font-semibold text-white shadow-sm hover:bg-yellow-700"
                       onClick={() => setSelectedDevice(device)}
                     >
                       <Ticket className="size-4 mr-2" /> Approve Voucher
@@ -208,7 +206,7 @@ export function VoucherApproval() {
                             patch: { location: "" },
                           });
                           toast.success(`Request cancelled for ${device.name}`);
-                        } catch (err) {
+                        } catch {
                           toast.error("Failed to cancel request");
                         }
                       }}
@@ -238,11 +236,11 @@ export function VoucherApproval() {
 
       {/* 2. OTHER DEVICES LIST */}
       <div className="space-y-3 pt-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
             Other Online Kiosks ({otherDevices.length})
           </h2>
-          <div className="relative w-full sm:max-w-xs">
+          <div className="relative w-full xl:max-w-xs">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
             <Input
               placeholder="Search devices…"
@@ -258,7 +256,7 @@ export function VoucherApproval() {
             <Loader2 className="size-8 animate-spin text-zinc-400" />
           </div>
         ) : otherDevices.length > 0 ? (
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
             {otherDevices.map((device: Device) => {
               const isOnline = device.status === "online";
               return (
@@ -267,9 +265,9 @@ export function VoucherApproval() {
                   className="bg-white hover:border-zinc-300 transition-all"
                 >
                   <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <MonitorSmartphone className="size-4 text-zinc-500" />
+                    <div className="flex items-start justify-between gap-3">
+                      <CardTitle className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                        <MonitorSmartphone className="size-4 shrink-0 text-zinc-500" />
                         {device.name}
                       </CardTitle>
                       <Badge
@@ -291,9 +289,9 @@ export function VoucherApproval() {
                     )}
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="mt-3 flex justify-between items-center text-xs text-zinc-400">
+                    <div className="mt-3 grid gap-1 text-xs text-zinc-400 sm:grid-cols-2">
                       <span>Battery: {device.battery}%</span>
-                      <span>Sync: {device.lastSync}</span>
+                      <span className="sm:text-right">Sync: {device.lastSync}</span>
                     </div>
                     <Button
                       variant="outline"

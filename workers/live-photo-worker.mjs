@@ -43,6 +43,7 @@ const supabaseServiceKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
 const cloudinaryCloudName = requiredEnv("CLOUDINARY_CLOUD_NAME");
 const cloudinaryApiKey = requiredEnv("CLOUDINARY_API_KEY");
 const cloudinaryApiSecret = requiredEnv("CLOUDINARY_API_SECRET");
+const supabaseOrigin = new URL(supabaseUrl).origin;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -376,7 +377,7 @@ function readImageSource(node) {
 
 async function loadImageBuffer(src, cache) {
   if (cache.has(src)) return cache.get(src);
-  if (!isAllowedCloudinaryUrl(src)) {
+  if (!isAllowedImageNodeUrl(src)) {
     throw new Error(`Image node URL is not allowed: ${src}`);
   }
   const buffer = await fetchBuffer(src, `image node ${src}`);
@@ -551,6 +552,21 @@ function isAllowedCloudinaryUrl(value) {
     if (url.protocol !== "https:") return false;
     if (url.hostname !== "res.cloudinary.com") return false;
     return url.pathname.startsWith(`/${cloudinaryCloudName}/`);
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedImageNodeUrl(value) {
+  return isAllowedCloudinaryUrl(value) || isAllowedSupabaseBuilderAssetUrl(value);
+}
+
+function isAllowedSupabaseBuilderAssetUrl(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    if (url.origin !== supabaseOrigin) return false;
+    return url.pathname.startsWith("/storage/v1/object/public/builder-assets/");
   } catch {
     return false;
   }

@@ -596,12 +596,8 @@ export function MoneyDashboard({
         />
       ) : null}
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-            <WalletCards className="size-3.5" />
-            Keuangan Operasional
-          </div>
           <h1 className="text-2xl font-semibold tracking-tight">
             Manajemen Keuangan
           </h1>
@@ -610,15 +606,20 @@ export function MoneyDashboard({
             laporan terpusat.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2 sm:grid-cols-2 xl:flex xl:flex-wrap">
           <Button
             variant="outline"
+            className="justify-center"
             onClick={() => setCategoryManagerOpen(true)}
           >
             <Settings2 className="size-4" />
             Kategori
           </Button>
-          <Button variant="outline" onClick={() => setTagManagerOpen(true)}>
+          <Button
+            variant="outline"
+            className="justify-center"
+            onClick={() => setTagManagerOpen(true)}
+          >
             <Tags className="size-4" />
             Tag
           </Button>
@@ -626,6 +627,7 @@ export function MoneyDashboard({
           <div className="relative">
             <Button
               variant="outline"
+              className="w-full justify-center xl:w-auto"
               onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
             >
               <FileDown className="size-4" />
@@ -665,7 +667,7 @@ export function MoneyDashboard({
             ) : null}
           </div>
 
-          <Button onClick={openCreate}>
+          <Button className="justify-center sm:col-span-2 xl:col-span-1" onClick={openCreate}>
             <Plus className="size-4" />
             Tambah transaksi
           </Button>
@@ -673,15 +675,15 @@ export function MoneyDashboard({
       </div>
 
       <Card>
-        <CardContent className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-[minmax(420px,1fr)_240px_240px] xl:items-end">
+        <CardContent className="grid gap-4 p-4 xl:grid-cols-[minmax(420px,1fr)_minmax(220px,240px)_minmax(220px,240px)] xl:items-end">
           <div className="space-y-1.5">
             <div className="text-xs font-medium text-zinc-500">
               Akun keuangan
             </div>
-            <div className="inline-flex w-full rounded-xl border border-zinc-200 bg-zinc-50 p-1">
+            <div className="grid w-full gap-1 rounded-xl border border-zinc-200 bg-zinc-50 p-1 sm:grid-cols-3">
               <WalletFilterButton
                 active={walletFilter === "all"}
-                label="Semua akun"
+                label="Semua"
                 icon={WalletCards}
                 onClick={() => setWalletFilter("all")}
               />
@@ -729,7 +731,7 @@ export function MoneyDashboard({
               ))}
             </Select>
           </label>
-          <div className="text-xs text-zinc-500 md:col-span-2 xl:col-span-3">
+          <div className="text-xs text-zinc-500 xl:col-span-3">
             Menampilkan data{" "}
             <span className="font-medium text-zinc-900">
               {selectedWalletLabel}
@@ -752,7 +754,7 @@ export function MoneyDashboard({
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <SummaryCard
           label={
             selectedMonth === "all"
@@ -1041,7 +1043,7 @@ function WalletFilterButton({
       type="button"
       variant="ghost"
       className={cn(
-        "flex-1 rounded-lg sm:min-w-32",
+        "min-w-0 rounded-lg px-2",
         active
           ? "bg-white text-zinc-950 shadow-sm hover:bg-white"
           : "text-zinc-500",
