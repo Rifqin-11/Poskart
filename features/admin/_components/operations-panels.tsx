@@ -25,11 +25,14 @@ import {
   YAxis,
 } from "recharts";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   BadgeCheck,
   Battery,
   Boxes,
+  Building2,
+  Camera,
   Check,
   CloudUpload,
   CreditCard,
@@ -40,15 +43,20 @@ import {
   GripVertical,
   ImagePlus,
   LockKeyhole,
+  LogOut,
+  Mail,
   List,
+  PencilLine,
   Plus,
   Printer,
   Timer,
   RefreshCw,
+  Save,
   ShieldCheck,
   SlidersHorizontal,
   Store,
   Trash2,
+  UserRound,
   Users,
   Wrench,
 } from "lucide-react";
@@ -68,7 +76,6 @@ import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -82,6 +89,7 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FrameTemplateTester } from "@/features/admin/templates/frame-template-tester";
 import { SubscriptionDialog } from "@/features/billing/subscription/subscription-dialog";
+import { signOutAction } from "@/app/auth/actions";
 import { useDashboardData } from "@/features/admin/dashboard/use-dashboard";
 import {
   useBooths,
@@ -4173,9 +4181,32 @@ function expiryDaysToHours(days: number) {
 export function SettingsPanel() {
   const { data: config } = useAppConfig();
   const saveConfig = useSaveAppConfig();
-  const { data: templates = [] } = useTemplates();
+  const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
+  const { data: members = [] } = useTenantMembers();
 
   const [form, setForm] = useState<SettingsForm>(DEFAULT_SETTINGS_FORM);
+  const [account, setAccount] = useState<{
+    email: string;
+    systemRole: string;
+    fullName: string;
+    phone: string;
+    jobTitle: string;
+    timezone: string;
+  }>({
+    email: "",
+    systemRole: "authenticated",
+    fullName: "",
+    phone: "",
+    jobTitle: "",
+    timezone: "Asia/Jakarta",
+  });
+  const [profileDraft, setProfileDraft] = useState({
+    fullName: "",
+    phone: "",
+    jobTitle: "",
+    timezone: "Asia/Jakarta",
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
 
   // Populate form when config loads from Supabase
   useEffect(() => {
@@ -4210,6 +4241,56 @@ export function SettingsPanel() {
     };
   }, [config]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    supabase.auth
+      .getUser()
+      .then((res: { data: { user: { email?: string | null; role?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> } | null } }) => {
+        if (cancelled) return;
+        const user = res.data.user;
+        const fullName =
+          typeof user?.user_metadata?.full_name === "string"
+            ? user.user_metadata.full_name
+            : typeof user?.user_metadata?.name === "string"
+              ? user.user_metadata.name
+              : "";
+        const appRole =
+          typeof user?.app_metadata?.role === "string"
+            ? user.app_metadata.role
+            : user?.role || "authenticated";
+        const phone =
+          typeof user?.user_metadata?.phone === "string"
+            ? user.user_metadata.phone
+            : "";
+        const jobTitle =
+          typeof user?.user_metadata?.job_title === "string"
+            ? user.user_metadata.job_title
+            : "";
+        const timezone =
+          typeof user?.user_metadata?.timezone === "string"
+            ? user.user_metadata.timezone
+            : "Asia/Jakarta";
+        setAccount({
+          email: user?.email ?? "",
+          systemRole: appRole,
+          fullName,
+          phone,
+          jobTitle,
+          timezone,
+        });
+        setProfileDraft({
+          fullName,
+          phone,
+          jobTitle,
+          timezone,
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleSave = async () => {
     try {
       await saveConfig.mutateAsync({
@@ -4238,388 +4319,485 @@ export function SettingsPanel() {
     }
   };
 
+  const handleSaveProfile = async () => {
+    setProfileSaving(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: profileDraft.fullName.trim(),
+          name: profileDraft.fullName.trim(),
+          phone: profileDraft.phone.trim(),
+          job_title: profileDraft.jobTitle.trim(),
+          timezone: profileDraft.timezone,
+        },
+      });
+
+      if (error) throw error;
+
+      setAccount((current) => ({
+        ...current,
+        fullName: profileDraft.fullName.trim(),
+        phone: profileDraft.phone.trim(),
+        jobTitle: profileDraft.jobTitle.trim(),
+        timezone: profileDraft.timezone,
+      }));
+      toast.success("Profile updated");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update profile",
+      );
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const currentMember = (members as OrganizationMemberRow[]).find(
+    (member) => member.email === account.email,
+  );
+  const organizationName = tenant?.name ?? "Organization";
+  const planName = tenant?.plan_name ?? "Free organization";
+  const subscriptionStatus = tenant?.subscription_status ?? "free";
+  const subscriptionActive = tenant?.subscription_is_active === true;
+  const expiresAt = tenant?.subscription_expires_at
+    ? new Date(tenant.subscription_expires_at)
+    : null;
+  const accountDisplayName = account.fullName || account.email || "Signed in user";
+  const accountInitials = accountDisplayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+
   return (
     <div className="space-y-6">
-      <Card className="overflow-hidden">
-        <CardContent className="grid gap-0 p-0 lg:grid-cols-[1fr_360px]">
-          <div className="p-6">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600">
-              <ShieldCheck className="size-3.5 text-red-500" />
-              Settings & Configuration
-            </div>
-            <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-950">
-              Control kiosk runtime, payment, media, and system behavior.
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-600">
-              Global settings are stored in Supabase and consumed by POSKART
-              dashboard, QRIS/payment flows, and Flutter kiosk startup config.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <Button
-                onClick={() => void handleSave()}
-                disabled={saveConfig.isPending}
-              >
-                <ShieldCheck className="size-4" />
-                {saveConfig.isPending ? "Saving..." : "Save settings"}
-              </Button>
-              <Button variant="outline" disabled>
-                API: /api/flutter-config
-              </Button>
-            </div>
-          </div>
-          <div className="grid gap-3 border-t border-zinc-200 bg-zinc-50 p-5 sm:grid-cols-2 lg:border-l lg:border-t-0">
-            <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <CreditCard className="mb-3 size-4 text-zinc-500" />
-              <div className="text-xs text-zinc-500">Payment retry</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-950">
-                {form.qris_auto_retry ? "Enabled" : "Disabled"}
+      <PageHeader
+        title="Settings"
+        description="Kelola profil akun dan konfigurasi global yang dipakai dashboard POSKART."
+        action={
+          <Button
+            onClick={() => void handleSave()}
+            disabled={saveConfig.isPending}
+          >
+            <Save className="size-4" />
+            {saveConfig.isPending ? "Saving..." : "Save app settings"}
+          </Button>
+        }
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="overflow-hidden">
+          <div className="border-b border-zinc-200 bg-gradient-to-br from-blue-800 via-blue-900 to-blue-950 p-6 text-white">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="relative grid size-20 place-items-center rounded-3xl border border-white/15 bg-white/10 text-2xl font-semibold shadow-inner">
+                  {accountInitials || "PO"}
+                  <button
+                    type="button"
+                    className="absolute -bottom-2 -right-2 grid size-8 place-items-center rounded-full border border-white/20 bg-white text-zinc-950 shadow-sm"
+                    aria-label="Change profile photo"
+                  >
+                    <Camera className="size-4" />
+                  </button>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-semibold">
+                    {accountDisplayName}
+                  </h2>
+                  <p className="mt-1 flex items-center gap-2 text-sm text-white/65">
+                    <Mail className="size-4" />
+                    {account.email || "Loading account..."}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <Printer className="mb-3 size-4 text-zinc-500" />
-              <div className="text-xs text-zinc-500">Printer</div>
-              <div className="mt-1 truncate text-sm font-semibold text-zinc-950">
-                {form.printer_name}
-              </div>
-            </div>
-            <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <Timer className="mb-3 size-4 text-zinc-500" />
-              <div className="text-xs text-zinc-500">Auto-return</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-950">
-                {form.auto_return_duration_seconds}s
-              </div>
-            </div>
-            <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <Wrench className="mb-3 size-4 text-zinc-500" />
-              <div className="text-xs text-zinc-500">Maintenance</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-950">
-                {form.maintenance_mode ? "Enabled" : "Disabled"}
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  Member: {currentMember?.role ?? "member"}
+                </Badge>
+                <Badge variant="secondary">System: {account.systemRole}</Badge>
               </div>
             </div>
           </div>
+          <CardContent className="space-y-5 p-6">
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="block text-xs font-medium text-zinc-600">
+                Display name
+                <Input
+                  className="mt-1"
+                  placeholder="Nama lengkap"
+                  value={profileDraft.fullName}
+                  onChange={(event) =>
+                    setProfileDraft((draft) => ({
+                      ...draft,
+                      fullName: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label className="block text-xs font-medium text-zinc-600">
+                Email
+                <Input
+                  className="mt-1 bg-zinc-50"
+                  value={account.email}
+                  readOnly
+                />
+              </label>
+              <label className="block text-xs font-medium text-zinc-600">
+                Phone
+                <Input
+                  className="mt-1"
+                  placeholder="+62..."
+                  value={profileDraft.phone}
+                  onChange={(event) =>
+                    setProfileDraft((draft) => ({
+                      ...draft,
+                      phone: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label className="block text-xs font-medium text-zinc-600">
+                Job title
+                <Input
+                  className="mt-1"
+                  placeholder="Owner, Operator, Admin..."
+                  value={profileDraft.jobTitle}
+                  onChange={(event) =>
+                    setProfileDraft((draft) => ({
+                      ...draft,
+                      jobTitle: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+              <label className="block text-xs font-medium text-zinc-600">
+                Timezone
+                <Select
+                  className="mt-1"
+                  value={profileDraft.timezone}
+                  onChange={(event) =>
+                    setProfileDraft((draft) => ({
+                      ...draft,
+                      timezone: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="Asia/Jakarta">Asia/Jakarta</option>
+                  <option value="Asia/Makassar">Asia/Makassar</option>
+                  <option value="Asia/Jayapura">Asia/Jayapura</option>
+                  <option value="UTC">UTC</option>
+                </Select>
+              </label>
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                <div className="text-xs font-medium text-zinc-500">
+                  Account access
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge variant="secondary">
+                    {currentMember?.role ?? "member"}
+                  </Badge>
+                  <Badge variant="secondary">{account.systemRole}</Badge>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 border-t border-zinc-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs leading-5 text-zinc-500">
+                Profil ini disimpan di metadata akun Supabase Auth. Email dan
+                role belum bisa diubah dari halaman ini.
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void handleSaveProfile()}
+                  disabled={profileSaving}
+                >
+                  <PencilLine className="size-4" />
+                  {profileSaving ? "Saving..." : "Change profile"}
+                </Button>
+                <form action={signOutAction}>
+                  <Button type="submit" variant="outline">
+                    <LogOut className="size-4" />
+                    Sign out
+                  </Button>
+                </form>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle>Organization</CardTitle>
+                <CardDescription>
+                  Workspace, subscription, team, join code, and billing tetap
+                  dikelola di halaman organization.
+                </CardDescription>
+              </div>
+              <Building2 className="size-5 text-zinc-400" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <div className="text-xs text-zinc-500">Organization name</div>
+              <div className="mt-1 text-base font-semibold text-zinc-950">
+                {isLoadingTenant ? "Loading organization..." : organizationName}
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                <CreditCard className="mb-3 size-4 text-zinc-500" />
+                <div className="text-xs text-zinc-500">Plan</div>
+                <div className="mt-1 text-sm font-semibold text-zinc-950">
+                  {planName}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                <ShieldCheck className="mb-3 size-4 text-zinc-500" />
+                <div className="text-xs text-zinc-500">Status</div>
+                <div className="mt-1 text-sm font-semibold capitalize text-zinc-950">
+                  {subscriptionActive ? "active" : subscriptionStatus}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                <Store className="mb-3 size-4 text-zinc-500" />
+                <div className="text-xs text-zinc-500">Device limit</div>
+                <div className="mt-1 text-sm font-semibold text-zinc-950">
+                  {tenant?.device_limit ?? 1} device
+                  {(tenant?.device_limit ?? 1) > 1 ? "s" : ""}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                <Timer className="mb-3 size-4 text-zinc-500" />
+                <div className="text-xs text-zinc-500">Expiry</div>
+                <div className="mt-1 text-sm font-semibold text-zinc-950">
+                  {expiresAt
+                    ? expiresAt.toLocaleDateString("id-ID")
+                    : "Not active"}
+                </div>
+              </div>
+            </div>
+            <Link
+              href="/organization"
+              className="inline-flex h-10 w-full items-center justify-center rounded-2xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+            >
+              Open Organization Settings
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment settings</CardTitle>
+          <CardDescription>
+            QRIS provider settings and subscription checkout gateway.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2">
+          <label className="block text-xs font-medium text-zinc-600">
+            Provider merchant ID
+            <Input
+              className="mt-1"
+              placeholder="MID-12345"
+              value={form.qris_provider_merchant_id}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  qris_provider_merchant_id: e.target.value,
+                }))
+              }
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Webhook secret
+            <Input
+              className="mt-1"
+              placeholder="••••••••"
+              type="password"
+              value={form.qris_webhook_secret}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  qris_webhook_secret: e.target.value,
+                }))
+              }
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Subscription payment gateway
+            <Select
+              className="mt-1"
+              value={form.subscription_payment_gateway}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  subscription_payment_gateway:
+                    e.target.value as SubscriptionGatewayMode,
+                }))
+              }
+            >
+              <option value="duitku">Duitku</option>
+              <option value="midtrans">Midtrans</option>
+              <option value="both">Duitku + Midtrans</option>
+            </Select>
+          </label>
+          <label className="flex items-end gap-2 text-sm text-zinc-700">
+            <Switch
+              checked={form.qris_auto_retry}
+              onCheckedChange={(v) =>
+                setForm((f) => ({ ...f, qris_auto_retry: v }))
+              }
+            />
+            Auto retry failed QRIS payment
+          </label>
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="payment">
-        <TabsList className="h-auto flex-wrap">
-          <TabsTrigger value="payment">Payment</TabsTrigger>
-          <TabsTrigger value="media">Media</TabsTrigger>
-          <TabsTrigger value="system">System</TabsTrigger>
-          <TabsTrigger value="flutter">Flutter Config</TabsTrigger>
-        </TabsList>
-        <TabsContent value="payment">
-          <Card>
-            <CardHeader>
-              <CardTitle>QRIS provider</CardTitle>
-              <CardDescription>
-                Provider keys and callbacks for QRIS payment operations.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2">
-              <label className="block text-xs font-medium text-zinc-600 md:col-span-1">
-                Provider merchant ID
-                <Input
-                  className="mt-1"
-                  placeholder="MID-12345"
-                  value={form.qris_provider_merchant_id}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      qris_provider_merchant_id: e.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="block text-xs font-medium text-zinc-600 md:col-span-1">
-                Webhook secret
-                <Input
-                  className="mt-1"
-                  placeholder="••••••••"
-                  type="password"
-                  value={form.qris_webhook_secret}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      qris_webhook_secret: e.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="md:col-span-2 flex items-center gap-2 text-sm text-zinc-700">
-                <Switch
-                  checked={form.qris_auto_retry}
-                  onCheckedChange={(v) =>
-                    setForm((f) => ({ ...f, qris_auto_retry: v }))
-                  }
-                />
-                Auto retry failed QRIS payment
-              </label>
-            </CardContent>
-          </Card>
-        </TabsContent>
+      <Card>
+        <CardHeader>
+          <CardTitle>Media & gallery settings</CardTitle>
+          <CardDescription>
+            Download link lifetime, cleanup retention, storage label, and
+            watermark policy.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-4">
+          <label className="block text-xs font-medium text-zinc-600">
+            Share link expiry (days)
+            <Input
+              className="mt-1"
+              type="number"
+              min={1}
+              max={30}
+              value={expiryHoursToDays(form.download_expiry_hours)}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  download_expiry_hours: expiryDaysToHours(
+                    Number(e.target.value),
+                  ),
+                }))
+              }
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Gallery retention (days)
+            <Input
+              className="mt-1"
+              type="number"
+              min={1}
+              max={365}
+              value={form.gallery_retention_days}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  gallery_retention_days: Number(e.target.value),
+                }))
+              }
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Storage provider
+            <Input
+              className="mt-1"
+              value={form.storage_provider}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, storage_provider: e.target.value }))
+              }
+            />
+          </label>
+          <label className="flex items-end gap-2 text-sm text-zinc-700">
+            <Switch
+              checked={form.watermark_enabled}
+              onCheckedChange={(v) =>
+                setForm((f) => ({ ...f, watermark_enabled: v }))
+              }
+            />
+            Watermark enabled
+          </label>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="media">
-          <Card>
-            <CardHeader>
-              <CardTitle>Download policy</CardTitle>
-              <CardDescription>
-                Masa aktif link download, auto cleanup Cloudinary, watermark,
-                and storage provider.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-4">
-              <label className="block text-xs font-medium text-zinc-600">
-                Share link expiry (days)
-                <Input
-                  className="mt-1"
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={expiryHoursToDays(form.download_expiry_hours)}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      download_expiry_hours: expiryDaysToHours(
-                        Number(e.target.value),
-                      ),
-                    }))
-                  }
-                />
-              </label>
-              <label className="block text-xs font-medium text-zinc-600">
-                Cloudinary retention (days)
-                <Input
-                  className="mt-1"
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={form.gallery_retention_days}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      gallery_retention_days: Number(e.target.value),
-                    }))
-                  }
-                />
-              </label>
-              <label className="block text-xs font-medium text-zinc-600">
-                Storage provider
-                <Input
-                  className="mt-1"
-                  value={form.storage_provider}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, storage_provider: e.target.value }))
-                  }
-                />
-              </label>
-              <label className="flex items-center gap-2 text-sm text-zinc-700">
-                <Switch
-                  checked={form.watermark_enabled}
-                  onCheckedChange={(v) =>
-                    setForm((f) => ({ ...f, watermark_enabled: v }))
-                  }
-                />
-                Watermark enabled
-              </label>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="system">
-          <Card>
-            <CardHeader>
-              <CardTitle>Maintenance mode</CardTitle>
-              <CardDescription>
-                Pause public kiosk sessions during maintenance.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center gap-3">
-              <Wrench className="size-4" />
+      <Card>
+        <CardHeader>
+          <CardTitle>Global kiosk defaults</CardTitle>
+          <CardDescription>
+            Organization-wide defaults consumed by dashboard flows and Flutter
+            startup config. Device-specific printer, template, and timer values
+            are managed from Devices.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="block text-xs font-medium text-zinc-600">
+              Merchant name
+              <Input
+                className="mt-1"
+                placeholder="POSKART"
+                value={form.merchant_name}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    merchant_name: e.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="block text-xs font-medium text-zinc-600">
+              QRIS payload prefix
+              <Input
+                className="mt-1"
+                placeholder="qris://poskart/pay"
+                value={form.qris_payload_prefix}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    qris_payload_prefix: e.target.value,
+                  }))
+                }
+              />
+            </label>
+          </div>
+          <label className="block text-xs font-medium text-zinc-600">
+            Share base URL
+            <Input
+              className="mt-1"
+              placeholder="https://poskart.app/s"
+              value={form.share_base_url}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, share_base_url: e.target.value }))
+              }
+            />
+          </label>
+          <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
+                <Wrench className="size-4" />
+                Global maintenance fallback
+              </div>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                Per-device maintenance is managed from Devices. This switch is
+                kept as the global fallback consumed by legacy config clients.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-zinc-600">
+                {form.maintenance_mode ? "Enabled" : "Disabled"}
+              </span>
               <Switch
                 checked={form.maintenance_mode}
                 onCheckedChange={(v) =>
                   setForm((f) => ({ ...f, maintenance_mode: v }))
                 }
               />
-              <span className="text-sm">
-                Maintenance mode{" "}
-                {form.maintenance_mode ? "enabled" : "disabled"}
-              </span>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Flutter Config tab — operational settings read by Flutter at startup */}
-        <TabsContent value="flutter" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Flutter Kiosk Config</CardTitle>
-                  <CardDescription>
-                    Settings read by the Flutter app at startup via{" "}
-                    <code className="rounded bg-zinc-100 px-1 text-xs">
-                      /api/flutter-config
-                    </code>
-                    .
-                  </CardDescription>
-                </div>
-                <Button
-                  onClick={() => void handleSave()}
-                  disabled={saveConfig.isPending}
-                >
-                  {saveConfig.isPending ? "Saving…" : "Save to Supabase"}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Merchant & URLs */}
-              <div className="space-y-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                  Merchant & URLs
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="block text-xs font-medium text-zinc-600">
-                    Merchant name
-                    <Input
-                      className="mt-1"
-                      placeholder="POSKART"
-                      value={form.merchant_name}
-                      onChange={(e) =>
-                        setForm((f) => ({
-                          ...f,
-                          merchant_name: e.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                  <label className="block text-xs font-medium text-zinc-600">
-                    QRIS payload prefix
-                    <Input
-                      className="mt-1"
-                      placeholder="qris://poskart/pay"
-                      value={form.qris_payload_prefix}
-                      onChange={(e) =>
-                        setForm((f) => ({
-                          ...f,
-                          qris_payload_prefix: e.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                </div>
-                <label className="block text-xs font-medium text-zinc-600">
-                  Share base URL
-                  <Input
-                    className="mt-1"
-                    placeholder="https://poskart.app/s"
-                    value={form.share_base_url}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, share_base_url: e.target.value }))
-                    }
-                  />
-                </label>
-              </div>
-
-              {/* Timers */}
-              <div className="space-y-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                  Timers
-                </div>
-                <label className="block text-xs font-medium text-zinc-600">
-                  Countdown before photo: {form.countdown_duration_seconds}s
-                  <Slider
-                    min={1}
-                    max={10}
-                    step={1}
-                    value={form.countdown_duration_seconds}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        countdown_duration_seconds: Number(e.target.value),
-                      }))
-                    }
-                  />
-                </label>
-                <label className="block text-xs font-medium text-zinc-600">
-                  Flash duration: {form.flash_duration_ms}ms
-                  <Slider
-                    min={50}
-                    max={1000}
-                    step={10}
-                    value={form.flash_duration_ms}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        flash_duration_ms: Number(e.target.value),
-                      }))
-                    }
-                  />
-                </label>
-                <label className="block text-xs font-medium text-zinc-600">
-                  Auto-return to landing: {form.auto_return_duration_seconds}s
-                  <Slider
-                    min={3}
-                    max={30}
-                    step={1}
-                    value={form.auto_return_duration_seconds}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        auto_return_duration_seconds: Number(e.target.value),
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-
-              {/* Default template */}
-              <label className="block text-xs font-medium text-zinc-600">
-                Default template (pre-selected in Flutter picker)
-                <Select
-                  className="mt-1"
-                  value={form.default_template_id}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      default_template_id: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="">— None —</option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-
-              {/* Config preview */}
-              <div className="rounded-lg bg-zinc-950 p-4">
-                <div className="mb-2 text-xs font-medium text-zinc-400">
-                  Live config preview (from Supabase)
-                </div>
-                <pre className="overflow-x-auto text-xs text-zinc-200">
-                  {JSON.stringify(
-                    {
-                      merchantName: form.merchant_name,
-                      qrisPayloadPrefix: form.qris_payload_prefix,
-                      shareBaseUrl: form.share_base_url,
-                      countdownDurationSeconds: form.countdown_duration_seconds,
-                      flashDurationMs: form.flash_duration_ms,
-                      autoReturnDurationSeconds:
-                        form.auto_return_duration_seconds,
-                      defaultTemplateId: form.default_template_id || null,
-                    },
-                    null,
-                    2,
-                  )}
-                </pre>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
