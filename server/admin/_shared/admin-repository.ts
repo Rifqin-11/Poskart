@@ -240,6 +240,39 @@ type OrganizationMemberWithProfile = {
     | null;
 };
 
+function subscriptionExpiryTime(subscription?: SubscriptionRow | null) {
+  return subscription?.current_period_end
+    ? new Date(subscription.current_period_end).getTime()
+    : 0;
+}
+
+function isSubscriptionActive(subscription?: SubscriptionRow | null) {
+  return (
+    ["active", "trialing"].includes(subscription?.status ?? "") &&
+    subscriptionExpiryTime(subscription) > Date.now()
+  );
+}
+
+function subscriptionPlanMeta(subscription?: SubscriptionRow | null) {
+  return Array.isArray(subscription?.subscription_plans)
+    ? subscription?.subscription_plans[0]
+    : subscription?.subscription_plans;
+}
+
+function subscriptionDisplayName(subscription?: SubscriptionRow | null) {
+  const planMeta = subscriptionPlanMeta(subscription);
+  const planId = subscription?.plan_id || "free";
+
+  if (isSubscriptionActive(subscription) && planId === "free") {
+    return "Custom organization plan";
+  }
+
+  if (planMeta?.name) return planMeta.name;
+  if (planId === "free") return "Free";
+
+  return pricingPlans.find((plan) => plan.id === planId)?.name ?? planId;
+}
+
 export type LayoutSchemaRow = {
   id: string;
   name: string;
@@ -1178,18 +1211,12 @@ async function getTenants(): Promise<Organization[]> {
     const sub = Array.isArray(row.subscriptions)
       ? row.subscriptions[0]
       : row.subscriptions;
-    const planMeta = Array.isArray(sub?.subscription_plans)
-      ? sub?.subscription_plans[0]
-      : sub?.subscription_plans;
+    const planMeta = subscriptionPlanMeta(sub);
     const planId = sub?.plan_id || "free";
     const subStatus = sub?.status || "free";
     const expiresAt = sub?.current_period_end || null;
     const deviceLimit = sub?.device_limit ?? planMeta?.included_devices ?? 1;
-    const planName =
-      planMeta?.name ??
-      (planId === "free"
-        ? "Free"
-        : pricingPlans.find((plan) => plan.id === planId)?.name ?? planId);
+    const planName = subscriptionDisplayName(sub);
 
     // Get count value from counts response structure
     const devicesCount = row.devices?.[0]?.count ?? 0;
@@ -1796,25 +1823,23 @@ async function getSubscriptionStatus(): Promise<{
     .eq("organization_id", profile.organization_id)
     .maybeSingle();
 
-  const planName = sub?.subscription_plans?.name ?? "Free";
-  const deviceLimit =
-    sub?.device_limit ?? sub?.subscription_plans?.included_devices ?? 1;
+  const planMeta = subscriptionPlanMeta(sub);
+  const planName = subscriptionDisplayName(sub);
+  const deviceLimit = sub?.device_limit ?? planMeta?.included_devices ?? 1;
 
-  if (sub && sub.plan_id !== "free" && sub.current_period_end) {
-    const expiryTime = new Date(sub.current_period_end).getTime();
-    if (expiryTime > Date.now()) {
-      return {
-        tier: "Pro",
-        expiry: new Date(expiryTime).toLocaleDateString("id-ID", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }),
-        planId: sub.plan_id,
-        planName,
-        deviceLimit,
-      };
-    }
+  if (isSubscriptionActive(sub)) {
+    const expiryTime = subscriptionExpiryTime(sub);
+    return {
+      tier: "Pro",
+      expiry: new Date(expiryTime).toLocaleDateString("id-ID", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+      planId: sub?.plan_id ?? null,
+      planName,
+      deviceLimit,
+    };
   }
 
   return {
@@ -2054,24 +2079,18 @@ async function getMyTenantDetails() {
   const sub = Array.isArray(organization.subscriptions)
     ? organization.subscriptions[0]
     : organization.subscriptions;
-  const subscriptionExpiryTime = sub?.current_period_end
-    ? new Date(sub.current_period_end).getTime()
-    : 0;
-  const subscriptionIsActive =
-    sub?.plan_id &&
-    sub.plan_id !== "free" &&
-    ["active", "trialing"].includes(sub.status ?? "") &&
-    subscriptionExpiryTime > Date.now();
+  const planMeta = subscriptionPlanMeta(sub);
+  const subscriptionIsActive = isSubscriptionActive(sub);
 
   return {
     ...organization,
     plan_id: sub?.plan_id ?? "free",
-    plan_name: sub?.subscription_plans?.name ?? "Free",
+    plan_name: subscriptionDisplayName(sub),
     join_code: organization.join_code ?? null,
     subscription_status: sub?.status ?? "free",
     subscription_expires_at: sub?.current_period_end ?? null,
     device_limit:
-      sub?.device_limit ?? sub?.subscription_plans?.included_devices ?? 1,
+      sub?.device_limit ?? planMeta?.included_devices ?? 1,
     subscription_is_active: subscriptionIsActive,
   };
 }

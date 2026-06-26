@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
+import { useTenantDetails } from "@/features/admin/organization/use-organization";
 import { useRealtimeSync } from "@/features/admin/hooks/use-realtime-sync";
 import { signOutAction } from "@/app/auth/actions";
 import { SubscriptionDialog } from "@/features/billing/subscription/subscription-dialog";
@@ -50,7 +51,6 @@ const navItems = [
     icon: WalletCards,
     requiresSubscription: true,
   },
-  { href: "/organization", label: "Organization", icon: Building },
   {
     href: "/themes",
     label: "Themes",
@@ -117,6 +117,19 @@ function isSuperAdmin(email?: string | null): boolean {
   return adminEmails.includes(email.toLowerCase());
 }
 
+function formatShortExpiry(value?: string | null) {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+  });
+}
+
 function SidebarContent({
   userEmail,
   onNavigate,
@@ -127,10 +140,14 @@ function SidebarContent({
   const pathname = usePathname();
 
   const { data: sub, isLoading } = useSubscriptionStatus();
+  const { data: organization, isLoading: isOrganizationLoading } =
+    useTenantDetails();
   const tier = sub?.tier ?? "Free";
-  const expiry = sub?.expiry;
-  const planName = sub?.planName ?? "Free";
-  const deviceLimit = sub?.deviceLimit ?? 1;
+  const organizationName = organization?.name ?? "Organization";
+  const expiry =
+    formatShortExpiry(organization?.subscription_expires_at) ??
+    sub?.expiry ??
+    "No expiry";
 
   const adminMode = isSuperAdmin(userEmail);
   const hasActiveSubscription = adminMode || tier === "Pro";
@@ -200,12 +217,15 @@ function SidebarContent({
         })}
       </nav>
 
-      <div
+      <Link
+        href="/organization"
+        onClick={onNavigate}
         className={cn(
-          "mt-3 shrink-0 rounded-xl border bg-white p-3 shadow-sm",
+          "mt-3 shrink-0 rounded-xl border bg-white p-3 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50",
           hasActiveSubscription
             ? "border-emerald-200"
             : "border-amber-200 bg-amber-50/40",
+          pathname === "/organization" && "border-zinc-950",
         )}
       >
         <div className="flex items-start gap-3">
@@ -217,29 +237,20 @@ function SidebarContent({
                 : "bg-amber-100 text-amber-700",
             )}
           >
-            {hasActiveSubscription ? (
-              <CreditCard className="size-4" />
-            ) : (
-              <LockKeyhole className="size-4" />
-            )}
+            <Building className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
-              Subscription
+              Organization
             </div>
-            {isLoading ? (
+            {isLoading || isOrganizationLoading ? (
               <div className="mt-2 h-4 w-28 animate-pulse rounded bg-zinc-100" />
             ) : (
               <>
                 <div className="mt-0.5 truncate text-sm font-semibold text-zinc-950">
-                  {hasActiveSubscription
-                    ? `${tier === "Pro" ? planName : "Admin"} Account`
-                    : "Free Account"}
+                  {organizationName}
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-4 text-zinc-500">
-                  <span>
-                    {deviceLimit} device{deviceLimit > 1 ? "s" : ""}
-                  </span>
+                <div className="mt-1 truncate text-[11px] leading-4 text-zinc-500">
                   <span
                     className={cn(
                       "font-medium",
@@ -250,17 +261,14 @@ function SidebarContent({
                   >
                     {hasActiveSubscription ? "Active" : "Locked"}
                   </span>
+                  <span className="mx-1.5 text-zinc-300">•</span>
+                  <span>Exp {expiry}</span>
                 </div>
-                {expiry ? (
-                  <div className="mt-1 truncate text-[11px] text-zinc-500">
-                    Expires {expiry}
-                  </div>
-                ) : null}
               </>
             )}
           </div>
         </div>
-      </div>
+      </Link>
     </div>
   );
 }

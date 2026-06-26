@@ -133,9 +133,7 @@ export async function updateSession(request: NextRequest) {
         ? new Date(subscription.current_period_end).getTime()
         : 0;
       const hasActiveSubscription =
-        subscription?.plan_id &&
-        subscription.plan_id !== "free" &&
-        ["active", "trialing"].includes(subscription.status ?? "") &&
+        ["active", "trialing"].includes(subscription?.status ?? "") &&
         expiryTime > Date.now();
 
       if (!hasActiveSubscription) {

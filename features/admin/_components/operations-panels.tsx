@@ -495,9 +495,9 @@ export function TemplateManagement() {
           >
             <div
               className={cn(
-                "max-w-5xl gap-4",
+                "w-full gap-4",
                 viewMode === "grid"
-                  ? "grid md:grid-cols-2 xl:grid-cols-3"
+                  ? "grid md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5"
                   : "flex flex-col",
               )}
             >
@@ -4835,13 +4835,12 @@ function OrganizationSettings({
     );
 
   const organizationName = editedName ?? tenant?.name ?? "";
-  const planName = tenant?.plan_name ?? "Free Account";
+  const planName = tenant?.plan_name ?? "Free organization";
   const subscriptionStatus = tenant?.subscription_status ?? "free";
   const expiresAt = tenant?.subscription_expires_at
     ? new Date(tenant.subscription_expires_at)
     : null;
   const isFreeAccount =
-    (tenant?.plan_id ?? "free") === "free" ||
     subscriptionStatus === "free" ||
     !tenant?.subscription_is_active;
   const deviceLimit = tenant?.device_limit ?? 1;
@@ -4857,8 +4856,8 @@ function OrganizationSettings({
               <div className="font-semibold">Active subscription required</div>
               <p className="mt-1 leading-6">
                 Theme, builder, template, devices, analytics, settings, and
-                transaction tools are locked while this organization is on Free
-                Account.
+                transaction tools are locked while this organization is on a
+                free organization plan.
               </p>
             </div>
           </div>
@@ -4870,7 +4869,7 @@ function OrganizationSettings({
           <div className="p-6">
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <Badge variant={isFreeAccount ? "warning" : "success"}>
-                {isFreeAccount ? "Free Account" : "Active subscription"}
+                {isFreeAccount ? "Free organization" : "Active subscription"}
               </Badge>
               <Badge variant="secondary">
                 {deviceLimit} device{deviceLimit > 1 ? "s" : ""} allowed
@@ -5015,7 +5014,7 @@ function OrganizationSettings({
             </div>
             <p className="mt-3 text-sm leading-6 text-zinc-600">
               {isFreeAccount
-                ? "Free Account can view dashboard and organization settings only. Activate a subscription to unlock builder, themes, templates, devices, analytics, transactions, and settings."
+                ? "Free organization can view dashboard and organization settings only. Activate a subscription to unlock builder, themes, templates, devices, analytics, transactions, and settings."
                 : "This organization can use the POSKART operating tools according to the active subscription and paid device limit."}
             </p>
             <button
