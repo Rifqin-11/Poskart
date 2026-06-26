@@ -27,4 +27,7 @@ export type Device = {
   printerLastError?: string | null;
   printerStatusUpdatedAt?: string | null;
   printerBidirectional: boolean;
+  voucherRequestedAt?: string | null;
+  voucherCommand?: string | null;
+  voucherCommandUpdatedAt?: string | null;
 };

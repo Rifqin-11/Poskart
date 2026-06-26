@@ -15,14 +15,6 @@ import type { Transaction } from "@/types/transaction";
 import type { FrameLayout } from "@/types/frame-template";
 import { PRICING_PLAN_ORDER, pricingPlans } from "@/lib/constants/business";
 
-type KpiMetricRow = KpiMetric & { sort_order: number };
-
-type ChartPointRow = ChartPoint & {
-  id: string;
-  period: "weekly" | "monthly";
-  sort_order: number;
-};
-
 type TransactionRow = Omit<
   Transaction,
   | "device"
@@ -39,6 +31,14 @@ type TransactionRow = Omit<
   print_status: Transaction["printStatus"];
   print_attempts: number;
   print_last_error: string | null;
+};
+
+type RetryPrintTransactionRow = {
+  id: string;
+  organization_id: string;
+  booth: string;
+  print_attempts: number | null;
+  print_count: number | null;
 };
 
 type PosDashboardSaleRow = {
@@ -115,6 +115,9 @@ type BoothRow = Omit<
   | "printerLastError"
   | "printerStatusUpdatedAt"
   | "printerBidirectional"
+  | "voucherRequestedAt"
+  | "voucherCommand"
+  | "voucherCommandUpdatedAt"
 > & {
   app_version: string;
   last_sync: string;
@@ -128,6 +131,9 @@ type BoothRow = Omit<
   printer_last_error: string | null;
   printer_status_updated_at: string | null;
   printer_bidirectional: boolean;
+  voucher_requested_at: string | null;
+  voucher_command: string | null;
+  voucher_command_updated_at: string | null;
 };
 
 type TemplateRow = Omit<
@@ -316,6 +322,9 @@ export type BoothInput = Omit<
   | "printerLastError"
   | "printerStatusUpdatedAt"
   | "printerBidirectional"
+  | "voucherRequestedAt"
+  | "voucherCommand"
+  | "voucherCommandUpdatedAt"
 >;
 
 export type TenantInput = Omit<Organization, "id">;
@@ -340,18 +349,6 @@ function assertSupabaseResult<T>(
 
   return data ?? ([] as T);
 }
-
-const mapChartPoint = ({
-  label,
-  revenue,
-  transactions,
-  downloads,
-}: ChartPointRow): ChartPoint => ({
-  label,
-  revenue,
-  transactions,
-  downloads: downloads ?? undefined,
-});
 
 const mapTransaction = (row: TransactionRow): Transaction => ({
   id: row.id,
@@ -378,11 +375,57 @@ function normalizeAssignmentList(
   return fallback ? [fallback] : [];
 }
 
+const DEVICE_ONLINE_GRACE_MS = 60_000;
+
+function parseRelativeSyncTime(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized === "just now") return Date.now();
+
+  const relativeMatch = normalized.match(
+    /^(\d+)\s*(sec|secs|second|seconds|min|mins|minute|minutes|hour|hours)\s+ago$/,
+  );
+  if (!relativeMatch) return null;
+
+  const amount = Number(relativeMatch[1]);
+  const unit = relativeMatch[2];
+  const multiplier = unit.startsWith("sec")
+    ? 1_000
+    : unit.startsWith("min")
+      ? 60_000
+      : 3_600_000;
+
+  return Date.now() - amount * multiplier;
+}
+
+function isDeviceRecentlySeen(lastSync: string) {
+  const parsed = Date.parse(lastSync);
+  const syncTime = Number.isNaN(parsed)
+    ? parseRelativeSyncTime(lastSync)
+    : parsed;
+  if (!syncTime) return false;
+  return Date.now() - syncTime <= DEVICE_ONLINE_GRACE_MS;
+}
+
+function resolveDeviceRuntimeStatus(row: BoothRow): Device["status"] {
+  if (row.status === "maintenance") return "maintenance";
+  if (row.status === "offline") return "offline";
+  return isDeviceRecentlySeen(row.last_sync) ? "online" : "offline";
+}
+
+function normalizeDeviceLocation(location: string) {
+  const normalized = location.trim();
+  if (normalized === "WAITING_VOUCHER" || normalized.startsWith("VOUCHER:")) {
+    return "";
+  }
+  return location;
+}
+
 const mapBooth = (row: BoothRow): Device => ({
   id: row.id,
   name: row.name,
-  location: row.location,
-  status: row.status,
+  location: normalizeDeviceLocation(row.location),
+  status: resolveDeviceRuntimeStatus(row),
   battery: row.battery,
   appVersion: row.app_version,
   lastSync: row.last_sync,
@@ -401,6 +444,9 @@ const mapBooth = (row: BoothRow): Device => ({
   printerLastError: row.printer_last_error ?? null,
   printerStatusUpdatedAt: row.printer_status_updated_at ?? null,
   printerBidirectional: row.printer_bidirectional ?? false,
+  voucherRequestedAt: row.voucher_requested_at ?? null,
+  voucherCommand: row.voucher_command ?? null,
+  voucherCommandUpdatedAt: row.voucher_command_updated_at ?? null,
 });
 
 const mapTemplate = (row: TemplateRow): Template => ({
@@ -727,7 +773,7 @@ const TRANSACTION_COLUMNS =
   "id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_status,print_attempts,print_last_error";
 
 const BOOTH_COLUMNS =
-  "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional";
+  "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,voucher_requested_at,voucher_command,voucher_command_updated_at";
 
 async function getTransactions(): Promise<Transaction[]> {
   const supabase = createClient();
@@ -933,19 +979,75 @@ async function getFailedPrintsByBooth(
 
 async function retryPrint(transactionId: string): Promise<void> {
   const supabase = createClient();
-  // Mark the row as reprinting + bump attempt counter. The Flutter kiosk is
-  // expected to poll for `reprinting` rows and flip them to `printed` or
-  // `failed` after attempting the physical reprint.
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    throw new Error("Unable to queue reprint: user is not authenticated");
+  }
+
   const { data: current, error: readError } = await supabase
     .from("transactions")
-    .select("print_attempts")
+    .select("id,organization_id,booth,print_attempts,print_count")
     .eq("id", transactionId)
     .maybeSingle();
   if (readError) {
     throw new Error(`Unable to load transaction: ${readError.message}`);
   }
-  const attempts =
-    ((current as { print_attempts?: number } | null)?.print_attempts ?? 0) + 1;
+  const transaction = current as RetryPrintTransactionRow | null;
+  if (!transaction) {
+    throw new Error("Unable to queue reprint: transaction not found");
+  }
+
+  const { data: device, error: deviceError } = await supabase
+    .from("devices")
+    .select("id")
+    .eq("organization_id", transaction.organization_id)
+    .eq("name", transaction.booth)
+    .maybeSingle();
+  if (deviceError) {
+    throw new Error(`Unable to load device: ${deviceError.message}`);
+  }
+  if (!device?.id) {
+    throw new Error("Unable to queue reprint: source device not found");
+  }
+
+  const { data: framed, error: framedError } = await supabase
+    .from("gallery_photos")
+    .select("secure_url")
+    .eq("session_id", transaction.id)
+    .eq("organization_id", transaction.organization_id)
+    .eq("kind", "framed")
+    .order("photo_index", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (framedError) {
+    throw new Error(`Unable to load framed photo: ${framedError.message}`);
+  }
+  if (!framed?.secure_url) {
+    throw new Error(
+      "Unable to queue reprint: framed photo is not available for this transaction",
+    );
+  }
+
+  const copies = Math.max(
+    1,
+    Math.min(20, Math.round(transaction.print_count ?? 1)),
+  );
+  const { error: jobError } = await supabase.from("device_print_jobs").insert({
+    organization_id: transaction.organization_id,
+    device_id: device.id,
+    gallery_session_id: transaction.id,
+    source_url: framed.secure_url,
+    copies,
+    requested_by: user.id,
+  });
+  if (jobError) {
+    throw new Error(`Unable to create print job: ${jobError.message}`);
+  }
+
+  const attempts = (transaction.print_attempts ?? 0) + 1;
 
   const { error } = await supabase
     .from("transactions")
@@ -1440,6 +1542,36 @@ async function updateBooth(
 
   const { error } = await supabase.from("devices").update(dbPatch).eq("id", id);
   if (error) throw new Error(`Unable to update device: ${error.message}`);
+}
+
+async function approveVoucherRequest(id: string, code = "FREE"): Promise<void> {
+  const supabase = createClient();
+  const now = new Date().toISOString();
+  const normalizedCode = code.trim().toUpperCase() || "FREE";
+  const { error } = await supabase
+    .from("devices")
+    .update({
+      voucher_command: normalizedCode,
+      voucher_command_updated_at: now,
+      voucher_requested_at: null,
+      updated_at: now,
+    })
+    .eq("id", id);
+  if (error) throw new Error(`Unable to approve voucher: ${error.message}`);
+}
+
+async function rejectVoucherRequest(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("devices")
+    .update({
+      voucher_requested_at: null,
+      voucher_command: null,
+      voucher_command_updated_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) throw new Error(`Unable to reject voucher: ${error.message}`);
 }
 
 async function deleteBooth(id: string): Promise<void> {
@@ -1990,6 +2122,8 @@ export const adminRepository = {
   deleteTransaction,
   deleteTransactions,
   devices: getBooths,
+  approveVoucherRequest,
+  rejectVoucherRequest,
   templates: getTemplates,
   createTemplate,
   updateTemplate,
@@ -2089,8 +2223,7 @@ async function getMyTenantDetails() {
     join_code: organization.join_code ?? null,
     subscription_status: sub?.status ?? "free",
     subscription_expires_at: sub?.current_period_end ?? null,
-    device_limit:
-      sub?.device_limit ?? planMeta?.included_devices ?? 1,
+    device_limit: sub?.device_limit ?? planMeta?.included_devices ?? 1,
     subscription_is_active: subscriptionIsActive,
   };
 }

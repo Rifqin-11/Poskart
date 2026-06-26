@@ -37,7 +37,22 @@ export type KioskDeviceRow = {
   printer_last_error: string | null;
   printer_status_updated_at: string | null;
   printer_bidirectional: boolean;
+  voucher_requested_at: string | null;
+  voucher_command: string | null;
+  voucher_command_updated_at: string | null;
 };
+
+function normalizeDeviceLocation(location: string) {
+  const normalized = location.trim();
+  if (normalized === "WAITING_VOUCHER" || normalized.startsWith("VOUCHER:")) {
+    return "";
+  }
+  return location;
+}
+
+function sanitizeKioskDevice(device: KioskDeviceRow | null) {
+  return device ? { ...device, location: normalizeDeviceLocation(device.location) } : null;
+}
 
 export type KioskRequestContext = {
   accessToken: string;
@@ -209,7 +224,7 @@ export async function requireOrganizationDevice(
   const { data, error } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
     .eq("id", normalizedId)
     .eq("organization_id", context.organizationId)
@@ -238,7 +253,7 @@ export async function listOrganizationDevices(context: KioskRequestContext) {
   const { data, error } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
     .eq("organization_id", context.organizationId)
     .order("name", { ascending: true });
@@ -277,7 +292,7 @@ export async function upsertDeviceByHardwareId(
   const { data: existing, error: lookupError } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
     .eq("organization_id", context.organizationId)
     .eq("hardware_id", normalizedHwId)
@@ -330,7 +345,7 @@ export async function upsertDeviceByHardwareId(
   const { data: fresh, error: refetchError } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
     .eq("id", newId)
     .single();
@@ -496,8 +511,8 @@ export async function buildKioskBootstrap(
       role: context.organizationRole,
     },
     subscription: subscriptionResult.data,
-    device,
-    availableDevices: devices,
+    device: sanitizeKioskDevice(device),
+    availableDevices: devices.map((item) => sanitizeKioskDevice(item)),
     operationalSettings: config
       ? {
           merchantName: config.merchant_name,

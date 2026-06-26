@@ -42,6 +42,23 @@ export function useDeleteBooth() {
   });
 }
 
+export function useApproveVoucherRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, code }: { id: string; code?: string }) =>
+      deviceService.approveVoucherRequest(id, code),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.devices }),
+  });
+}
+
+export function useRejectVoucherRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deviceService.rejectVoucherRequest(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.devices }),
+  });
+}
+
 export function useFailedPrintsByBooth(boothName: string | null) {
   return useQuery({
     queryKey: adminQueryKeys.failedPrints(boothName),

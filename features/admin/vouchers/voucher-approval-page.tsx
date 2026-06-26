@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  useApproveVoucherRequest,
   useBooths,
-  useUpdateBooth,
+  useRejectVoucherRequest,
 } from "@/features/admin/devices/use-devices";
 import type { Device } from "@/types/device";
 import {
@@ -29,6 +30,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+const VOUCHER_REQUEST_TTL_MS = 5 * 60 * 1000;
+
 function PageHeader({
   title,
   description,
@@ -49,16 +52,52 @@ function PageHeader({
   );
 }
 
+function parseVoucherRequestTime(device: Device) {
+  if (!device.voucherRequestedAt) return null;
+  const time = Date.parse(device.voucherRequestedAt);
+  return Number.isNaN(time) ? null : time;
+}
+
+function isActiveVoucherRequest(device: Device, now: number) {
+  const requestedAt = parseVoucherRequestTime(device);
+  return requestedAt != null && now - requestedAt < VOUCHER_REQUEST_TTL_MS;
+}
+
+function formatDateTimeLabel(value: number) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatTimeLeft(ms: number) {
+  const seconds = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const restSeconds = seconds % 60;
+  if (minutes <= 0) return `${restSeconds} detik`;
+  return `${minutes}m ${String(restSeconds).padStart(2, "0")}d`;
+}
+
 export function VoucherApproval() {
   const { data: devices = [], refetch, isLoading } = useBooths();
-  const updateBooth = useUpdateBooth();
+  const approveVoucher = useApproveVoucherRequest();
+  const rejectVoucher = useRejectVoucherRequest();
 
   const [search, setSearch] = useState("");
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   // Filter devices that are currently waiting for vouchers
-  const waitingDevices = devices.filter(
-    (d: Device) => d.location === "WAITING_VOUCHER",
+  const waitingDevices = devices.filter((d: Device) =>
+    isActiveVoucherRequest(d, now),
   );
 
   // Filter other devices (not waiting)
@@ -67,7 +106,7 @@ export function VoucherApproval() {
       !search ||
       d.name.toLowerCase().includes(search.toLowerCase()) ||
       (d.location && d.location.toLowerCase().includes(search.toLowerCase()));
-    return d.location !== "WAITING_VOUCHER" && matchSearch;
+    return !isActiveVoucherRequest(d, now) && matchSearch;
   });
 
   const handleApprove = async () => {
@@ -75,11 +114,9 @@ export function VoucherApproval() {
     const code = "FREE";
 
     try {
-      await updateBooth.mutateAsync({
+      await approveVoucher.mutateAsync({
         id: selectedDevice.id,
-        patch: {
-          location: `VOUCHER:${code}`,
-        },
+        code,
       });
       toast.success(`Voucher approved and sent to ${selectedDevice.name}`);
       setSelectedDevice(null);
@@ -127,10 +164,10 @@ export function VoucherApproval() {
             </Button>
             <Button
               onClick={handleApprove}
-              disabled={updateBooth.isPending}
+              disabled={approveVoucher.isPending}
               className="bg-zinc-900 text-white hover:bg-zinc-800"
             >
-              {updateBooth.isPending ? (
+              {approveVoucher.isPending ? (
                 <>
                   <Loader2 className="size-4 mr-2 animate-spin" />
                   Sending…
@@ -154,69 +191,96 @@ export function VoucherApproval() {
 
         {waitingDevices.length > 0 ? (
           <div className="grid gap-4 xl:grid-cols-2">
-            {waitingDevices.map((device: Device) => (
-              <Card
-                key={device.id}
-                className="relative overflow-hidden border-yellow-200 bg-yellow-50/20 shadow-sm transition-all"
-              >
-                {/* Pulsing top border decorator */}
-                <div className="absolute top-0 inset-x-0 h-1 bg-yellow-400 animate-pulse" />
-                <CardHeader className="pb-2">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        <MonitorSmartphone className="size-5 shrink-0 text-yellow-600" />
-                        {device.name}
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        Kiosk is waiting for voucher activation
-                      </CardDescription>
+            {waitingDevices.map((device: Device) => {
+              const requestedAt = parseVoucherRequestTime(device) ?? now;
+              const expiresAt = requestedAt + VOUCHER_REQUEST_TTL_MS;
+              const timeLeft = expiresAt - now;
+              return (
+                <Card
+                  key={device.id}
+                  className="relative overflow-hidden border-yellow-200 bg-yellow-50/20 shadow-sm transition-all"
+                >
+                  {/* Pulsing top border decorator */}
+                  <div className="absolute top-0 inset-x-0 h-1 bg-yellow-400 animate-pulse" />
+                  <CardHeader className="pb-2">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <MonitorSmartphone className="size-5 shrink-0 text-yellow-600" />
+                          {device.name}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          Kiosk is waiting for voucher activation
+                        </CardDescription>
+                      </div>
+                      <Badge
+                        variant="warning"
+                        className="animate-pulse bg-yellow-100 text-yellow-800 border-yellow-200"
+                      >
+                        Waiting Voucher
+                      </Badge>
                     </div>
-                    <Badge
-                      variant="warning"
-                      className="animate-pulse bg-yellow-100 text-yellow-800 border-yellow-200"
-                    >
-                      Waiting Voucher
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3 text-sm text-zinc-600 bg-white/70 border border-yellow-100/50 rounded-lg p-3">
-                    <AlertCircle className="size-5 text-yellow-600 shrink-0" />
-                    <div>
-                      A user on this device selected{" "}
-                      <strong>Gunakan Voucher</strong>. Tap approve to allow
-                      them to proceed.
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-2 rounded-lg border border-yellow-100/50 bg-white/70 p-3 text-sm text-zinc-600">
+                      <div className="flex items-center gap-3">
+                        <AlertCircle className="size-5 shrink-0 text-yellow-600" />
+                        <div>
+                          A user on this device selected{" "}
+                          <strong>Gunakan Voucher</strong>. Tap approve to allow
+                          them to proceed.
+                        </div>
+                      </div>
+                      <div className="grid gap-1 border-t border-yellow-100 pt-2 text-xs text-zinc-500 sm:grid-cols-3">
+                        <span>
+                          Request:{" "}
+                          <strong className="text-zinc-700">
+                            {formatDateTimeLabel(requestedAt)}
+                          </strong>
+                        </span>
+                        <span>
+                          Expired:{" "}
+                          <strong className="text-zinc-700">
+                            {formatDateTimeLabel(expiresAt)}
+                          </strong>
+                        </span>
+                        <span>
+                          Sisa:{" "}
+                          <strong className="text-yellow-700">
+                            {formatTimeLeft(timeLeft)}
+                          </strong>
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                    <Button
-                      className="bg-yellow-600 font-semibold text-white shadow-sm hover:bg-yellow-700"
-                      onClick={() => setSelectedDevice(device)}
-                    >
-                      <Ticket className="size-4 mr-2" /> Approve Voucher
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="border-yellow-200 hover:bg-yellow-50 text-zinc-700"
-                      onClick={async () => {
-                        try {
-                          await updateBooth.mutateAsync({
-                            id: device.id,
-                            patch: { location: "" },
-                          });
-                          toast.success(`Request cancelled for ${device.name}`);
-                        } catch {
-                          toast.error("Failed to cancel request");
-                        }
-                      }}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                      <Button
+                        className="bg-yellow-600 font-semibold text-white shadow-sm hover:bg-yellow-700"
+                        onClick={() => setSelectedDevice(device)}
+                      >
+                        <Ticket className="size-4 mr-2" /> Approve Voucher
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="border-yellow-200 hover:bg-yellow-50 text-zinc-700"
+                        disabled={rejectVoucher.isPending}
+                        onClick={async () => {
+                          try {
+                            await rejectVoucher.mutateAsync(device.id);
+                            toast.success(
+                              `Request cancelled for ${device.name}`,
+                            );
+                          } catch {
+                            toast.error("Failed to cancel request");
+                          }
+                        }}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <Card className="border-dashed border-zinc-200 bg-zinc-50/50">

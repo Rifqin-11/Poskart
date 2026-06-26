@@ -3,7 +3,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { transactionService } from "@/server/admin/transaction-service";
-import type { TransactionPatch } from "@/server/admin/transaction-service";
 
 export function useTransactions() {
   return useQuery({
@@ -15,7 +14,8 @@ export function useTransactions() {
 export function useFailedPrintsByBooth(boothName: string | null) {
   return useQuery({
     queryKey: adminQueryKeys.failedPrints(boothName),
-    queryFn: () => transactionService.getFailedPrintsByBooth(boothName as string),
+    queryFn: () =>
+      transactionService.getFailedPrintsByBooth(boothName as string),
     enabled: Boolean(boothName),
   });
 }
@@ -27,6 +27,7 @@ export function useRetryPrint() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
       queryClient.invalidateQueries({ queryKey: ["failed-prints"] });
+      queryClient.invalidateQueries({ queryKey: ["active-device-print-jobs"] });
     },
   });
 }
@@ -63,4 +64,3 @@ export function useDeleteTransactions() {
     },
   });
 }
-

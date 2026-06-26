@@ -42,11 +42,9 @@ import {
   LockKeyhole,
   List,
   Plus,
-  Power,
   Printer,
   Timer,
   RefreshCw,
-  RotateCcw,
   ShieldCheck,
   SlidersHorizontal,
   Store,
@@ -1270,7 +1268,9 @@ export function TransactionsMonitoring() {
                       <TableCell className="max-w-[220px] break-words">
                         {transaction.device}
                       </TableCell>
-                      <TableCell>{renderPaymentMethod(paymentMethod)}</TableCell>
+                      <TableCell>
+                        {renderPaymentMethod(paymentMethod)}
+                      </TableCell>
                       <TableCell className="max-w-[160px] break-words">
                         {transaction.packageName}
                       </TableCell>
@@ -1542,7 +1542,6 @@ export function BoothManagement() {
   const deleteBooth = useDeleteBooth();
   const [editing, setEditing] = useState<Device | null>(null);
   const [creating, setCreating] = useState(false);
-  const [assignFor, setAssignFor] = useState<Device | null>(null);
   const [failedFor, setFailedFor] = useState<Device | null>(null);
   const confirmDelete = useConfirmDialog();
   const deviceLimit = subscriptionStatus?.deviceLimit ?? 1;
@@ -1581,40 +1580,6 @@ export function BoothManagement() {
         });
       },
     });
-  };
-
-  const assignTheme = (device: Device, themeName: string) => {
-    updateBooth.mutate(
-      { id: device.id, patch: { theme: themeName } },
-      {
-        onSuccess: () => {
-          toast.success(`Assigned "${themeName}" to ${device.name}`);
-          setAssignFor(null);
-        },
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : "Failed"),
-      },
-    );
-  };
-
-  const updateDeviceAssignments = (
-    device: Device,
-    patch: Pick<Partial<BoothInput>, "frameTemplates" | "pricingProfiles">,
-    successMessage: string,
-  ) => {
-    updateBooth.mutate(
-      { id: device.id, patch },
-      {
-        onSuccess: () => {
-          toast.success(successMessage);
-          setAssignFor((current) =>
-            current?.id === device.id ? { ...current, ...patch } : current,
-          );
-        },
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : "Update failed"),
-      },
-    );
   };
 
   return (
@@ -1710,29 +1675,17 @@ export function BoothManagement() {
                   {device.location} · {device.appVersion}
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={
-                    device.status === "online"
-                      ? "success"
-                      : device.status === "maintenance"
-                        ? "warning"
-                        : "destructive"
-                  }
-                >
-                  {device.status}
-                </Badge>
-                <DropdownMenu
-                  items={[
-                    { label: "Edit", onClick: () => setEditing(device) },
-                    {
-                      label: "Delete",
-                      destructive: true,
-                      onClick: () => handleDelete(device),
-                    },
-                  ]}
-                />
-              </div>
+              <Badge
+                variant={
+                  device.status === "online"
+                    ? "success"
+                    : device.status === "maintenance"
+                      ? "warning"
+                      : "destructive"
+                }
+              >
+                {device.status}
+              </Badge>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-3 text-sm">
@@ -1841,25 +1794,11 @@ export function BoothManagement() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => toast.message(`${device.name} restart queued`)}
-                >
-                  <Power className="size-4" /> Restart
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toast.message(`${device.name} sync queued`)}
-                >
-                  <RotateCcw className="size-4" /> Sync
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
                   onClick={() => setFailedFor(device)}
                 >
                   <Printer className="size-4" /> Failed prints
                 </Button>
-                <Button size="sm" onClick={() => setAssignFor(device)}>
+                <Button size="sm" onClick={() => setEditing(device)}>
                   <SlidersHorizontal className="size-4" /> Configure
                 </Button>
               </div>
@@ -1904,19 +1843,26 @@ export function BoothManagement() {
       ) : null}
       {editing ? (
         <BoothFormDialog
-          title={`Edit ${editing.name}`}
+          title={`Configure ${editing.name}`}
           initial={editing}
           options={deviceFormOptions}
           submitting={updateBooth.isPending}
           onClose={() => setEditing(null)}
+          onDelete={() => {
+            const target = editing;
+            setEditing(null);
+            handleDelete(target);
+          }}
           onSubmit={(values) => {
             const {
               battery: _battery,
               appVersion: _appVersion,
+              lastSync: _lastSync,
               ...editableValues
             } = values;
             void _battery;
             void _appVersion;
+            void _lastSync;
             updateBooth.mutate(
               { id: editing.id, patch: editableValues },
               {
@@ -1939,87 +1885,6 @@ export function BoothManagement() {
           onClose={() => setFailedFor(null)}
         />
       ) : null}
-      {assignFor ? (
-        <Dialog
-          open
-          onOpenChange={(o) => !o && setAssignFor(null)}
-          title={`Configure ${assignFor.name}`}
-          className="max-w-5xl"
-        >
-          <div className="max-h-[74vh] space-y-5 overflow-y-auto pr-2">
-            <div>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Theme / layout
-              </div>
-              {layouts.length === 0 ? (
-                <p className="rounded-md border border-dashed border-zinc-200 p-3 text-sm text-zinc-500">
-                  No builder themes saved yet. Open the Visual Builder to create
-                  one.
-                </p>
-              ) : (
-                <ul className="grid max-h-80 gap-2 overflow-y-auto rounded-md border border-zinc-200 bg-zinc-50 p-2 md:grid-cols-2">
-                  {layouts.map((layout) => {
-                    const isCurrent = assignFor.theme === layout.name;
-                    return (
-                      <li
-                        key={layout.id}
-                        className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 bg-white p-3"
-                      >
-                        <div>
-                          <div className="text-sm font-medium text-zinc-800">
-                            {layout.name}
-                          </div>
-                          <div className="text-xs text-zinc-400">
-                            {layout.status}
-                            {layout.is_active ? " · live" : ""}
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant={isCurrent ? "outline" : "default"}
-                          disabled={isCurrent || updateBooth.isPending}
-                          onClick={() => assignTheme(assignFor, layout.name)}
-                        >
-                          {isCurrent ? "Assigned" : "Assign"}
-                        </Button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <DeviceMultiSelect
-                label="Frame templates"
-                values={assignFor.frameTemplates}
-                emptyLabel="No frame templates yet"
-                options={deviceFormOptions.frameTemplates}
-                onChange={(values) =>
-                  updateDeviceAssignments(
-                    assignFor,
-                    { frameTemplates: values },
-                    "Frame templates updated",
-                  )
-                }
-              />
-              <DeviceMultiSelect
-                label="Pricing packages"
-                values={assignFor.pricingProfiles}
-                emptyLabel="No active pricing packages yet"
-                options={deviceFormOptions.pricingProfiles}
-                onChange={(values) =>
-                  updateDeviceAssignments(
-                    assignFor,
-                    { pricingProfiles: values },
-                    "Pricing packages updated",
-                  )
-                }
-              />
-            </div>
-          </div>
-        </Dialog>
-      ) : null}
     </div>
   );
 }
@@ -2030,6 +1895,7 @@ function BoothFormDialog({
   options,
   submitting,
   onClose,
+  onDelete,
   onSubmit,
 }: {
   title: string;
@@ -2037,6 +1903,7 @@ function BoothFormDialog({
   options: DeviceFormOptions;
   submitting: boolean;
   onClose: () => void;
+  onDelete?: () => void;
   onSubmit: (values: BoothInput) => void;
 }) {
   const [form, setForm] = useState<BoothInput>(() => {
@@ -2052,19 +1919,19 @@ function BoothFormDialog({
     } as BoothInput;
   });
 
-  // Modern Hardware & Printer State Mockups
-  const [printerConn, setPrinterConn] = useState("usb");
-  const [paperWidth, setPaperWidth] = useState("80mm");
-  const [brightness, setBrightness] = useState(0);
-  const [contrast, setContrast] = useState(0);
-  const [density, setDensity] = useState(8);
-  const [sharpness, setSharpness] = useState(5);
-  const [mirrorCamera, setMirrorCamera] = useState(true);
-  const [resolution, setResolution] = useState("1080p");
-  const [debugLogs, setDebugLogs] = useState(false);
+  const deviceInitial = initial as Partial<Device>;
+  const printerStatus = deviceInitial.printerStatus ?? "unknown";
+  const printerConnected = printerStatus === "ready";
+  const runtimeStatus = form.status;
+  const maintenanceEnabled = runtimeStatus === "maintenance";
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} title={title}>
+    <Dialog
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={title}
+      className="max-w-5xl"
+    >
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -2076,16 +1943,16 @@ function BoothFormDialog({
         }}
       >
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="mb-4 grid w-full grid-cols-3">
-            <TabsTrigger value="general">General & Content</TabsTrigger>
-            <TabsTrigger value="timers">Session & Timers</TabsTrigger>
-            <TabsTrigger value="hardware">Hardware & Printer</TabsTrigger>
+          <TabsList className="mb-4 grid h-auto w-full grid-cols-3 gap-1 rounded-2xl">
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="experience">Experience</TabsTrigger>
+            <TabsTrigger value="system">System</TabsTrigger>
           </TabsList>
 
-          {/* TAB 1: GENERAL & CONTENT */}
+          {/* TAB 1: GENERAL */}
           <TabsContent
             value="general"
-            className="grid gap-3 md:grid-cols-2 min-h-[340px]"
+            className="grid min-h-[340px] gap-3 md:grid-cols-2"
           >
             <label className="block text-xs font-medium text-zinc-600">
               Name
@@ -2105,23 +1972,29 @@ function BoothFormDialog({
                 placeholder="PVJ Bandung"
               />
             </label>
-            <label className="block text-xs font-medium text-zinc-600">
-              Status
-              <Select
-                className="mt-1"
-                value={form.status}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    status: e.target.value as Device["status"],
-                  })
-                }
-              >
-                <option value="online">online</option>
-                <option value="offline">offline</option>
-                <option value="maintenance">maintenance</option>
-              </Select>
-            </label>
+            <div className="block text-xs font-medium text-zinc-600">
+              Runtime status
+              <div className="mt-1 flex items-center justify-between rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
+                <Badge
+                  variant={
+                    runtimeStatus === "online"
+                      ? "success"
+                      : runtimeStatus === "maintenance"
+                        ? "warning"
+                        : "destructive"
+                  }
+                >
+                  {runtimeStatus}
+                </Badge>
+                <span className="text-[11px] font-normal text-zinc-400">
+                  Based on kiosk heartbeat
+                </span>
+              </div>
+              <p className="mt-1 text-[10px] font-normal text-zinc-400">
+                Online/offline is detected from the app heartbeat. Use System to
+                enable maintenance mode.
+              </p>
+            </div>
             <div className="block text-xs font-medium text-zinc-600">
               App version
               <div className="mt-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700">
@@ -2132,17 +2005,24 @@ function BoothFormDialog({
                 manually.
               </p>
             </div>
-            <label className="block text-xs font-medium text-zinc-600">
+            <div className="block text-xs font-medium text-zinc-600">
               Last sync
-              <Input
-                className="mt-1"
-                value={form.lastSync}
-                onChange={(e) => setForm({ ...form, lastSync: e.target.value })}
-                placeholder="5 minutes ago"
-              />
-            </label>
+              <div className="mt-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700">
+                {form.lastSync || "Waiting for device sync"}
+              </div>
+              <p className="mt-1 text-[10px] font-normal text-zinc-400">
+                Sync time is reported by the kiosk device.
+              </p>
+            </div>
+          </TabsContent>
+
+          {/* TAB 2: EXPERIENCE */}
+          <TabsContent
+            value="experience"
+            className="grid min-h-[340px] gap-3 md:grid-cols-2"
+          >
             <label className="block text-xs font-medium text-zinc-600">
-              Theme
+              Theme / layout
               <Select
                 className="mt-1"
                 value={form.theme}
@@ -2157,6 +2037,9 @@ function BoothFormDialog({
                   ),
                 )}
               </Select>
+              <span className="mt-1 block text-[10px] font-normal text-zinc-400">
+                Controls the kiosk visual layout.
+              </span>
             </label>
             <div className="block text-xs font-medium text-zinc-600">
               Frame templates
@@ -2198,9 +2081,86 @@ function BoothFormDialog({
             </div>
           </TabsContent>
 
-          {/* TAB 2: SESSION & TIMERS */}
-          <TabsContent value="timers" className="space-y-4 min-h-[340px]">
-            <div className="rounded-md border border-dashed border-zinc-200 p-3 bg-zinc-50/50">
+          {/* TAB 3: SYSTEM */}
+          <TabsContent
+            value="system"
+            className="min-h-[340px] max-h-[420px] space-y-4 overflow-y-auto pr-1"
+          >
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50/30 p-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-600">
+                    <Wrench className="size-3.5" /> Maintenance mode
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Marks this kiosk as maintenance from the web. Flutter-side
+                    blocking behavior can be wired later.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 rounded-full border border-zinc-200 bg-white px-3 py-2">
+                  <span
+                    className={cn(
+                      "text-xs font-semibold",
+                      maintenanceEnabled ? "text-amber-700" : "text-zinc-500",
+                    )}
+                  >
+                    {maintenanceEnabled ? "Enabled" : "Disabled"}
+                  </span>
+                  <Switch
+                    checked={maintenanceEnabled}
+                    onCheckedChange={(checked) =>
+                      setForm({
+                        ...form,
+                        status: checked ? "maintenance" : "online",
+                      })
+                    }
+                    aria-label="Toggle maintenance mode"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50/30 p-3">
+              <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-600">
+                <Printer className="size-3.5" /> Printer status
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border border-zinc-200 bg-white p-3">
+                  <div className="text-xs font-medium text-zinc-500">
+                    Connection
+                  </div>
+                  <div
+                    className={cn(
+                      "mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
+                      printerConnected
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-red-50 text-red-700",
+                    )}
+                  >
+                    {printerConnected ? "Connected" : "Disconnected"}
+                  </div>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    {deviceInitial.printerName || "Printer belum dikonfigurasi"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-zinc-200 bg-white p-3">
+                  <div className="text-xs font-medium text-zinc-500">
+                    Device report
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-zinc-900">
+                    {printerStatus.replaceAll("_", " ")}
+                  </div>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    {deviceInitial.printerLastError ||
+                      (deviceInitial.printerStatusUpdatedAt
+                        ? `Updated ${deviceInitial.printerStatusUpdatedAt}`
+                        : "Waiting for kiosk status update.")}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/50 p-3">
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 <Timer className="size-3.5" /> Countdown overrides (optional)
               </div>
@@ -2247,145 +2207,25 @@ function BoothFormDialog({
               </div>
             </div>
           </TabsContent>
-
-          {/* TAB 3: HARDWARE & PRINTER */}
-          <TabsContent
-            value="hardware"
-            className="space-y-4 min-h-[340px] max-h-[420px] overflow-y-auto pr-1"
-          >
-            {/* PRINTER SETTINGS SECTION */}
-            <div className="rounded-lg border border-zinc-200 p-3 bg-zinc-50/30">
-              <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-600">
-                <Printer className="size-3.5" /> Printer Parameters
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="block text-xs font-medium text-zinc-600">
-                  Connection Mode
-                  <Select
-                    className="mt-1"
-                    value={printerConn}
-                    onChange={(e) => setPrinterConn(e.target.value)}
-                  >
-                    <option value="usb">USB OTG Cable (Direct)</option>
-                    <option value="bluetooth">Bluetooth (Wireless)</option>
-                    <option value="wifi">Network (TCP/IP socket)</option>
-                  </Select>
-                </label>
-
-                <label className="block text-xs font-medium text-zinc-600">
-                  Paper Size Width
-                  <Select
-                    className="mt-1"
-                    value={paperWidth}
-                    onChange={(e) => setPaperWidth(e.target.value)}
-                  >
-                    <option value="80mm">80mm Paper width (Premium)</option>
-                    <option value="58mm">58mm Paper width (Standard)</option>
-                  </Select>
-                </label>
-
-                <div className="md:col-span-2 grid gap-3 md:grid-cols-2 border-t border-zinc-100 pt-3 mt-1">
-                  <label className="block text-xs font-medium text-zinc-600">
-                    Brightness: {brightness > 0 ? `+${brightness}` : brightness}
-                    %
-                    <Slider
-                      min={-50}
-                      max={50}
-                      value={brightness}
-                      onChange={(e) => setBrightness(Number(e.target.value))}
-                    />
-                  </label>
-
-                  <label className="block text-xs font-medium text-zinc-600">
-                    Contrast: {contrast > 0 ? `+${contrast}` : contrast}%
-                    <Slider
-                      min={-50}
-                      max={50}
-                      value={contrast}
-                      onChange={(e) => setContrast(Number(e.target.value))}
-                    />
-                  </label>
-
-                  <label className="block text-xs font-medium text-zinc-600">
-                    Density (Darkness): {density}
-                    <Slider
-                      min={1}
-                      max={15}
-                      value={density}
-                      onChange={(e) => setDensity(Number(e.target.value))}
-                    />
-                  </label>
-
-                  <label className="block text-xs font-medium text-zinc-600">
-                    Sharpness: {sharpness}
-                    <Slider
-                      min={0}
-                      max={10}
-                      value={sharpness}
-                      onChange={(e) => setSharpness(Number(e.target.value))}
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* CAMERA OPTIONS SECTION */}
-            <div className="rounded-lg border border-zinc-200 p-3 bg-zinc-50/30">
-              <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-600">
-                <SlidersHorizontal className="size-3.5" /> Camera & Diagnostics
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-100 bg-white p-2.5">
-                  <div>
-                    <span className="block text-xs font-medium text-zinc-700">
-                      Mirror Camera Feed
-                    </span>
-                    <span className="block text-[10px] text-zinc-400">
-                      Flips user selfie live view
-                    </span>
-                  </div>
-                  <Switch
-                    checked={mirrorCamera}
-                    onCheckedChange={setMirrorCamera}
-                  />
-                </label>
-
-                <label className="block text-xs font-medium text-zinc-600">
-                  Target Live View Resolution
-                  <Select
-                    className="mt-1"
-                    value={resolution}
-                    onChange={(e) => setResolution(e.target.value)}
-                  >
-                    <option value="720p">HD (720p @ 30fps)</option>
-                    <option value="1080p">Full HD (1080p @ 30fps)</option>
-                    <option value="4k">Ultra HD (4K @ 15fps)</option>
-                  </Select>
-                </label>
-
-                <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-100 bg-white p-2.5 md:col-span-2">
-                  <div>
-                    <span className="block text-xs font-medium text-zinc-700">
-                      Enable Diagnostics Debug Mode
-                    </span>
-                    <span className="block text-[10px] text-zinc-400">
-                      Prints verbose connection errors on Kiosk UI
-                    </span>
-                  </div>
-                  <Switch checked={debugLogs} onCheckedChange={setDebugLogs} />
-                </label>
-              </div>
-            </div>
-          </TabsContent>
         </Tabs>
 
-        <div className="flex justify-end gap-2 pt-4 border-t border-zinc-100 mt-4">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Saving…" : "Save"}
-          </Button>
+        <div className="mt-4 flex flex-col gap-3 border-t border-zinc-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            {onDelete ? (
+              <Button type="button" variant="destructive" onClick={onDelete}>
+                <Trash2 className="size-4" />
+                Delete device
+              </Button>
+            ) : null}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Saving…" : "Save configuration"}
+            </Button>
+          </div>
         </div>
       </form>
     </Dialog>
@@ -4843,8 +4683,7 @@ function OrganizationSettings({
     ? new Date(tenant.subscription_expires_at)
     : null;
   const isFreeAccount =
-    subscriptionStatus === "free" ||
-    !tenant?.subscription_is_active;
+    subscriptionStatus === "free" || !tenant?.subscription_is_active;
   const deviceLimit = tenant?.device_limit ?? 1;
 
   return (

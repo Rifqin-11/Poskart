@@ -5,4 +5,6 @@ export const deviceService = {
   createDevice: adminRepository.createBooth,
   updateDevice: adminRepository.updateBooth,
   deleteDevice: adminRepository.deleteBooth,
+  approveVoucherRequest: adminRepository.approveVoucherRequest,
+  rejectVoucherRequest: adminRepository.rejectVoucherRequest,
 };
