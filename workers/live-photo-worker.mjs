@@ -10,10 +10,10 @@ import sharp from "sharp";
 // Disable sharp cache to prevent memory leaks/OOM in constrained environments (like Railway)
 sharp.cache(false);
 
-const FRAME_COUNT = Number.parseInt(process.env.LIVE_PHOTO_FRAME_COUNT ?? "10", 10);
+const FRAME_COUNT = Number.parseInt(process.env.LIVE_PHOTO_FRAME_COUNT ?? "45", 10);
 const TARGET_WIDTH = Number.parseInt(process.env.LIVE_PHOTO_TARGET_WIDTH ?? "800", 10);
 const FRAME_DURATION_MS = Number.parseInt(
-  process.env.LIVE_PHOTO_FRAME_DURATION_MS ?? "300",
+  process.env.LIVE_PHOTO_FRAME_DURATION_MS ?? "67",
   10,
 );
 const POLL_INTERVAL_MS = Number.parseInt(
