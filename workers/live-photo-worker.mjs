@@ -7,8 +7,11 @@ import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 
+// Disable sharp cache to prevent memory leaks/OOM in constrained environments (like Railway)
+sharp.cache(false);
+
 const FRAME_COUNT = Number.parseInt(process.env.LIVE_PHOTO_FRAME_COUNT ?? "10", 10);
-const TARGET_WIDTH = Number.parseInt(process.env.LIVE_PHOTO_TARGET_WIDTH ?? "1200", 10);
+const TARGET_WIDTH = Number.parseInt(process.env.LIVE_PHOTO_TARGET_WIDTH ?? "800", 10);
 const FRAME_DURATION_MS = Number.parseInt(
   process.env.LIVE_PHOTO_FRAME_DURATION_MS ?? "300",
   10,
@@ -410,16 +413,35 @@ function readColor(value, fallback) {
 
 async function encodeGif(framePaths, outputPath) {
   const frameRate = (1000 / FRAME_DURATION_MS).toFixed(3);
+  const tempDir = path.dirname(framePaths[0]);
+  const palettePath = path.join(tempDir, "palette.png");
+  const inputPattern = path.join(tempDir, "rendered-%03d.png");
+
+  // Pass 1: Generate palette to a temporary file (avoids high memory split filter)
   await run("ffmpeg", [
     "-y",
     "-framerate",
     frameRate,
     "-i",
-    path.join(path.dirname(framePaths[0]), "rendered-%03d.png"),
+    inputPattern,
+    "-vf",
+    "palettegen=stats_mode=diff",
+    palettePath,
+  ]);
+
+  // Pass 2: Apply the generated palette to output the looping GIF
+  await run("ffmpeg", [
+    "-y",
+    "-framerate",
+    frameRate,
+    "-i",
+    inputPattern,
+    "-i",
+    palettePath,
+    "-filter_complex",
+    "paletteuse=dither=bayer:bayer_scale=5",
     "-loop",
     "0",
-    "-filter_complex",
-    "[0:v] split [a][b];[a] palettegen=stats_mode=diff [p];[b][p] paletteuse=dither=bayer:bayer_scale=5",
     outputPath,
   ]);
 }
@@ -586,11 +608,12 @@ function run(command, args) {
       stderr += chunk.toString();
     });
     child.on("error", reject);
-    child.on("close", (code) => {
+    child.on("close", (code, signal) => {
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`${command} exited with ${code}: ${stderr}`));
+        const exitReason = code !== null ? `status code ${code}` : `signal ${signal}`;
+        reject(new Error(`${command} exited with ${exitReason}: ${stderr}`));
       }
     });
   });
