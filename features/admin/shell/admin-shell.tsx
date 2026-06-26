@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
+  Bell,
   ChevronDown,
   CreditCard,
   Gauge,
   LayoutTemplate,
   Images,
-  RefreshCw,
   LockKeyhole,
   Menu,
   MonitorSmartphone,
@@ -159,10 +159,10 @@ function SidebarContent({
     <div className="flex h-full min-h-0 flex-col">
       <Link
         href="/dashboard"
-        className="mb-6 flex items-center gap-3"
+        className="mb-6 flex items-center gap-3 rounded-2xl px-2 py-1.5 transition-colors hover:bg-white/70"
         onClick={onNavigate}
       >
-        <div className="grid size-9 place-items-center overflow-hidden rounded-lg">
+        <div className="grid size-10 place-items-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200/70">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/Logo Poskart.png"
@@ -189,7 +189,7 @@ function SidebarContent({
                 key={item.href}
                 href={`/organization?subscription=required&next=${encodeURIComponent(item.href)}`}
                 onClick={onNavigate}
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-amber-50 hover:text-amber-700"
+                className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-zinc-400 transition-colors hover:bg-amber-50 hover:text-amber-700"
                 title="Requires an active POSKART subscription"
               >
                 <Icon className="size-4" />
@@ -205,9 +205,9 @@ function SidebarContent({
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950",
+                "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-white hover:text-zinc-950 hover:shadow-sm",
                 active &&
-                  "bg-zinc-950 text-white hover:bg-zinc-950 hover:text-white",
+                  "bg-zinc-950 text-white shadow-lg shadow-zinc-950/10 hover:bg-zinc-950 hover:text-white",
               )}
             >
               <Icon className="size-4" />
@@ -221,17 +221,17 @@ function SidebarContent({
         href="/organization"
         onClick={onNavigate}
         className={cn(
-          "mt-3 shrink-0 rounded-xl border bg-white p-3 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50",
+          "mt-3 shrink-0 rounded-3xl border bg-white/90 p-3.5 shadow-sm shadow-zinc-200/70 transition-colors hover:border-zinc-300 hover:bg-white",
           hasActiveSubscription
-            ? "border-emerald-200"
-            : "border-amber-200 bg-amber-50/40",
-          pathname === "/organization" && "border-zinc-950",
+            ? "border-emerald-200/80"
+            : "border-amber-200/80 bg-amber-50/60",
+          pathname === "/organization" && "border-zinc-950 shadow-zinc-950/10",
         )}
       >
         <div className="flex items-start gap-3">
           <div
             className={cn(
-              "grid size-8 shrink-0 place-items-center rounded-lg",
+              "grid size-9 shrink-0 place-items-center rounded-2xl",
               hasActiveSubscription
                 ? "bg-emerald-100 text-emerald-700"
                 : "bg-amber-100 text-amber-700",
@@ -282,8 +282,8 @@ export function AdminShell({
 }) {
   const [open, setOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
-  const router = useRouter();
   const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
   const builderFullView = useBuilderStore((s) => s.builderFullView);
 
@@ -292,10 +292,17 @@ export function AdminShell({
   useRealtimeSync();
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div
+      className={cn(
+        "min-h-screen",
+        builderFullView
+          ? "bg-zinc-50"
+          : "bg-[#f5f6f8]",
+      )}
+    >
       {/* App sidebar — hidden in builder full-view */}
       {!builderFullView && (
-        <aside className="fixed inset-y-0 left-0 hidden w-72 overflow-hidden border-r border-zinc-200 bg-zinc-50 p-4 lg:block">
+        <aside className="fixed inset-y-4 left-4 hidden w-72 overflow-hidden rounded-[2rem] border border-zinc-200/70 bg-white p-4 shadow-xl shadow-zinc-950/[0.05] lg:block">
           <SidebarContent userEmail={userEmail} />
         </aside>
       )}
@@ -310,12 +317,12 @@ export function AdminShell({
       <div
         className={cn(
           "transition-all duration-200",
-          builderFullView ? "lg:pl-0" : "lg:pl-72",
+          builderFullView ? "lg:pl-0" : "lg:pl-[18.75rem]",
         )}
       >
         {/* Topbar — hidden in builder full-view */}
         {!builderFullView && (
-          <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/85 px-4 backdrop-blur-xl lg:px-8">
+          <header className="sticky top-4 z-30 mx-3 mt-4 rounded-[1.75rem] border border-white/75 bg-white/55 px-4 shadow-lg shadow-zinc-950/[0.035] backdrop-blur-2xl backdrop-saturate-150 lg:mx-4 lg:px-5">
             <div className="flex h-16 items-center gap-4">
               <Button
                 variant="ghost"
@@ -335,20 +342,62 @@ export function AdminShell({
                     {userEmail ?? "POSKART Photobooth"}
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.refresh()}
-                  title="Sync dashboard data"
-                >
-                  <RefreshCw className="size-3.5" />
-                  Sync
-                </Button>
                 <div className="relative">
                   <button
                     type="button"
-                    className="flex items-center gap-1 rounded-full p-0.5 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
-                    onClick={() => setAccountMenuOpen((value) => !value)}
+                    className="relative grid size-10 place-items-center rounded-2xl border border-white/70 bg-white/55 text-zinc-700 shadow-sm backdrop-blur-xl transition-colors hover:bg-white/75 hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      setNotificationMenuOpen((value) => !value);
+                    }}
+                    aria-expanded={notificationMenuOpen}
+                    aria-haspopup="menu"
+                    aria-label="Open notifications"
+                    title="Notifications"
+                  >
+                    <Bell className="size-4" />
+                    <span className="absolute right-2 top-2 size-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                  </button>
+                  {notificationMenuOpen ? (
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-12 z-50 w-80 rounded-3xl border border-zinc-200/80 bg-white/95 p-3 shadow-2xl shadow-zinc-950/10 backdrop-blur-xl"
+                    >
+                      <div className="flex items-start justify-between gap-3 border-b border-zinc-100 px-2 pb-3">
+                        <div>
+                          <div className="text-sm font-semibold text-zinc-950">
+                            Notifications
+                          </div>
+                          <div className="mt-0.5 text-xs text-zinc-500">
+                            Ringkasan aktivitas POSKART terbaru.
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                          Active
+                        </span>
+                      </div>
+                      <div className="py-2">
+                        <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm">
+                          <div className="font-medium text-zinc-950">
+                            Tidak ada notifikasi penting
+                          </div>
+                          <div className="mt-1 text-xs leading-5 text-zinc-500">
+                            Semua layanan dashboard berjalan normal. Notifikasi
+                            transaksi, device, dan print job akan tampil di sini.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 rounded-full bg-white/35 p-0.5 transition-colors hover:bg-white/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+                    onClick={() => {
+                      setNotificationMenuOpen(false);
+                      setAccountMenuOpen((value) => !value);
+                    }}
                     aria-expanded={accountMenuOpen}
                     aria-haspopup="menu"
                     aria-label="Open account menu"
@@ -359,9 +408,9 @@ export function AdminShell({
                   {accountMenuOpen ? (
                     <div
                       role="menu"
-                      className="absolute right-0 top-12 z-50 w-64 rounded-lg border border-zinc-200 bg-white p-2 shadow-xl"
+                      className="absolute right-0 top-12 z-50 w-64 rounded-3xl border border-zinc-200/80 bg-white/95 p-2 shadow-2xl shadow-zinc-950/10 backdrop-blur-xl"
                     >
-                      <div className="border-b border-zinc-100 px-3 py-2">
+                      <div className="border-b border-zinc-100 px-3 py-2.5">
                         <div className="text-xs text-zinc-500">
                           Signed in as
                         </div>
@@ -373,7 +422,7 @@ export function AdminShell({
                         <Link
                           href="/organization"
                           role="menuitem"
-                          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
+                          className="flex items-center gap-2 rounded-2xl px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
                           onClick={() => setAccountMenuOpen(false)}
                         >
                           <UserRound className="size-4" />
@@ -382,7 +431,7 @@ export function AdminShell({
                         <button
                           type="button"
                           role="menuitem"
-                          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
+                          className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
                           onClick={() => {
                             setAccountMenuOpen(false);
                             setSubscriptionDialogOpen(true);
@@ -397,7 +446,7 @@ export function AdminShell({
                           <button
                             type="submit"
                             role="menuitem"
-                            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                            className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                           >
                             <LogOut className="size-4" />
                             Logout
@@ -411,7 +460,13 @@ export function AdminShell({
             </div>
           </header>
         )}
-        <main className={cn(builderFullView ? "p-0" : "px-4 py-6 lg:px-8")}>
+        <main
+          className={cn(
+            builderFullView
+              ? "p-0"
+              : "mx-3 mt-4 rounded-[2rem] border border-zinc-200/70 bg-white px-4 py-6 shadow-lg shadow-zinc-950/[0.035] lg:mx-4 lg:px-8",
+          )}
+        >
           {children}
         </main>
       </div>
