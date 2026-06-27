@@ -509,6 +509,8 @@ function NodeRenderer({
   if (node.type === "qr") {
     const qrColor = readString(node.props.qrColor, "#000000");
     const qrBgColor = readString(node.props.qrBgColor, "#ffffff");
+    const qrTransparentBackground =
+      node.props.qrTransparentBackground === true;
     const qrTextColor = readString(
       node.props.qrTextColor ?? node.props.color,
       "#27272a",
@@ -531,7 +533,7 @@ function NodeRenderer({
         className="relative flex h-full w-full flex-col items-center justify-between overflow-visible border border-zinc-300 p-3"
         style={{
           borderRadius: readNumber(node.props.radius, 12),
-          backgroundColor: qrBgColor,
+          backgroundColor: qrTransparentBackground ? "transparent" : qrBgColor,
           fontFamily: "'Manrope', 'Outfit', 'Inter', sans-serif",
         }}
       >
@@ -2304,6 +2306,26 @@ function PropertiesPanel({
                 updateNodeProps(selectedNode.id, { qrBgColor: v })
               }
             />
+            {selectedNode.type === "qr" && (
+              <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-100 bg-zinc-50 p-2.5">
+                <div>
+                  <span className="block text-xs font-medium text-zinc-700">
+                    Transparent background
+                  </span>
+                  <span className="block text-[10px] text-zinc-400">
+                    Use no background behind the download QR container.
+                  </span>
+                </div>
+                <Switch
+                  checked={selectedNode.props.qrTransparentBackground === true}
+                  onCheckedChange={(v) =>
+                    updateNodeProps(selectedNode.id, {
+                      qrTransparentBackground: v,
+                    })
+                  }
+                />
+              </label>
+            )}
             {(selectedNode.type === "qr-link" ||
               selectedNode.props.showQrLink !== false) && (
               <ColorField
