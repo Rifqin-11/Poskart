@@ -14,7 +14,7 @@ type TransactionBody = {
     packageCode?: string;
     packageName?: string;
     amount?: number;
-    status?: "paid" | "pending" | "failed" | "refunded";
+    status?: TransactionStatus;
     provider?: "QRIS" | "Cash" | "Voucher";
     templateId?: string;
     printCount?: number;
@@ -22,6 +22,15 @@ type TransactionBody = {
     printAttempts?: number;
     printLastError?: string | null;
   };
+};
+
+type TransactionStatus = "paid" | "pending" | "failed" | "refunded";
+
+type ExistingTransaction = {
+  status: TransactionStatus | null;
+  paid_at: string | null;
+  duitku_status_code: string | null;
+  gateway_response: Record<string, unknown> | null;
 };
 
 export async function POST(request: Request) {
@@ -73,6 +82,16 @@ export async function POST(request: Request) {
       }
     }
 
+    const { data: existingTransaction, error: existingTransactionError } =
+      await context.client
+        .from("transactions")
+        .select("status,paid_at,duitku_status_code,gateway_response")
+        .eq("organization_id", context.organizationId)
+        .eq("id", transaction.id)
+        .maybeSingle();
+
+    if (existingTransactionError) throw existingTransactionError;
+
     const now = new Date().toISOString();
     const provider =
       transaction.provider === "Cash"
@@ -80,7 +99,12 @@ export async function POST(request: Request) {
         : transaction.provider === "Voucher"
           ? "Voucher"
           : "QRIS";
-    const status = provider === "QRIS" ? "pending" : "paid";
+    const status = resolveTransactionStatus({
+      provider,
+      requestedStatus: transaction.status,
+      existingTransaction: (existingTransaction ??
+        null) as ExistingTransaction | null,
+    });
     const { error: transactionError } = await context.client
       .from("transactions")
       .upsert({
@@ -108,6 +132,46 @@ export async function POST(request: Request) {
   } catch (error) {
     return jsonError(error);
   }
+}
+
+function resolveTransactionStatus({
+  provider,
+  requestedStatus,
+  existingTransaction,
+}: {
+  provider: "QRIS" | "Cash" | "Voucher";
+  requestedStatus?: TransactionStatus;
+  existingTransaction: ExistingTransaction | null;
+}): TransactionStatus {
+  const existingIsPaid = isExistingTransactionPaid(existingTransaction);
+
+  if (existingIsPaid) {
+    return "paid";
+  }
+
+  if (provider === "QRIS") {
+    if (requestedStatus && requestedStatus !== "paid") {
+      return requestedStatus;
+    }
+    return "pending";
+  }
+
+  return requestedStatus ?? "paid";
+}
+
+function isExistingTransactionPaid(transaction: ExistingTransaction | null) {
+  if (!transaction) return false;
+  if (transaction.status === "paid") return true;
+  if (transaction.paid_at) return true;
+  if (transaction.duitku_status_code === "00") return true;
+
+  const gatewayResponse = transaction.gateway_response;
+  if (!gatewayResponse || typeof gatewayResponse !== "object") return false;
+
+  return (
+    gatewayResponse.statusCode === "00" ||
+    gatewayResponse.resultCode === "00"
+  );
 }
 
 export async function GET(request: Request) {
