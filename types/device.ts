@@ -27,6 +27,10 @@ export type Device = {
   printerLastError?: string | null;
   printerStatusUpdatedAt?: string | null;
   printerBidirectional: boolean;
+  printerBottomSafeZoneMm: number;
+  printerBrightness: number;
+  printerContrast: number;
+  printerDotDensity: number;
   voucherRequestedAt?: string | null;
   voucherCommand?: string | null;
   voucherCommandUpdatedAt?: string | null;

@@ -1,4 +1,5 @@
 export type PrintStatus = "pending" | "printed" | "failed" | "reprinting";
+export type TransactionProvider = "QRIS" | "Cash" | "Voucher";
 
 export type Transaction = {
   id: string;
@@ -8,7 +9,7 @@ export type Transaction = {
   packageName: string;
   amount: number;
   status: "paid" | "pending" | "failed" | "refunded";
-  provider: "QRIS" | "Cash";
+  provider: TransactionProvider;
   createdAt: string;
   createdAtRaw: string;
   printStatus: PrintStatus;

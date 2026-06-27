@@ -32,6 +32,7 @@ import type { Transaction } from "@/types/transaction";
 import { TransactionDetailsDialog } from "./_components/transaction-details-dialog";
 
 function getTransactionPaymentMethod(transaction: Transaction) {
+  if (transaction.provider === "Voucher") return "Voucher";
   const location = transaction.location.trim().toUpperCase();
   if (location.includes("VOUCHER")) return "Voucher";
   return transaction.provider;

@@ -1388,7 +1388,7 @@ export function FrameTemplateBuilder({
             >
               <ZoomIn className="size-4" />
             </Button>
-            <Button
+            {/* <Button
               variant="ghost"
               size="icon"
               onClick={() => {
@@ -1398,7 +1398,7 @@ export function FrameTemplateBuilder({
               title="Actual size"
             >
               <Maximize2 className="size-4" />
-            </Button>
+            </Button> */}
             {selectedId ? (
               <Button
                 variant="ghost"

@@ -35,7 +35,7 @@ export const TRANSACTION_COLUMNS =
   "id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_status,print_attempts,print_last_error";
 
 export const BOOTH_COLUMNS =
-  "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,voucher_requested_at,voucher_command,voucher_command_updated_at";
+  "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at";
 
 export type TransactionRow = Omit<
   Transaction,
@@ -174,6 +174,10 @@ export type BoothRow = Omit<
   printer_last_error: string | null;
   printer_status_updated_at: string | null;
   printer_bidirectional: boolean;
+  printer_bottom_safe_zone_mm: number | null;
+  printer_brightness: number | null;
+  printer_contrast: number | null;
+  printer_dot_density: number | null;
   voucher_requested_at: string | null;
   voucher_command: string | null;
   voucher_command_updated_at: string | null;
@@ -487,6 +491,10 @@ export const mapBooth = (row: BoothRow): Device => ({
   printerLastError: row.printer_last_error ?? null,
   printerStatusUpdatedAt: row.printer_status_updated_at ?? null,
   printerBidirectional: row.printer_bidirectional ?? false,
+  printerBottomSafeZoneMm: Number(row.printer_bottom_safe_zone_mm ?? 0),
+  printerBrightness: Number(row.printer_brightness ?? 0),
+  printerContrast: Number(row.printer_contrast ?? 0),
+  printerDotDensity: Number(row.printer_dot_density ?? 1),
   voucherRequestedAt: row.voucher_requested_at ?? null,
   voucherCommand: row.voucher_command ?? null,
   voucherCommandUpdatedAt: row.voucher_command_updated_at ?? null,

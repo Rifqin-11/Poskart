@@ -15,7 +15,7 @@ type TransactionBody = {
     packageName?: string;
     amount?: number;
     status?: "paid" | "pending" | "failed" | "refunded";
-    provider?: "QRIS" | "Cash";
+    provider?: "QRIS" | "Cash" | "Voucher";
     templateId?: string;
     printCount?: number;
     printStatus?: "pending" | "printed" | "failed" | "reprinting";
@@ -74,8 +74,13 @@ export async function POST(request: Request) {
     }
 
     const now = new Date().toISOString();
-    const provider = transaction.provider === "Cash" ? "Cash" : "QRIS";
-    const status = provider === "Cash" ? "paid" : "pending";
+    const provider =
+      transaction.provider === "Cash"
+        ? "Cash"
+        : transaction.provider === "Voucher"
+          ? "Voucher"
+          : "QRIS";
+    const status = provider === "QRIS" ? "pending" : "paid";
     const { error: transactionError } = await context.client
       .from("transactions")
       .upsert({

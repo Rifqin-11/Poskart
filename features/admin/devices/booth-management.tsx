@@ -55,6 +55,10 @@ const EMPTY_BOOTH: BoothInput = {
   pricingProfiles: ["Standard"],
   sessionCountdownSeconds: null,
   paymentCountdownSeconds: null,
+  printerBottomSafeZoneMm: 0,
+  printerBrightness: 0,
+  printerContrast: 0,
+  printerDotDensity: 1,
 };
 
 type DeviceFormOptions = {

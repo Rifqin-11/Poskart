@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { Transaction } from "@/types/transaction";
+import type { Transaction, TransactionProvider } from "@/types/transaction";
 
 type TransactionEditForm = {
   booth: string;
@@ -13,7 +13,7 @@ type TransactionEditForm = {
   package_name: string;
   amount: string;
   status: "paid" | "pending" | "failed" | "refunded";
-  provider: "QRIS" | "Cash";
+  provider: TransactionProvider;
 };
 
 type TransactionDetailsDialogProps = {
@@ -27,7 +27,7 @@ type TransactionDetailsDialogProps = {
     package_name: string;
     amount: number;
     status: "paid" | "pending" | "failed" | "refunded";
-    provider: "QRIS" | "Cash";
+    provider: TransactionProvider;
   }) => void;
 };
 
@@ -132,12 +132,13 @@ export function TransactionDetailsDialog({
               onChange={(e) =>
                 setForm((f) => ({
                   ...f,
-                  provider: e.target.value as "QRIS" | "Cash",
+                  provider: e.target.value as TransactionProvider,
                 }))
               }
             >
               <option value="QRIS">QRIS</option>
               <option value="Cash">Cash</option>
+              <option value="Voucher">Voucher</option>
             </select>
           </label>
           <label className="block text-xs font-medium text-zinc-600 md:col-span-2">

@@ -58,6 +58,10 @@ export async function createDevice(values: BoothInput): Promise<void> {
     pricing_profiles: pricingProfiles,
     session_countdown_seconds: values.sessionCountdownSeconds ?? null,
     payment_countdown_seconds: values.paymentCountdownSeconds ?? null,
+    printer_bottom_safe_zone_mm: values.printerBottomSafeZoneMm ?? 0,
+    printer_brightness: values.printerBrightness ?? 0,
+    printer_contrast: values.printerContrast ?? 0,
+    printer_dot_density: values.printerDotDensity ?? 1,
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(`Unable to create device: ${error.message}`);
@@ -101,6 +105,14 @@ export async function updateDevice(
     dbPatch.session_countdown_seconds = patch.sessionCountdownSeconds ?? null;
   if (patch.paymentCountdownSeconds !== undefined)
     dbPatch.payment_countdown_seconds = patch.paymentCountdownSeconds ?? null;
+  if (patch.printerBottomSafeZoneMm !== undefined)
+    dbPatch.printer_bottom_safe_zone_mm = patch.printerBottomSafeZoneMm;
+  if (patch.printerBrightness !== undefined)
+    dbPatch.printer_brightness = patch.printerBrightness;
+  if (patch.printerContrast !== undefined)
+    dbPatch.printer_contrast = patch.printerContrast;
+  if (patch.printerDotDensity !== undefined)
+    dbPatch.printer_dot_density = patch.printerDotDensity;
 
   const { error } = await supabase.from("devices").update(dbPatch).eq("id", id);
   if (error) throw new Error(`Unable to update device: ${error.message}`);

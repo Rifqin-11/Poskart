@@ -291,6 +291,80 @@ export function BoothFormDialog({
                   </p>
                 </div>
               </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <label className="block text-xs font-medium text-zinc-600">
+                  Bottom safe zone (mm)
+                  <Input
+                    className="mt-1 bg-white"
+                    type="number"
+                    min={0}
+                    max={40}
+                    step={1}
+                    value={form.printerBottomSafeZoneMm ?? 0}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        printerBottomSafeZoneMm: Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Brightness
+                  <Input
+                    className="mt-1 bg-white"
+                    type="number"
+                    min={-100}
+                    max={100}
+                    step={1}
+                    value={form.printerBrightness ?? 0}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        printerBrightness: Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Contrast
+                  <Input
+                    className="mt-1 bg-white"
+                    type="number"
+                    min={-100}
+                    max={100}
+                    step={1}
+                    value={form.printerContrast ?? 0}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        printerContrast: Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Dot density
+                  <Input
+                    className="mt-1 bg-white"
+                    type="number"
+                    min={0.5}
+                    max={1.5}
+                    step={0.05}
+                    value={form.printerDotDensity ?? 1}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        printerDotDensity: Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <p className="mt-2 text-[10px] text-zinc-400">
+                These values are saved per device and synced to the Flutter
+                printer settings.
+              </p>
             </div>
 
             <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/50 p-3">
