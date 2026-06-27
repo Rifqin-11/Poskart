@@ -1725,6 +1725,8 @@ export function FrameTemplateBuilder({
                         style={{
                           zIndex: node.zIndex,
                           opacity: node.opacity,
+                          rotate: `${node.rotation}deg`,
+                          transformOrigin: "center center",
                         }}
                         className={cn(
                           "frame-rnd-node group touch-none",
@@ -1736,15 +1738,7 @@ export function FrameTemplateBuilder({
                             "pointer-events-none",
                         )}
                       >
-                        <div
-                          className="h-full w-full"
-                          style={{
-                            transform: `rotate(${node.rotation}deg)`,
-                            transformOrigin: "center center",
-                          }}
-                        >
-                          <FrameNodeRenderer node={node} />
-                        </div>
+                        <FrameNodeRenderer node={node} />
                       </Rnd>
                     ))}
                 </div>
