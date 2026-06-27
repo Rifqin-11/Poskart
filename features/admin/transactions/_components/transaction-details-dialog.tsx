@@ -48,7 +48,10 @@ export function TransactionDetailsDialog({
   });
 
   useEffect(() => {
-    if (transaction) {
+    if (!transaction) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
       setForm({
         booth: transaction.device,
         location: transaction.location,
@@ -58,7 +61,10 @@ export function TransactionDetailsDialog({
         status: transaction.status,
         provider: transaction.provider,
       });
-    }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [transaction]);
 
   if (!transaction) return null;

@@ -3,6 +3,27 @@
 import { createClient } from "@/lib/supabase/server";
 import { type ProfileWithOrganization } from "../_shared/admin-types";
 
+type ProfileRow = {
+  id: string;
+  email: string | null;
+  role: string | null;
+  created_at: string;
+  organization_members?: Array<{
+    role: string | null;
+    organization_id: string | null;
+    organizations?:
+      | {
+          id: string;
+          name: string | null;
+        }
+      | Array<{
+          id: string;
+          name: string | null;
+        }>
+      | null;
+  }> | null;
+};
+
 async function verifyAuth() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -34,15 +55,18 @@ export async function getProfiles() {
 
   if (error) throw error;
 
-  return ((data ?? []) as any[]).map((profile) => {
+  return ((data ?? []) as unknown as ProfileRow[]).map((profile) => {
     const memberInfo = profile.organization_members?.[0];
+    const organization = Array.isArray(memberInfo?.organizations)
+      ? memberInfo?.organizations[0]
+      : memberInfo?.organizations;
     return {
       id: profile.id,
       email: profile.email,
       role: profile.role,
       created_at: profile.created_at,
       organizationId: memberInfo?.organization_id || null,
-      organizationName: memberInfo?.organizations?.name || null,
+      organizationName: organization?.name || null,
       memberRole: memberInfo?.role || null,
     };
   });

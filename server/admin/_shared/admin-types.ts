@@ -227,7 +227,9 @@ export type SubscriptionPlanRow = {
 };
 
 export function countPhotoSlotsFromLayout(layout?: FrameLayout | null) {
-  return layout?.nodes.filter((node: any) => node.type === "photo-slot").length ?? 0;
+  return (
+    layout?.nodes.filter((node) => node.type === "photo-slot").length ?? 0
+  );
 }
 
 export type ThemePresetRow = Omit<ThemePreset, "schema"> & {

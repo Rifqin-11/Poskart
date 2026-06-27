@@ -44,7 +44,7 @@ create table if not exists public.transactions (
   package_name text not null,
   amount integer not null default 0,
   status text not null check (status in ('paid', 'pending', 'failed', 'refunded')),
-  provider text not null check (provider in ('QRIS', 'Cash')),
+  provider text not null check (provider in ('QRIS', 'Cash', 'Voucher')),
   created_at_label text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

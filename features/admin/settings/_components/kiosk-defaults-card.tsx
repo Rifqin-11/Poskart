@@ -1,6 +1,7 @@
 "use client";
 
 import { Wrench } from "lucide-react";
+import type { Dispatch, SetStateAction } from "react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,15 +13,15 @@ type SettingsForm = {
   maintenance_mode: boolean;
 };
 
-type KioskDefaultsCardProps = {
-  form: SettingsForm;
-  setForm: React.Dispatch<React.SetStateAction<any>>;
+type KioskDefaultsCardProps<T extends SettingsForm> = {
+  form: T;
+  setForm: Dispatch<SetStateAction<T>>;
 };
 
-export function KioskDefaultsCard({
+export function KioskDefaultsCard<T extends SettingsForm>({
   form,
   setForm,
-}: KioskDefaultsCardProps) {
+}: KioskDefaultsCardProps<T>) {
   return (
     <Card>
       <CardHeader>
@@ -40,7 +41,7 @@ export function KioskDefaultsCard({
               placeholder="POSKART"
               value={form.merchant_name}
               onChange={(e) =>
-                setForm((f: any) => ({
+                setForm((f) => ({
                   ...f,
                   merchant_name: e.target.value,
                 }))
@@ -54,7 +55,7 @@ export function KioskDefaultsCard({
               placeholder="qris://poskart/pay"
               value={form.qris_payload_prefix}
               onChange={(e) =>
-                setForm((f: any) => ({
+                setForm((f) => ({
                   ...f,
                   qris_payload_prefix: e.target.value,
                 }))
@@ -69,7 +70,7 @@ export function KioskDefaultsCard({
             placeholder="https://poskart.app/s"
             value={form.share_base_url}
             onChange={(e) =>
-              setForm((f: any) => ({ ...f, share_base_url: e.target.value }))
+              setForm((f) => ({ ...f, share_base_url: e.target.value }))
             }
           />
         </label>
@@ -91,7 +92,7 @@ export function KioskDefaultsCard({
             <Switch
               checked={form.maintenance_mode}
               onCheckedChange={(v) =>
-                setForm((f: any) => ({ ...f, maintenance_mode: v }))
+                setForm((f) => ({ ...f, maintenance_mode: v }))
               }
             />
           </div>

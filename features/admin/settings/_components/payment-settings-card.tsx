@@ -1,5 +1,6 @@
 "use client";
 
+import type { Dispatch, SetStateAction } from "react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -14,15 +15,15 @@ type SettingsForm = {
   qris_auto_retry: boolean;
 };
 
-type PaymentSettingsCardProps = {
-  form: SettingsForm;
-  setForm: React.Dispatch<React.SetStateAction<any>>;
+type PaymentSettingsCardProps<T extends SettingsForm> = {
+  form: T;
+  setForm: Dispatch<SetStateAction<T>>;
 };
 
-export function PaymentSettingsCard({
+export function PaymentSettingsCard<T extends SettingsForm>({
   form,
   setForm,
-}: PaymentSettingsCardProps) {
+}: PaymentSettingsCardProps<T>) {
   return (
     <Card>
       <CardHeader>
@@ -39,7 +40,7 @@ export function PaymentSettingsCard({
             placeholder="MID-12345"
             value={form.qris_provider_merchant_id}
             onChange={(e) =>
-              setForm((f: any) => ({
+              setForm((f) => ({
                 ...f,
                 qris_provider_merchant_id: e.target.value,
               }))
@@ -54,7 +55,7 @@ export function PaymentSettingsCard({
             type="password"
             value={form.qris_webhook_secret}
             onChange={(e) =>
-              setForm((f: any) => ({
+              setForm((f) => ({
                 ...f,
                 qris_webhook_secret: e.target.value,
               }))
@@ -67,7 +68,7 @@ export function PaymentSettingsCard({
             className="mt-1"
             value={form.subscription_payment_gateway}
             onChange={(e) =>
-              setForm((f: any) => ({
+              setForm((f) => ({
                 ...f,
                 subscription_payment_gateway:
                   e.target.value as SubscriptionGatewayMode,
@@ -83,7 +84,7 @@ export function PaymentSettingsCard({
           <Switch
             checked={form.qris_auto_retry}
             onCheckedChange={(v) =>
-              setForm((f: any) => ({ ...f, qris_auto_retry: v }))
+              setForm((f) => ({ ...f, qris_auto_retry: v }))
             }
           />
           Auto retry failed QRIS payment

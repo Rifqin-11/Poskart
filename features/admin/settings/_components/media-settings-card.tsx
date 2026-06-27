@@ -1,5 +1,6 @@
 "use client";
 
+import type { Dispatch, SetStateAction } from "react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,9 +12,9 @@ type SettingsForm = {
   watermark_enabled: boolean;
 };
 
-type MediaSettingsCardProps = {
-  form: SettingsForm;
-  setForm: React.Dispatch<React.SetStateAction<any>>;
+type MediaSettingsCardProps<T extends SettingsForm> = {
+  form: T;
+  setForm: Dispatch<SetStateAction<T>>;
 };
 
 function expiryHoursToDays(hours: number) {
@@ -25,10 +26,10 @@ function expiryDaysToHours(days: number) {
   return Math.max(1, Math.min(30, Math.round(days))) * 24;
 }
 
-export function MediaSettingsCard({
+export function MediaSettingsCard<T extends SettingsForm>({
   form,
   setForm,
-}: MediaSettingsCardProps) {
+}: MediaSettingsCardProps<T>) {
   return (
     <Card>
       <CardHeader>
@@ -48,7 +49,7 @@ export function MediaSettingsCard({
             max={30}
             value={expiryHoursToDays(form.download_expiry_hours)}
             onChange={(e) =>
-              setForm((f: any) => ({
+              setForm((f) => ({
                 ...f,
                 download_expiry_hours: expiryDaysToHours(
                   Number(e.target.value),
@@ -66,7 +67,7 @@ export function MediaSettingsCard({
             max={365}
             value={form.gallery_retention_days}
             onChange={(e) =>
-              setForm((f: any) => ({
+              setForm((f) => ({
                 ...f,
                 gallery_retention_days: Number(e.target.value),
               }))
@@ -79,7 +80,7 @@ export function MediaSettingsCard({
             className="mt-1"
             value={form.storage_provider}
             onChange={(e) =>
-              setForm((f: any) => ({ ...f, storage_provider: e.target.value }))
+              setForm((f) => ({ ...f, storage_provider: e.target.value }))
             }
           />
         </label>
@@ -87,7 +88,7 @@ export function MediaSettingsCard({
           <Switch
             checked={form.watermark_enabled}
             onCheckedChange={(v) =>
-              setForm((f: any) => ({ ...f, watermark_enabled: v }))
+              setForm((f) => ({ ...f, watermark_enabled: v }))
             }
           />
           Watermark enabled

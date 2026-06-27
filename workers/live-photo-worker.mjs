@@ -108,8 +108,8 @@ async function processJob(job) {
       sourceFrames,
       workDir,
     });
-    const outputPath = path.join(workDir, "framed-live-photo.gif");
-    await encodeGif(renderedFramePaths, outputPath);
+    const outputPath = path.join(workDir, "framed-live-photo.mp4");
+    await encodeMp4(renderedFramePaths, outputPath);
     const upload = await uploadToCloudinary({
       filePath: outputPath,
       organizationId: job.organization_id,
@@ -421,37 +421,27 @@ function readColor(value, fallback) {
   return fallback;
 }
 
-async function encodeGif(framePaths, outputPath) {
+async function encodeMp4(framePaths, outputPath) {
   const frameRate = (1000 / FRAME_DURATION_MS).toFixed(3);
   const tempDir = path.dirname(framePaths[0]);
-  const palettePath = path.join(tempDir, "palette.png");
   const inputPattern = path.join(tempDir, "rendered-%03d.png");
 
-  // Pass 1: Generate palette to a temporary file (avoids high memory split filter)
   await run("ffmpeg", [
     "-y",
     "-framerate",
     frameRate,
     "-i",
     inputPattern,
-    "-vf",
-    "palettegen=stats_mode=diff",
-    palettePath,
-  ]);
-
-  // Pass 2: Apply the generated palette to output the looping GIF
-  await run("ffmpeg", [
-    "-y",
-    "-framerate",
-    frameRate,
-    "-i",
-    inputPattern,
-    "-i",
-    palettePath,
-    "-filter_complex",
-    "paletteuse=dither=bayer:bayer_scale=5",
-    "-loop",
-    "0",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-movflags",
+    "+faststart",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "22",
     outputPath,
   ]);
 }
@@ -466,7 +456,7 @@ async function uploadToCloudinary({ filePath, organizationId, sessionId }) {
     .digest("hex");
   const bytes = await readFile(filePath);
   const formData = new FormData();
-  formData.append("file", new Blob([bytes], { type: "image/gif" }), "framed-live-photo.gif");
+  formData.append("file", new Blob([bytes], { type: "video/mp4" }), "framed-live-photo.mp4");
   formData.append("api_key", cloudinaryApiKey);
   formData.append("timestamp", `${timestamp}`);
   formData.append("folder", folder);
@@ -474,7 +464,7 @@ async function uploadToCloudinary({ filePath, organizationId, sessionId }) {
   formData.append("signature", signature);
 
   const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/image/upload`,
+    `https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/video/upload`,
     { method: "POST", body: formData },
   );
   const result = await response.json();
@@ -497,7 +487,7 @@ async function saveOutput(job, upload) {
       width: upload.width ?? null,
       height: upload.height ?? null,
       bytes: upload.bytes ?? null,
-      format: upload.format ?? "gif",
+      format: upload.format ?? "mp4",
     },
     { onConflict: "session_id,kind,photo_index" },
   );
@@ -512,7 +502,7 @@ async function saveOutput(job, upload) {
       output_width: upload.width ?? null,
       output_height: upload.height ?? null,
       output_bytes: upload.bytes ?? null,
-      output_format: upload.format ?? "gif",
+      output_format: upload.format ?? "mp4",
       error_message: null,
       completed_at: now,
       updated_at: now,
