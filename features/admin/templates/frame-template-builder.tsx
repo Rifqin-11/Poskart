@@ -680,6 +680,7 @@ export function FrameTemplateBuilder({
     y: number;
     w: number;
     h: number;
+    rotation: number;
   } | null>(null);
   const [history, setHistory] = useState<{
     past: FrameLayout[];
@@ -1621,6 +1622,8 @@ export function FrameTemplateBuilder({
                         border: "2px dashed #f000a0",
                         background: "rgba(240,0,160,0.08)",
                         borderRadius: 4,
+                        transform: `rotate(${snapPreview.rotation}deg)`,
+                        transformOrigin: "center center",
                         zIndex: 9998,
                       }}
                     />
@@ -1673,6 +1676,7 @@ export function FrameTemplateBuilder({
                                   y: snapState.sy,
                                   w: node.width,
                                   h: node.height,
+                                  rotation: node.rotation,
                                 }
                               : null,
                           );
@@ -1701,6 +1705,7 @@ export function FrameTemplateBuilder({
                                   y: snapState.sy,
                                   w: snapState.w,
                                   h: snapState.h,
+                                  rotation: node.rotation,
                                 }
                               : null,
                           );
@@ -1725,20 +1730,30 @@ export function FrameTemplateBuilder({
                         style={{
                           zIndex: node.zIndex,
                           opacity: node.opacity,
-                          rotate: `${node.rotation}deg`,
-                          transformOrigin: "center center",
                         }}
                         className={cn(
                           "frame-rnd-node group touch-none",
-                          selectedId === node.id &&
-                            "outline outline-2 outline-offset-2 outline-zinc-950",
                           node.locked && "cursor-not-allowed",
                           node.id === "frame-background" &&
                             selectedId !== node.id &&
                             "pointer-events-none",
                         )}
                       >
-                        <FrameNodeRenderer node={node} />
+                        <div
+                          className={cn(
+                            "h-full w-full",
+                            selectedId === node.id &&
+                              "outline outline-2 outline-offset-2 outline-zinc-950",
+                          )}
+                          style={{
+                            transform: `rotate(${node.rotation}deg)`,
+                            transformOrigin: "center center",
+                            willChange:
+                              node.rotation === 0 ? undefined : "transform",
+                          }}
+                        >
+                          <FrameNodeRenderer node={node} />
+                        </div>
                       </Rnd>
                     ))}
                 </div>
