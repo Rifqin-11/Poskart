@@ -310,6 +310,24 @@ function normalizePhotoSlotLabels(nodes: FrameNode[]): FrameNode[] {
   });
 }
 
+function clampNumber(value: number, min: number, max: number) {
+  if (max < min) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function getRotatedVisualInset(width: number, height: number, rotation: number) {
+  const radians = ((rotation % 360) * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const rotatedWidth = Math.abs(width * cos) + Math.abs(height * sin);
+  const rotatedHeight = Math.abs(width * sin) + Math.abs(height * cos);
+
+  return {
+    x: Math.max(0, (rotatedWidth - width) / 2),
+    y: Math.max(0, (rotatedHeight - height) / 2),
+  };
+}
+
 function FrameNodeRenderer({ node }: { node: FrameNode }) {
   if (node.type === "photo-slot") {
     return (
@@ -1118,9 +1136,16 @@ export function FrameTemplateBuilder({
     width = node.width,
     height = node.height,
   ) => {
+    const visualInset = getRotatedVisualInset(width, height, node.rotation);
+    const minX = -visualInset.x;
+    const maxX = layout.canvas.width - width + visualInset.x;
+    const minY = -visualInset.y;
+    const maxY = layout.canvas.height - height + visualInset.y;
+    const clampedX = clampNumber(rawX, minX, maxX);
+    const clampedY = clampNumber(rawY, minY, maxY);
     const nextGuides: Array<{ type: "h" | "v"; pos: number }> = [];
-    const nodeCenterX = rawX + width / 2;
-    const nodeCenterY = rawY + height / 2;
+    const nodeCenterX = clampedX + width / 2;
+    const nodeCenterY = clampedY + height / 2;
     const canvasCenterX = layout.canvas.width / 2;
     const canvasCenterY = layout.canvas.height / 2;
 
@@ -1130,16 +1155,22 @@ export function FrameTemplateBuilder({
     if (Math.abs(nodeCenterY - canvasCenterY) < FRAME_SNAP_THRESHOLD) {
       nextGuides.push({ type: "h", pos: canvasCenterY });
     }
-    if (Math.abs(rawX) < FRAME_SNAP_THRESHOLD) {
+    if (Math.abs(clampedX + visualInset.x) < FRAME_SNAP_THRESHOLD) {
       nextGuides.push({ type: "v", pos: 0 });
     }
-    if (Math.abs(rawX + width - layout.canvas.width) < FRAME_SNAP_THRESHOLD) {
+    if (
+      Math.abs(clampedX + width - visualInset.x - layout.canvas.width) <
+      FRAME_SNAP_THRESHOLD
+    ) {
       nextGuides.push({ type: "v", pos: layout.canvas.width });
     }
-    if (Math.abs(rawY) < FRAME_SNAP_THRESHOLD) {
+    if (Math.abs(clampedY + visualInset.y) < FRAME_SNAP_THRESHOLD) {
       nextGuides.push({ type: "h", pos: 0 });
     }
-    if (Math.abs(rawY + height - layout.canvas.height) < FRAME_SNAP_THRESHOLD) {
+    if (
+      Math.abs(clampedY + height - visualInset.y - layout.canvas.height) <
+      FRAME_SNAP_THRESHOLD
+    ) {
       nextGuides.push({ type: "h", pos: layout.canvas.height });
     }
 
@@ -1155,20 +1186,20 @@ export function FrameTemplateBuilder({
         if (Math.abs(nodeCenterY - otherCenterY) < FRAME_SNAP_THRESHOLD) {
           nextGuides.push({ type: "h", pos: otherCenterY });
         }
-        if (Math.abs(rawX - other.x) < FRAME_SNAP_THRESHOLD) {
+        if (Math.abs(clampedX - other.x) < FRAME_SNAP_THRESHOLD) {
           nextGuides.push({ type: "v", pos: other.x });
         }
         if (
-          Math.abs(rawX + width - (other.x + other.width)) <
+          Math.abs(clampedX + width - (other.x + other.width)) <
           FRAME_SNAP_THRESHOLD
         ) {
           nextGuides.push({ type: "v", pos: other.x + other.width });
         }
-        if (Math.abs(rawY - other.y) < FRAME_SNAP_THRESHOLD) {
+        if (Math.abs(clampedY - other.y) < FRAME_SNAP_THRESHOLD) {
           nextGuides.push({ type: "h", pos: other.y });
         }
         if (
-          Math.abs(rawY + height - (other.y + other.height)) <
+          Math.abs(clampedY + height - (other.y + other.height)) <
           FRAME_SNAP_THRESHOLD
         ) {
           nextGuides.push({ type: "h", pos: other.y + other.height });
@@ -1177,8 +1208,8 @@ export function FrameTemplateBuilder({
 
     return {
       guides: nextGuides,
-      sx: rawX,
-      sy: rawY,
+      sx: clampedX,
+      sy: clampedY,
       w: width,
       h: height,
       isSnapping: nextGuides.length > 0,
@@ -1634,7 +1665,6 @@ export function FrameTemplateBuilder({
                     .map((node) => (
                       <Rnd
                         key={node.id}
-                        bounds="parent"
                         scale={zoom}
                         disableDragging={node.locked}
                         enableResizing={!node.locked}
