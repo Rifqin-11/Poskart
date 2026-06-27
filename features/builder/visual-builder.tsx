@@ -125,6 +125,45 @@ function sanitizeSvgMarkup(markup: string): string {
     );
 }
 
+function calculatePhotoResultGrid(node: BuilderNode) {
+  const count = Math.max(
+    1,
+    Math.min(12, Math.round(readNumber(node.props.samplePhotoCount, 4))),
+  );
+  const mode = readString(node.props.photoLayout, "auto");
+  const manualColumns = Math.round(readNumber(node.props.photoColumns, 0));
+  let columns: number;
+
+  if (manualColumns > 0) {
+    columns = manualColumns;
+  } else if (mode === "row") {
+    columns = count;
+  } else if (mode === "column") {
+    columns = 1;
+  } else if (mode === "grid") {
+    columns = Math.ceil(Math.sqrt(count));
+  } else {
+    const aspect = node.height > 0 ? node.width / node.height : 1;
+    if (aspect >= 1.75) {
+      columns = count;
+    } else if (aspect <= 0.6) {
+      columns = 1;
+    } else {
+      columns = Math.ceil(Math.sqrt(count));
+    }
+  }
+
+  columns = Math.max(1, Math.min(count, columns));
+  const rows = Math.ceil(count / columns);
+  return {
+    count,
+    columns,
+    rows,
+    label: `${rows}×${columns}`,
+    modeLabel: mode === "auto" && manualColumns <= 0 ? "Auto" : "Manual",
+  };
+}
+
 /** Hotspot overlay — shown when canvas has a background image/video */
 function HotspotOverlay({ node }: { node: BuilderNode }) {
   const canvas = useBuilderStore((state) => state.canvas);
@@ -584,27 +623,41 @@ function NodeRenderer({
   }
 
   if (node.type === "photo-result") {
+    const grid = calculatePhotoResultGrid(node);
     return (
       <div
-        className="relative h-full w-full overflow-hidden border-2 border-dashed border-teal-400 bg-teal-50/60"
+        className="relative h-full w-full overflow-hidden border-2 border-dashed border-teal-400 bg-teal-50/70 p-2"
         style={{
           borderRadius: readNumber(node.props.radius, 8),
         }}
       >
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2">
-          {/* Polaroid-style frame hint */}
-          <div className="relative flex h-4/5 w-4/5 flex-col rounded bg-white p-2 shadow-md">
-            <div className="flex-1 rounded bg-teal-100/80" />
-            <div className="mt-2 h-4 rounded bg-teal-50" />
-            {/* Corner markers */}
-            <div className="absolute left-1 top-1 h-4 w-4 border-l-2 border-t-2 border-teal-400" />
-            <div className="absolute right-1 top-1 h-4 w-4 border-r-2 border-t-2 border-teal-400" />
-            <div className="absolute bottom-1 left-1 h-4 w-4 border-b-2 border-l-2 border-teal-400" />
-            <div className="absolute bottom-1 right-1 h-4 w-4 border-b-2 border-r-2 border-teal-400" />
+        <div className="pointer-events-none flex h-full w-full flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-teal-600 shadow-sm">
+              Photo Result
+            </span>
+            <span className="rounded-full bg-teal-600 px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
+              {grid.modeLabel}: {grid.label}
+            </span>
           </div>
-          <span className="text-[9px] font-bold uppercase tracking-widest text-teal-500">
-            📸 Photo Result
-          </span>
+          <div
+            className="grid min-h-0 flex-1 gap-1.5"
+            style={{
+              gridTemplateColumns: `repeat(${grid.columns}, minmax(0, 1fr))`,
+            }}
+          >
+            {Array.from({ length: grid.count }).map((_, index) => (
+              <div
+                key={index}
+                className="flex min-h-0 items-center justify-center rounded-md border border-teal-300/80 bg-white/75 text-[10px] font-semibold text-teal-700 shadow-sm"
+              >
+                {index + 1}
+              </div>
+            ))}
+          </div>
+          <div className="text-center font-mono text-[10px] text-teal-600/80">
+            rows × columns preview
+          </div>
         </div>
       </div>
     );
@@ -2106,6 +2159,83 @@ function PropertiesPanel({
           {uploading && (
             <div className="text-xs text-zinc-500">Uploading image...</div>
           )}
+        </PanelSection>
+      )}
+
+      {selectedNode.type === "photo-result" && (
+        <PanelSection
+          title="Photo result layout"
+          icon={<Grid2X2 className="size-3.5 text-zinc-500" />}
+        >
+          {(() => {
+            const grid = calculatePhotoResultGrid(selectedNode);
+            return (
+              <div className="rounded-lg border border-teal-100 bg-teal-50/70 p-2 text-xs text-teal-800">
+                <div className="font-semibold">
+                  Preview: {grid.rows} baris × {grid.columns} kolom
+                </div>
+                <div className="mt-0.5 text-[10px] leading-4 text-teal-700/80">
+                  Auto akan mengikuti bentuk slot: lebar → 1×{grid.count},
+                  tinggi → {grid.count}×1, kotak → grid.
+                </div>
+              </div>
+            );
+          })()}
+
+          <label className="block text-xs font-medium text-zinc-500">
+            Layout
+            <Select
+              className="mt-1"
+              value={readString(selectedNode.props.photoLayout, "auto")}
+              onChange={(e) =>
+                updateNodeProps(selectedNode.id, {
+                  photoLayout: e.target.value,
+                  photoColumns: 0,
+                })
+              }
+            >
+              <option value="auto">Auto by slot shape</option>
+              <option value="row">Force 1 row</option>
+              <option value="column">Force 1 column</option>
+              <option value="grid">Force balanced grid</option>
+            </Select>
+          </label>
+
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-xs font-medium text-zinc-500">
+              Sample photos
+              <Input
+                className="mt-1"
+                type="number"
+                min={1}
+                max={12}
+                value={readNumber(selectedNode.props.samplePhotoCount, 4)}
+                onChange={(e) =>
+                  updateNodeProps(selectedNode.id, {
+                    samplePhotoCount: Number(e.target.value),
+                  })
+                }
+              />
+            </label>
+            <label className="text-xs font-medium text-zinc-500">
+              Manual columns
+              <Input
+                className="mt-1"
+                type="number"
+                min={0}
+                max={12}
+                value={readNumber(selectedNode.props.photoColumns, 0)}
+                onChange={(e) =>
+                  updateNodeProps(selectedNode.id, {
+                    photoColumns: Number(e.target.value),
+                  })
+                }
+              />
+            </label>
+          </div>
+          <div className="text-[10px] leading-4 text-zinc-400">
+            Isi 0 pada manual columns untuk memakai pilihan layout otomatis.
+          </div>
         </PanelSection>
       )}
 

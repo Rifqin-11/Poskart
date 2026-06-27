@@ -359,7 +359,12 @@ const initialNodes: BuilderNode[] = [
     locked: false,
     visible: true,
     zIndex: 7,
-    props: { semanticRole: "camera.photo_result" },
+    props: {
+      semanticRole: "camera.photo_result",
+      photoLayout: "auto",
+      photoColumns: 0,
+      samplePhotoCount: 4,
+    },
   },
   {
     id: "cam-counter",
@@ -869,6 +874,16 @@ function defaultProps(type: BuilderNode["type"]) {
 
   if (type === "camera-view") {
     return { label: "Camera" };
+  }
+
+  if (type === "photo-result") {
+    return {
+      semanticRole: "camera.photo_result",
+      photoLayout: "auto",
+      photoColumns: 0,
+      samplePhotoCount: 4,
+      radius: 8,
+    };
   }
 
   if (
