@@ -307,7 +307,7 @@ async function renderNodeOverlay({ node, frameIndex, sourceFrames, scale, imageC
     const slotIndex = getPhotoSlotIndex(node);
     const frames = sourceFrames.get(slotIndex);
     if (!frames?.length) return null;
-    const framePath = frames[frameIndex % frames.length];
+    const framePath = selectSourceFrame(frames, frameIndex, FRAME_COUNT);
     const input = await sharp(framePath)
       .resize(width, height, { fit: "cover", position: "center" })
       .png()
@@ -360,6 +360,16 @@ async function renderNodeOverlay({ node, frameIndex, sourceFrames, scale, imageC
   }
 
   return null;
+}
+
+function selectSourceFrame(frames, frameIndex, outputFrameCount) {
+  if (frames.length <= 1 || outputFrameCount <= 1) return frames[0];
+  const normalized = frameIndex / (outputFrameCount - 1);
+  const sourceIndex = Math.min(
+    frames.length - 1,
+    Math.round(normalized * (frames.length - 1)),
+  );
+  return frames[sourceIndex];
 }
 
 function readProp(node, key, fallback) {
