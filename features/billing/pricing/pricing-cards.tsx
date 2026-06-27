@@ -16,9 +16,11 @@ import { cn, formatCurrency } from "@/lib/utils";
 export function PricingCards({
   defaultPlanId = "starter-monthly",
   plans = fallbackPricingPlans,
+  onSelectPlan,
 }: {
   defaultPlanId?: string;
   plans?: PricingPlan[];
+  onSelectPlan?: (plan: PricingPlan) => void;
 }) {
   const visiblePlans = plans.length > 0 ? plans : fallbackPricingPlans;
   const defaultPlan =
@@ -96,6 +98,7 @@ export function PricingCards({
             active={activePlanId === plan.id}
             monthlyPlans={monthlyPlans}
             onActivate={() => setActivePlanId(plan.id)}
+            onSelectPlan={onSelectPlan}
           />
         ))}
       </div>
@@ -108,11 +111,13 @@ function PricingCard({
   active,
   monthlyPlans,
   onActivate,
+  onSelectPlan,
 }: {
   plan: PricingPlan;
   active: boolean;
   monthlyPlans: PricingPlan[];
   onActivate: () => void;
+  onSelectPlan?: (plan: PricingPlan) => void;
 }) {
   const tier = getTierMeta(plan);
   const monthlyEquivalent = getMonthlyEquivalent(plan);
@@ -200,50 +205,105 @@ function PricingCard({
             {formatCurrency(plan.amount)}
           </span>
           <span
-            className={active ? "pb-1 text-sm text-zinc-300" : "pb-1 text-sm text-zinc-500"}
+            className={
+              active
+                ? "pb-1 text-sm text-zinc-300"
+                : "pb-1 text-sm text-zinc-500"
+            }
           >
             {plan.period}
           </span>
         </div>
       </div>
 
-      <p className={active ? "mt-2 text-xs text-zinc-400" : "mt-2 text-xs text-zinc-500"}>
+      <p
+        className={
+          active ? "mt-2 text-xs text-zinc-400" : "mt-2 text-xs text-zinc-500"
+        }
+      >
         {formatCurrency(monthlyDeviceEquivalent)}/bulan/device
-        {!plan.compareAtAmount && savingsPercent > 0 ? ` · hemat ${savingsPercent}%` : ""}
+        {!plan.compareAtAmount && savingsPercent > 0
+          ? ` · hemat ${savingsPercent}%`
+          : ""}
       </p>
 
       {plan.compareAtAmount && savingsPercent > 0 ? (
-        <p className={active ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-zinc-500"}>
+        <p
+          className={
+            active ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-zinc-500"
+          }
+        >
           Hemat dari harga normal {formatCurrency(plan.compareAtAmount)}
         </p>
       ) : null}
 
-      <p className={active ? "mt-5 text-sm leading-6 text-zinc-300" : "mt-5 text-sm leading-6 text-zinc-500"}>
+      <p
+        className={
+          active
+            ? "mt-5 text-sm leading-6 text-zinc-300"
+            : "mt-5 text-sm leading-6 text-zinc-500"
+        }
+      >
         {plan.description}
       </p>
 
-      <Link
-        href={`/checkout?plan=${plan.id}`}
-        onClick={(event) => event.stopPropagation()}
-        className={buttonVariants({
-          variant: active ? "secondary" : "default",
-          size: "lg",
-          className: "mt-6 w-full rounded-full",
-        })}
-      >
-        {plan.cta}
-        <ArrowRight className="size-4" />
-      </Link>
+      {onSelectPlan ? (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onActivate();
+            onSelectPlan(plan);
+          }}
+          className={buttonVariants({
+            variant: active ? "secondary" : "default",
+            size: "lg",
+            className: "mt-6 w-full rounded-full",
+          })}
+        >
+          {plan.cta}
+          <ArrowRight className="size-4" />
+        </button>
+      ) : (
+        <Link
+          href={`/checkout?plan=${plan.id}`}
+          onClick={(event) => event.stopPropagation()}
+          className={buttonVariants({
+            variant: active ? "secondary" : "default",
+            size: "lg",
+            className: "mt-6 w-full rounded-full",
+          })}
+        >
+          {plan.cta}
+          <ArrowRight className="size-4" />
+        </Link>
+      )}
 
-      <div className={active ? "mt-6 border-t border-white/15 pt-6" : "mt-6 border-t border-zinc-200 pt-6"}>
-        <div className={active ? "mb-3 text-xs font-medium text-zinc-300" : "mb-3 text-xs font-medium text-zinc-500"}>
+      <div
+        className={
+          active
+            ? "mt-6 border-t border-white/15 pt-6"
+            : "mt-6 border-t border-zinc-200 pt-6"
+        }
+      >
+        <div
+          className={
+            active
+              ? "mb-3 text-xs font-medium text-zinc-300"
+              : "mb-3 text-xs font-medium text-zinc-500"
+          }
+        >
           Termasuk
         </div>
         <div className="space-y-3">
           {plan.features.map((feature) => (
             <div key={feature} className="flex items-start gap-2 text-sm">
               <CheckCircle2
-                className={active ? "mt-0.5 size-4 shrink-0 text-emerald-300" : "mt-0.5 size-4 shrink-0 text-emerald-600"}
+                className={
+                  active
+                    ? "mt-0.5 size-4 shrink-0 text-emerald-300"
+                    : "mt-0.5 size-4 shrink-0 text-emerald-600"
+                }
               />
               <span>{feature}</span>
             </div>
@@ -251,7 +311,13 @@ function PricingCard({
         </div>
       </div>
 
-      <div className={active ? "mt-6 text-xs leading-5 text-zinc-300" : "mt-6 text-xs leading-5 text-zinc-500"}>
+      <div
+        className={
+          active
+            ? "mt-6 text-xs leading-5 text-zinc-300"
+            : "mt-6 text-xs leading-5 text-zinc-500"
+        }
+      >
         Cocok untuk: {plan.audience ?? tier?.audience ?? "operator photobooth"}.
       </div>
     </article>
@@ -297,7 +363,9 @@ function getMonthlyDeviceEquivalent(plan: PricingPlan) {
 
 function getMonthlyBenchmark(monthlyPlans: PricingPlan[], plan: PricingPlan) {
   const tierId = getTierId(plan);
-  const sameTierMonthly = monthlyPlans.find((item) => getTierId(item) === tierId);
+  const sameTierMonthly = monthlyPlans.find(
+    (item) => getTierId(item) === tierId,
+  );
   return sameTierMonthly ? getMonthlyEquivalent(sameTierMonthly) : null;
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { PricingCards } from "@/features/billing/pricing/pricing-cards";
 import { Dialog } from "@/components/ui/dialog";
 import { useSubscriptionPlans } from "@/features/admin/pricing/use-pricing";
@@ -13,6 +14,7 @@ export function SubscriptionDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const router = useRouter();
   const { data: subscriptionPlans = [], isLoading } = useSubscriptionPlans();
   const plans = subscriptionPlans
     .filter((plan) => plan.isPublic)
@@ -20,7 +22,9 @@ export function SubscriptionDialog({
       const durationLabel =
         plan.durationMonths === 1 ? "1 month" : `${plan.durationMonths} months`;
       const deviceLabel =
-        plan.includedDevices === 1 ? "1 device" : `${plan.includedDevices} devices`;
+        plan.includedDevices === 1
+          ? "1 device"
+          : `${plan.includedDevices} devices`;
       const addOnLabel = `${formatCurrency(plan.additionalDevicePriceMonthly)}/device/month`;
       const fallback = fallbackPricingPlans.find((item) => item.id === plan.id);
 
@@ -67,19 +71,33 @@ export function SubscriptionDialog({
     >
       <div className="space-y-5">
         <div>
-          <h3 className="text-2xl font-semibold tracking-tight">Choose a POSKART subscription plan.</h3>
+          <h3 className="text-2xl font-semibold tracking-tight">
+            Choose a POSKART subscription plan.
+          </h3>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
-            Pilih paket langganan tanpa keluar dari dashboard. Setelah memilih paket, checkout tetap berjalan di area admin.
+            Pilih paket langganan tanpa keluar dari dashboard. Setelah memilih
+            paket, checkout tetap berjalan di area admin.
           </p>
         </div>
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="h-80 animate-pulse rounded-lg border border-zinc-200 bg-zinc-50" />
+              <div
+                key={index}
+                className="h-80 animate-pulse rounded-lg border border-zinc-200 bg-zinc-50"
+              />
             ))}
           </div>
         ) : (
-          <PricingCards plans={plans} />
+          <PricingCards
+            plans={plans}
+            onSelectPlan={(plan) => {
+              onOpenChange(false);
+              router.push(
+                `/checkout?plan=${encodeURIComponent(plan.id)}&devices=${plan.includedDevices}`,
+              );
+            }}
+          />
         )}
       </div>
     </Dialog>

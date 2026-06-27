@@ -107,7 +107,6 @@ const navItems = [
   },
 ];
 
-
 function formatShortExpiry(value?: string | null) {
   if (!value) return null;
 
@@ -122,11 +121,9 @@ function formatShortExpiry(value?: string | null) {
 }
 
 function SidebarContent({
-  userEmail,
   isSuperAdmin = false,
   onNavigate,
 }: {
-  userEmail?: string;
   isSuperAdmin?: boolean;
   onNavigate?: () => void;
 }) {
@@ -290,21 +287,18 @@ export function AdminShell({
     <div
       className={cn(
         "min-h-screen",
-        builderFullView
-          ? "bg-zinc-50"
-          : "bg-[#f5f6f8]",
+        builderFullView ? "bg-zinc-50" : "bg-[#f5f6f8]",
       )}
     >
       {/* App sidebar — hidden in builder full-view */}
       {!builderFullView && (
         <aside className="fixed inset-y-4 left-4 hidden w-64 overflow-hidden rounded-[2rem] border border-zinc-200/70 bg-white p-4 shadow-xl shadow-zinc-950/[0.05] lg:block xl:w-72">
-          <SidebarContent userEmail={userEmail} isSuperAdmin={isSuperAdmin} />
+          <SidebarContent isSuperAdmin={isSuperAdmin} />
         </aside>
       )}
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SidebarContent
-          userEmail={userEmail}
           isSuperAdmin={isSuperAdmin}
           onNavigate={() => setOpen(false)}
         />
@@ -379,7 +373,8 @@ export function AdminShell({
                           </div>
                           <div className="mt-1 text-xs leading-5 text-zinc-500">
                             Semua layanan dashboard berjalan normal. Notifikasi
-                            transaksi, device, dan print job akan tampil di sini.
+                            transaksi, device, dan print job akan tampil di
+                            sini.
                           </div>
                         </div>
                       </div>

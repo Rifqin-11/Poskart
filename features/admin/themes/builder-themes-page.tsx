@@ -29,7 +29,10 @@ import {
   useDeactivateLayout,
   useDeleteLayout,
 } from "@/features/admin/layout/use-layout";
-import { useBooths, useUpdateBooth } from "@/features/admin/devices/use-devices";
+import {
+  useBooths,
+  useUpdateBooth,
+} from "@/features/admin/devices/use-devices";
 import type { LayoutSchemaRow } from "@/server/admin/_shared/admin-types";
 import type { Device } from "@/types/device";
 import { cn } from "@/lib/utils";
@@ -67,8 +70,6 @@ function AssignDevicesModal({
     }
   };
 
-
-
   const statusColor: Record<Device["status"], string> = {
     online: "bg-emerald-400",
     offline: "bg-zinc-300",
@@ -78,13 +79,17 @@ function AssignDevicesModal({
   return (
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold text-zinc-900">Assign to Devices</h2>
+            <h2 className="text-base font-semibold text-zinc-900">
+              Assign to Devices
+            </h2>
             <p className="mt-0.5 text-xs text-zinc-500">
               Select which kiosks will use{" "}
               <span className="font-medium text-zinc-700">{layout.name}</span>
@@ -131,7 +136,9 @@ function AssignDevicesModal({
                   )}
                 </div>
                 <span className="text-xs font-semibold text-zinc-600">
-                  {selected.size === devices.length ? "Deselect all" : "Select all"}
+                  {selected.size === devices.length
+                    ? "Deselect all"
+                    : "Select all"}
                 </span>
                 <Badge variant="secondary" className="ml-auto text-[10px]">
                   {devices.length}
@@ -153,7 +160,9 @@ function AssignDevicesModal({
                     <div
                       className={cn(
                         "flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
-                        isSelected ? "border-zinc-900 bg-zinc-900" : "border-zinc-300",
+                        isSelected
+                          ? "border-zinc-900 bg-zinc-900"
+                          : "border-zinc-300",
                       )}
                     >
                       {isSelected && (
@@ -183,7 +192,8 @@ function AssignDevicesModal({
                         )}
                       </div>
                       <p className="mt-0.5 truncate text-[11px] text-zinc-400">
-                        {device.location} · {device.theme || "no theme assigned"}
+                        {device.location} ·{" "}
+                        {device.theme || "no theme assigned"}
                       </p>
                     </div>
                     {/* Status badge */}
@@ -224,7 +234,9 @@ function AssignDevicesModal({
             ) : (
               <Power className="size-3.5" />
             )}
-            {activating ? "Activating…" : `Activate${selected.size > 0 ? ` & assign (${selected.size})` : ""}`}
+            {activating
+              ? "Activating…"
+              : `Activate${selected.size > 0 ? ` & assign (${selected.size})` : ""}`}
           </button>
         </div>
       </div>
@@ -236,7 +248,10 @@ function AssignDevicesModal({
     try {
       await Promise.all(
         Array.from(selected).map((deviceId) =>
-          updateBooth.mutateAsync({ id: deviceId, patch: { theme: layout.name } }),
+          updateBooth.mutateAsync({
+            id: deviceId,
+            patch: { theme: layout.name },
+          }),
         ),
       );
       toast.success(
@@ -323,7 +338,7 @@ export function BuilderThemesPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
@@ -385,10 +400,7 @@ export function BuilderThemesPage() {
               onClick={() => void refreshStatistics()}
             >
               <RefreshCw
-                className={cn(
-                  "size-4",
-                  statisticsLoading && "animate-spin",
-                )}
+                className={cn("size-4", statisticsLoading && "animate-spin")}
               />
               Refresh statistics
             </Button>

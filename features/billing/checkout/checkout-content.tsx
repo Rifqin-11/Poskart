@@ -4,7 +4,14 @@ import Link from "next/link";
 import Script from "next/script";
 import { useSearchParams } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
-import { CheckCircle2, CreditCard, LockKeyhole, ReceiptText, ShieldCheck, WalletCards } from "lucide-react";
+import {
+  CheckCircle2,
+  CreditCard,
+  LockKeyhole,
+  ReceiptText,
+  ShieldCheck,
+  WalletCards,
+} from "lucide-react";
 import { createSubscriptionOrderAction } from "@/app/(admin)/checkout/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +59,7 @@ export function CheckoutContent({
 }) {
   const searchParams = useSearchParams();
   const selectedPlanId = searchParams.get("plan") ?? "starter-monthly";
+  const selectedDeviceCount = Number(searchParams.get("devices"));
   const successMessage = searchParams.get("success");
   const errorMessage = searchParams.get("error");
   const visiblePlans = plans.length > 0 ? plans : fallbackPricingPlans;
@@ -60,7 +68,14 @@ export function CheckoutContent({
     visiblePlans.find((item) => item.id === "starter-monthly") ??
     visiblePlans[0] ??
     fallbackPricingPlans[0];
-  const [deviceCount, setDeviceCount] = useState<number>(plan.includedDevices);
+  const [deviceCount, setDeviceCount] = useState<number>(
+    Math.max(
+      plan.includedDevices,
+      Number.isFinite(selectedDeviceCount)
+        ? selectedDeviceCount
+        : plan.includedDevices,
+    ),
+  );
   const [paymentGateway, setPaymentGateway] = useState<PaymentGateway>(
     gatewayMode === "midtrans" ? "midtrans" : "duitku",
   );
@@ -70,7 +85,8 @@ export function CheckoutContent({
   const [duitkuScriptReady, setDuitkuScriptReady] = useState(false);
   const [duitkuScriptFailed, setDuitkuScriptFailed] = useState(false);
   const quote = calculateSubscriptionTotal(plan, deviceCount);
-  const selectedGatewayLabel = paymentGateway === "midtrans" ? "Midtrans" : "Duitku";
+  const selectedGatewayLabel =
+    paymentGateway === "midtrans" ? "Midtrans" : "Duitku";
   const showDuitku = gatewayMode === "duitku" || gatewayMode === "both";
   const showMidtrans = gatewayMode === "midtrans" || gatewayMode === "both";
   const visibleError = checkoutError ?? errorMessage;
@@ -96,7 +112,11 @@ export function CheckoutContent({
         return;
       }
 
-      if (!duitkuScriptReady || duitkuScriptFailed || !window.checkout?.process) {
+      if (
+        !duitkuScriptReady ||
+        duitkuScriptFailed ||
+        !window.checkout?.process
+      ) {
         window.location.href = appendDuitkuLanguage(result.paymentUrl);
         return;
       }
@@ -104,16 +124,30 @@ export function CheckoutContent({
       window.checkout.process(result.reference, {
         defaultLanguage: "id",
         successEvent: (response) => {
-          window.location.href = buildDuitkuReturnUrl(result.returnUrl, response, "00");
+          window.location.href = buildDuitkuReturnUrl(
+            result.returnUrl,
+            response,
+            "00",
+          );
         },
         pendingEvent: (response) => {
-          window.location.href = buildDuitkuReturnUrl(result.returnUrl, response, "01");
+          window.location.href = buildDuitkuReturnUrl(
+            result.returnUrl,
+            response,
+            "01",
+          );
         },
         errorEvent: (response) => {
-          window.location.href = buildDuitkuReturnUrl(result.returnUrl, response, "02");
+          window.location.href = buildDuitkuReturnUrl(
+            result.returnUrl,
+            response,
+            "02",
+          );
         },
         closeEvent: () => {
-          setCheckoutMessage("Payment popup closed. Your order is still pending if no payment was completed.");
+          setCheckoutMessage(
+            "Payment popup closed. Your order is still pending if no payment was completed.",
+          );
         },
       });
     });
@@ -201,7 +235,7 @@ export function CheckoutContent({
           </label>
         </div>
 
-        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
+        {/* <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold">Payment gateway</h2>
@@ -314,7 +348,7 @@ export function CheckoutContent({
               </label>
             ) : null}
           </div>
-        </div>
+        </div> */}
 
         <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5 text-sm leading-7 text-zinc-600">
           <div className="mb-2 flex items-center gap-2 font-medium text-zinc-950">
@@ -384,7 +418,9 @@ export function CheckoutContent({
         <div className="mt-5 space-y-3">
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
             Payment gateway:{" "}
-            <span className="font-medium text-zinc-950">{selectedGatewayLabel}</span>
+            <span className="font-medium text-zinc-950">
+              {selectedGatewayLabel}
+            </span>
           </div>
           <div className="flex items-start gap-2 rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
