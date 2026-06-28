@@ -1,6 +1,10 @@
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
 import type { ChartPoint, KpiMetric } from "@/types/analytics";
 import type { Device } from "@/types/device";
+import {
+  PRINTER_TUNING_LIMITS,
+  clampPrinterTuningValue,
+} from "@/lib/printer-tuning";
 import type { LayoutSchema } from "@/types/builder";
 import type {
   PricingProduct,
@@ -493,10 +497,30 @@ export const mapBooth = (row: BoothRow): Device => ({
   printerLastError: row.printer_last_error ?? null,
   printerStatusUpdatedAt: row.printer_status_updated_at ?? null,
   printerBidirectional: row.printer_bidirectional ?? false,
-  printerBottomSafeZoneMm: Number(row.printer_bottom_safe_zone_mm ?? 0),
-  printerBrightness: Number(row.printer_brightness ?? 0),
-  printerContrast: Number(row.printer_contrast ?? 0),
-  printerDotDensity: Number(row.printer_dot_density ?? 1),
+  printerBottomSafeZoneMm: clampPrinterTuningValue(
+    row.printer_bottom_safe_zone_mm,
+    0,
+    PRINTER_TUNING_LIMITS.bottomSafeZoneMm.min,
+    PRINTER_TUNING_LIMITS.bottomSafeZoneMm.max,
+  ),
+  printerBrightness: clampPrinterTuningValue(
+    row.printer_brightness,
+    0,
+    PRINTER_TUNING_LIMITS.brightness.min,
+    PRINTER_TUNING_LIMITS.brightness.max,
+  ),
+  printerContrast: clampPrinterTuningValue(
+    row.printer_contrast,
+    0,
+    PRINTER_TUNING_LIMITS.contrast.min,
+    PRINTER_TUNING_LIMITS.contrast.max,
+  ),
+  printerDotDensity: clampPrinterTuningValue(
+    row.printer_dot_density,
+    1,
+    PRINTER_TUNING_LIMITS.dotDensity.min,
+    PRINTER_TUNING_LIMITS.dotDensity.max,
+  ),
   voucherRequestedAt: row.voucher_requested_at ?? null,
   voucherCommand: row.voucher_command ?? null,
   voucherCommandUpdatedAt: row.voucher_command_updated_at ?? null,

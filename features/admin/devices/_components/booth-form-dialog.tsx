@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PRINTER_TUNING_LIMITS } from "@/lib/printer-tuning";
 import { cn } from "@/lib/utils";
 import type { BoothInput } from "@/server/admin/_shared/admin-types";
 import type { Device } from "@/types/device";
@@ -293,13 +294,13 @@ export function BoothFormDialog({
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-4">
                 <label className="block text-xs font-medium text-zinc-600">
-                  Bottom safe zone (mm)
+                  Bottom safe zone (0–24 mm)
                   <Input
                     className="mt-1 bg-white"
                     type="number"
-                    min={0}
-                    max={40}
-                    step={1}
+                    min={PRINTER_TUNING_LIMITS.bottomSafeZoneMm.min}
+                    max={PRINTER_TUNING_LIMITS.bottomSafeZoneMm.max}
+                    step={PRINTER_TUNING_LIMITS.bottomSafeZoneMm.step}
                     value={form.printerBottomSafeZoneMm ?? 0}
                     onChange={(e) =>
                       setForm({
@@ -310,13 +311,13 @@ export function BoothFormDialog({
                   />
                 </label>
                 <label className="block text-xs font-medium text-zinc-600">
-                  Brightness
+                  Brightness (-100 to +100)
                   <Input
                     className="mt-1 bg-white"
                     type="number"
-                    min={-100}
-                    max={100}
-                    step={1}
+                    min={PRINTER_TUNING_LIMITS.brightness.min}
+                    max={PRINTER_TUNING_LIMITS.brightness.max}
+                    step={PRINTER_TUNING_LIMITS.brightness.step}
                     value={form.printerBrightness ?? 0}
                     onChange={(e) =>
                       setForm({
@@ -327,13 +328,13 @@ export function BoothFormDialog({
                   />
                 </label>
                 <label className="block text-xs font-medium text-zinc-600">
-                  Contrast
+                  Contrast (-100 to +100)
                   <Input
                     className="mt-1 bg-white"
                     type="number"
-                    min={-100}
-                    max={100}
-                    step={1}
+                    min={PRINTER_TUNING_LIMITS.contrast.min}
+                    max={PRINTER_TUNING_LIMITS.contrast.max}
+                    step={PRINTER_TUNING_LIMITS.contrast.step}
                     value={form.printerContrast ?? 0}
                     onChange={(e) =>
                       setForm({
@@ -344,13 +345,13 @@ export function BoothFormDialog({
                   />
                 </label>
                 <label className="block text-xs font-medium text-zinc-600">
-                  Dot density
+                  Dot density (0.5–1.5)
                   <Input
                     className="mt-1 bg-white"
                     type="number"
-                    min={0.5}
-                    max={1.5}
-                    step={0.05}
+                    min={PRINTER_TUNING_LIMITS.dotDensity.min}
+                    max={PRINTER_TUNING_LIMITS.dotDensity.max}
+                    step={PRINTER_TUNING_LIMITS.dotDensity.step}
                     value={form.printerDotDensity ?? 1}
                     onChange={(e) =>
                       setForm({
