@@ -148,6 +148,40 @@ export type ThemePrintSaleRow = {
   notes: string | null;
 };
 
+export type EventPeriodKey = "daily" | "weekly" | "monthly";
+
+export type EventBreakdownItem = {
+  label: string;
+  value: number;
+  revenue: number;
+  sessions: number;
+  prints: number;
+};
+
+export type EventChartPoint = {
+  label: string;
+  revenue: number;
+  sessions: number;
+  prints: number;
+};
+
+export type EventPeriodStatistics = {
+  key: EventPeriodKey;
+  label: string;
+  startsAt: string;
+  totalSessions: number;
+  totalPrints: number;
+  totalRevenue: number;
+  paymentMethods: EventBreakdownItem[];
+  topFrames: EventBreakdownItem[];
+  revenueSeries: EventChartPoint[];
+};
+
+export type EventStatisticsData = {
+  generatedAt: string;
+  periods: Record<EventPeriodKey, EventPeriodStatistics>;
+};
+
 export type BoothRow = Omit<
   Device,
   | "appVersion"
@@ -389,6 +423,7 @@ export type DashboardData = {
   transactions: Transaction[];
   devices: Device[];
   posSummary: PosDashboardSummary;
+  eventStats: EventStatisticsData;
 };
 
 export function assertSupabaseResult<T>(

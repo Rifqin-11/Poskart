@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getTransactions } from "./transaction-actions";
 import { getDevices } from "./device-actions";
 import {
+  EMPTY_EVENT_STATISTICS,
+  getEventStatisticsForOrganization,
+} from "../event-statistics";
+import {
   subscriptionExpiryTime,
   subscriptionPlanMeta,
   subscriptionDisplayName,
@@ -463,6 +467,36 @@ async function getPosDashboardSummary(): Promise<PosDashboardSummary> {
   }
 }
 
+async function getCurrentUserOrganizationId() {
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getUser();
+  const userId = authData?.user?.id;
+  if (!userId) return { supabase, organizationId: null };
+
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    supabase,
+    organizationId: membership?.organization_id ?? null,
+  };
+}
+
+async function getDashboardEventStatistics() {
+  try {
+    const { supabase, organizationId } = await getCurrentUserOrganizationId();
+    if (!organizationId) return EMPTY_EVENT_STATISTICS;
+    return await getEventStatisticsForOrganization(supabase, organizationId);
+  } catch (err) {
+    console.error("[getDashboardEventStatistics]", err);
+    return EMPTY_EVENT_STATISTICS;
+  }
+}
+
 export async function getDashboard(): Promise<DashboardData> {
   const [
     kpiResult,
@@ -471,6 +505,7 @@ export async function getDashboard(): Promise<DashboardData> {
     transactionsResult,
     devicesResult,
     posSummaryResult,
+    eventStatsResult,
   ] = await Promise.allSettled([
     getKpiMetrics(),
     getChartPoints("weekly"),
@@ -478,6 +513,7 @@ export async function getDashboard(): Promise<DashboardData> {
     getTransactions(),
     getDevices(),
     getPosDashboardSummary(),
+    getDashboardEventStatistics(),
   ]);
 
   if (kpiResult.status === "rejected")
@@ -495,6 +531,11 @@ export async function getDashboard(): Promise<DashboardData> {
     console.error("[getDashboard] devices failed:", devicesResult.reason);
   if (posSummaryResult.status === "rejected")
     console.error("[getDashboard] posSummary failed:", posSummaryResult.reason);
+  if (eventStatsResult.status === "rejected")
+    console.error(
+      "[getDashboard] eventStats failed:",
+      eventStatsResult.reason,
+    );
 
   return {
     kpiMetrics: kpiResult.status === "fulfilled" ? kpiResult.value : [],
@@ -508,6 +549,10 @@ export async function getDashboard(): Promise<DashboardData> {
       posSummaryResult.status === "fulfilled"
         ? posSummaryResult.value
         : EMPTY_POS_SUMMARY,
+    eventStats:
+      eventStatsResult.status === "fulfilled"
+        ? eventStatsResult.value
+        : EMPTY_EVENT_STATISTICS,
   };
 }
 

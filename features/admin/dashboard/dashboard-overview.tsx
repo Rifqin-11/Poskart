@@ -2,29 +2,56 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
   Area,
   AreaChart,
-  Bar,
-  BarChart,
+  Cell,
   CartesianGrid,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { Activity, AlertCircle, ArrowUpRight, CircleDollarSign, Download, LayoutTemplate, MonitorCheck, Plus, Printer, ReceiptText } from "lucide-react";
+import {
+  Activity,
+  AlertCircle,
+  ArrowUpRight,
+  CircleDollarSign,
+  Download,
+  LayoutTemplate,
+  MonitorCheck,
+  Plus,
+  Printer,
+  ReceiptText,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData, useSubscriptionStatus } from "@/features/admin/dashboard/use-dashboard";
-import type { DashboardData, Device, Transaction, PosRecentSale, KpiMetric } from "@/server/admin/_shared/admin-types";
+import type {
+  DashboardData,
+  Device,
+  EventBreakdownItem,
+  EventPeriodKey,
+  EventPeriodStatistics,
+  KpiMetric,
+  PosRecentSale,
+  Transaction,
+} from "@/server/admin/_shared/admin-types";
 import { formatCurrency } from "@/lib/utils";
 
 const icons = [CircleDollarSign, CircleDollarSign, Activity, Download];
+const eventPeriodTabs: Array<{ key: EventPeriodKey; label: string }> = [
+  { key: "daily", label: "Daily" },
+  { key: "weekly", label: "Weekly" },
+  { key: "monthly", label: "Monthly" },
+];
+const pieColors = ["#18181b", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444"];
 
 const emptyMetrics: KpiMetric[] = [
   { label: "Revenue today", value: "Rp 0", delta: "No transactions yet", tone: "neutral" as const },
@@ -52,6 +79,44 @@ const emptyDashboardData: DashboardData = {
     dailySales: [],
     recentSales: [],
   },
+  eventStats: {
+    generatedAt: new Date(0).toISOString(),
+    periods: {
+      daily: {
+        key: "daily",
+        label: "Harian",
+        startsAt: new Date(0).toISOString(),
+        totalSessions: 0,
+        totalPrints: 0,
+        totalRevenue: 0,
+        paymentMethods: [],
+        topFrames: [],
+        revenueSeries: [],
+      },
+      weekly: {
+        key: "weekly",
+        label: "Mingguan",
+        startsAt: new Date(0).toISOString(),
+        totalSessions: 0,
+        totalPrints: 0,
+        totalRevenue: 0,
+        paymentMethods: [],
+        topFrames: [],
+        revenueSeries: [],
+      },
+      monthly: {
+        key: "monthly",
+        label: "Bulanan",
+        startsAt: new Date(0).toISOString(),
+        totalSessions: 0,
+        totalPrints: 0,
+        totalRevenue: 0,
+        paymentMethods: [],
+        topFrames: [],
+        revenueSeries: [],
+      },
+    },
+  },
 };
 
 function useClientMounted() {
@@ -66,12 +131,15 @@ export function DashboardOverview() {
   const { data, isError, isLoading } = useDashboardData();
   const { data: subscription } = useSubscriptionStatus();
   const chartsMounted = useClientMounted();
+  const [selectedEventPeriod, setSelectedEventPeriod] =
+    useState<EventPeriodKey>("daily");
 
   if (isLoading) {
     return <DashboardLoadingState />;
   }
 
   const dashboardData = data ?? emptyDashboardData;
+  const eventPeriod = dashboardData.eventStats.periods[selectedEventPeriod];
   const activeBooths = dashboardData.devices.filter((device: Device) => device.status === "online").length;
   const metrics = dashboardData.kpiMetrics.length > 0 ? dashboardData.kpiMetrics : emptyMetrics;
   const hasWeeklyChart = dashboardData.weeklyChart.length > 0;
@@ -181,6 +249,13 @@ export function DashboardOverview() {
         })}
       </div>
 
+      <EventAnalyticsSection
+        chartsMounted={chartsMounted}
+        period={eventPeriod}
+        selectedPeriod={selectedEventPeriod}
+        onSelectPeriod={setSelectedEventPeriod}
+      />
+
       <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <Card>
           <CardHeader>
@@ -253,40 +328,7 @@ export function DashboardOverview() {
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly revenue</CardTitle>
-            <CardDescription>Revenue, transactions, and media download movement.</CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            {chartsMounted && hasWeeklyChart ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dashboardData.weeklyChart}>
-                  <defs>
-                    <linearGradient id="revenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#18181b" stopOpacity={0.18} />
-                      <stop offset="95%" stopColor="#18181b" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                  <YAxis tickFormatter={(value) => `${Number(value) / 1000000}jt`} tickLine={false} axisLine={false} />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Area type="monotone" dataKey="revenue" stroke="#18181b" fill="url(#revenue)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : hasWeeklyChart ? (
-              <Skeleton className="h-full" />
-            ) : (
-              <EmptyChartState
-                title="No weekly revenue yet"
-                description="Revenue movement appears after the first paid kiosk transaction."
-              />
-            )}
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Device network</CardTitle>
@@ -326,35 +368,6 @@ export function DashboardOverview() {
                 description="Add a POSKART device to monitor battery, sync, template, and pricing status."
                 href={canUseOperatingTools ? "/devices" : "/organization?subscription=required"}
                 action={canUseOperatingTools ? "Add device" : "Activate subscription"}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly graph</CardTitle>
-            <CardDescription>Growth trend across active organizations.</CardDescription>
-          </CardHeader>
-          <CardContent className="h-72">
-            {chartsMounted && hasMonthlyChart ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dashboardData.monthlyChart}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                  <YAxis hide />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Bar dataKey="revenue" fill="#18181b" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : hasMonthlyChart ? (
-              <Skeleton className="h-full" />
-            ) : (
-              <EmptyChartState
-                title="No monthly analytics yet"
-                description="Monthly growth appears after POSKART records transactions over time."
               />
             )}
           </CardContent>
@@ -406,6 +419,297 @@ export function DashboardOverview() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function EventAnalyticsSection({
+  chartsMounted,
+  period,
+  selectedPeriod,
+  onSelectPeriod,
+}: {
+  chartsMounted: boolean;
+  period: EventPeriodStatistics;
+  selectedPeriod: EventPeriodKey;
+  onSelectPeriod: (period: EventPeriodKey) => void;
+}) {
+  const hasTrend = period.revenueSeries.length > 0;
+
+  return (
+    <Card className="overflow-hidden border-zinc-200 bg-gradient-to-br from-white via-white to-zinc-50 shadow-sm">
+      <CardHeader className="gap-5 pb-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
+            <span className="size-2 rounded-full bg-emerald-500" />
+            Ringkasan Event
+          </div>
+          <CardTitle className="text-3xl tracking-tight">
+            Statistik {period.label}
+          </CardTitle>
+          <CardDescription className="mt-2 max-w-2xl text-sm leading-6">
+            Semua angka di bawah mengikuti tab periode yang dipilih.
+          </CardDescription>
+        </div>
+        <div className="inline-flex rounded-2xl border border-zinc-200 bg-white/85 p-1 shadow-sm backdrop-blur">
+          {eventPeriodTabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => onSelectPeriod(tab.key)}
+              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                selectedPeriod === tab.key
+                  ? "bg-zinc-950 text-white shadow-sm"
+                  : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5 p-5 pt-2">
+        <div className="grid gap-4 md:grid-cols-3">
+          <SummaryCard
+            label="Total keuntungan"
+            value={formatCurrency(period.totalRevenue)}
+            helper="Nominal transaksi paid"
+            icon={CircleDollarSign}
+            accent="bg-yellow-300"
+          />
+          <SummaryCard
+            label="Total sesi"
+            value={period.totalSessions.toLocaleString("id-ID")}
+            helper="Sesi booth berhasil dibayar"
+            icon={Activity}
+            accent="bg-violet-300"
+          />
+          <SummaryCard
+            label="Total print"
+            value={period.totalPrints.toLocaleString("id-ID")}
+            helper="Akumulasi print dari paket"
+            icon={Printer}
+            accent="bg-emerald-300"
+          />
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+          <Card className="border-zinc-100 bg-white/90 shadow-none backdrop-blur">
+            <CardHeader>
+              <CardTitle>Tren pendapatan</CardTitle>
+              <CardDescription>
+                Pendapatan, sesi, dan print selama periode {period.label.toLowerCase()}.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              {chartsMounted && hasTrend ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={period.revenueSeries}>
+                    <defs>
+                      <linearGradient
+                        id={`eventRevenue-${period.key}`}
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                    <YAxis
+                      tickFormatter={(value) => `${Number(value) / 1000}rb`}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        name === "revenue"
+                          ? formatCurrency(Number(value))
+                          : Number(value).toLocaleString("id-ID"),
+                        name === "revenue"
+                          ? "Pendapatan"
+                          : name === "sessions"
+                            ? "Sesi"
+                            : "Print",
+                      ]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#8b5cf6"
+                      fill={`url(#eventRevenue-${period.key})`}
+                      strokeWidth={2.5}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : hasTrend ? (
+                <Skeleton className="h-full" />
+              ) : (
+                <EmptyChartState
+                  title="Belum ada tren event"
+                  description="Grafik muncul setelah booth mencatat transaksi paid."
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-4">
+            <EventPieCard
+              chartsMounted={chartsMounted}
+              title="Metode pembayaran"
+              description="Distribusi pendapatan"
+              items={period.paymentMethods}
+              valueKey="revenue"
+              valueFormatter={(value) => formatCurrency(value)}
+            />
+            <EventPieCard
+              chartsMounted={chartsMounted}
+              title="Frame terpakai"
+              description="Top 5 berdasarkan sesi"
+              items={period.topFrames}
+              valueKey="sessions"
+              valueFormatter={(value) => `${value.toLocaleString("id-ID")} sesi`}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  helper,
+  icon: Icon,
+  accent,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  icon: typeof Activity;
+  accent: string;
+}) {
+  return (
+    <div className="rounded-3xl border border-zinc-100 bg-white/90 p-5 shadow-sm shadow-zinc-200/60 backdrop-blur">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm text-zinc-500">{label}</div>
+          <div className="mt-2 text-3xl font-semibold tracking-tight">
+            {value}
+          </div>
+        </div>
+        <div className={`rounded-2xl ${accent} p-3 text-zinc-950`}>
+          <Icon className="size-5" />
+        </div>
+      </div>
+      <div className="mt-5 rounded-2xl bg-zinc-50 px-3 py-2 text-xs text-zinc-500">
+        {helper}
+      </div>
+    </div>
+  );
+}
+
+function EventPieCard({
+  chartsMounted,
+  title,
+  description,
+  items,
+  valueKey,
+  valueFormatter,
+}: {
+  chartsMounted: boolean;
+  title: string;
+  description: string;
+  items: EventBreakdownItem[];
+  valueKey: "revenue" | "sessions" | "prints";
+  valueFormatter: (value: number) => string;
+}) {
+  const chartData = items
+    .map((item) => ({
+      name: item.label,
+      value: Number(item[valueKey] ?? 0),
+      revenue: item.revenue,
+      sessions: item.sessions,
+      prints: item.prints,
+    }))
+    .filter((item) => item.value > 0);
+  const total = chartData.reduce((sum, item) => sum + item.value, 0);
+
+  return (
+    <Card className="border-zinc-100 bg-white/90 shadow-none backdrop-blur">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {chartData.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-[150px_1fr] xl:grid-cols-1 2xl:grid-cols-[150px_1fr]">
+            <div className="h-36">
+              {chartsMounted ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={42}
+                      outerRadius={66}
+                      paddingAngle={3}
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell
+                          key={entry.name}
+                          fill={pieColors[index % pieColors.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value, _name, props) => [
+                        valueFormatter(Number(value)),
+                        props.payload?.name ?? title,
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <Skeleton className="h-full rounded-full" />
+              )}
+            </div>
+            <div className="space-y-2">
+              {chartData.map((item, index) => (
+                <div
+                  key={item.name}
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-zinc-50 px-3 py-2 text-sm"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: pieColors[index % pieColors.length] }}
+                    />
+                    <span className="truncate font-medium">{item.name}</span>
+                  </div>
+                  <span className="shrink-0 text-xs text-zinc-500">
+                    {valueFormatter(item.value)}
+                  </span>
+                </div>
+              ))}
+              <div className="pt-1 text-xs text-zinc-400">
+                Total: {valueFormatter(total)}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-5 text-sm text-zinc-500">
+            Belum ada data pada periode ini.
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
