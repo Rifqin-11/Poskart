@@ -11,10 +11,8 @@ import {
 import {
   SortableContext,
   arrayMove,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import {
   useCallback,
   useEffect,
@@ -24,31 +22,10 @@ import {
   type ReactNode,
 } from "react";
 import {
-  ArrowLeft,
-  ArrowDownToLine,
-  ArrowUpToLine,
-  BringToFront,
-  CalendarDays,
-  ChevronRight,
-  Clipboard,
   Copy,
-  Crosshair,
-  Grid2X2,
-  GripVertical,
-  Image as ImageIcon,
-  Layers,
   Lock,
-  Scissors,
-  SendToBack,
-  Square,
   Trash2,
-  Type,
-  Redo2,
-  Undo2,
   Unlock,
-  X,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import { Rnd } from "react-rnd";
 import { toast } from "sonner";
@@ -57,598 +34,42 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { BuilderHeader } from "@/features/builder/shared/builder-header";
+import { BuilderUnsavedDialog } from "@/features/builder/shared/builder-unsaved-dialog";
+import { BuilderZoomControls } from "@/features/builder/shared/builder-zoom-controls";
+import { useBuilderExitGuard } from "@/features/builder/shared/use-builder-exit-guard";
+import {
+  FRAME_NODE_TYPES,
+  FRAME_SNAP_THRESHOLD,
+} from "@/features/admin/templates/frame-builder.constants";
+import { FrameContextMenu } from "@/features/admin/templates/components/frame-context-menu";
+import { FrameNodeRenderer } from "@/features/admin/templates/components/frame-node-renderer";
+import { SortableFrameLayer } from "@/features/admin/templates/components/sortable-frame-layer";
+import {
+  clampNumber,
+  clampZoom,
+  createDefaultFrameLayout,
+  createNode,
+  getRotatedVisualInset,
+  normalizeFrameLayout,
+  normalizePhotoSlotLabels,
+  readNumber,
+  readString,
+  resizeFrameLayout,
+  upsertFrameBackground,
+} from "@/features/admin/templates/frame-builder.utils";
 import { useTouchContextMenu } from "@/lib/hooks/use-touch-context-menu";
 import { uploadBuilderImage } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
 import {
-  DEFAULT_FRAME_CANVAS,
   type FrameLayout,
   type FrameNode,
   type FrameNodeType,
 } from "@/types/frame-template";
 
-const FRAME_NODE_TYPES: {
-  type: FrameNodeType;
-  label: string;
-  icon: ReactNode;
-}[] = [
-  { type: "text", label: "Text", icon: <Type className="size-3.5" /> },
-  { type: "image", label: "Image", icon: <ImageIcon className="size-3.5" /> },
-  { type: "border", label: "Border", icon: <Square className="size-3.5" /> },
-  {
-    type: "date-stamp",
-    label: "Date",
-    icon: <CalendarDays className="size-3.5" />,
-  },
-  { type: "background", label: "Bg", icon: <ImageIcon className="size-3.5" /> },
-  {
-    type: "photo-slot",
-    label: "Photo slot",
-    icon: <Grid2X2 className="size-3.5" />,
-  },
-];
-const FRAME_SNAP_THRESHOLD = 8;
 
-function clampZoom(value: number) {
-  return Math.min(2, Math.max(0.02, Number(value.toFixed(2))));
-}
 
-function readString(value: unknown, fallback: string) {
-  return typeof value === "string" ? value : fallback;
-}
 
-function readNumber(value: unknown, fallback: number) {
-  return typeof value === "number" ? value : fallback;
-}
-
-function normalizeFrameLayout(layout: FrameLayout): FrameLayout {
-  return layout;
-}
-
-function resizeFrameLayout(
-  layout: FrameLayout,
-  width: number,
-  height: number,
-): FrameLayout {
-  const nextWidth = Math.max(1, Math.round(width));
-  const nextHeight = Math.max(1, Math.round(height));
-  const scaleX = nextWidth / Math.max(1, layout.canvas.width);
-  const scaleY = nextHeight / Math.max(1, layout.canvas.height);
-
-  return {
-    ...layout,
-    canvas: {
-      ...layout.canvas,
-      width: nextWidth,
-      height: nextHeight,
-    },
-    nodes: layout.nodes.map((node) =>
-      node.id === "frame-background"
-        ? {
-            ...node,
-            x: 0,
-            y: 0,
-            width: nextWidth,
-            height: nextHeight,
-          }
-        : {
-            ...node,
-            x: Math.round(node.x * scaleX),
-            y: Math.round(node.y * scaleY),
-            width: Math.max(1, Math.round(node.width * scaleX)),
-            height: Math.max(1, Math.round(node.height * scaleY)),
-          },
-    ),
-  };
-}
-
-function upsertFrameBackground(
-  layout: FrameLayout,
-  frameImageUrl?: string,
-): FrameLayout {
-  const src = frameImageUrl?.trim();
-  const frameBackgroundId = "frame-background";
-
-  if (!src) {
-    return {
-      ...layout,
-      nodes: layout.nodes.filter((node) => node.id !== frameBackgroundId),
-    };
-  }
-
-  const backgroundNode: FrameNode = {
-    id: frameBackgroundId,
-    type: "background",
-    x: 0,
-    y: 0,
-    width: layout.canvas.width,
-    height: layout.canvas.height,
-    rotation: 0,
-    opacity: 1,
-    zIndex: 0,
-    locked: true,
-    props: { src, alt: "Frame background", objectFit: "cover", radius: 0 },
-  };
-
-  const hasBackground = layout.nodes.some(
-    (node) => node.id === frameBackgroundId,
-  );
-
-  return {
-    ...layout,
-    nodes: hasBackground
-      ? layout.nodes.map((node) =>
-          node.id === frameBackgroundId
-            ? {
-                ...node,
-                x: 0,
-                y: 0,
-                width: layout.canvas.width,
-                height: layout.canvas.height,
-                locked: true,
-                props: {
-                  ...node.props,
-                  src,
-                  alt: "Frame background",
-                  objectFit: "cover",
-                  radius: 0,
-                },
-              }
-            : node,
-        )
-      : [backgroundNode, ...layout.nodes],
-  };
-}
-
-function createDefaultFrameLayout({
-  frameImageUrl,
-}: {
-  frameImageUrl?: string;
-}): FrameLayout {
-  const canvas = { ...DEFAULT_FRAME_CANVAS };
-  const nodes: FrameNode[] = [];
-
-  if (frameImageUrl) {
-    nodes.unshift({
-      id: "frame-background",
-      type: "background",
-      x: 0,
-      y: 0,
-      width: canvas.width,
-      height: canvas.height,
-      rotation: 0,
-      opacity: 1,
-      zIndex: 0,
-      locked: true,
-      props: { src: frameImageUrl, objectFit: "cover", radius: 0 },
-    });
-  }
-
-  return { version: 1, canvas, nodes };
-}
-
-function createNode(type: FrameNodeType, layout: FrameLayout): FrameNode {
-  const zIndex = Math.max(0, ...layout.nodes.map((node) => node.zIndex)) + 1;
-  const base = {
-    id: `${type}-${Date.now()}`,
-    type,
-    x: 48,
-    y: 88,
-    width: type === "text" || type === "date-stamp" ? 180 : 132,
-    height: type === "text" || type === "date-stamp" ? 40 : 132,
-    rotation: 0,
-    opacity: 1,
-    zIndex,
-    locked: false,
-  };
-
-  if (type === "photo-slot") {
-    return {
-      ...base,
-      width: 160,
-      height: 210,
-      props: {
-        label: "Photo",
-        background: "#f4f4f5",
-        borderColor: "#d4d4d8",
-        radius: 10,
-      },
-    };
-  }
-
-  if (type === "image" || type === "background") {
-    return {
-      ...base,
-      props: {
-        src: "",
-        alt: type,
-        objectFit: "cover",
-        radius: type === "background" ? 0 : 8,
-      },
-    };
-  }
-
-  if (type === "border") {
-    return {
-      ...base,
-      width: 260,
-      height: 360,
-      props: { borderColor: "#18181b", borderWidth: 2, radius: 18 },
-    };
-  }
-
-  return {
-    ...base,
-    props: {
-      content: type === "date-stamp" ? "DD.MM.YYYY" : "Text",
-      color: "#18181b",
-      fontSize: 18,
-      fontWeight: 600,
-    },
-  };
-}
-
-function normalizePhotoSlotLabels(nodes: FrameNode[]): FrameNode[] {
-  const photoSlots = nodes.filter((node) => node.type === "photo-slot");
-  const slotIdToIndex = new Map(
-    photoSlots.map((node, index) => [node.id, index]),
-  );
-
-  return nodes.map((node) => {
-    if (node.type !== "photo-slot") return node;
-    const index = slotIdToIndex.get(node.id);
-    if (index === undefined) return node;
-    return {
-      ...node,
-      props: {
-        ...node.props,
-        label: `Photo ${index + 1}`,
-      },
-    };
-  });
-}
-
-function clampNumber(value: number, min: number, max: number) {
-  if (max < min) return min;
-  return Math.min(max, Math.max(min, value));
-}
-
-function getRotatedVisualInset(width: number, height: number, rotation: number) {
-  const radians = ((rotation % 360) * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const rotatedWidth = Math.abs(width * cos) + Math.abs(height * sin);
-  const rotatedHeight = Math.abs(width * sin) + Math.abs(height * cos);
-
-  return {
-    x: Math.max(0, (rotatedWidth - width) / 2),
-    y: Math.max(0, (rotatedHeight - height) / 2),
-  };
-}
-
-function FrameNodeRenderer({ node }: { node: FrameNode }) {
-  if (node.type === "photo-slot") {
-    return (
-      <div
-        className="grid h-full w-full place-items-center border-2 border-dashed text-center text-xs font-medium text-zinc-500"
-        style={{
-          background: readString(node.props.background, "#f4f4f5"),
-          borderColor: readString(node.props.borderColor, "#d4d4d8"),
-          borderRadius: readNumber(node.props.radius, 10),
-        }}
-      >
-        {readString(node.props.label, "Photo")}
-      </div>
-    );
-  }
-
-  if (node.type === "image" || node.type === "background") {
-    const src = readString(node.props.src, "");
-    const fit = readString(node.props.objectFit, "cover");
-    if (src) {
-      return (
-        <div
-          className="h-full w-full bg-center bg-no-repeat"
-          style={{
-            backgroundImage: `url(${src})`,
-            backgroundSize: fit === "fill" ? "100% 100%" : fit,
-            borderRadius: readNumber(node.props.radius, 8),
-          }}
-        />
-      );
-    }
-
-    return (
-      <div className="grid h-full w-full place-items-center rounded-md border border-dashed border-zinc-300 bg-zinc-100 text-xs font-medium text-zinc-500">
-        {node.type}
-      </div>
-    );
-  }
-
-  if (node.type === "border") {
-    return (
-      <div
-        className="h-full w-full"
-        style={{
-          border: `${readNumber(node.props.borderWidth, 2)}px solid ${readString(node.props.borderColor, "#18181b")}`,
-          borderRadius: readNumber(node.props.radius, 18),
-        }}
-      />
-    );
-  }
-
-  return (
-    <div
-      className="flex h-full w-full items-center"
-      style={{
-        color: readString(node.props.color, "#18181b"),
-        fontSize: readNumber(node.props.fontSize, 18),
-        fontWeight: readNumber(node.props.fontWeight, 600),
-      }}
-    >
-      {readString(
-        node.props.content,
-        node.type === "date-stamp" ? "DD.MM.YYYY" : "Text",
-      )}
-    </div>
-  );
-}
-
-function SortableFrameLayer({
-  node,
-  selectedId,
-  onSelect,
-  onToggleLock,
-}: {
-  node: FrameNode;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onToggleLock: (id: string, locked: boolean) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id: node.id, disabled: false });
-  const isSelected = selectedId === node.id;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn(
-        "flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs transition-colors",
-        isSelected
-          ? "border-zinc-900 bg-zinc-950 text-white"
-          : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50",
-      )}
-    >
-      <button
-        className={cn(
-          "flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded text-zinc-400 active:cursor-grabbing",
-          isSelected && "text-zinc-300",
-        )}
-        aria-label={`Reorder ${node.id}`}
-        title="Drag to reorder layer"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="size-4" />
-      </button>
-      <button
-        className="min-w-0 flex-1 text-left"
-        onClick={() => onSelect(node.id)}
-      >
-        <span className={cn("block font-medium", isSelected && "text-white")}>
-          {node.type === "photo-slot"
-            ? readString(node.props.label, "Photo slot")
-            : node.type}
-        </span>
-        <span
-          className={cn(
-            "block truncate text-zinc-500",
-            isSelected && "text-zinc-300",
-          )}
-        >
-          {node.id}
-        </span>
-      </button>
-      <button
-        className={cn(
-          "text-zinc-400 hover:text-zinc-700",
-          isSelected && "hover:text-white",
-        )}
-        title={node.locked ? "Unlock layer" : "Lock layer"}
-        onClick={() => onToggleLock(node.id, !node.locked)}
-      >
-        {node.locked ? (
-          <Lock className="size-3" />
-        ) : (
-          <Unlock className="size-3" />
-        )}
-      </button>
-    </div>
-  );
-}
-
-function FrameContextMenu({
-  x,
-  y,
-  node,
-  hasClipboard,
-  onClose,
-  onCopy,
-  onCut,
-  onPaste,
-  onDuplicate,
-  onDelete,
-  onBringToFront,
-  onBringForward,
-  onSendBackward,
-  onSendToBack,
-  onToggleLock,
-  onAddNode,
-}: {
-  x: number;
-  y: number;
-  node?: FrameNode;
-  hasClipboard: boolean;
-  onClose: () => void;
-  onCopy: () => void;
-  onCut: () => void;
-  onPaste: () => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
-  onBringToFront: () => void;
-  onBringForward: () => void;
-  onSendBackward: () => void;
-  onSendToBack: () => void;
-  onToggleLock: () => void;
-  onAddNode: (type: FrameNodeType) => void;
-}) {
-  const [layerHover, setLayerHover] = useState(false);
-  const menuW = 224;
-  const safeX = Math.min(x, window.innerWidth - menuW - 8);
-  const safeY = Math.min(y, window.innerHeight - 360);
-  const item =
-    "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-zinc-700 hover:bg-zinc-100 transition-colors";
-  const kbd = "ml-auto text-[10px] font-mono text-zinc-400";
-
-  return (
-    <div
-      className="fixed z-[9999] w-56 rounded-xl border border-zinc-200 bg-white py-1 shadow-2xl"
-      style={{ left: safeX, top: safeY }}
-      onMouseDown={(e) => e.stopPropagation()}
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      {node ? (
-        <>
-          <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-            {node.type}
-          </div>
-
-          {/* Clipboard */}
-          <button type="button" className={item} onClick={onCopy}>
-            <Copy className="size-3.5" />
-            Copy<span className={kbd}>⌘C</span>
-          </button>
-          {node.type !== "photo-slot" && node.id !== "frame-background" && (
-            <button type="button" className={item} onClick={onCut}>
-              <Scissors className="size-3.5" />
-              Cut<span className={kbd}>⌘X</span>
-            </button>
-          )}
-          {node.id !== "frame-background" && (
-            <button type="button" className={item} onClick={onDuplicate}>
-              <Copy className="size-3.5 opacity-50" />
-              Duplicate<span className={kbd}>⌘D</span>
-            </button>
-          )}
-
-          <div className="mx-2 my-1 h-px bg-zinc-100" />
-
-          {/* Layer order submenu */}
-          <div
-            className="relative"
-            onMouseEnter={() => setLayerHover(true)}
-            onMouseLeave={() => setLayerHover(false)}
-          >
-            <button
-              type="button"
-              className={cn(item, layerHover && "bg-zinc-100")}
-            >
-              <Layers className="size-3.5" />
-              Layer order
-              <ChevronRight className="ml-auto size-3.5 text-zinc-400" />
-            </button>
-            {layerHover && (
-              <div className="absolute left-full top-0 ml-1 w-48 rounded-xl border border-zinc-200 bg-white py-1 shadow-2xl">
-                <div className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-                  Layer order
-                </div>
-                <button type="button" className={item} onClick={onBringToFront}>
-                  <BringToFront className="size-3.5" />
-                  Bring to front
-                </button>
-                <button type="button" className={item} onClick={onBringForward}>
-                  <ArrowUpToLine className="size-3.5" />
-                  Bring forward
-                </button>
-                <button type="button" className={item} onClick={onSendBackward}>
-                  <ArrowDownToLine className="size-3.5" />
-                  Send backward
-                </button>
-                <button type="button" className={item} onClick={onSendToBack}>
-                  <SendToBack className="size-3.5" />
-                  Send to back
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="mx-2 my-1 h-px bg-zinc-100" />
-
-          <button type="button" className={item} onClick={onToggleLock}>
-            {node.locked ? (
-              <Unlock className="size-3.5" />
-            ) : (
-              <Lock className="size-3.5" />
-            )}
-            {node.locked ? "Unlock" : "Lock"}
-          </button>
-
-          {node.id !== "frame-background" ? (
-            <>
-              <div className="mx-2 my-1 h-px bg-zinc-100" />
-              <button
-                type="button"
-                className={cn(item, "text-red-600 hover:bg-red-50")}
-                onClick={onDelete}
-                disabled={node.id === "frame-background"}
-              >
-                <Trash2 className="size-3.5" />
-                Delete
-              </button>
-            </>
-          ) : null}
-        </>
-      ) : (
-        <>
-          <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-            Canvas
-          </div>
-          {hasClipboard && (
-            <button type="button" className={item} onClick={onPaste}>
-              <Clipboard className="size-3.5" />
-              Paste<span className={kbd}>⌘V</span>
-            </button>
-          )}
-          {hasClipboard && <div className="mx-2 my-1 h-px bg-zinc-100" />}
-          <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-            Add layer
-          </div>
-          {FRAME_NODE_TYPES.map((t) => (
-            <button
-              key={t.type}
-              type="button"
-              className={item}
-              onClick={() => onAddNode(t.type)}
-            >
-              {t.icon}
-              {t.label}
-            </button>
-          ))}
-        </>
-      )}
-      <div className="mx-2 my-1 h-px bg-zinc-100" />
-      <button
-        type="button"
-        className={cn(item, "text-zinc-400 hover:text-zinc-600")}
-        onClick={onClose}
-      >
-        <X className="size-3.5" />
-        Close
-      </button>
-    </div>
-  );
-}
 
 export function FrameTemplateBuilder({
   open = true,
@@ -708,7 +129,6 @@ export function FrameTemplateBuilder({
     nodeId: string | null;
   } | null>(null);
   const [clipboard, setClipboard] = useState<FrameNode | null>(null);
-  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [isSavingLayout, setIsSavingLayout] = useState(false);
   const hydratedKeyRef = useRef<string | null>(null);
   const [committedLayoutKey, setCommittedLayoutKey] = useState(() =>
@@ -831,25 +251,23 @@ export function FrameTemplateBuilder({
     }
   }, [layout, onSave]);
 
-  const requestClose = useCallback(() => {
-    if (hasUnsavedChanges) {
-      setShowUnsavedDialog(true);
-      return;
-    }
-    onClose();
-  }, [hasUnsavedChanges, onClose]);
-
-  const discardAndClose = useCallback(() => {
-    setShowUnsavedDialog(false);
-    onClose();
-  }, [onClose]);
-
-  const saveAndClose = useCallback(async () => {
+  const saveFrameAndClose = useCallback(async () => {
     const saved = await saveCurrentLayout();
-    if (!saved) return;
-    setShowUnsavedDialog(false);
+    if (!saved) throw new Error("Save failed");
     onClose();
   }, [onClose, saveCurrentLayout]);
+
+  const {
+    showUnsavedDialog,
+    requestLeave: requestClose,
+    cancelLeave: cancelUnsavedLeave,
+    discardAndLeave,
+    saveAndLeave,
+  } = useBuilderExitGuard({
+    hasUnsavedChanges,
+    onLeave: onClose,
+    onSaveAndLeave: saveFrameAndClose,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -1430,86 +848,30 @@ export function FrameTemplateBuilder({
             : "h-full w-full rounded-none border-0 shadow-none",
         )}
       >
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-100 px-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={requestClose}
-              title="Back to templates"
-            >
-              <ArrowLeft className="size-4" />
-            </Button>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold">
-                Frame Template Builder
-              </div>
-              <div className="truncate text-xs text-zinc-500">
-                {templateName}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setZoom((value) => clampZoom(value - 0.1))}
-              title="Zoom out"
-            >
-              <ZoomOut className="size-4" />
-            </Button>
-            <button
-              className="h-9 w-16 rounded-md text-center text-xs font-mono text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-              onClick={fitToScreen}
-              title="Fit to screen"
-            >
-              {Math.round(zoom * 100)}%
-            </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setZoom((value) => clampZoom(value + 0.1))}
-              title="Zoom in"
-            >
-              <ZoomIn className="size-4" />
-            </Button>
-            {selectedId ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => panToNode(selectedId)}
-                title="Pan to selection"
-              >
-                <Crosshair className="size-4" />
-              </Button>
-            ) : null}
-            <div className="mx-2 h-5 w-px bg-zinc-200" />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={undo}
-              disabled={history.past.length === 0}
-              title="Undo"
-            >
-              <Undo2 className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={redo}
-              disabled={history.future.length === 0}
-              title="Redo"
-            >
-              <Redo2 className="size-4" />
-            </Button>
-            <Button
-              onClick={() => void saveCurrentLayout()}
-              disabled={isSavingLayout}
-            >
-              {isSavingLayout ? "Saving…" : saveLabel}
-            </Button>
-          </div>
-        </div>
+        <BuilderHeader
+          title="Frame Template Builder"
+          subtitle={templateName}
+          onBack={requestClose}
+          saveLabel={saveLabel}
+          isSaving={isSavingLayout}
+          onSave={() => void saveCurrentLayout()}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={history.past.length > 0}
+          canRedo={history.future.length > 0}
+          centerContent={
+            <BuilderZoomControls
+              zoom={zoom}
+              hasSelection={!!selectedId}
+              onZoomOut={() => setZoom((value) => clampZoom(value - 0.1))}
+              onZoomIn={() => setZoom((value) => clampZoom(value + 0.1))}
+              onFitToScreen={fitToScreen}
+              onPanToSelection={
+                selectedId ? () => panToNode(selectedId) : undefined
+              }
+            />
+          }
+        />
 
         <div className="grid min-h-0 flex-1 grid-cols-[240px_minmax(0,1fr)_360px]">
           <aside className="flex min-h-0 flex-col overflow-hidden border-r border-zinc-100">
@@ -2166,41 +1528,14 @@ export function FrameTemplateBuilder({
           </aside>
         </div>
       </div>
-      {showUnsavedDialog ? (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="text-lg font-semibold text-zinc-950">
-              Perubahan belum disimpan
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-500">
-              Ada perubahan di frame builder yang belum tersimpan. Kamu bisa
-              tetap di builder, membuang perubahan, atau menyimpan dulu sebelum
-              kembali.
-            </p>
-            <div className="mt-6 flex flex-wrap justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowUnsavedDialog(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="outline"
-                className="border-red-100 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
-                onClick={discardAndClose}
-              >
-                Buang
-              </Button>
-              <Button
-                onClick={() => void saveAndClose()}
-                disabled={isSavingLayout}
-              >
-                {isSavingLayout ? "Saving…" : "Save"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <BuilderUnsavedDialog
+        open={showUnsavedDialog}
+        description="Ada perubahan di frame builder yang belum tersimpan. Kamu bisa tetap di builder, membuang perubahan, atau menyimpan dulu sebelum kembali."
+        isSaving={isSavingLayout}
+        onCancel={cancelUnsavedLeave}
+        onDiscard={discardAndLeave}
+        onSave={() => void saveAndLeave()}
+      />
       {contextMenu ? (
         <FrameContextMenu
           x={contextMenu.x}
