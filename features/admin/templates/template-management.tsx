@@ -40,7 +40,7 @@ export function TemplateManagement() {
   const deleteTemplate = useDeleteTemplate();
   const reorderTemplates = useReorderTemplates();
   const [orderedTemplates, setOrderedTemplates] = useState<Template[]>([]);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [testTemplate, setTestTemplate] = useState<Template | null>(null);
   const confirmDelete = useConfirmDialog();
   const sensors = useSensors(

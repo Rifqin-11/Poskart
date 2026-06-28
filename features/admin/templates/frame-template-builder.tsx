@@ -37,6 +37,10 @@ import { Slider } from "@/components/ui/slider";
 import { BuilderHeader } from "@/features/builder/shared/builder-header";
 import { BuilderUnsavedDialog } from "@/features/builder/shared/builder-unsaved-dialog";
 import { BuilderZoomControls } from "@/features/builder/shared/builder-zoom-controls";
+import {
+  builderResizeHandleWrapperStyle,
+  getBuilderResizeHandleStyles,
+} from "@/features/builder/shared/builder-selection-handles";
 import { useBuilderExitGuard } from "@/features/builder/shared/use-builder-exit-guard";
 import {
   FRAME_NODE_TYPES,
@@ -1056,6 +1060,12 @@ export function FrameTemplateBuilder({
                         enableResizing={!node.locked}
                         position={{ x: node.x, y: node.y }}
                         size={{ width: node.width, height: node.height }}
+                        resizeHandleStyles={getBuilderResizeHandleStyles(
+                          selectedId === node.id,
+                        )}
+                        resizeHandleWrapperStyle={
+                          builderResizeHandleWrapperStyle
+                        }
                         onClick={(event: React.MouseEvent) => {
                           event.stopPropagation();
                           setSelectedId(node.id);
@@ -1159,7 +1169,7 @@ export function FrameTemplateBuilder({
                           className={cn(
                             "h-full w-full",
                             selectedId === node.id &&
-                              "outline outline-2 outline-offset-2 outline-zinc-950",
+                              "outline outline-[3px] outline-offset-0 outline-violet-500",
                           )}
                           style={{
                             transform: `rotate(${node.rotation}deg)`,

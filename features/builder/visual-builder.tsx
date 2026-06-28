@@ -59,6 +59,11 @@ import { BuilderHeader } from "@/features/builder/shared/builder-header";
 import { BuilderToolbarButton } from "@/features/builder/shared/builder-toolbar-button";
 import { BuilderUnsavedDialog } from "@/features/builder/shared/builder-unsaved-dialog";
 import { BuilderZoomControls } from "@/features/builder/shared/builder-zoom-controls";
+import {
+  builderResizeHandleWrapperStyle,
+  builderSelectionOutlineStyle,
+  getBuilderResizeHandleStyles,
+} from "@/features/builder/shared/builder-selection-handles";
 import { useBuilderExitGuard } from "@/features/builder/shared/use-builder-exit-guard";
 import { CanvasControls } from "@/features/builder/components/visual-canvas-controls";
 import { VisualContextMenu } from "@/features/builder/components/visual-context-menu";
@@ -1314,6 +1319,10 @@ export function VisualBuilder() {
                       lockAspectRatio={node.lockAspect ?? false}
                       position={{ x: node.x, y: node.y }}
                       size={{ width: node.width, height: node.height }}
+                      resizeHandleStyles={getBuilderResizeHandleStyles(
+                        selectedId === node.id,
+                      )}
+                      resizeHandleWrapperStyle={builderResizeHandleWrapperStyle}
                       onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
                         selectNode(node.id, e.shiftKey);
@@ -1377,11 +1386,12 @@ export function VisualBuilder() {
                         zIndex: node.zIndex,
                         opacity: node.opacity,
                         transform: `rotate(${node.rotation}deg)`,
+                        ...(selectedId === node.id
+                          ? builderSelectionOutlineStyle
+                          : {}),
                       }}
                       className={cn(
                         "builder-rnd-node group touch-none",
-                        selectedId === node.id &&
-                          "outline outline-2 outline-offset-1 outline-zinc-950",
                         node.locked && "cursor-not-allowed",
                       )}
                     >
