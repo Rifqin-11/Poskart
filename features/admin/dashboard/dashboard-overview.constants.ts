@@ -1,21 +1,8 @@
-import {
-  Activity,
-  CircleDollarSign,
-  Download,
-  type LucideIcon,
-} from "lucide-react";
 import type {
   DashboardData,
   EventPeriodKey,
   KpiMetric,
 } from "@/server/admin/_shared/admin-types";
-
-export const dashboardMetricIcons: LucideIcon[] = [
-  CircleDollarSign,
-  CircleDollarSign,
-  Activity,
-  Download,
-];
 
 export const eventPeriodTabs: Array<{ key: EventPeriodKey; label: string }> = [
   { key: "daily", label: "Daily" },
@@ -33,21 +20,9 @@ export const pieColors = [
 
 export const emptyMetrics: KpiMetric[] = [
   {
-    label: "Revenue today",
-    value: "Rp 0",
-    delta: "No transactions yet",
-    tone: "neutral",
-  },
-  {
-    label: "Revenue this month",
-    value: "Rp 0",
-    delta: "No monthly data yet",
-    tone: "neutral",
-  },
-  {
-    label: "Transactions today",
-    value: "0",
-    delta: "Waiting for first session",
+    label: "QRIS success rate",
+    value: "0.0%",
+    delta: "No QRIS transactions yet",
     tone: "neutral",
   },
   {

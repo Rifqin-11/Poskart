@@ -717,6 +717,8 @@ export function NodeRenderer({
   if (node.type === "qr-placeholder") {
     const qrColor = readString(node.props.qrColor, "#000000");
     const qrBgColor = readString(node.props.qrBgColor, "#ffffff");
+    const qrTransparentBackground =
+      node.props.qrTransparentBackground === true;
     const qrTextColor = readString(
       node.props.qrTextColor ?? node.props.color,
       "#27272a",
@@ -727,7 +729,7 @@ export function NodeRenderer({
         className="grid h-full w-full place-items-center border-2 border-dashed border-zinc-300 p-3"
         style={{
           borderRadius: readNumber(node.props.radius, 8),
-          backgroundColor: qrBgColor,
+          backgroundColor: qrTransparentBackground ? "transparent" : qrBgColor,
         }}
       >
         <div className="relative flex size-full flex-col items-center justify-center gap-1">
@@ -969,4 +971,3 @@ export function NodeRenderer({
     </div>
   );
 }
-

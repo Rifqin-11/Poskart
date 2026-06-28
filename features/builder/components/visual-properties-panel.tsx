@@ -1044,7 +1044,7 @@ export function PropertiesPanel({
                 updateNodeProps(selectedNode.id, { qrBgColor: v })
               }
             />
-            {selectedNode.type === "qr" && (
+            {selectedNode.type !== "qr-link" && (
               <label className="flex items-center justify-between gap-3 rounded-md border border-zinc-100 bg-zinc-50 p-2.5">
                 <div>
                   <span className="block text-xs font-medium text-zinc-700">

@@ -20,19 +20,18 @@ import {
   AlertCircle,
   ArrowUpRight,
   CircleDollarSign,
+  Download,
   LayoutTemplate,
   MonitorCheck,
   Plus,
   Printer,
-  ReceiptText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  dashboardMetricIcons,
   emptyDashboardData,
   emptyMetrics,
   eventPeriodTabs,
@@ -45,10 +44,26 @@ import type {
   EventPeriodKey,
   EventPeriodStatistics,
   KpiMetric,
-  PosRecentSale,
   Transaction,
 } from "@/server/admin/_shared/admin-types";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+
+const dashboardInnerCardClass =
+  "rounded-3xl border border-zinc-100 bg-white/90 shadow-sm shadow-zinc-200/60 backdrop-blur";
+const dashboardSoftItemClass =
+  "rounded-2xl border border-zinc-100 bg-white/85 shadow-sm shadow-zinc-100/70 backdrop-blur";
+
+const hiddenDashboardMetricLabels = new Set([
+  "Revenue today",
+  "Revenue this month",
+  "Transactions today",
+]);
+
+function getMetricIcon(metric: KpiMetric) {
+  if (metric.label.toLowerCase().includes("qris")) return MonitorCheck;
+  if (metric.label.toLowerCase().includes("download")) return Download;
+  return Activity;
+}
 
 function useClientMounted() {
   return useSyncExternalStore(
@@ -72,7 +87,9 @@ export function DashboardOverview() {
   const dashboardData = data ?? emptyDashboardData;
   const eventPeriod = dashboardData.eventStats.periods[selectedEventPeriod];
   const activeBooths = dashboardData.devices.filter((device: Device) => device.status === "online").length;
-  const metrics = dashboardData.kpiMetrics.length > 0 ? dashboardData.kpiMetrics : emptyMetrics;
+  const metrics = (
+    dashboardData.kpiMetrics.length > 0 ? dashboardData.kpiMetrics : emptyMetrics
+  ).filter((metric) => !hiddenDashboardMetricLabels.has(metric.label));
   const hasWeeklyChart = dashboardData.weeklyChart.length > 0;
   const hasMonthlyChart = dashboardData.monthlyChart.length > 0;
   const hasDevices = dashboardData.devices.length > 0;
@@ -84,17 +101,19 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard Overview</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Real-time operating view for all POSKART photobooth kiosks.
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Statistik {eventPeriod.label}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
+            Semua angka di bawah mengikuti tab periode yang dipilih.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" disabled={!canUseOperatingTools}>Export report</Button>
-          <Button disabled={!canUseOperatingTools}>New campaign</Button>
-        </div>
+        <PeriodTabs
+          selectedPeriod={selectedEventPeriod}
+          onSelectPeriod={setSelectedEventPeriod}
+        />
       </div>
 
       {isError ? (
@@ -154,7 +173,7 @@ export function DashboardOverview() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric: KpiMetric, index: number) => {
-          const Icon = dashboardMetricIcons[index] ?? Activity;
+          const Icon = getMetricIcon(metric);
           return (
             <motion.div
               key={metric.label}
@@ -162,14 +181,22 @@ export function DashboardOverview() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <Card>
-                <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-xs font-medium text-zinc-500">{metric.label}</CardTitle>
-                  <Icon className="size-4 text-zinc-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-semibold tracking-tight">{metric.value}</div>
-                  <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600">
+              <Card className={dashboardInnerCardClass}>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium text-zinc-500">
+                        {metric.label}
+                      </div>
+                      <div className="mt-2 text-3xl font-semibold tracking-tight">
+                        {metric.value}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl bg-zinc-100 p-3 text-zinc-500">
+                      <Icon className="size-5" />
+                    </div>
+                  </div>
+                  <div className="mt-5 inline-flex items-center gap-1 rounded-2xl bg-zinc-50 px-3 py-2 text-xs text-emerald-600">
                     <ArrowUpRight className="size-3" />
                     {metric.delta}
                   </div>
@@ -178,89 +205,36 @@ export function DashboardOverview() {
             </motion.div>
           );
         })}
+        <SummaryCard
+          label="Total keuntungan"
+          value={formatCurrency(eventPeriod.totalRevenue)}
+          helper="Nominal transaksi paid"
+          icon={CircleDollarSign}
+          accent="bg-yellow-300"
+        />
+        <SummaryCard
+          label="Total sesi"
+          value={eventPeriod.totalSessions.toLocaleString("id-ID")}
+          helper="Sesi booth berhasil dibayar"
+          icon={Activity}
+          accent="bg-violet-300"
+        />
+        <SummaryCard
+          label="Total print"
+          value={eventPeriod.totalPrints.toLocaleString("id-ID")}
+          helper="Akumulasi print dari paket"
+          icon={Printer}
+          accent="bg-emerald-300"
+        />
       </div>
 
       <EventAnalyticsSection
         chartsMounted={chartsMounted}
         period={eventPeriod}
-        selectedPeriod={selectedEventPeriod}
-        onSelectPeriod={setSelectedEventPeriod}
       />
 
-      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>POS Kasir hari ini</CardTitle>
-            <CardDescription>
-              Data transaksi manual dari halaman POS Kasir.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">
-              <CircleDollarSign className="mb-3 size-4 text-zinc-500" />
-              <div className="text-xs text-zinc-500">Pendapatan hari ini</div>
-              <div className="mt-1 text-xl font-semibold tracking-tight">
-                {formatCurrency(dashboardData.posSummary.todayRevenue)}
-              </div>
-            </div>
-            <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">
-              <ReceiptText className="mb-3 size-4 text-zinc-500" />
-              <div className="text-xs text-zinc-500">Transaksi hari ini</div>
-              <div className="mt-1 text-xl font-semibold tracking-tight">
-                {dashboardData.posSummary.todayTransactions}
-              </div>
-            </div>
-            <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">
-              <Printer className="mb-3 size-4 text-zinc-500" />
-              <div className="text-xs text-zinc-500">Total print</div>
-              <div className="mt-1 text-xl font-semibold tracking-tight">
-                {dashboardData.posSummary.totalPrints}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <div>
-              <CardTitle>Riwayat POS terbaru</CardTitle>
-              <CardDescription>
-                Penjualan paket print terakhir dari kasir.
-              </CardDescription>
-            </div>
-            <Link href="/pos" className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Buka POS
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {hasPosSales ? (
-              dashboardData.posSummary.recentSales.map((sale: PosRecentSale) => (
-                <div key={sale.id} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
-                  <div>
-                    <div className="text-sm font-medium">{sale.packageName}</div>
-                    <div className="text-xs text-zinc-500">
-                      {sale.printCount} print · {sale.paymentMethod} · {sale.createdAt}
-                    </div>
-                  </div>
-                  <div className="text-right text-sm font-semibold">
-                    {formatCurrency(sale.amount)}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <EmptyPanelState
-                title="Belum ada transaksi POS"
-                description="Simpan transaksi dari POS Kasir agar ringkasan pendapatan, paket, dan print muncul di dashboard."
-                href="/pos"
-                action="Buka POS Kasir"
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
+        <Card className={dashboardInnerCardClass}>
           <CardHeader>
             <CardTitle>Device network</CardTitle>
             <CardDescription>{activeBooths} of {dashboardData.devices.length} devices online now.</CardDescription>
@@ -268,7 +242,7 @@ export function DashboardOverview() {
           <CardContent className="space-y-4">
             {hasDevices ? (
               dashboardData.devices.map((device: Device) => (
-                <div key={device.id} className="rounded-lg border border-zinc-100 p-3">
+                <div key={device.id} className={cn(dashboardSoftItemClass, "p-3")}>
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-sm font-medium">{device.name}</div>
@@ -304,7 +278,7 @@ export function DashboardOverview() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={dashboardInnerCardClass}>
           <CardHeader className="flex-row items-center justify-between">
             <div>
               <CardTitle>Real-time transaction feed</CardTitle>
@@ -315,7 +289,13 @@ export function DashboardOverview() {
           <CardContent className="space-y-3">
             {hasTransactions ? (
               dashboardData.transactions.slice(0, 5).map((transaction: Transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between rounded-lg border border-zinc-100 p-3">
+                <div
+                  key={transaction.id}
+                  className={cn(
+                    dashboardSoftItemClass,
+                    "flex items-center justify-between p-3",
+                  )}
+                >
                   <div>
                     <div className="text-sm font-medium">{transaction.packageName}</div>
                     <div className="text-xs text-zinc-500">
@@ -356,82 +336,31 @@ export function DashboardOverview() {
 function EventAnalyticsSection({
   chartsMounted,
   period,
-  selectedPeriod,
-  onSelectPeriod,
 }: {
   chartsMounted: boolean;
   period: EventPeriodStatistics;
-  selectedPeriod: EventPeriodKey;
-  onSelectPeriod: (period: EventPeriodKey) => void;
 }) {
   const hasTrend = period.revenueSeries.length > 0;
+  const averageRevenuePerSession =
+    period.totalSessions > 0
+      ? Math.round(period.totalRevenue / period.totalSessions)
+      : 0;
+  const printsPerSession =
+    period.totalSessions > 0 ? period.totalPrints / period.totalSessions : 0;
+  const topPaymentMethod = period.paymentMethods[0]?.label ?? "Belum ada";
 
   return (
-    <Card className="overflow-hidden border-zinc-200 bg-gradient-to-br from-white via-white to-zinc-50 shadow-sm">
-      <CardHeader className="gap-5 pb-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
-            <span className="size-2 rounded-full bg-emerald-500" />
-            Ringkasan Event
-          </div>
-          <CardTitle className="text-3xl tracking-tight">
-            Statistik {period.label}
-          </CardTitle>
-          <CardDescription className="mt-2 max-w-2xl text-sm leading-6">
-            Semua angka di bawah mengikuti tab periode yang dipilih.
-          </CardDescription>
-        </div>
-        <div className="inline-flex rounded-2xl border border-zinc-200 bg-white/85 p-1 shadow-sm backdrop-blur">
-          {eventPeriodTabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => onSelectPeriod(tab.key)}
-              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                selectedPeriod === tab.key
-                  ? "bg-zinc-950 text-white shadow-sm"
-                  : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-5 p-5 pt-2">
-        <div className="grid gap-4 md:grid-cols-3">
-          <SummaryCard
-            label="Total keuntungan"
-            value={formatCurrency(period.totalRevenue)}
-            helper="Nominal transaksi paid"
-            icon={CircleDollarSign}
-            accent="bg-yellow-300"
-          />
-          <SummaryCard
-            label="Total sesi"
-            value={period.totalSessions.toLocaleString("id-ID")}
-            helper="Sesi booth berhasil dibayar"
-            icon={Activity}
-            accent="bg-violet-300"
-          />
-          <SummaryCard
-            label="Total print"
-            value={period.totalPrints.toLocaleString("id-ID")}
-            helper="Akumulasi print dari paket"
-            icon={Printer}
-            accent="bg-emerald-300"
-          />
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-          <Card className="border-zinc-100 bg-white/90 shadow-none backdrop-blur">
-            <CardHeader>
-              <CardTitle>Tren pendapatan</CardTitle>
-              <CardDescription>
-                Pendapatan, sesi, dan print selama periode {period.label.toLowerCase()}.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-80">
+    <div className="grid items-start gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+      <div className="grid gap-4">
+        <Card className={cn(dashboardInnerCardClass, "self-start")}>
+          <CardHeader>
+            <CardTitle>Tren pendapatan</CardTitle>
+            <CardDescription>
+              Pendapatan, sesi, dan print selama periode {period.label.toLowerCase()}.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-56">
               {chartsMounted && hasTrend ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={period.revenueSeries}>
@@ -483,30 +412,97 @@ function EventAnalyticsSection({
                   description="Grafik muncul setelah booth mencatat transaksi paid."
                 />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          <div className="grid gap-4">
-            <EventPieCard
-              chartsMounted={chartsMounted}
-              title="Metode pembayaran"
-              description="Distribusi pendapatan"
-              items={period.paymentMethods}
-              valueKey="revenue"
-              valueFormatter={(value) => formatCurrency(value)}
-            />
-            <EventPieCard
-              chartsMounted={chartsMounted}
-              title="Frame terpakai"
-              description="Top 5 berdasarkan sesi"
-              items={period.topFrames}
-              valueKey="sessions"
-              valueFormatter={(value) => `${value.toLocaleString("id-ID")} sesi`}
-            />
-          </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <MiniStatCard
+            label="Rata-rata sesi"
+            value={formatCurrency(averageRevenuePerSession)}
+            helper="Revenue per sesi"
+          />
+          <MiniStatCard
+            label="Print per sesi"
+            value={printsPerSession.toFixed(1)}
+            helper="Efisiensi paket print"
+          />
+          <MiniStatCard
+            label="Metode utama"
+            value={topPaymentMethod}
+            helper="Pembayaran terbanyak"
+          />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div className="grid gap-4">
+        <EventPieCard
+          chartsMounted={chartsMounted}
+          title="Metode pembayaran"
+          description="Distribusi pendapatan"
+          items={period.paymentMethods}
+          valueKey="revenue"
+          valueFormatter={(value) => formatCurrency(value)}
+        />
+        <EventPieCard
+          chartsMounted={chartsMounted}
+          title="Frame terpakai"
+          description="Top 5 berdasarkan sesi"
+          items={period.topFrames}
+          valueKey="sessions"
+          valueFormatter={(value) => `${value.toLocaleString("id-ID")} sesi`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PeriodTabs({
+  selectedPeriod,
+  onSelectPeriod,
+}: {
+  selectedPeriod: EventPeriodKey;
+  onSelectPeriod: (period: EventPeriodKey) => void;
+}) {
+  return (
+    <div className="inline-flex w-fit rounded-2xl border border-zinc-200 bg-white/85 p-1 shadow-sm backdrop-blur">
+      {eventPeriodTabs.map((tab) => (
+        <button
+          key={tab.key}
+          type="button"
+          onClick={() => onSelectPeriod(tab.key)}
+          className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+            selectedPeriod === tab.key
+              ? "bg-zinc-950 text-white shadow-sm"
+              : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MiniStatCard({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+}) {
+  return (
+    <div className={cn(dashboardSoftItemClass, "p-4")}>
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="mt-2 truncate text-xl font-semibold tracking-tight">
+        {value}
+      </div>
+      <div className="mt-3 rounded-2xl bg-zinc-50 px-3 py-2 text-xs text-zinc-500">
+        {helper}
+      </div>
+    </div>
   );
 }
 
@@ -524,7 +520,7 @@ function SummaryCard({
   accent: string;
 }) {
   return (
-    <div className="rounded-3xl border border-zinc-100 bg-white/90 p-5 shadow-sm shadow-zinc-200/60 backdrop-blur">
+    <div className={cn(dashboardInnerCardClass, "p-5")}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm text-zinc-500">{label}</div>
@@ -570,7 +566,7 @@ function EventPieCard({
   const total = chartData.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <Card className="border-zinc-100 bg-white/90 shadow-none backdrop-blur">
+    <Card className={dashboardInnerCardClass}>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
