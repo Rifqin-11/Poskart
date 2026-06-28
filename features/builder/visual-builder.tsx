@@ -1,6 +1,7 @@
 "use client";
 
 import QRCodeSVG from "react-qr-code";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   type DragEndEvent,
@@ -23,6 +24,7 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
+  ArrowLeft,
   ArrowDownToLine,
   ArrowUpToLine,
   BringToFront,
@@ -41,8 +43,6 @@ import {
   Layers,
   Link2,
   Lock,
-  Maximize2,
-  Minimize2,
   Move,
   PaintBucket,
   Plus,
@@ -3138,6 +3138,7 @@ function BuilderContextMenu({
 }
 
 export function VisualBuilder() {
+  const router = useRouter();
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, {
@@ -3166,6 +3167,8 @@ export function VisualBuilder() {
   const reorderNodes = useBuilderStore((state) => state.reorderNodes);
   const schema = useBuilderStore((state) => state.schema);
   const setSchema = useBuilderStore((state) => state.setSchema);
+  const fullView = useBuilderStore((s) => s.builderFullView);
+  const setFullView = useBuilderStore((s) => s.setBuilderFullView);
   const clipboard = useBuilderStore((state) => state.clipboard);
   const copyNode = useBuilderStore((state) => state.copyNode);
   const cutNode = useBuilderStore((state) => state.cutNode);
@@ -3202,6 +3205,7 @@ export function VisualBuilder() {
   );
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [loadTab, setLoadTab] = useState<"local" | "db">("local");
   const [localDrafts, setLocalDrafts] = useState<LocalDraft[]>([]);
   const { data: dbThemes = [] } = useLayoutSchemas();
@@ -3209,8 +3213,32 @@ export function VisualBuilder() {
   /** The DB id of the currently loaded/saved theme — null when working on unsaved canvas */
   const [currentThemeId, setCurrentThemeId] = useState<string | null>(null);
   const [currentThemeName, setCurrentThemeName] = useState<string | null>(null);
+  const lastCommittedSchemaRef = useRef<string | null>(null);
+  const pendingLeaveAfterSaveRef = useRef(false);
+  const currentSchemaKey = JSON.stringify(schema());
+  const hasUnsavedChanges =
+    lastCommittedSchemaRef.current !== null &&
+    lastCommittedSchemaRef.current !== currentSchemaKey;
 
   // Re-inject custom font <link> tags whenever canvas.customFonts changes
+  useEffect(() => {
+    if (lastCommittedSchemaRef.current === null) {
+      lastCommittedSchemaRef.current = currentSchemaKey;
+    }
+  }, [currentSchemaKey]);
+
+  const leaveBuilder = useCallback(() => {
+    router.push("/themes");
+  }, [router]);
+
+  const requestBack = useCallback(() => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+      return;
+    }
+    leaveBuilder();
+  }, [hasUnsavedChanges, leaveBuilder]);
+
   useEffect(() => {
     (canvas.customFonts ?? []).forEach(({ name, url }) => {
       const id = `custom-font-${name}`;
@@ -3266,9 +3294,12 @@ export function VisualBuilder() {
           schema: schema(),
           existingId: currentThemeId,
         });
+        lastCommittedSchemaRef.current = JSON.stringify(schema());
         toast.success(`“${currentThemeName}” saved!`);
+        return true;
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Save failed");
+        return false;
       } finally {
         setIsSaving(false);
       }
@@ -3276,6 +3307,7 @@ export function VisualBuilder() {
       // No current theme — open dialog to name + create
       setThemeName("");
       setShowSaveDialog(true);
+      return false;
     }
   }
 
@@ -3286,6 +3318,9 @@ export function VisualBuilder() {
     setSchema(s);
     setCurrentThemeId(opts?.themeId ?? null);
     setCurrentThemeName(opts?.themeName ?? null);
+    lastCommittedSchemaRef.current = opts?.themeId
+      ? JSON.stringify(s)
+      : "__local_draft_requires_save__";
     setShowLoadDialog(false);
     toast.success(
       opts?.themeId ? `Loaded “${opts.themeName ?? "theme"}”` : "Draft loaded!",
@@ -3296,16 +3331,35 @@ export function VisualBuilder() {
     deleteDraft(id);
     setLocalDrafts(getDrafts());
   }
+
+  async function handleSaveAndLeave() {
+    setShowUnsavedDialog(false);
+    if (!currentThemeId || !currentThemeName) {
+      pendingLeaveAfterSaveRef.current = true;
+      await handleSave();
+      return;
+    }
+
+    const saved = await handleSave();
+    if (saved) leaveBuilder();
+  }
+
+  function handleDiscardAndLeave() {
+    pendingLeaveAfterSaveRef.current = false;
+    setShowUnsavedDialog(false);
+    leaveBuilder();
+  }
   // ── end Auto-save & Load ─────────────────────────────
 
   // ── Full-view mode ────────────────────────────────────────
-  const fullView = useBuilderStore((s) => s.builderFullView);
-  const setFullView = useBuilderStore((s) => s.setBuilderFullView);
-
-  // Reset full-view when leaving the builder page
+  // Builder pages should open as a focused full-screen workspace.
+  // Reset full-view when leaving the builder page.
   useEffect(
-    () => () => {
-      setFullView(false);
+    () => {
+      setFullView(true);
+      return () => {
+        setFullView(false);
+      };
     },
     [setFullView],
   );
@@ -3739,6 +3793,7 @@ export function VisualBuilder() {
     if (!savedLayout || hydratedLayoutId.current === savedLayout.id) return;
     setSchema(savedLayout.schema);
     hydratedLayoutId.current = savedLayout.id;
+    lastCommittedSchemaRef.current = JSON.stringify(savedLayout.schema);
   }, [savedLayout, setSchema]);
 
   useEffect(() => {
@@ -3863,6 +3918,17 @@ export function VisualBuilder() {
     >
       {/* ── Top toolbar ──────────────────────────────── */}
       <div className="flex h-11 shrink-0 items-center gap-1 border-b border-zinc-200 bg-white px-3">
+        <button
+          className={toolbarBtn}
+          onClick={requestBack}
+          title="Back to themes"
+        >
+          <ArrowLeft className="size-3.5" />
+          Back
+        </button>
+
+        <div className="mx-2 h-4 w-px bg-zinc-200" />
+
         {/* Screen tabs */}
         <div className="flex items-center gap-0.5 rounded-lg bg-zinc-100 p-0.5">
           {pageLabels.map((page) => {
@@ -3940,30 +4006,6 @@ export function VisualBuilder() {
           </button>
         )}
 
-        <div className="mx-2 h-4 w-px bg-zinc-200" />
-
-        {/* Full-view toggle */}
-        <button
-          className={cn(
-            toolbarBtn,
-            fullView &&
-              "bg-zinc-900 text-white hover:bg-zinc-700 hover:text-white",
-          )}
-          onClick={() => setFullView(!fullView)}
-          title={
-            fullView ? "Exit full view (Esc)" : "Full view — hide sidebars"
-          }
-        >
-          {fullView ? (
-            <Minimize2 className="size-3.5" />
-          ) : (
-            <Maximize2 className="size-3.5" />
-          )}
-          {!fullView && <span className="text-[11px]">Full view</span>}
-        </button>
-
-        <div className="mx-2 h-4 w-px bg-zinc-200" />
-
         {/* Undo / Redo */}
         <button className={toolbarBtn} onClick={undo}>
           <Undo2 className="size-3.5" />
@@ -4011,6 +4053,7 @@ export function VisualBuilder() {
           {/* New theme — always opens name dialog */}
           <button
             onClick={() => {
+              pendingLeaveAfterSaveRef.current = false;
               setThemeName("");
               setShowSaveDialog(true);
             }}
@@ -4479,18 +4522,6 @@ export function VisualBuilder() {
             Ctrl+scroll to zoom · Space+drag to pan · Shift+1 Fit · Shift+2 100%
             · F Pan to selection
           </div>
-
-          {/* Full-view floating exit pill */}
-          {fullView && (
-            <button
-              onClick={() => setFullView(false)}
-              className="pointer-events-auto absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-zinc-900/90 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-zinc-700"
-              title="Exit full view"
-            >
-              <Minimize2 className="size-3.5" />
-              Exit full view
-            </button>
-          )}
         </div>
 
         {/* ── Right sidebar — Properties ─────────────── */}
@@ -4752,11 +4783,47 @@ export function VisualBuilder() {
       )}
 
       {/* ── Save Theme Dialog ───────────────────────────────── */}
+      {showUnsavedDialog && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-zinc-950">
+              Perubahan belum disimpan
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              Ada perubahan di builder yang belum tersimpan. Kamu bisa tetap di
+              halaman ini, membuang perubahan, atau menyimpan dulu sebelum
+              kembali.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button
+                onClick={() => setShowUnsavedDialog(false)}
+                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDiscardAndLeave}
+                className="rounded-lg border border-red-100 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100"
+              >
+                Buang
+              </button>
+              <button
+                onClick={() => void handleSaveAndLeave()}
+                disabled={isSaving}
+                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50"
+              >
+                {isSaving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showSaveDialog && (
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setShowSaveDialog(false);
+            if (e.target === e.currentTarget) closeSaveDialog();
           }}
         >
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
@@ -4776,12 +4843,12 @@ export function VisualBuilder() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && themeName.trim())
                   void handleSaveConfirm();
-                if (e.key === "Escape") setShowSaveDialog(false);
+                if (e.key === "Escape") closeSaveDialog();
               }}
             />
             <div className="mt-4 flex justify-end gap-2">
               <button
-                onClick={() => setShowSaveDialog(false)}
+                onClick={closeSaveDialog}
                 className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
               >
                 Cancel
@@ -4800,6 +4867,11 @@ export function VisualBuilder() {
     </div>
   );
 
+  function closeSaveDialog() {
+    pendingLeaveAfterSaveRef.current = false;
+    setShowSaveDialog(false);
+  }
+
   async function handleSaveConfirm() {
     if (!themeName.trim()) return;
     const name = themeName.trim();
@@ -4817,11 +4889,16 @@ export function VisualBuilder() {
       // Track as current theme so future Saves update in-place
       setCurrentThemeId(newId);
       setCurrentThemeName(name);
+      lastCommittedSchemaRef.current = JSON.stringify(schema());
       setShowSaveDialog(false);
       setThemeName("");
       toast.success(
         `Theme "${name}" created! Future saves will update it in-place.`,
       );
+      if (pendingLeaveAfterSaveRef.current) {
+        pendingLeaveAfterSaveRef.current = false;
+        leaveBuilder();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save theme");
     } finally {

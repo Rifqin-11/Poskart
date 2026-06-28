@@ -98,6 +98,13 @@ export function TemplateBuilderWorkspace({
   const setBuilderFullView = useBuilderStore((s) => s.setBuilderFullView);
 
   useEffect(() => {
+    setBuilderFullView(true);
+    return () => {
+      setBuilderFullView(false);
+    };
+  }, [setBuilderFullView]);
+
+  useEffect(() => {
     if (isNew) return;
     if (!template) return;
     let cancelled = false;
@@ -195,10 +202,10 @@ export function TemplateBuilderWorkspace({
         await updateTemplate.mutateAsync({ id: templateId, patch: payload });
         toast.success("Template updated");
       }
-      setBuilderFullView(false);
       router.push("/templates");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Save failed");
+      throw error;
     }
   };
 
@@ -214,10 +221,7 @@ export function TemplateBuilderWorkspace({
       <Button
         variant="ghost"
         className="-ml-2 h-8"
-        onClick={() => {
-          setBuilderFullView(false);
-          router.push("/templates");
-        }}
+        onClick={() => router.push("/templates")}
       >
         <ArrowLeft className="size-4" />
         Back
@@ -313,10 +317,7 @@ export function TemplateBuilderWorkspace({
         templateName={form.name}
         frameImageUrl={form.frameImageUrl}
         frameImageDimensions={uploadedImageDimensions}
-        onClose={() => {
-          setBuilderFullView(false);
-          router.push("/templates");
-        }}
+        onClose={() => router.push("/templates")}
         onSave={handleSave}
         saveLabel={
           saving ? "Saving..." : isNew ? "Create template" : "Save template"

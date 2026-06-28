@@ -24,6 +24,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  ArrowLeft,
   ArrowDownToLine,
   ArrowUpToLine,
   BringToFront,
@@ -37,8 +38,6 @@ import {
   Image as ImageIcon,
   Layers,
   Lock,
-  Maximize2,
-  Minimize2,
   Scissors,
   SendToBack,
   Square,
@@ -61,7 +60,6 @@ import { Slider } from "@/components/ui/slider";
 import { useTouchContextMenu } from "@/lib/hooks/use-touch-context-menu";
 import { uploadBuilderImage } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
-import { useBuilderStore } from "@/stores/builder-store";
 import {
   DEFAULT_FRAME_CANVAS,
   type FrameLayout,
@@ -673,7 +671,7 @@ export function FrameTemplateBuilder({
   frameImageUrl?: string;
   frameImageDimensions?: { width: number; height: number } | null;
   onClose: () => void;
-  onSave: (layout: FrameLayout) => void;
+  onSave: (layout: FrameLayout) => void | Promise<void>;
   saveLabel?: string;
   detailsPanel?: ReactNode;
 }) {
@@ -710,9 +708,12 @@ export function FrameTemplateBuilder({
     nodeId: string | null;
   } | null>(null);
   const [clipboard, setClipboard] = useState<FrameNode | null>(null);
-  const fullView = useBuilderStore((s) => s.builderFullView);
-  const setFullView = useBuilderStore((s) => s.setBuilderFullView);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [isSavingLayout, setIsSavingLayout] = useState(false);
   const hydratedKeyRef = useRef<string | null>(null);
+  const [committedLayoutKey, setCommittedLayoutKey] = useState(() =>
+    JSON.stringify(normalizeFrameLayout(initialLayout ?? fallbackLayout)),
+  );
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ mx: 0, my: 0, px: 0, py: 0 });
   const spaceRef = useRef(false);
@@ -726,6 +727,8 @@ export function FrameTemplateBuilder({
   const latestPanRef = useRef(pan);
   const longPressNodeRef = useRef<string | null>(null);
   const selectedNode = layout.nodes.find((node) => node.id === selectedId);
+  const currentLayoutKey = JSON.stringify(normalizeFrameLayout(layout));
+  const hasUnsavedChanges = committedLayoutKey !== currentLayoutKey;
   const contextNode = contextMenu?.nodeId
     ? layout.nodes.find((node) => node.id === contextMenu.nodeId)
     : undefined;
@@ -814,6 +817,40 @@ export function FrameTemplateBuilder({
     setSnapPreview(null);
   }, [history.future, history.past, layout]);
 
+  const saveCurrentLayout = useCallback(async () => {
+    const normalizedLayout = normalizeFrameLayout(layout);
+    setIsSavingLayout(true);
+    try {
+      await onSave(normalizedLayout);
+      setCommittedLayoutKey(JSON.stringify(normalizedLayout));
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setIsSavingLayout(false);
+    }
+  }, [layout, onSave]);
+
+  const requestClose = useCallback(() => {
+    if (hasUnsavedChanges) {
+      setShowUnsavedDialog(true);
+      return;
+    }
+    onClose();
+  }, [hasUnsavedChanges, onClose]);
+
+  const discardAndClose = useCallback(() => {
+    setShowUnsavedDialog(false);
+    onClose();
+  }, [onClose]);
+
+  const saveAndClose = useCallback(async () => {
+    const saved = await saveCurrentLayout();
+    if (!saved) return;
+    setShowUnsavedDialog(false);
+    onClose();
+  }, [onClose, saveCurrentLayout]);
+
   useEffect(() => {
     if (!open) return;
     if (hydratedKeyRef.current === resetKey) return;
@@ -821,7 +858,9 @@ export function FrameTemplateBuilder({
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
-      setLayout(normalizeFrameLayout(initialLayout ?? fallbackLayout));
+      const nextLayout = normalizeFrameLayout(initialLayout ?? fallbackLayout);
+      setCommittedLayoutKey(JSON.stringify(nextLayout));
+      setLayout(nextLayout);
       setSelectedId(null);
       setHistory({ past: [], future: [] });
     });
@@ -1392,9 +1431,23 @@ export function FrameTemplateBuilder({
         )}
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-100 px-5">
-          <div>
-            <div className="text-sm font-semibold">Frame Template Builder</div>
-            <div className="text-xs text-zinc-500">{templateName}</div>
+          <div className="flex min-w-0 items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={requestClose}
+              title="Back to templates"
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold">
+                Frame Template Builder
+              </div>
+              <div className="truncate text-xs text-zinc-500">
+                {templateName}
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -1420,17 +1473,6 @@ export function FrameTemplateBuilder({
             >
               <ZoomIn className="size-4" />
             </Button>
-            {/* <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setZoom(1);
-                setPan({ x: 0, y: 0 });
-              }}
-              title="Actual size"
-            >
-              <Maximize2 className="size-4" />
-            </Button> */}
             {selectedId ? (
               <Button
                 variant="ghost"
@@ -1460,29 +1502,11 @@ export function FrameTemplateBuilder({
             >
               <Redo2 className="size-4" />
             </Button>
-            <div className="mx-2 h-5 w-px bg-zinc-200" />
-            {/* Full view toggle */}
             <Button
-              variant="ghost"
-              size="icon"
-              title={fullView ? "Exit full view" : "Full view"}
-              className={cn(
-                fullView &&
-                  "bg-zinc-900 text-white hover:bg-zinc-700 hover:text-white",
-              )}
-              onClick={() => setFullView(!fullView)}
+              onClick={() => void saveCurrentLayout()}
+              disabled={isSavingLayout}
             >
-              {fullView ? (
-                <Minimize2 className="size-4" />
-              ) : (
-                <Maximize2 className="size-4 opacity-60" />
-              )}
-            </Button>
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button onClick={() => onSave(normalizeFrameLayout(layout))}>
-              {saveLabel}
+              {isSavingLayout ? "Saving…" : saveLabel}
             </Button>
           </div>
         </div>
@@ -2142,6 +2166,41 @@ export function FrameTemplateBuilder({
           </aside>
         </div>
       </div>
+      {showUnsavedDialog ? (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-zinc-950">
+              Perubahan belum disimpan
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              Ada perubahan di frame builder yang belum tersimpan. Kamu bisa
+              tetap di builder, membuang perubahan, atau menyimpan dulu sebelum
+              kembali.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowUnsavedDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                className="border-red-100 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                onClick={discardAndClose}
+              >
+                Buang
+              </Button>
+              <Button
+                onClick={() => void saveAndClose()}
+                disabled={isSavingLayout}
+              >
+                {isSavingLayout ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {contextMenu ? (
         <FrameContextMenu
           x={contextMenu.x}
