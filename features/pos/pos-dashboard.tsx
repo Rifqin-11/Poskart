@@ -19,6 +19,7 @@ import {
   deletePosSales,
   updatePosSale,
 } from "@/app/(admin)/pos/actions";
+import { StatCard } from "@/features/admin/_components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -30,7 +31,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import {
   Table,
@@ -41,6 +41,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TablePagination } from "@/components/ui/table-pagination";
+import {
+  csvCell,
+  formatDate,
+  getLocalDateKey,
+} from "@/features/pos/pos-dashboard.utils";
+import { EditPosSaleDialog } from "@/features/pos/components/edit-pos-sale-dialog";
 import { cn, formatCurrency } from "@/lib/utils";
 import type {
   PosPackageCode,
@@ -48,32 +54,6 @@ import type {
   PosPaymentMethod,
   PosSale,
 } from "@/types/pos";
-
-function csvCell(value: string | number) {
-  return `"${String(value).replaceAll('"', '""')}"`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jakarta",
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function getLocalDateKey(value: string) {
-  const date = new Date(value);
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Jakarta",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const year = parts.find((p) => p.type === "year")?.value || "1970";
-  const month = parts.find((p) => p.type === "month")?.value || "01";
-  const day = parts.find((p) => p.type === "day")?.value || "01";
-  return `${year}-${month}-${day}`;
-}
 
 export function PosDashboard({
   packages,
@@ -300,19 +280,21 @@ export function PosDashboard({
       </div>
 
       <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:px-0 md:pb-0">
-        <MetricCard
+        <StatCard
           title="Total pendapatan"
           value={formatCurrency(metrics.revenue)}
           description={`${filteredSales.length} transaksi tercatat`}
           icon={Banknote}
+          className="min-w-[78vw] snap-start sm:min-w-[280px] md:min-w-0"
         />
-        <MetricCard
+        <StatCard
           title="Jumlah print"
           value={metrics.prints.toLocaleString("id-ID")}
           description="Total lembar yang dipesan"
           icon={Printer}
+          className="min-w-[78vw] snap-start sm:min-w-[280px] md:min-w-0"
         />
-        <MetricCard
+        <StatCard
           title="Total transaksi"
           value={metrics.transactions.toLocaleString("id-ID")}
           description={
@@ -321,6 +303,7 @@ export function PosDashboard({
               : "Transaksi pada tanggal terpilih"
           }
           icon={ReceiptText}
+          className="min-w-[78vw] snap-start sm:min-w-[280px] md:min-w-0"
         />
       </div>
 
@@ -671,152 +654,5 @@ export function PosDashboard({
         </Card>
       </div>
     </div>
-  );
-}
-
-function EditPosSaleDialog({
-  sale,
-  packages,
-  pending,
-  onClose,
-  onSubmit,
-}: {
-  sale: PosSale;
-  packages: PosPackageOption[];
-  pending: boolean;
-  onClose: () => void;
-  onSubmit: (values: {
-    saleId: string;
-    packageCode: string;
-    printCount: number;
-    amount: number;
-    paymentMethod: PosPaymentMethod;
-    notes: string;
-  }) => void;
-}) {
-  const [packageCode, setPackageCode] = useState(sale.packageCode);
-  const [printCount, setPrintCount] = useState(sale.printCount);
-  const [amount, setAmount] = useState(sale.amount);
-  const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>(
-    sale.paymentMethod,
-  );
-  const [notes, setNotes] = useState(sale.notes ?? "");
-
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => !open && onClose()}
-      title="Edit transaksi POS"
-    >
-      <form
-        className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSubmit({
-            saleId: sale.id,
-            packageCode,
-            printCount,
-            amount,
-            paymentMethod,
-            notes,
-          });
-        }}
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="space-y-1.5 text-sm font-medium">
-            Paket
-            <Select
-              value={packageCode}
-              onChange={(event) => setPackageCode(event.target.value)}
-            >
-              {packages.map((item) => (
-                <option key={item.code} value={item.code}>
-                  {item.name}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className="space-y-1.5 text-sm font-medium">
-            Metode pembayaran
-            <Select
-              value={paymentMethod}
-              onChange={(event) =>
-                setPaymentMethod(event.target.value as PosPaymentMethod)
-              }
-            >
-              <option value="Cash">Cash</option>
-              <option value="QRIS">QRIS</option>
-            </Select>
-          </label>
-          <label className="space-y-1.5 text-sm font-medium">
-            Jumlah print
-            <Input
-              type="number"
-              min={1}
-              max={100}
-              value={printCount}
-              onChange={(event) => setPrintCount(Number(event.target.value))}
-              required
-            />
-          </label>
-          <label className="space-y-1.5 text-sm font-medium">
-            Nominal
-            <Input
-              type="number"
-              min={0}
-              value={amount}
-              onChange={(event) => setAmount(Number(event.target.value))}
-              required
-            />
-          </label>
-        </div>
-        <label className="block space-y-1.5 text-sm font-medium">
-          Catatan
-          <Input
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            maxLength={500}
-            placeholder="Catatan transaksi"
-          />
-        </label>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Batal
-          </Button>
-          <Button type="submit" disabled={pending || !packageCode}>
-            {pending ? "Menyimpan..." : "Simpan perubahan"}
-          </Button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
-
-function MetricCard({
-  title,
-  value,
-  description,
-  icon: Icon,
-}: {
-  title: string;
-  value: string;
-  description: string;
-  icon: typeof Banknote;
-}) {
-  return (
-    <Card className="min-w-[78vw] snap-start sm:min-w-[280px] md:min-w-0">
-      <CardHeader className="flex-row items-center justify-between space-y-0 p-4 pb-1 md:p-5 md:pb-2">
-        <CardTitle className="text-xs font-medium text-zinc-500">
-          {title}
-        </CardTitle>
-        <div className="grid size-8 place-items-center rounded-lg bg-zinc-100">
-          <Icon className="size-4 text-zinc-600" />
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 pt-0 md:p-5 md:pt-0">
-        <div className="text-2xl font-semibold tracking-tight">{value}</div>
-        <p className="mt-1 text-xs text-zinc-500">{description}</p>
-      </CardContent>
-    </Card>
   );
 }

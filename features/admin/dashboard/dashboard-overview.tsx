@@ -20,7 +20,6 @@ import {
   AlertCircle,
   ArrowUpRight,
   CircleDollarSign,
-  Download,
   LayoutTemplate,
   MonitorCheck,
   Plus,
@@ -32,9 +31,15 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  dashboardMetricIcons,
+  emptyDashboardData,
+  emptyMetrics,
+  eventPeriodTabs,
+  pieColors,
+} from "@/features/admin/dashboard/dashboard-overview.constants";
 import { useDashboardData, useSubscriptionStatus } from "@/features/admin/dashboard/use-dashboard";
 import type {
-  DashboardData,
   Device,
   EventBreakdownItem,
   EventPeriodKey,
@@ -44,80 +49,6 @@ import type {
   Transaction,
 } from "@/server/admin/_shared/admin-types";
 import { formatCurrency } from "@/lib/utils";
-
-const icons = [CircleDollarSign, CircleDollarSign, Activity, Download];
-const eventPeriodTabs: Array<{ key: EventPeriodKey; label: string }> = [
-  { key: "daily", label: "Daily" },
-  { key: "weekly", label: "Weekly" },
-  { key: "monthly", label: "Monthly" },
-];
-const pieColors = ["#18181b", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444"];
-
-const emptyMetrics: KpiMetric[] = [
-  { label: "Revenue today", value: "Rp 0", delta: "No transactions yet", tone: "neutral" as const },
-  { label: "Revenue this month", value: "Rp 0", delta: "No monthly data yet", tone: "neutral" as const },
-  { label: "Transactions today", value: "0", delta: "Waiting for first session", tone: "neutral" as const },
-  { label: "Downloads", value: "0", delta: "No media downloads yet", tone: "neutral" as const },
-];
-
-const emptyDashboardData: DashboardData = {
-  kpiMetrics: [],
-  weeklyChart: [],
-  monthlyChart: [],
-  transactions: [],
-  devices: [],
-  posSummary: {
-    totalRevenue: 0,
-    todayRevenue: 0,
-    monthlyRevenue: 0,
-    totalTransactions: 0,
-    todayTransactions: 0,
-    totalPrints: 0,
-    averageTransaction: 0,
-    topPackages: [],
-    paymentBreakdown: [],
-    dailySales: [],
-    recentSales: [],
-  },
-  eventStats: {
-    generatedAt: new Date(0).toISOString(),
-    periods: {
-      daily: {
-        key: "daily",
-        label: "Harian",
-        startsAt: new Date(0).toISOString(),
-        totalSessions: 0,
-        totalPrints: 0,
-        totalRevenue: 0,
-        paymentMethods: [],
-        topFrames: [],
-        revenueSeries: [],
-      },
-      weekly: {
-        key: "weekly",
-        label: "Mingguan",
-        startsAt: new Date(0).toISOString(),
-        totalSessions: 0,
-        totalPrints: 0,
-        totalRevenue: 0,
-        paymentMethods: [],
-        topFrames: [],
-        revenueSeries: [],
-      },
-      monthly: {
-        key: "monthly",
-        label: "Bulanan",
-        startsAt: new Date(0).toISOString(),
-        totalSessions: 0,
-        totalPrints: 0,
-        totalRevenue: 0,
-        paymentMethods: [],
-        topFrames: [],
-        revenueSeries: [],
-      },
-    },
-  },
-};
 
 function useClientMounted() {
   return useSyncExternalStore(
@@ -223,7 +154,7 @@ export function DashboardOverview() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric: KpiMetric, index: number) => {
-          const Icon = icons[index] ?? Activity;
+          const Icon = dashboardMetricIcons[index] ?? Activity;
           return (
             <motion.div
               key={metric.label}

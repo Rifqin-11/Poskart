@@ -218,14 +218,6 @@ export function TemplateBuilderWorkspace({
           {isNew ? "Create frame template" : `Edit ${template?.name}`}
         </div>
       </div>
-      <Button
-        variant="ghost"
-        className="-ml-2 h-8"
-        onClick={() => router.push("/templates")}
-      >
-        <ArrowLeft className="size-4" />
-        Back
-      </Button>
       <label className="block text-xs font-medium text-zinc-600">
         Template name
         <Input
