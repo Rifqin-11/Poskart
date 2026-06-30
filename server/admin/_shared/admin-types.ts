@@ -172,6 +172,10 @@ export type EventPeriodStatistics = {
   totalSessions: number;
   totalPrints: number;
   totalRevenue: number;
+  qrisTotal: number;
+  qrisPaid: number;
+  qrisFailed: number;
+  qrisSuccessRate: number;
   paymentMethods: EventBreakdownItem[];
   topFrames: EventBreakdownItem[];
   revenueSeries: EventChartPoint[];

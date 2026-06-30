@@ -54,9 +54,7 @@ export async function getEventStatisticsForOrganization(
 
   if (error) throw error;
 
-  const paidRows = ((data ?? []) as EventTransactionRow[]).filter(
-    (row) => row.status === "paid",
-  );
+  const rows = (data ?? []) as EventTransactionRow[];
 
   return {
     generatedAt: now.toISOString(),
@@ -65,22 +63,22 @@ export async function getEventStatisticsForOrganization(
         key: "daily",
         label: "Harian",
         startsAt: starts.daily,
-        rows: paidRows,
-        series: buildDailySeries(paidRows, starts.daily),
+        rows,
+        series: buildDailySeries(rows.filter((row) => row.status === "paid"), starts.daily),
       }),
       weekly: buildPeriodStatistics({
         key: "weekly",
         label: "Mingguan",
         startsAt: starts.weekly,
-        rows: paidRows,
-        series: buildWeeklySeries(paidRows, now),
+        rows,
+        series: buildWeeklySeries(rows.filter((row) => row.status === "paid"), now),
       }),
       monthly: buildPeriodStatistics({
         key: "monthly",
         label: "Bulanan",
         startsAt: starts.monthly,
-        rows: paidRows,
-        series: buildMonthlySeries(paidRows, now),
+        rows,
+        series: buildMonthlySeries(rows.filter((row) => row.status === "paid"), now),
       }),
     },
   };
@@ -102,16 +100,29 @@ function buildPeriodStatistics({
   const periodRows = rows.filter(
     (row) => new Date(row.created_at).getTime() >= startsAt.getTime(),
   );
+  const paidPeriodRows = periodRows.filter((row) => row.status === "paid");
+  const qrisRows = periodRows.filter(
+    (row) => normalizeProvider(row.provider) === "QRIS",
+  );
+  const qrisPaid = qrisRows.filter((row) => row.status === "paid").length;
+  const qrisTotal = qrisRows.length;
+  const qrisFailed = Math.max(qrisTotal - qrisPaid, 0);
+  const qrisSuccessRate =
+    qrisTotal > 0 ? Number(((qrisPaid / qrisTotal) * 100).toFixed(1)) : 0;
 
   return {
     key,
     label,
     startsAt: startsAt.toISOString(),
-    totalSessions: periodRows.length,
-    totalPrints: sumPrints(periodRows),
-    totalRevenue: sumRevenue(periodRows),
-    paymentMethods: buildPaymentBreakdown(periodRows),
-    topFrames: buildTopFrames(periodRows),
+    totalSessions: paidPeriodRows.length,
+    totalPrints: sumPrints(paidPeriodRows),
+    totalRevenue: sumRevenue(paidPeriodRows),
+    qrisTotal,
+    qrisPaid,
+    qrisFailed,
+    qrisSuccessRate,
+    paymentMethods: buildPaymentBreakdown(paidPeriodRows),
+    topFrames: buildTopFrames(paidPeriodRows),
     revenueSeries: series,
   };
 }
@@ -334,6 +345,10 @@ function createEmptyEventStatistics(): EventStatisticsData {
     totalSessions: 0,
     totalPrints: 0,
     totalRevenue: 0,
+    qrisTotal: 0,
+    qrisPaid: 0,
+    qrisFailed: 0,
+    qrisSuccessRate: 0,
     paymentMethods: [],
     topFrames: [],
     revenueSeries: [],

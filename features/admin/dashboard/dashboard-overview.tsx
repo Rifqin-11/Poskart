@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { useState, useSyncExternalStore } from "react";
 import {
   Area,
@@ -18,9 +17,7 @@ import {
 import {
   Activity,
   AlertCircle,
-  ArrowUpRight,
   CircleDollarSign,
-  Download,
   LayoutTemplate,
   MonitorCheck,
   Plus,
@@ -33,7 +30,6 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   emptyDashboardData,
-  emptyMetrics,
   eventPeriodTabs,
   pieColors,
 } from "@/features/admin/dashboard/dashboard-overview.constants";
@@ -43,7 +39,6 @@ import type {
   EventBreakdownItem,
   EventPeriodKey,
   EventPeriodStatistics,
-  KpiMetric,
   Transaction,
 } from "@/server/admin/_shared/admin-types";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -52,18 +47,6 @@ const dashboardInnerCardClass =
   "rounded-3xl border border-zinc-100 bg-white/90 shadow-sm shadow-zinc-200/60 backdrop-blur";
 const dashboardSoftItemClass =
   "rounded-2xl border border-zinc-100 bg-white/85 shadow-sm shadow-zinc-100/70 backdrop-blur";
-
-const hiddenDashboardMetricLabels = new Set([
-  "Revenue today",
-  "Revenue this month",
-  "Transactions today",
-]);
-
-function getMetricIcon(metric: KpiMetric) {
-  if (metric.label.toLowerCase().includes("qris")) return MonitorCheck;
-  if (metric.label.toLowerCase().includes("download")) return Download;
-  return Activity;
-}
 
 function useClientMounted() {
   return useSyncExternalStore(
@@ -87,9 +70,6 @@ export function DashboardOverview() {
   const dashboardData = data ?? emptyDashboardData;
   const eventPeriod = dashboardData.eventStats.periods[selectedEventPeriod];
   const activeBooths = dashboardData.devices.filter((device: Device) => device.status === "online").length;
-  const metrics = (
-    dashboardData.kpiMetrics.length > 0 ? dashboardData.kpiMetrics : emptyMetrics
-  ).filter((metric) => !hiddenDashboardMetricLabels.has(metric.label));
   const hasWeeklyChart = dashboardData.weeklyChart.length > 0;
   const hasMonthlyChart = dashboardData.monthlyChart.length > 0;
   const hasDevices = dashboardData.devices.length > 0;
@@ -172,39 +152,17 @@ export function DashboardOverview() {
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric: KpiMetric, index: number) => {
-          const Icon = getMetricIcon(metric);
-          return (
-            <motion.div
-              key={metric.label}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <Card className={dashboardInnerCardClass}>
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium text-zinc-500">
-                        {metric.label}
-                      </div>
-                      <div className="mt-2 text-3xl font-semibold tracking-tight">
-                        {metric.value}
-                      </div>
-                    </div>
-                    <div className="rounded-2xl bg-zinc-100 p-3 text-zinc-500">
-                      <Icon className="size-5" />
-                    </div>
-                  </div>
-                  <div className="mt-5 inline-flex items-center gap-1 rounded-2xl bg-zinc-50 px-3 py-2 text-xs text-emerald-600">
-                    <ArrowUpRight className="size-3" />
-                    {metric.delta}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
-        })}
+        <SummaryCard
+          label="QRIS success rate"
+          value={`${eventPeriod.qrisSuccessRate.toFixed(1)}%`}
+          helper={
+            eventPeriod.qrisTotal > 0
+              ? `${eventPeriod.qrisFailed.toLocaleString("id-ID")} failed QRIS`
+              : "No QRIS transactions yet"
+          }
+          icon={MonitorCheck}
+          accent="bg-zinc-100"
+        />
         <SummaryCard
           label="Total keuntungan"
           value={formatCurrency(eventPeriod.totalRevenue)}
@@ -350,8 +308,8 @@ function EventAnalyticsSection({
   const topPaymentMethod = period.paymentMethods[0]?.label ?? "Belum ada";
 
   return (
-    <div className="grid items-start gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-      <div className="grid gap-4">
+    <div className="space-y-4">
+      <div className="grid items-start gap-4 xl:grid-cols-[1.25fr_0.75fr]">
         <Card className={cn(dashboardInnerCardClass, "self-start")}>
           <CardHeader>
             <CardTitle>Tren pendapatan</CardTitle>
@@ -416,26 +374,6 @@ function EventAnalyticsSection({
           </CardContent>
         </Card>
 
-        <div className="grid gap-3 md:grid-cols-3">
-          <MiniStatCard
-            label="Rata-rata sesi"
-            value={formatCurrency(averageRevenuePerSession)}
-            helper="Revenue per sesi"
-          />
-          <MiniStatCard
-            label="Print per sesi"
-            value={printsPerSession.toFixed(1)}
-            helper="Efisiensi paket print"
-          />
-          <MiniStatCard
-            label="Metode utama"
-            value={topPaymentMethod}
-            helper="Pembayaran terbanyak"
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-4">
         <EventPieCard
           chartsMounted={chartsMounted}
           title="Metode pembayaran"
@@ -444,15 +382,34 @@ function EventAnalyticsSection({
           valueKey="revenue"
           valueFormatter={(value) => formatCurrency(value)}
         />
-        <EventPieCard
-          chartsMounted={chartsMounted}
-          title="Frame terpakai"
-          description="Top 5 berdasarkan sesi"
-          items={period.topFrames}
-          valueKey="sessions"
-          valueFormatter={(value) => `${value.toLocaleString("id-ID")} sesi`}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <MiniStatCard
+          label="Rata-rata sesi"
+          value={formatCurrency(averageRevenuePerSession)}
+          helper="Revenue per sesi"
+        />
+        <MiniStatCard
+          label="Print per sesi"
+          value={printsPerSession.toFixed(1)}
+          helper="Efisiensi paket print"
+        />
+        <MiniStatCard
+          label="Metode utama"
+          value={topPaymentMethod}
+          helper="Pembayaran terbanyak"
         />
       </div>
+
+      <EventPieCard
+        chartsMounted={chartsMounted}
+        title="Frame terpakai"
+        description="Top 5 berdasarkan sesi"
+        items={period.topFrames}
+        valueKey="sessions"
+        valueFormatter={(value) => `${value.toLocaleString("id-ID")} sesi`}
+      />
     </div>
   );
 }
