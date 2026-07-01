@@ -1,4 +1,4 @@
-import { CreditCard, FileText, ReceiptText, ShieldCheck } from "lucide-react";
+import { FileText, ReceiptText, ShieldCheck } from "lucide-react";
 import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
 import { PricingCards } from "@/features/billing/pricing/pricing-cards";
 import { businessProfile } from "@/lib/constants/business";

@@ -1,17 +1,10 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/server/admin/context";
 import { assertSupabaseResult, type AssetItem, type AssetInput } from "../_shared/admin-types";
 
-async function verifyAuth() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  return { supabase, user };
-}
-
 export async function getAssets(): Promise<AssetItem[]> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("assets")
     .select("id,name,folder,tag,version,size,url,storage_path")
@@ -25,7 +18,7 @@ export async function getAssets(): Promise<AssetItem[]> {
 }
 
 export async function createAsset(values: AssetInput): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const id = `AST-${crypto.randomUUID()}`;
   const { error } = await supabase.from("assets").insert({
     id,
@@ -45,7 +38,7 @@ export async function updateAsset(
   id: string,
   patch: Partial<AssetInput>,
 ): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase
     .from("assets")
     .update({ ...patch, updated_at: new Date().toISOString() })
@@ -57,7 +50,7 @@ export async function deleteAsset(
   id: string,
   storagePath?: string | null,
 ): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   if (storagePath) {
     // best-effort — storage delete failure shouldn't block row deletion
     await supabase.storage.from("builder-assets").remove([storagePath]);

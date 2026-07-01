@@ -1,8 +1,0 @@
-name: Context7 MCP Server
-version: 0.0.1
-schema: v1
-mcpServers:
-  - name: context7
-    url: https://mcp.context7.com/mcp
-    headers:
-      CONTEXT7_API_KEY: ctx7sk-df06cc80-2ac3-424b-ae1c-70070b431450

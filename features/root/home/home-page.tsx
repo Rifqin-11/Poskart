@@ -12,7 +12,7 @@ import {
   WorkflowSection,
 } from "@/features/root/home/feature-sections";
 import type { PricingPlan } from "@/lib/constants/business";
-import type { LatestAppRelease } from "@/server/releases/github-release";
+import type { LatestAppRelease } from "@/features/root/home/api";
 
 export function HomePage({
   plans,

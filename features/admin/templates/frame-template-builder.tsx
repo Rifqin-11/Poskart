@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  DndContext,
   MouseSensor,
   TouchSensor,
   type DragEndEvent,
@@ -9,9 +8,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import {
-  SortableContext,
   arrayMove,
-  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
   useCallback,
@@ -21,34 +18,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  Copy,
-  Lock,
-  Trash2,
-  Unlock,
-} from "lucide-react";
-import { Rnd } from "react-rnd";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { BuilderHeader } from "@/features/builder/shared/builder-header";
 import { BuilderUnsavedDialog } from "@/features/builder/shared/builder-unsaved-dialog";
 import { BuilderZoomControls } from "@/features/builder/shared/builder-zoom-controls";
-import {
-  builderResizeHandleWrapperStyle,
-  getBuilderResizeHandleStyles,
-} from "@/features/builder/shared/builder-selection-handles";
 import { useBuilderExitGuard } from "@/features/builder/shared/use-builder-exit-guard";
-import {
-  FRAME_NODE_TYPES,
-  FRAME_SNAP_THRESHOLD,
-} from "@/features/admin/templates/frame-builder.constants";
+import { FRAME_SNAP_THRESHOLD } from "@/features/admin/templates/frame-builder.constants";
+import { FrameCanvasStage } from "@/features/admin/templates/components/frame-canvas-stage";
 import { FrameContextMenu } from "@/features/admin/templates/components/frame-context-menu";
-import { FrameNodeRenderer } from "@/features/admin/templates/components/frame-node-renderer";
-import { SortableFrameLayer } from "@/features/admin/templates/components/sortable-frame-layer";
+import { FrameLayerSidebar } from "@/features/admin/templates/components/frame-layer-sidebar";
+import { FramePropertiesPanel } from "@/features/admin/templates/components/frame-properties-panel";
 import {
   clampNumber,
   clampZoom,
@@ -57,8 +36,6 @@ import {
   getRotatedVisualInset,
   normalizeFrameLayout,
   normalizePhotoSlotLabels,
-  readNumber,
-  readString,
   resizeFrameLayout,
   upsertFrameBackground,
 } from "@/features/admin/templates/frame-builder.utils";
@@ -311,6 +288,7 @@ export function FrameTemplateBuilder({
       cancelled = true;
     };
   }, [
+    frameImageDimensions,
     frameImageDimensions?.height,
     frameImageDimensions?.width,
     frameImageUrl,
@@ -416,7 +394,11 @@ export function FrameTemplateBuilder({
 
       if (cmd && event.key.toLowerCase() === "z") {
         event.preventDefault();
-        event.shiftKey ? redo() : undo();
+        if (event.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
         return;
       }
       if (cmd && event.key === "c") {
@@ -495,7 +477,11 @@ export function FrameTemplateBuilder({
       }
       if ((event.key === "f" || event.key === "F") && !cmd) {
         event.preventDefault();
-        selectedId ? panToNode(selectedId) : fitToScreen();
+        if (selectedId) {
+          panToNode(selectedId);
+        } else {
+          fitToScreen();
+        }
       }
     };
 
@@ -512,7 +498,6 @@ export function FrameTemplateBuilder({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     fitToScreen,
     open,
@@ -878,664 +863,58 @@ export function FrameTemplateBuilder({
         />
 
         <div className="grid min-h-0 flex-1 grid-cols-[240px_minmax(0,1fr)_360px]">
-          <aside className="flex min-h-0 flex-col overflow-hidden border-r border-zinc-100">
-            <div className="shrink-0 p-4">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                Add layer
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {FRAME_NODE_TYPES.map((item) => (
-                  <Button
-                    key={item.type}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addNode(item.type)}
-                  >
-                    {item.icon}
-                    {item.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
+          <FrameLayerSidebar
+            layers={layers}
+            selectedId={selectedId}
+            sensors={sensors}
+            onAddNode={addNode}
+            onLayerDragEnd={handleLayerDragEnd}
+            onSelectNode={setSelectedId}
+            onToggleLock={(id, locked) => updateNode(id, { locked })}
+          />
 
-            <div className="flex min-h-0 flex-1 flex-col border-t border-zinc-100">
-              <div className="flex shrink-0 items-center justify-between px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                  Layers
-                </div>
-                <div className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
-                  {layers.length}
-                </div>
-              </div>
-              <ScrollArea className="min-h-0 flex-1 px-2 pb-3">
-                <DndContext sensors={sensors} onDragEnd={handleLayerDragEnd}>
-                  <SortableContext
-                    items={layers.map((node) => node.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-1">
-                      {layers.map((node) => (
-                        <SortableFrameLayer
-                          key={node.id}
-                          node={node}
-                          selectedId={selectedId}
-                          onSelect={setSelectedId}
-                          onToggleLock={(id, locked) =>
-                            updateNode(id, { locked })
-                          }
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              </ScrollArea>
-            </div>
-          </aside>
-
-          <main
-            ref={canvasSurfaceRef}
-            className="relative min-w-0 overflow-hidden bg-zinc-100"
-            style={{
-              cursor: isPanning ? "grabbing" : spaceDown ? "grab" : "default",
+          <FrameCanvasStage
+            canvasSurfaceRef={canvasSurfaceRef}
+            canvasViewportRef={canvasViewportRef}
+            layout={layout}
+            zoom={zoom}
+            pan={pan}
+            guides={guides}
+            snapPreview={snapPreview}
+            selectedId={selectedId}
+            isPanning={isPanning}
+            spaceDown={spaceDown}
+            canvasTouchMenu={canvasTouchMenu}
+            nodeTouchMenu={nodeTouchMenu}
+            onCanvasMouseDown={handleCanvasMouseDown}
+            onCanvasMouseMove={handleCanvasMouseMove}
+            onCanvasMouseUp={handleCanvasMouseUp}
+            onSelectNode={setSelectedId}
+            onOpenContextMenu={(x, y, nodeId) =>
+              setContextMenu({ x, y, nodeId })
+            }
+            onComputeGuides={computeGuides}
+            onUpdateNode={updateNode}
+            onClearSnap={clearSnap}
+            onSetGuides={setGuides}
+            onSetSnapPreview={setSnapPreview}
+            onSetLongPressNode={(id) => {
+              longPressNodeRef.current = id;
             }}
-            onMouseDown={handleCanvasMouseDown}
-            onMouseMove={handleCanvasMouseMove}
-            onMouseUp={handleCanvasMouseUp}
-            onMouseLeave={handleCanvasMouseUp}
-            onPointerDown={(event: React.PointerEvent<HTMLDivElement>) => {
-              if (!(event.target as HTMLElement).closest(".frame-rnd-node")) {
-                canvasTouchMenu.onPointerDown(event);
-              }
-            }}
-            onPointerMove={canvasTouchMenu.onPointerMove}
-            onPointerUp={canvasTouchMenu.onPointerUp}
-            onPointerCancel={canvasTouchMenu.onPointerCancel}
-            onClickCapture={canvasTouchMenu.onClickCapture}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              setSelectedId(null);
-              setContextMenu({
-                x: event.clientX,
-                y: event.clientY,
-                nodeId: null,
-              });
-            }}
-          >
-            <div
-              ref={canvasViewportRef}
-              className="pointer-events-none absolute inset-0"
-            />
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                backgroundImage:
-                  "radial-gradient(circle, rgba(0,0,0,0.10) 1px, transparent 1px)",
-                backgroundPosition: `${pan.x % (22 * zoom)}px ${pan.y % (22 * zoom)}px`,
-                backgroundSize: `${22 * zoom}px ${22 * zoom}px`,
-              }}
-            />
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div
-                className="pointer-events-auto relative"
-                style={{
-                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                  transformOrigin: "center center",
-                }}
-              >
-                <div className="absolute -top-7 left-0 select-none whitespace-nowrap text-[11px] font-medium text-zinc-400">
-                  Frame template · {layout.canvas.width} ×{" "}
-                  {layout.canvas.height}px
-                </div>
-                <div
-                  className="relative overflow-hidden rounded-lg shadow-2xl"
-                  style={{
-                    width: layout.canvas.width,
-                    height: layout.canvas.height,
-                    background: layout.canvas.backgroundColor,
-                  }}
-                  onClick={(event) => event.stopPropagation()}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setSelectedId(null);
-                    setContextMenu({
-                      x: event.clientX,
-                      y: event.clientY,
-                      nodeId: null,
-                    });
-                  }}
-                >
-                  {guides.map((guide, index) =>
-                    guide.type === "v" ? (
-                      <div
-                        key={`${guide.type}-${guide.pos}-${index}`}
-                        className="pointer-events-none absolute inset-y-0"
-                        style={{
-                          left: guide.pos,
-                          width: 1,
-                          background: "#f000a0",
-                          zIndex: 9999,
-                          opacity: 0.85,
-                        }}
-                      />
-                    ) : (
-                      <div
-                        key={`${guide.type}-${guide.pos}-${index}`}
-                        className="pointer-events-none absolute inset-x-0"
-                        style={{
-                          top: guide.pos,
-                          height: 1,
-                          background: "#f000a0",
-                          zIndex: 9999,
-                          opacity: 0.85,
-                        }}
-                      />
-                    ),
-                  )}
-                  {snapPreview ? (
-                    <div
-                      className="pointer-events-none absolute"
-                      style={{
-                        left: snapPreview.x,
-                        top: snapPreview.y,
-                        width: snapPreview.w,
-                        height: snapPreview.h,
-                        border: "2px dashed #f000a0",
-                        background: "rgba(240,0,160,0.08)",
-                        borderRadius: 4,
-                        transform: `rotate(${snapPreview.rotation}deg)`,
-                        transformOrigin: "center center",
-                        zIndex: 9998,
-                      }}
-                    />
-                  ) : null}
-                  {layout.nodes
-                    .slice()
-                    .sort((a, b) => a.zIndex - b.zIndex)
-                    .map((node) => (
-                      <Rnd
-                        key={node.id}
-                        scale={zoom}
-                        disableDragging={node.locked}
-                        enableResizing={!node.locked}
-                        position={{ x: node.x, y: node.y }}
-                        size={{ width: node.width, height: node.height }}
-                        resizeHandleStyles={getBuilderResizeHandleStyles(
-                          selectedId === node.id,
-                        )}
-                        resizeHandleWrapperStyle={
-                          builderResizeHandleWrapperStyle
-                        }
-                        onClick={(event: React.MouseEvent) => {
-                          event.stopPropagation();
-                          setSelectedId(node.id);
-                        }}
-                        onContextMenu={(event: React.MouseEvent) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          setSelectedId(node.id);
-                          setContextMenu({
-                            x: event.clientX,
-                            y: event.clientY,
-                            nodeId: node.id,
-                          });
-                        }}
-                        onPointerDown={(
-                          event: React.PointerEvent<HTMLDivElement>,
-                        ) => {
-                          longPressNodeRef.current = node.id;
-                          setSelectedId(node.id);
-                          nodeTouchMenu.onPointerDown(event);
-                        }}
-                        onPointerMove={nodeTouchMenu.onPointerMove}
-                        onPointerUp={nodeTouchMenu.onPointerUp}
-                        onPointerCancel={nodeTouchMenu.onPointerCancel}
-                        onClickCapture={nodeTouchMenu.onClickCapture}
-                        onDragStart={() => setSelectedId(node.id)}
-                        onDrag={(_, data) => {
-                          const snapState = computeGuides(node, data.x, data.y);
-                          setGuides(snapState.guides);
-                          setSnapPreview(
-                            snapState.isSnapping
-                              ? {
-                                  x: snapState.sx,
-                                  y: snapState.sy,
-                                  w: node.width,
-                                  h: node.height,
-                                  rotation: node.rotation,
-                                }
-                              : null,
-                          );
-                        }}
-                        onDragStop={(_, data) => {
-                          const snapState = computeGuides(node, data.x, data.y);
-                          updateNode(node.id, {
-                            x: snapState.sx,
-                            y: snapState.sy,
-                          });
-                          clearSnap();
-                        }}
-                        onResize={(_, __, ref, ___, position) => {
-                          const snapState = computeGuides(
-                            node,
-                            position.x,
-                            position.y,
-                            ref.offsetWidth,
-                            ref.offsetHeight,
-                          );
-                          setGuides(snapState.guides);
-                          setSnapPreview(
-                            snapState.isSnapping
-                              ? {
-                                  x: snapState.sx,
-                                  y: snapState.sy,
-                                  w: snapState.w,
-                                  h: snapState.h,
-                                  rotation: node.rotation,
-                                }
-                              : null,
-                          );
-                        }}
-                        onResizeStart={() => setSelectedId(node.id)}
-                        onResizeStop={(_, __, ref, ___, position) => {
-                          const snapState = computeGuides(
-                            node,
-                            position.x,
-                            position.y,
-                            ref.offsetWidth,
-                            ref.offsetHeight,
-                          );
-                          updateNode(node.id, {
-                            width: snapState.w,
-                            height: snapState.h,
-                            x: snapState.sx,
-                            y: snapState.sy,
-                          });
-                          clearSnap();
-                        }}
-                        style={{
-                          zIndex: node.zIndex,
-                          opacity: node.opacity,
-                        }}
-                        className={cn(
-                          "frame-rnd-node group touch-none",
-                          node.locked && "cursor-not-allowed",
-                          node.id === "frame-background" &&
-                            selectedId !== node.id &&
-                            "pointer-events-none",
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "h-full w-full",
-                            selectedId === node.id &&
-                              "outline outline-[3px] outline-offset-0 outline-violet-500",
-                          )}
-                          style={{
-                            transform: `rotate(${node.rotation}deg)`,
-                            transformOrigin: "center center",
-                            willChange:
-                              node.rotation === 0 ? undefined : "transform",
-                          }}
-                        >
-                          <FrameNodeRenderer node={node} />
-                        </div>
-                      </Rnd>
-                    ))}
-                </div>
-              </div>
-            </div>
-            <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/80 px-3 py-1 text-[10px] text-zinc-400 shadow-sm backdrop-blur-sm">
-              Ctrl+scroll to zoom · Scroll to pan · Space+drag to pan · Shift+1
-              Fit · Shift+2 100% · F Pan to selection
-            </div>
-          </main>
+          />
 
-          <aside className="min-h-0 overflow-hidden border-l border-zinc-100">
-            <ScrollArea className="h-full p-4">
-              <div className="space-y-4">
-                {detailsPanel}
-                <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
-                  <div className="text-sm font-semibold">Canvas</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="text-xs font-medium text-zinc-500">
-                      Width (px)
-                      <Input
-                        className="mt-1"
-                        type="number"
-                        min={1}
-                        max={10000}
-                        value={layout.canvas.width}
-                        onChange={(event) =>
-                          updateCanvas({ width: Number(event.target.value) })
-                        }
-                      />
-                    </label>
-                    <label className="text-xs font-medium text-zinc-500">
-                      Height (px)
-                      <Input
-                        className="mt-1"
-                        type="number"
-                        min={1}
-                        max={10000}
-                        value={layout.canvas.height}
-                        onChange={(event) =>
-                          updateCanvas({ height: Number(event.target.value) })
-                        }
-                      />
-                    </label>
-                  </div>
-                  <label className="text-xs font-medium text-zinc-500">
-                    Background
-                    <div className="mt-1 grid grid-cols-[42px_1fr] gap-2">
-                      <Input
-                        className="h-9 p-1"
-                        type="color"
-                        value={layout.canvas.backgroundColor}
-                        onChange={(event) =>
-                          updateCanvas({ backgroundColor: event.target.value })
-                        }
-                      />
-                      <Input
-                        value={layout.canvas.backgroundColor}
-                        onChange={(event) =>
-                          updateCanvas({ backgroundColor: event.target.value })
-                        }
-                      />
-                    </div>
-                  </label>
-                </section>
-
-                {selectedNode ? (
-                  <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-semibold">
-                          {selectedNode.type}
-                        </div>
-                        <div className="text-xs text-zinc-500">
-                          {selectedNode.id}
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={selectedNode.id === "frame-background"}
-                          onClick={() => duplicateNode(selectedNode)}
-                        >
-                          <Copy className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            updateNode(selectedNode.id, {
-                              locked: !selectedNode.locked,
-                            })
-                          }
-                        >
-                          {selectedNode.locked ? (
-                            <Unlock className="size-4" />
-                          ) : (
-                            <Lock className="size-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={selectedNode.id === "frame-background"}
-                          onClick={() => {
-                            deleteNode(selectedNode);
-                          }}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      {(["x", "y", "width", "height"] as const).map((key) => (
-                        <label
-                          key={key}
-                          className="text-xs font-medium text-zinc-500"
-                        >
-                          {key.toUpperCase()}
-                          <Input
-                            className="mt-1"
-                            type="number"
-                            value={Math.round(selectedNode[key])}
-                            onChange={(event) =>
-                              updateNode(selectedNode.id, {
-                                [key]: Number(event.target.value),
-                              })
-                            }
-                          />
-                        </label>
-                      ))}
-                    </div>
-
-                    <label className="block text-xs font-medium text-zinc-500">
-                      Opacity
-                      <Slider
-                        min={0.1}
-                        max={1}
-                        step={0.05}
-                        value={selectedNode.opacity}
-                        onChange={(event) =>
-                          updateNode(selectedNode.id, {
-                            opacity: Number(event.target.value),
-                          })
-                        }
-                      />
-                    </label>
-
-                    <label className="block text-xs font-medium text-zinc-500">
-                      Rotation
-                      <Input
-                        className="mt-1"
-                        type="number"
-                        value={selectedNode.rotation}
-                        onChange={(event) =>
-                          updateNode(selectedNode.id, {
-                            rotation: Number(event.target.value),
-                          })
-                        }
-                      />
-                    </label>
-
-                    {selectedNode.type === "text" ||
-                    selectedNode.type === "date-stamp" ? (
-                      <>
-                        <label className="block text-xs font-medium text-zinc-500">
-                          Text
-                          <Input
-                            className="mt-1"
-                            value={readString(selectedNode.props.content, "")}
-                            onChange={(event) =>
-                              updateNodeProps(selectedNode.id, {
-                                content: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <label className="text-xs font-medium text-zinc-500">
-                            Font size
-                            <Input
-                              className="mt-1"
-                              type="number"
-                              value={readNumber(
-                                selectedNode.props.fontSize,
-                                18,
-                              )}
-                              onChange={(event) =>
-                                updateNodeProps(selectedNode.id, {
-                                  fontSize: Number(event.target.value),
-                                })
-                              }
-                            />
-                          </label>
-                          <label className="text-xs font-medium text-zinc-500">
-                            Weight
-                            <Input
-                              className="mt-1"
-                              type="number"
-                              step={100}
-                              value={readNumber(
-                                selectedNode.props.fontWeight,
-                                600,
-                              )}
-                              onChange={(event) =>
-                                updateNodeProps(selectedNode.id, {
-                                  fontWeight: Number(event.target.value),
-                                })
-                              }
-                            />
-                          </label>
-                        </div>
-                        <label className="block text-xs font-medium text-zinc-500">
-                          Color
-                          <div className="mt-1 grid grid-cols-[42px_1fr] gap-2">
-                            <Input
-                              className="h-9 p-1"
-                              type="color"
-                              value={readString(
-                                selectedNode.props.color,
-                                "#18181b",
-                              )}
-                              onChange={(event) =>
-                                updateNodeProps(selectedNode.id, {
-                                  color: event.target.value,
-                                })
-                              }
-                            />
-                            <Input
-                              value={readString(
-                                selectedNode.props.color,
-                                "#18181b",
-                              )}
-                              onChange={(event) =>
-                                updateNodeProps(selectedNode.id, {
-                                  color: event.target.value,
-                                })
-                              }
-                            />
-                          </div>
-                        </label>
-                      </>
-                    ) : null}
-
-                    {selectedNode.type === "image" ||
-                    selectedNode.type === "background" ? (
-                      <>
-                        <label className="block text-xs font-medium text-zinc-500">
-                          Image URL
-                          <Input
-                            className="mt-1"
-                            value={readString(selectedNode.props.src, "")}
-                            onChange={(event) =>
-                              updateNodeProps(selectedNode.id, {
-                                src: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <label className="block text-xs font-medium text-zinc-500">
-                          Upload image
-                          <Input
-                            className="mt-1"
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
-                            disabled={uploading}
-                            onChange={(event) =>
-                              uploadToNode(event.target.files?.[0])
-                            }
-                          />
-                        </label>
-                        <label className="block text-xs font-medium text-zinc-500">
-                          Fit
-                          <Select
-                            className="mt-1"
-                            value={readString(
-                              selectedNode.props.objectFit,
-                              "cover",
-                            )}
-                            onChange={(event) =>
-                              updateNodeProps(selectedNode.id, {
-                                objectFit: event.target.value,
-                              })
-                            }
-                          >
-                            <option value="cover">Cover</option>
-                            <option value="contain">Contain</option>
-                            <option value="fill">Fill</option>
-                          </Select>
-                        </label>
-                      </>
-                    ) : null}
-
-                    {selectedNode.type === "photo-slot" ||
-                    selectedNode.type === "border" ? (
-                      <>
-                        <label className="block text-xs font-medium text-zinc-500">
-                          Border color
-                          <Input
-                            className="mt-1"
-                            value={readString(
-                              selectedNode.props.borderColor,
-                              "#d4d4d8",
-                            )}
-                            onChange={(event) =>
-                              updateNodeProps(selectedNode.id, {
-                                borderColor: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <label className="text-xs font-medium text-zinc-500">
-                            Radius
-                            <Input
-                              className="mt-1"
-                              type="number"
-                              value={readNumber(selectedNode.props.radius, 10)}
-                              onChange={(event) =>
-                                updateNodeProps(selectedNode.id, {
-                                  radius: Number(event.target.value),
-                                })
-                              }
-                            />
-                          </label>
-                          <label className="text-xs font-medium text-zinc-500">
-                            Border
-                            <Input
-                              className="mt-1"
-                              type="number"
-                              value={readNumber(
-                                selectedNode.props.borderWidth,
-                                selectedNode.type === "border" ? 2 : 0,
-                              )}
-                              onChange={(event) =>
-                                updateNodeProps(selectedNode.id, {
-                                  borderWidth: Number(event.target.value),
-                                })
-                              }
-                            />
-                          </label>
-                        </div>
-                      </>
-                    ) : null}
-                  </section>
-                ) : (
-                  <div className="rounded-lg border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
-                    Select a layer to edit its size, position, media, text, and
-                    frame styling.
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </aside>
+          <FramePropertiesPanel
+            detailsPanel={detailsPanel}
+            layout={layout}
+            selectedNode={selectedNode}
+            uploading={uploading}
+            onUpdateCanvas={updateCanvas}
+            onUpdateNode={updateNode}
+            onUpdateNodeProps={updateNodeProps}
+            onDuplicateNode={duplicateNode}
+            onDeleteNode={deleteNode}
+            onUploadToNode={uploadToNode}
+          />
         </div>
       </div>
       <BuilderUnsavedDialog

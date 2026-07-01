@@ -2,26 +2,26 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
-import { subscriptionService } from "@/server/subscription/subscription-service";
+import { subscriptionApi } from "@/features/admin/subscription/api";
 
 export function useSubscriptionStatus() {
-  return useQuery<Awaited<ReturnType<typeof subscriptionService.getStatus>>, Error>({
+  return useQuery<Awaited<ReturnType<typeof subscriptionApi.getStatus>>, Error>({
     queryKey: adminQueryKeys.subscriptionStatus,
-    queryFn: subscriptionService.getStatus,
+    queryFn: subscriptionApi.getStatus,
   });
 }
 
 export function useSubscriptionOrders() {
-  return useQuery<Awaited<ReturnType<typeof subscriptionService.getOrders>>, Error>({
+  return useQuery<Awaited<ReturnType<typeof subscriptionApi.getOrders>>, Error>({
     queryKey: adminQueryKeys.subscriptionOrders,
-    queryFn: subscriptionService.getOrders,
+    queryFn: subscriptionApi.getOrders,
   });
 }
 
 export function useUpdateSubscriptionOrderStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: subscriptionService.updateOrderStatus,
+    mutationFn: subscriptionApi.updateOrderStatus,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.subscriptionOrders });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.subscriptionStatus });

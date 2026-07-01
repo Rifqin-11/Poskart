@@ -1,5 +1,6 @@
 "use server";
 
+import { getAdminContext } from "@/server/admin/context";
 import { createClient } from "@/lib/supabase/server";
 import { getTransactions } from "./transaction-actions";
 import { getDevices } from "./device-actions";
@@ -19,13 +20,6 @@ import {
   type PosDashboardSaleRow,
   type RawTransactionRow,
 } from "../_shared/admin-types";
-
-async function verifyAuth() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  return { supabase, user };
-}
 
 const EMPTY_POS_SUMMARY: PosDashboardSummary = {
   totalRevenue: 0,
@@ -638,7 +632,7 @@ export async function getSubscriptionStatus(): Promise<{
 }
 
 export async function getSubscriptionOrders() {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("subscription_orders")
     .select("*")
@@ -654,7 +648,7 @@ export async function updateSubscriptionOrderStatus({
   id: string;
   status: "pending" | "paid" | "failed" | "cancelled";
 }) {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("subscription_orders")
     .update({ status, updated_at: new Date().toISOString() })

@@ -2,22 +2,21 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
-import { dashboardService } from "@/server/admin/dashboard-service";
-import { subscriptionService } from "@/server/subscription/subscription-service";
+import { dashboardApi } from "@/features/admin/dashboard/api";
 
 export function useDashboardData() {
-  return useQuery<Awaited<ReturnType<typeof dashboardService.getDashboard>>, Error>({
+  return useQuery<Awaited<ReturnType<typeof dashboardApi.getDashboard>>, Error>({
     queryKey: adminQueryKeys.dashboard,
-    queryFn: dashboardService.getDashboard,
+    queryFn: dashboardApi.getDashboard,
     staleTime: 2 * 60 * 1000, // 2 minutes — avoids re-fetch on every navigation
     gcTime: 5 * 60 * 1000,
   });
 }
 
 export function useSubscriptionStatus() {
-  return useQuery<Awaited<ReturnType<typeof subscriptionService.getStatus>>, Error>({
+  return useQuery<Awaited<ReturnType<typeof dashboardApi.getSubscriptionStatus>>, Error>({
     queryKey: adminQueryKeys.subscriptionStatus,
-    queryFn: subscriptionService.getStatus,
+    queryFn: dashboardApi.getSubscriptionStatus,
     staleTime: 5 * 60 * 1000, // 5 minutes — subscription status rarely changes
     gcTime: 10 * 60 * 1000,
   });

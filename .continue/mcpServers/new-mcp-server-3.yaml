@@ -1,9 +1,0 @@
-name: Sequential Thinking MCP Server
-version: 0.0.1
-schema: v1
-mcpServers:
-  - name: sequential-thinking
-    command: npx
-    args:
-      - -y
-      - "@modelcontextprotocol/server-sequential-thinking"

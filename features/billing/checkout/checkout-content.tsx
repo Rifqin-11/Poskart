@@ -10,7 +10,6 @@ import {
   LockKeyhole,
   ReceiptText,
   ShieldCheck,
-  WalletCards,
 } from "lucide-react";
 import { createSubscriptionOrderAction } from "@/app/(admin)/checkout/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -76,9 +75,8 @@ export function CheckoutContent({
         : plan.includedDevices,
     ),
   );
-  const [paymentGateway, setPaymentGateway] = useState<PaymentGateway>(
-    gatewayMode === "midtrans" ? "midtrans" : "duitku",
-  );
+  const paymentGateway: PaymentGateway =
+    gatewayMode === "midtrans" ? "midtrans" : "duitku";
   const [isPending, startTransition] = useTransition();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
@@ -88,7 +86,6 @@ export function CheckoutContent({
   const selectedGatewayLabel =
     paymentGateway === "midtrans" ? "Midtrans" : "Duitku";
   const showDuitku = gatewayMode === "duitku" || gatewayMode === "both";
-  const showMidtrans = gatewayMode === "midtrans" || gatewayMode === "both";
   const visibleError = checkoutError ?? errorMessage;
   const waitingForDuitkuScript =
     paymentGateway === "duitku" && !duitkuScriptReady && !duitkuScriptFailed;

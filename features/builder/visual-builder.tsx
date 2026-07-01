@@ -2,44 +2,26 @@
 
 import { useRouter } from "next/navigation";
 import {
-  DndContext,
   type DragEndEvent,
   MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { motion } from "framer-motion";
+import { arrayMove } from "@dnd-kit/sortable";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
-  AlignCenter,
   FolderOpen,
   Plus,
-  RotateCw,
   Smartphone,
-  Trash2,
-  X,
 } from "lucide-react";
-import { Rnd } from "react-rnd";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTouchContextMenu } from "@/lib/hooks/use-touch-context-menu";
 import {
   useActiveLayoutSchema,
   useLayoutSchemas,
   useSaveLayoutAsTheme,
 } from "@/features/admin/layout/use-layout";
-import {
-  COMPONENT_META,
-  PAGE_COMPONENTS,
-  pageLabels,
-} from "@/features/builder/constants";
 import {
   isEditableTextNode,
   readString,
@@ -53,23 +35,19 @@ import {
   relativeTime,
   type LocalDraft,
 } from "@/lib/services/draft-service";
-import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import { BuilderHeader } from "@/features/builder/shared/builder-header";
 import { BuilderToolbarButton } from "@/features/builder/shared/builder-toolbar-button";
 import { BuilderUnsavedDialog } from "@/features/builder/shared/builder-unsaved-dialog";
 import { BuilderZoomControls } from "@/features/builder/shared/builder-zoom-controls";
-import {
-  builderResizeHandleWrapperStyle,
-  builderSelectionOutlineStyle,
-  getBuilderResizeHandleStyles,
-} from "@/features/builder/shared/builder-selection-handles";
 import { useBuilderExitGuard } from "@/features/builder/shared/use-builder-exit-guard";
-import { CanvasControls } from "@/features/builder/components/visual-canvas-controls";
+import { VisualCanvasStage } from "@/features/builder/components/visual-canvas-stage";
 import { VisualContextMenu } from "@/features/builder/components/visual-context-menu";
-import { SortableLayer } from "@/features/builder/components/visual-layer-list";
-import { NodeRenderer } from "@/features/builder/components/visual-node-renderer";
-import { PropertiesPanel } from "@/features/builder/components/visual-properties-panel";
+import { VisualLayerSidebar } from "@/features/builder/components/visual-layer-sidebar";
+import { VisualPageTabs } from "@/features/builder/components/visual-page-tabs";
+import { VisualPropertiesSidebar } from "@/features/builder/components/visual-properties-sidebar";
+import { VisualLoadDialog } from "@/features/builder/components/visual-load-dialog";
+import { VisualSaveDialog } from "@/features/builder/components/visual-save-dialog";
 import type {
   BuilderNode,
 } from "@/types/builder";
@@ -106,8 +84,6 @@ export function VisualBuilder() {
   const reorderNodes = useBuilderStore((state) => state.reorderNodes);
   const schema = useBuilderStore((state) => state.schema);
   const setSchema = useBuilderStore((state) => state.setSchema);
-  const fullView = useBuilderStore((s) => s.builderFullView);
-  const setFullView = useBuilderStore((s) => s.setBuilderFullView);
   const clipboard = useBuilderStore((state) => state.clipboard);
   const copyNode = useBuilderStore((state) => state.copyNode);
   const cutNode = useBuilderStore((state) => state.cutNode);
@@ -139,9 +115,7 @@ export function VisualBuilder() {
   });
 
   // ── Auto-save & Load ────────────────────────────────
-  const [lastAutoSave, setLastAutoSave] = useState<string | null>(
-    () => getAutoSave()?.savedAt ?? null,
-  );
+  const [lastAutoSave, setLastAutoSave] = useState<string | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [loadTab, setLoadTab] = useState<"local" | "db">("local");
@@ -164,6 +138,13 @@ export function VisualBuilder() {
       lastCommittedSchemaRef.current = currentSchemaKey;
     }
   }, [currentSchemaKey]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setLastAutoSave(getAutoSave()?.savedAt ?? null);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const leaveBuilder = useCallback(() => {
     router.push("/themes");
@@ -290,18 +271,6 @@ export function VisualBuilder() {
   });
   // ── end Auto-save & Load ─────────────────────────────
 
-  // ── Full-view mode ────────────────────────────────────────
-  // Builder pages should open as a focused full-screen workspace.
-  // Reset full-view when leaving the builder page.
-  useEffect(
-    () => {
-      setFullView(true);
-      return () => {
-        setFullView(false);
-      };
-    },
-    [setFullView],
-  );
   // ── Zoom / Pan ────────────────────────────────────────────
   const [zoom, setZoom] = useState(0.35);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -362,12 +331,26 @@ export function VisualBuilder() {
     fitToScreen();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-fit whenever full-view is toggled (sidebars appear/disappear)
+  // Keep the canvas fitted to the dedicated builder viewport.
   useEffect(() => {
-    // Small delay so the DOM has time to remove/add the sidebars before measuring
-    const t = setTimeout(() => fitToScreen(), 50);
-    return () => clearTimeout(t);
-  }, [fullView, fitToScreen]);
+    const timer = setTimeout(() => fitToScreen(), 50);
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => fitToScreen())
+        : null;
+    const viewport = viewportRef.current;
+
+    if (viewport) {
+      resizeObserver?.observe(viewport);
+    }
+    window.addEventListener("resize", fitToScreen);
+
+    return () => {
+      clearTimeout(timer);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", fitToScreen);
+    };
+  }, [fitToScreen]);
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -844,13 +827,7 @@ export function VisualBuilder() {
 
   return (
     <div
-      className={cn(
-        "flex flex-col overflow-hidden",
-        fullView
-          ? "fixed inset-0 z-[100]" /* cover everything — shell is hidden */
-          : "-mx-4 -my-5 lg:-mx-5 xl:-mx-8 xl:-my-6" /* cancel shell content padding */,
-      )}
-      style={{ height: fullView ? "100vh" : "calc(100vh - 4rem)" }}
+      className="flex h-screen flex-col overflow-hidden"
     >
       <BuilderHeader
         onBack={requestBack}
@@ -860,55 +837,12 @@ export function VisualBuilder() {
         onUndo={undo}
         onRedo={redo}
         leftContent={
-          <div className="flex items-center gap-0.5 rounded-lg bg-zinc-100 p-0.5">
-            {pageLabels.map((page) => {
-              const isEnabled =
-                !canvas.enabledPages || canvas.enabledPages.includes(page);
-              return (
-                <div key={page} className="group relative">
-                  <button
-                    onClick={() => setActivePage(page)}
-                    className={cn(
-                      "rounded-md px-3 py-1 text-[11px] font-medium capitalize transition-colors",
-                      activePage === page
-                        ? "bg-white text-zinc-900 shadow-sm"
-                        : "text-zinc-500 hover:text-zinc-700",
-                      !isEnabled && "opacity-40",
-                    )}
-                  >
-                    {page}
-                    {!isEnabled && (
-                      <span className="ml-1 text-[9px] text-zinc-400">
-                        (off)
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    title={
-                      isEnabled
-                        ? "Disable page on tablet"
-                        : "Enable page on tablet"
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const all = pageLabels;
-                      const current = canvas.enabledPages ?? all;
-                      const next = isEnabled
-                        ? current.filter((p) => p !== page)
-                        : [...current, page];
-                      updateCanvas({
-                        enabledPages:
-                          next.length === all.length ? undefined : next,
-                      });
-                    }}
-                    className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border border-zinc-300 bg-white text-[8px] text-zinc-500 shadow-sm hover:border-zinc-500 hover:text-zinc-900 group-hover:flex group-focus-within:flex [@media(pointer:coarse)]:flex"
-                  >
-                    {isEnabled ? "●" : "○"}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+          <VisualPageTabs
+            activePage={activePage}
+            canvas={canvas}
+            onSetActivePage={setActivePage}
+            onUpdateCanvas={updateCanvas}
+          />
         }
         centerContent={
           <BuilderZoomControls
@@ -971,480 +905,60 @@ export function VisualBuilder() {
 
       {/* ── Body ─────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
-        {/* ── Left sidebar — Layers ──────────────────── */}
-        <aside className="flex w-52 shrink-0 flex-col border-r border-zinc-200 bg-white">
-          <div className="flex items-center justify-between px-3 py-2.5">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-              Layers
-            </span>
-            <Badge variant="secondary" className="h-4 px-1 text-[9px]">
-              {layersList.length}
-            </Badge>
-          </div>
+        <VisualLayerSidebar
+          activePage={activePage}
+          isOverlayMode={isOverlayMode}
+          layersList={layersList}
+          sensors={sensors}
+          onAddNode={addNode}
+          onLayerDragEnd={handleDragEnd}
+        />
 
-          {/* Template page empty-state hint */}
-          {activePage === "template" && layersList.length === 0 && (
-            <div className="mx-2 mb-2 rounded-md border border-orange-200 bg-orange-50 px-2 py-1.5 text-[10px] leading-snug text-orange-800">
-              <div className="font-semibold">📋 No nodes on this page</div>
-              <div className="mt-0.5 text-orange-700">
-                This page was added after your saved theme. Add components from
-                the panel below.
-              </div>
-            </div>
-          )}
-
-          {/* Generic empty-state hint */}
-          {activePage !== "template" && layersList.length === 0 && (
-            <div className="mx-2 mb-2 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-[10px] text-zinc-500">
-              No layers yet — add a component below.
-            </div>
-          )}
-          <ScrollArea className="flex-1">
-            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-              <SortableContext
-                items={layersList.map((n) => n.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-0.5 px-2 pb-2">
-                  {layersList.map((node) => (
-                    <SortableLayer key={node.id} node={node} />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          </ScrollArea>
-          <div className="border-t border-zinc-200 p-2">
-            <div className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-              Add —{" "}
-              <span className="text-zinc-600 normal-case">{activePage}</span>
-            </div>
-            <div className="grid grid-cols-1 gap-0.5">
-              {PAGE_COMPONENTS[activePage]
-                .filter((type) => !(isOverlayMode && type === "text"))
-                .map((type) => {
-                  const meta = COMPONENT_META[type];
-                  const Icon = meta.icon;
-                  return (
-                    <button
-                      key={type}
-                      onClick={() => addNode(type)}
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
-                    >
-                      <span className="flex size-4 shrink-0 items-center justify-center text-[11px] text-zinc-400">
-                        <Icon className="size-3.5" />
-                      </span>
-                      <span>{meta.label}</span>
-                    </button>
-                  );
-                })}
-            </div>
-          </div>
-        </aside>
-
-        {/* ── Canvas area ───────────────────────────── */}
-        <div
-          ref={canvasRef}
-          className="relative flex-1 overflow-hidden"
-          style={{
-            background: "#F0F0F2",
-            cursor: isPanningRef.current
-              ? "grabbing"
-              : spaceRef.current
-                ? "grab"
-                : "default",
+        <VisualCanvasStage
+          canvasRef={canvasRef}
+          viewportRef={viewportRef}
+          activePage={activePage}
+          canvas={canvas}
+          zoom={zoom}
+          pan={pan}
+          selectedId={selectedId}
+          editingId={editingId}
+          editValue={editValue}
+          visibleNodes={visibleNodes}
+          guides={guides}
+          snapPreview={snapPreview}
+          boxSelect={boxSelect}
+          isPanning={isPanningRef.current}
+          isSpacePanning={spaceRef.current}
+          canvasTouchMenu={canvasTouchMenu}
+          nodeTouchMenu={nodeTouchMenu}
+          onCanvasMouseDown={handleCanvasMouseDown}
+          onCanvasMouseMove={handleCanvasMouseMove}
+          onCanvasMouseUp={handleCanvasMouseUp}
+          onSelectNode={selectNode}
+          onOpenContextMenu={(x, y, nodeId) =>
+            setContextMenu({ x, y, nodeId })
+          }
+          onCanvasToClient={canvasToClient}
+          onComputeGuides={computeGuides}
+          onUpdateNode={updateNode}
+          onClearSnap={clearSnap}
+          onSetGuides={setGuides}
+          onSetSnapPreview={setSnapPreview}
+          onSetLongPressNode={(id) => {
+            longPressNodeRef.current = id;
           }}
-          onClick={() => selectNode(null)}
-          onMouseDown={handleCanvasMouseDown}
-          onMouseMove={handleCanvasMouseMove}
-          onMouseUp={handleCanvasMouseUp}
-          onMouseLeave={handleCanvasMouseUp}
-          onPointerDown={(event) => {
-            if (!(event.target as HTMLElement).closest(".builder-rnd-node")) {
-              canvasTouchMenu.onPointerDown(event);
-            }
-          }}
-          onPointerMove={canvasTouchMenu.onPointerMove}
-          onPointerUp={canvasTouchMenu.onPointerUp}
-          onPointerCancel={canvasTouchMenu.onPointerCancel}
-          onClickCapture={canvasTouchMenu.onClickCapture}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            selectNode(null);
-            setContextMenu({ x: e.clientX, y: e.clientY, nodeId: null });
-          }}
-        >
-          {/* Viewport ref — measure available space for fitToScreen */}
-          <div
-            ref={viewportRef}
-            className="pointer-events-none absolute inset-0"
-          />
-          {/* Dot grid */}
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle,rgba(0,0,0,0.10) 1px,transparent 1px)",
-              backgroundSize: `${22 * zoom}px ${22 * zoom}px`,
-              backgroundPosition: `${pan.x % (22 * zoom)}px ${pan.y % (22 * zoom)}px`,
-            }}
-          />
+          onEditChange={setEditValue}
+          onEditCommit={commitTextEdit}
+          onEditCancel={cancelTextEdit}
+          onStartEdit={startTextEdit}
+        />
 
-          {/* Box-select rubber band overlay */}
-          {boxSelect &&
-            (() => {
-              const canvasOrigin = canvasToClient(0, 0);
-              const x1 = Math.min(boxSelect.startX, boxSelect.endX);
-              const y1 = Math.min(boxSelect.startY, boxSelect.endY);
-              const x2 = Math.max(boxSelect.startX, boxSelect.endX);
-              const y2 = Math.max(boxSelect.startY, boxSelect.endY);
-              return (
-                <div
-                  className="pointer-events-none absolute border-2 border-blue-500 bg-blue-500/10"
-                  style={{
-                    left: canvasOrigin.x + x1 * zoom,
-                    top: canvasOrigin.y + y1 * zoom,
-                    width: (x2 - x1) * zoom,
-                    height: (y2 - y1) * zoom,
-                  }}
-                />
-              );
-            })()}
-
-          {/* Transform wrapper — centered + panned */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div
-              className="pointer-events-auto relative"
-              style={{
-                transform: `translate(${pan.x}px,${pan.y}px) scale(${zoom})`,
-                transformOrigin: "center center",
-              }}
-            >
-              {/* Page label */}
-              <div className="absolute -top-7 left-0 select-none whitespace-nowrap text-[11px] font-medium text-zinc-400 capitalize">
-                {activePage} — {canvas.width} × {canvas.height}
-              </div>
-
-              {/* Device frame */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="relative overflow-hidden shadow-[0_16px_48px_rgba(0,0,0,0.18)]"
-                style={{
-                  width: canvas.width,
-                  height: canvas.height,
-                  backgroundColor: canvas.backgroundColor ?? "#ffffff",
-                  borderRadius: 28,
-                  outline: "10px solid #1a1a1a",
-                  outlineOffset: "0px",
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Notch */}
-                <div className="absolute left-1/2 top-3 z-50 h-1 w-20 -translate-x-1/2 rounded-full bg-black/20" />
-
-                {/* Per-page image background overlay */}
-                {canvas.pageBackgrounds?.[activePage]?.image ? (
-                  <div
-                    className="pointer-events-none absolute inset-0 bg-cover bg-center"
-                    style={{
-                      backgroundImage: `url(${canvas.pageBackgrounds[activePage]!.image})`,
-                      zIndex: canvas.pageBackgrounds?.[activePage]?.zIndex ?? 0,
-                      borderRadius: 28,
-                    }}
-                  />
-                ) : null}
-
-                {/* Per-page video background */}
-                {canvas.pageBackgrounds?.[activePage]?.video ? (
-                  <video
-                    src={canvas.pageBackgrounds[activePage]!.video}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-                    style={{
-                      zIndex: canvas.pageBackgrounds?.[activePage]?.zIndex ?? 0,
-                      borderRadius: 28,
-                    }}
-                  />
-                ) : null}
-
-                {/* Smart guide lines — rendered in canvas coordinate space */}
-                {guides.map((g, i) =>
-                  g.type === "v" ? (
-                    <div
-                      key={i}
-                      className="pointer-events-none absolute inset-y-0"
-                      style={{
-                        left: g.pos,
-                        width: 1,
-                        background: "#F000A0",
-                        zIndex: 9999,
-                        opacity: 0.85,
-                      }}
-                    />
-                  ) : (
-                    <div
-                      key={i}
-                      className="pointer-events-none absolute inset-x-0"
-                      style={{
-                        top: g.pos,
-                        height: 1,
-                        background: "#F000A0",
-                        zIndex: 9999,
-                        opacity: 0.85,
-                      }}
-                    />
-                  ),
-                )}
-
-                {/* Magnetic snap ghost — destination rectangle */}
-                {snapPreview && (
-                  <div
-                    className="pointer-events-none absolute"
-                    style={{
-                      left: snapPreview.x,
-                      top: snapPreview.y,
-                      width: snapPreview.w,
-                      height: snapPreview.h,
-                      border: `${Math.max(2, canvas.width * 0.0012)}px dashed #F000A0`,
-                      background: "rgba(240,0,160,0.08)",
-                      borderRadius: 4,
-                      zIndex: 9998,
-                      boxShadow: "0 0 0 1px rgba(240,0,160,0.15)",
-                    }}
-                  >
-                    {/* Coordinate label */}
-                    <div
-                      className="absolute -top-6 left-0 whitespace-nowrap rounded bg-[#F000A0] px-1.5 py-0.5 font-mono font-semibold text-white"
-                      style={{ fontSize: Math.max(10, canvas.width * 0.01) }}
-                    >
-                      {snapPreview.x}, {snapPreview.y}
-                    </div>
-                  </div>
-                )}
-
-                {/* Template page layout guide — scaled to canvas dimensions */}
-                {activePage === "template" &&
-                  (() => {
-                    // All Flutter coords are for 1280×800; scale to current canvas
-                    const sx = canvas.width / 1280;
-                    const sy = canvas.height / 800;
-                    const leftX = Math.round(84 * sx),
-                      topY = Math.round(148 * sy);
-                    const leftW = Math.round(600 * sx),
-                      leftH = Math.round(540 * sy);
-                    const rightX = Math.round(712 * sx),
-                      rightW = Math.round(484 * sx);
-                    const dividerX = Math.round(700 * sx);
-                    const fontSize = Math.max(
-                      9,
-                      Math.round(canvas.width * 0.008),
-                    );
-                    return (
-                      <>
-                        {/* Left panel: template-preview area */}
-                        <div
-                          className="pointer-events-none absolute"
-                          style={{
-                            left: leftX,
-                            top: topY,
-                            width: leftW,
-                            height: leftH,
-                            border: "1px dashed rgba(234,88,12,0.30)",
-                            borderRadius: 10,
-                            zIndex: 1,
-                            background: "rgba(234,88,12,0.03)",
-                          }}
-                        >
-                          <div
-                            className="absolute left-2 top-2 flex items-center gap-1 rounded px-1.5 py-0.5 text-orange-600/60 italic"
-                            style={{
-                              fontSize,
-                              background: "rgba(255,237,213,0.7)",
-                            }}
-                          >
-                            📐 Guide — Preview Area
-                          </div>
-                        </div>
-                        {/* Right panel: template grid area */}
-                        <div
-                          className="pointer-events-none absolute"
-                          style={{
-                            left: rightX,
-                            top: topY,
-                            width: rightW,
-                            height: leftH,
-                            border: "1px dashed rgba(234,88,12,0.30)",
-                            borderRadius: 10,
-                            zIndex: 1,
-                            background: "rgba(234,88,12,0.03)",
-                          }}
-                        >
-                          <div
-                            className="absolute left-2 top-2 flex items-center gap-1 rounded px-1.5 py-0.5 text-orange-600/60 italic"
-                            style={{
-                              fontSize,
-                              background: "rgba(255,237,213,0.7)",
-                            }}
-                          >
-                            📐 Guide — Template Grid
-                          </div>
-                        </div>
-                        {/* Vertical divider */}
-                        <div
-                          className="pointer-events-none absolute"
-                          style={{
-                            left: dividerX,
-                            top: topY,
-                            width: 1,
-                            height: leftH,
-                            background: "rgba(234,88,12,0.18)",
-                            zIndex: 1,
-                          }}
-                        />
-                      </>
-                    );
-                  })()}
-
-                {visibleNodes.map((node) =>
-                  node.visible ? (
-                    <Rnd
-                      key={node.id}
-                      scale={zoom}
-                      bounds="parent"
-                      disableDragging={node.locked || editingId === node.id}
-                      enableResizing={!node.locked && editingId !== node.id}
-                      lockAspectRatio={node.lockAspect ?? false}
-                      position={{ x: node.x, y: node.y }}
-                      size={{ width: node.width, height: node.height }}
-                      resizeHandleStyles={getBuilderResizeHandleStyles(
-                        selectedId === node.id,
-                      )}
-                      resizeHandleWrapperStyle={builderResizeHandleWrapperStyle}
-                      onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        selectNode(node.id, e.shiftKey);
-                      }}
-                      onContextMenu={(e: React.MouseEvent) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        selectNode(node.id);
-                        setContextMenu({
-                          x: e.clientX,
-                          y: e.clientY,
-                          nodeId: node.id,
-                        });
-                      }}
-                      onPointerDown={(
-                        event: React.PointerEvent<HTMLDivElement>,
-                      ) => {
-                        longPressNodeRef.current = node.id;
-                        selectNode(node.id);
-                        nodeTouchMenu.onPointerDown(event);
-                      }}
-                      onPointerMove={nodeTouchMenu.onPointerMove}
-                      onPointerUp={nodeTouchMenu.onPointerUp}
-                      onPointerCancel={nodeTouchMenu.onPointerCancel}
-                      onClickCapture={nodeTouchMenu.onClickCapture}
-                      onDragStart={() => selectNode(node.id)}
-                      onDrag={(_, d) => {
-                        const {
-                          guides: g,
-                          sx,
-                          sy,
-                          isSnapping,
-                          w,
-                          h,
-                        } = computeGuides(node, d.x, d.y);
-                        setGuides(g);
-                        setSnapPreview(
-                          isSnapping ? { x: sx, y: sy, w, h } : null,
-                        );
-                      }}
-                      onDragStop={(_, d) => {
-                        const { sx, sy } = computeGuides(node, d.x, d.y);
-                        updateNode(node.id, { x: sx, y: sy });
-                        clearSnap();
-                      }}
-                      onResizeStart={() => selectNode(node.id)}
-                      onResizeStop={(_, __, ref, ___, pos) => {
-                        const w = snap(ref.offsetWidth);
-                        const h = node.lockAspect
-                          ? Math.round(w * (node.height / node.width))
-                          : snap(ref.offsetHeight);
-                        updateNode(node.id, {
-                          width: w,
-                          height: h,
-                          x: snap(pos.x),
-                          y: snap(pos.y),
-                        });
-                        clearSnap();
-                      }}
-                      style={{
-                        zIndex: node.zIndex,
-                        opacity: node.opacity,
-                        transform: `rotate(${node.rotation}deg)`,
-                        ...(selectedId === node.id
-                          ? builderSelectionOutlineStyle
-                          : {}),
-                      }}
-                      className={cn(
-                        "builder-rnd-node group touch-none",
-                        node.locked && "cursor-not-allowed",
-                      )}
-                    >
-                      <NodeRenderer
-                        node={node}
-                        editing={editingId === node.id}
-                        editValue={editValue}
-                        onEditChange={setEditValue}
-                        onEditCommit={commitTextEdit}
-                        onEditCancel={cancelTextEdit}
-                        onStartEdit={() => startTextEdit(node)}
-                      />
-                    </Rnd>
-                  ) : null,
-                )}
-              </motion.div>
-            </div>
-          </div>
-
-          {/* Zoom hint */}
-          <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/80 px-3 py-1 text-[10px] text-zinc-400 shadow-sm backdrop-blur-sm">
-            Ctrl+scroll to zoom · Space+drag to pan · Shift+1 Fit · Shift+2 100%
-            · F Pan to selection
-          </div>
-        </div>
-
-        {/* ── Right sidebar — Properties ─────────────── */}
-        <aside className="flex w-72 shrink-0 flex-col border-l border-zinc-200 bg-white">
-          <div className="flex items-center justify-between px-3 py-2.5">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-              Properties
-            </span>
-            <AlignCenter className="size-3.5 text-zinc-300" />
-          </div>
-          <ScrollArea className="flex-1 px-3 pb-4">
-            <CanvasControls />
-            <PropertiesPanel
-              selectedNode={selectedNode}
-              onStartEdit={startTextEdit}
-            />
-            <div className="mt-4 space-y-2 border-t border-zinc-100 pt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-                  Schema
-                </span>
-                <RotateCw className="size-3 text-zinc-300" />
-              </div>
-              <pre className="max-h-64 overflow-auto rounded-lg bg-zinc-950 p-2.5 text-[9px] leading-4 text-zinc-300">
-                {JSON.stringify(schema(), null, 2)}
-              </pre>
-            </div>
-          </ScrollArea>
-        </aside>
+        <VisualPropertiesSidebar
+          selectedNode={selectedNode}
+          schema={schema()}
+          onStartEdit={startTextEdit}
+        />
       </div>
 
       {contextMenu ? (
@@ -1496,184 +1010,18 @@ export function VisualBuilder() {
         />
       ) : null}
 
-      {/* ── Load Template Dialog ──────────────────────────────── */}
       {showLoadDialog && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/50 pt-16 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowLoadDialog(false);
-          }}
-        >
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-              <h2 className="text-base font-semibold text-zinc-900">
-                Load Template
-              </h2>
-              <button
-                onClick={() => setShowLoadDialog(false)}
-                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex border-b border-zinc-100">
-              <button
-                onClick={() => setLoadTab("local")}
-                className={cn(
-                  "flex-1 py-2.5 text-xs font-semibold transition-colors",
-                  loadTab === "local"
-                    ? "border-b-2 border-zinc-900 text-zinc-900"
-                    : "text-zinc-400 hover:text-zinc-700",
-                )}
-              >
-                📁 Local Drafts{" "}
-                {localDrafts.length > 0 && `(${localDrafts.length})`}
-              </button>
-              <button
-                onClick={() => setLoadTab("db")}
-                className={cn(
-                  "flex-1 py-2.5 text-xs font-semibold transition-colors",
-                  loadTab === "db"
-                    ? "border-b-2 border-zinc-900 text-zinc-900"
-                    : "text-zinc-400 hover:text-zinc-700",
-                )}
-              >
-                ☁️ Saved Themes {dbThemes.length > 0 && `(${dbThemes.length})`}
-              </button>
-            </div>
-
-            {/* Search */}
-            <div className="border-b border-zinc-100 px-4 py-2">
-              <input
-                className="w-full rounded-lg bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700 outline-none focus:ring-2 focus:ring-zinc-200 placeholder:text-zinc-400"
-                placeholder="Search templates…"
-                value={loadSearch}
-                onChange={(e) => setLoadSearch(e.target.value)}
-                autoFocus
-              />
-            </div>
-
-            {/* List */}
-            <div className="max-h-80 overflow-y-auto">
-              {loadTab === "local" && (
-                <>
-                  {localDrafts.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <p className="text-sm font-medium text-zinc-400">
-                        No local drafts yet
-                      </p>
-                      <p className="mt-1 text-xs text-zinc-300">
-                        Press Ctrl+S or click Save to create a draft.
-                      </p>
-                    </div>
-                  )}
-                  {localDrafts
-                    .filter(
-                      (d) =>
-                        !loadSearch ||
-                        d.name.toLowerCase().includes(loadSearch.toLowerCase()),
-                    )
-                    .map((draft) => (
-                      <div
-                        key={draft.id}
-                        className="flex items-center gap-3 border-b border-zinc-50 px-4 py-3 hover:bg-zinc-50"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate text-sm font-medium text-zinc-800">
-                            {draft.name}
-                          </p>
-                          <p className="mt-0.5 text-[10px] text-zinc-400">
-                            {relativeTime(draft.savedAt)} ·{" "}
-                            {draft.schema.canvas?.width ?? "?"}×
-                            {draft.schema.canvas?.height ?? "?"}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleLoadSchema(draft.schema)}
-                          className="shrink-0 rounded-lg bg-zinc-900 px-3 py-1 text-xs font-semibold text-white hover:bg-zinc-700"
-                        >
-                          Load
-                        </button>
-                        <button
-                          onClick={() => handleDeleteLocalDraft(draft.id)}
-                          className="shrink-0 rounded-md p-1 text-zinc-300 hover:bg-red-50 hover:text-red-500"
-                          title="Delete draft"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                </>
-              )}
-
-              {loadTab === "db" && (
-                <>
-                  {dbThemes.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <p className="text-sm font-medium text-zinc-400">
-                        No themes in database
-                      </p>
-                      <p className="mt-1 text-xs text-zinc-300">
-                        Click &quot;Save theme&quot; to publish a theme to the
-                        database.
-                      </p>
-                    </div>
-                  )}
-                  {dbThemes
-                    .filter(
-                      (t) =>
-                        !loadSearch ||
-                        t.name.toLowerCase().includes(loadSearch.toLowerCase()),
-                    )
-                    .map((theme) => (
-                      <div
-                        key={theme.id}
-                        className="flex items-center gap-3 border-b border-zinc-50 px-4 py-3 hover:bg-zinc-50"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="truncate text-sm font-medium text-zinc-800">
-                              {theme.name}
-                            </p>
-                            {theme.is_active && (
-                              <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
-                                Active
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-0.5 text-[10px] text-zinc-400">
-                            {relativeTime(theme.updated_at)} ·{" "}
-                            {theme.schema.canvas?.width ?? "?"}×
-                            {theme.schema.canvas?.height ?? "?"}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() =>
-                            handleLoadSchema(theme.schema, {
-                              themeId: theme.id,
-                              themeName: theme.name,
-                            })
-                          }
-                          className="shrink-0 rounded-lg bg-zinc-900 px-3 py-1 text-xs font-semibold text-white hover:bg-zinc-700"
-                        >
-                          Load
-                        </button>
-                      </div>
-                    ))}
-                </>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-zinc-100 px-5 py-3 text-[10px] text-zinc-400">
-              Local drafts are stored in your browser · DB themes are from
-              Supabase
-            </div>
-          </div>
-        </div>
+        <VisualLoadDialog
+          loadTab={loadTab}
+          setLoadTab={setLoadTab}
+          localDrafts={localDrafts}
+          dbThemes={dbThemes}
+          loadSearch={loadSearch}
+          setLoadSearch={setLoadSearch}
+          onClose={() => setShowLoadDialog(false)}
+          onLoadSchema={handleLoadSchema}
+          onDeleteLocalDraft={handleDeleteLocalDraft}
+        />
       )}
 
       <BuilderUnsavedDialog
@@ -1686,49 +1034,13 @@ export function VisualBuilder() {
       />
 
       {showSaveDialog && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closeSaveDialog();
-          }}
-        >
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="mb-1 text-lg font-semibold text-zinc-900">
-              Save as Theme
-            </h2>
-            <p className="mb-4 text-sm text-zinc-500">
-              Give this layout a name. It will appear on the Themes page where
-              you can activate it for the kiosk.
-            </p>
-            <input
-              autoFocus
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200"
-              placeholder="e.g. Redmi Pad Landscape v1"
-              value={themeName}
-              onChange={(e) => setThemeName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && themeName.trim())
-                  void handleSaveConfirm();
-                if (e.key === "Escape") closeSaveDialog();
-              }}
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={closeSaveDialog}
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => void handleSaveConfirm()}
-                disabled={!themeName.trim() || isSaving}
-                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-50"
-              >
-                {isSaving ? "Saving…" : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <VisualSaveDialog
+          themeName={themeName}
+          setThemeName={setThemeName}
+          isSaving={isSaving}
+          onClose={closeSaveDialog}
+          onConfirm={() => void handleSaveConfirm()}
+        />
       )}
     </div>
   );

@@ -28,6 +28,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/features/admin/_components/empty-state";
+import { LoadingState } from "@/features/admin/_components/loading-state";
+import { StatCard } from "@/features/admin/_components/stat-card";
 import {
   emptyDashboardData,
   eventPeriodTabs,
@@ -40,7 +43,7 @@ import type {
   EventPeriodKey,
   EventPeriodStatistics,
   Transaction,
-} from "@/server/admin/_shared/admin-types";
+} from "@/features/admin/dashboard/api";
 import { cn, formatCurrency } from "@/lib/utils";
 
 const dashboardInnerCardClass =
@@ -64,7 +67,7 @@ export function DashboardOverview() {
     useState<EventPeriodKey>("daily");
 
   if (isLoading) {
-    return <DashboardLoadingState />;
+    return <LoadingState />;
   }
 
   const dashboardData = data ?? emptyDashboardData;
@@ -385,20 +388,26 @@ function EventAnalyticsSection({
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <MiniStatCard
-          label="Rata-rata sesi"
+        <StatCard
+          title="Rata-rata sesi"
           value={formatCurrency(averageRevenuePerSession)}
-          helper="Revenue per sesi"
+          description="Revenue per sesi"
+          icon={CircleDollarSign}
+          className={dashboardSoftItemClass}
         />
-        <MiniStatCard
-          label="Print per sesi"
+        <StatCard
+          title="Print per sesi"
           value={printsPerSession.toFixed(1)}
-          helper="Efisiensi paket print"
+          description="Efisiensi paket print"
+          icon={Printer}
+          className={dashboardSoftItemClass}
         />
-        <MiniStatCard
-          label="Metode utama"
+        <StatCard
+          title="Metode utama"
           value={topPaymentMethod}
-          helper="Pembayaran terbanyak"
+          description="Pembayaran terbanyak"
+          icon={Activity}
+          className={dashboardSoftItemClass}
         />
       </div>
 
@@ -437,28 +446,6 @@ function PeriodTabs({
           {tab.label}
         </button>
       ))}
-    </div>
-  );
-}
-
-function MiniStatCard({
-  label,
-  value,
-  helper,
-}: {
-  label: string;
-  value: string;
-  helper: string;
-}) {
-  return (
-    <div className={cn(dashboardSoftItemClass, "p-4")}>
-      <div className="text-xs text-zinc-500">{label}</div>
-      <div className="mt-2 truncate text-xl font-semibold tracking-tight">
-        {value}
-      </div>
-      <div className="mt-3 rounded-2xl bg-zinc-50 px-3 py-2 text-xs text-zinc-500">
-        {helper}
-      </div>
     </div>
   );
 }
@@ -597,60 +584,6 @@ function EventPieCard({
   );
 }
 
-function DashboardLoadingState() {
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-56" />
-          <Skeleton className="h-4 w-80 max-w-full" />
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-28" />
-          <Skeleton className="h-9 w-28" />
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index: number) => (
-          <Card key={index}>
-            <CardHeader className="space-y-2 pb-2">
-              <Skeleton className="h-4 w-28" />
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Skeleton className="h-7 w-24" />
-              <Skeleton className="h-3 w-32" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-36" />
-            <Skeleton className="h-4 w-64" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-80" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-4 w-48" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {Array.from({ length: 3 }).map((_, index: number) => (
-              <Skeleton key={index} className="h-20" />
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
 function EmptyChartState({
   title,
   description,
@@ -659,15 +592,12 @@ function EmptyChartState({
   description: string;
 }) {
   return (
-    <div className="grid h-full place-items-center rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center">
-      <div>
-        <Activity className="mx-auto mb-3 size-6 text-zinc-300" />
-        <div className="text-sm font-semibold text-zinc-700">{title}</div>
-        <p className="mt-2 max-w-sm text-xs leading-5 text-zinc-500">
-          {description}
-        </p>
-      </div>
-    </div>
+    <EmptyState
+      title={title}
+      description={description}
+      icon={Activity}
+      className="grid h-full place-items-center p-6"
+    />
   );
 }
 
@@ -683,22 +613,11 @@ function EmptyPanelState({
   action: string;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-5 text-center">
-      <MonitorCheck className="mx-auto mb-3 size-6 text-zinc-300" />
-      <div className="text-sm font-semibold text-zinc-700">{title}</div>
-      <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-zinc-500">
-        {description}
-      </p>
-      <Link
-        href={href}
-        className={buttonVariants({
-          variant: "outline",
-          size: "sm",
-          className: "mt-4",
-        })}
-      >
-        {action}
-      </Link>
-    </div>
+    <EmptyState
+      title={title}
+      description={description}
+      icon={MonitorCheck}
+      action={{ href, label: action }}
+    />
   );
 }

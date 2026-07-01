@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  Building2,
   CreditCard,
   LockKeyhole,
   ShieldCheck,

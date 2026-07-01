@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/server/admin/context";
 import { PRICING_PLAN_ORDER } from "@/lib/constants/business";
 import {
   assertSupabaseResult,
@@ -14,15 +14,8 @@ import {
   type SubscriptionPlanRow,
 } from "../_shared/admin-types";
 
-async function verifyAuth() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  return { supabase, user };
-}
-
 export async function getPricingProducts(): Promise<PricingProduct[]> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("pricing_products")
     .select("id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active")
@@ -38,7 +31,7 @@ export async function getPricingProducts(): Promise<PricingProduct[]> {
 export async function createPricingProduct(
   values: PricingProductInput,
 ): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const id = `PRC-${Date.now()}`;
   const { error } = await supabase.from("pricing_products").insert({
     id,
@@ -60,7 +53,7 @@ export async function updatePricingProduct(
   id: string,
   patch: Partial<PricingProductInput>,
 ): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const dbPatch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
@@ -86,7 +79,7 @@ export async function updatePricingProduct(
 }
 
 export async function deletePricingProduct(id: string): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase
     .from("pricing_products")
     .delete()
@@ -96,7 +89,7 @@ export async function deletePricingProduct(id: string): Promise<void> {
 }
 
 export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("subscription_plans")
     .select(
@@ -116,7 +109,7 @@ export async function updateSubscriptionPlan(
   id: string,
   values: SubscriptionPlanInput,
 ): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const includedDevices = Math.max(1, Math.floor(values.includedDevices || 1));
   const durationMonths = Math.max(1, Math.floor(values.durationMonths || 1));
   const additionalDevicePriceMonthly = Math.max(

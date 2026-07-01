@@ -33,7 +33,7 @@ import {
   useBooths,
   useUpdateBooth,
 } from "@/features/admin/devices/use-devices";
-import type { LayoutSchemaRow } from "@/server/admin/_shared/admin-types";
+import type { LayoutSchemaRow } from "@/features/admin/layout/api";
 import type { Device } from "@/types/device";
 import { cn } from "@/lib/utils";
 
@@ -351,7 +351,7 @@ export function BuilderThemesPage() {
           </p>
         </div>
         <a
-          href="/builder"
+          href="/themes/builder/new"
           className="inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800"
         >
           <Plus className="size-4" />
@@ -460,7 +460,7 @@ export function BuilderThemesPage() {
             it to this library.
           </p>
           <a
-            href="/builder"
+            href="/themes/builder/new"
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
           >
             <Plus className="size-4" />

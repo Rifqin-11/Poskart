@@ -2,20 +2,20 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
-import { layoutService } from "@/server/admin/layout-service";
+import { layoutApi } from "@/features/admin/layout/api";
 import type { LayoutSchema } from "@/types/builder";
 
 export function useActiveLayoutSchema() {
-  return useQuery<Awaited<ReturnType<typeof layoutService.getLayoutSchema>>, Error>({
+  return useQuery<Awaited<ReturnType<typeof layoutApi.getLayoutSchema>>, Error>({
     queryKey: adminQueryKeys.layoutSchema,
-    queryFn: layoutService.getLayoutSchema,
+    queryFn: layoutApi.getLayoutSchema,
   });
 }
 
 export function useLayoutSchemas() {
-  return useQuery<Awaited<ReturnType<typeof layoutService.getLayoutSchemas>>, Error>({
+  return useQuery<Awaited<ReturnType<typeof layoutApi.getLayoutSchemas>>, Error>({
     queryKey: adminQueryKeys.layoutSchemas,
-    queryFn: layoutService.getLayoutSchemas,
+    queryFn: layoutApi.getLayoutSchemas,
     // Poll every 30 s as fallback when Realtime is unavailable
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
@@ -23,10 +23,10 @@ export function useLayoutSchemas() {
 }
 
 export function useActiveThemeStatistics(themeName: string | null) {
-  return useQuery<Awaited<ReturnType<typeof layoutService.getActiveThemeStatistics>>, Error>({
+  return useQuery<Awaited<ReturnType<typeof layoutApi.getActiveThemeStatistics>>, Error>({
     queryKey: adminQueryKeys.activeThemeStatistics(themeName),
     queryFn: () =>
-      layoutService.getActiveThemeStatistics(themeName as string),
+      layoutApi.getActiveThemeStatistics(themeName as string),
     enabled: Boolean(themeName),
   });
 }
@@ -42,7 +42,7 @@ export function useSaveLayoutAsTheme() {
       name: string;
       schema: LayoutSchema;
       existingId?: string | null;
-    }) => layoutService.saveLayoutAsTheme(name, schema, existingId ?? undefined),
+    }) => layoutApi.saveLayoutAsTheme(name, schema, existingId ?? undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.layoutSchema });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.layoutSchemas });
@@ -53,7 +53,7 @@ export function useSaveLayoutAsTheme() {
 export function useSetActiveLayout() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: layoutService.setActiveLayout,
+    mutationFn: layoutApi.setActiveLayout,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.layoutSchemas }),
   });
 }
@@ -61,7 +61,7 @@ export function useSetActiveLayout() {
 export function useDeactivateLayout() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: layoutService.deactivateLayout,
+    mutationFn: layoutApi.deactivateLayout,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.layoutSchemas }),
   });
 }
@@ -69,7 +69,7 @@ export function useDeactivateLayout() {
 export function useDeleteLayout() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: layoutService.deleteLayout,
+    mutationFn: layoutApi.deleteLayout,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.layoutSchemas }),
   });
 }

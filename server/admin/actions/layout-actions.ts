@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/server/admin/context";
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
 import {
   assertSupabaseResult,
@@ -14,15 +14,8 @@ import {
   type ThemeSchema,
 } from "../_shared/admin-types";
 
-async function verifyAuth() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  return { supabase, user };
-}
-
 export async function getLayoutSchemas(): Promise<LayoutSchemaRow[]> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("layout_schemas")
     .select("id,name,status,schema,is_active,created_at,updated_at")
@@ -44,7 +37,7 @@ export async function getActiveThemeStatistics(
     };
   }
 
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data: themeSessions, error: themeSessionsError } = await supabase
     .from("gallery_sessions")
     .select("id")
@@ -111,7 +104,7 @@ export async function saveLayoutAsTheme(
   schema: LayoutSchema,
   existingId?: string,
 ): Promise<string> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const id = existingId ?? `LYT-${Date.now()}`;
   const { error } = await supabase.from("layout_schemas").upsert({
     id,
@@ -126,7 +119,7 @@ export async function saveLayoutAsTheme(
 }
 
 export async function setActiveLayout(id: string): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   // Deactivate all
   const { error: e1 } = await supabase
     .from("layout_schemas")
@@ -146,7 +139,7 @@ export async function setActiveLayout(id: string): Promise<void> {
 }
 
 export async function deactivateLayout(id: string): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase
     .from("layout_schemas")
     .update({
@@ -159,13 +152,13 @@ export async function deactivateLayout(id: string): Promise<void> {
 }
 
 export async function deleteLayout(id: string): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase.from("layout_schemas").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete layout: ${error.message}`);
 }
 
 export async function getLayoutSchema(): Promise<LayoutSchemaRow | null> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("layout_schemas")
     .select("id,name,status,schema,is_active,created_at,updated_at")
@@ -180,7 +173,7 @@ export async function getLayoutSchema(): Promise<LayoutSchemaRow | null> {
 }
 
 export async function publishLayoutSchema(schema: LayoutSchema): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase.from("layout_schemas").upsert({
     id: "default-photobooth",
     name: "Default Photobooth Layout",
@@ -195,7 +188,7 @@ export async function publishLayoutSchema(schema: LayoutSchema): Promise<void> {
 }
 
 export async function publishThemeSchema(schema: ThemeSchema): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase.from("theme_presets").upsert({
     id: "THM-ACTIVE",
     name: "Active POSKART Theme",
@@ -210,7 +203,7 @@ export async function publishThemeSchema(schema: ThemeSchema): Promise<void> {
 }
 
 export async function getThemes(): Promise<ThemePreset[]> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("theme_presets")
     .select("id,name,status,schema")

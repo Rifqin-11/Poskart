@@ -2,20 +2,20 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
-import { transactionService } from "@/server/admin/transaction-service";
+import { transactionsApi } from "@/features/admin/transactions/api";
 
 export function useTransactions() {
-  return useQuery<Awaited<ReturnType<typeof transactionService.getTransactions>>, Error>({
+  return useQuery<Awaited<ReturnType<typeof transactionsApi.getTransactions>>, Error>({
     queryKey: adminQueryKeys.transactions,
-    queryFn: transactionService.getTransactions,
+    queryFn: transactionsApi.getTransactions,
   });
 }
 
 export function useFailedPrintsByBooth(boothName: string | null) {
-  return useQuery<Awaited<ReturnType<typeof transactionService.getFailedPrintsByBooth>>, Error>({
+  return useQuery<Awaited<ReturnType<typeof transactionsApi.getFailedPrintsByBooth>>, Error>({
     queryKey: adminQueryKeys.failedPrints(boothName),
     queryFn: () =>
-      transactionService.getFailedPrintsByBooth(boothName as string),
+      transactionsApi.getFailedPrintsByBooth(boothName as string),
     enabled: Boolean(boothName),
   });
 }
@@ -23,7 +23,7 @@ export function useFailedPrintsByBooth(boothName: string | null) {
 export function useRetryPrint() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: transactionService.retryPrint,
+    mutationFn: transactionsApi.retryPrint,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
       queryClient.invalidateQueries({ queryKey: ["failed-prints"] });
@@ -35,7 +35,7 @@ export function useRetryPrint() {
 export function useUpdateTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: transactionService.updateTransaction,
+    mutationFn: transactionsApi.updateTransaction,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
@@ -46,7 +46,7 @@ export function useUpdateTransaction() {
 export function useDeleteTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: transactionService.deleteTransaction,
+    mutationFn: transactionsApi.deleteTransaction,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
@@ -57,7 +57,7 @@ export function useDeleteTransaction() {
 export function useDeleteTransactions() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: transactionService.deleteTransactions,
+    mutationFn: transactionsApi.deleteTransactions,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });

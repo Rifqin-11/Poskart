@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { DialogActions } from "@/features/admin/_components/dialog-actions";
 import type { PricingProductInput } from "@/types/pricing";
 
 type PricingFormDialogProps = {
@@ -118,13 +118,13 @@ export function PricingFormDialog({
             Active
           </label>
         </div>
-        <div className="md:col-span-2 flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Saving…" : "Save"}
-          </Button>
+        <div className="md:col-span-2">
+          <DialogActions
+            submitting={submitting}
+            submitLabel="Save"
+            submittingLabel="Saving..."
+            onCancel={onClose}
+          />
         </div>
       </form>
     </Dialog>

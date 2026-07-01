@@ -2,13 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
-import { configService } from "@/server/config/config-service";
+import { settingsApi } from "@/features/admin/settings/api";
 import type { AppConfigRow } from "@/types/app-config";
 
 export function useAppConfig() {
-  return useQuery<Awaited<ReturnType<typeof configService.get>>, Error>({
+  return useQuery<Awaited<ReturnType<typeof settingsApi.getAppConfig>>, Error>({
     queryKey: adminQueryKeys.appConfig,
-    queryFn: configService.get,
+    queryFn: settingsApi.getAppConfig,
   });
 }
 
@@ -16,7 +16,7 @@ export function useSaveAppConfig() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (patch: Omit<AppConfigRow, "id" | "updated_at">) =>
-      configService.save(patch),
+      settingsApi.saveAppConfig(patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.appConfig }),
   });
 }

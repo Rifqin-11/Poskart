@@ -2,20 +2,19 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
-import { assetService } from "@/server/admin/asset-service";
-import type { AssetInput, AssetItem } from "@/server/admin/_shared/admin-types";
+import { assetsApi, type AssetInput, type AssetItem } from "@/features/admin/assets/api";
 
 export function useAssets() {
   return useQuery<AssetItem[], Error>({
     queryKey: adminQueryKeys.assets,
-    queryFn: assetService.getAssets,
+    queryFn: assetsApi.getAssets,
   });
 }
 
 export function useCreateAsset() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (values: AssetInput) => assetService.createAsset(values),
+    mutationFn: (values: AssetInput) => assetsApi.createAsset(values),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.assets }),
   });
 }
@@ -24,7 +23,7 @@ export function useUpdateAsset() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<AssetInput> }) =>
-      assetService.updateAsset(id, patch),
+      assetsApi.updateAsset(id, patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.assets }),
   });
 }
@@ -38,7 +37,7 @@ export function useDeleteAsset() {
     }: {
       id: string;
       storagePath?: string | null;
-    }) => assetService.deleteAsset(id, storagePath),
+    }) => assetsApi.deleteAsset(id, storagePath),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.assets }),
   });
 }

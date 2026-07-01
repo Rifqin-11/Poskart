@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { DialogActions } from "@/features/admin/_components/dialog-actions";
 
 type ProfileDraft = {
   fullName: string;
@@ -127,17 +127,13 @@ export function EditProfileDialog({
             />
           )}
         </label>
-        <div className="col-span-2 flex justify-end gap-2 border-t border-zinc-200 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={profileSaving}>
-            {profileSaving ? "Saving..." : "Save changes"}
-          </Button>
+        <div className="col-span-2 border-t border-zinc-200 pt-4">
+          <DialogActions
+            submitting={profileSaving}
+            submitLabel="Save changes"
+            submittingLabel="Saving..."
+            onCancel={onClose}
+          />
         </div>
       </form>
     </Dialog>

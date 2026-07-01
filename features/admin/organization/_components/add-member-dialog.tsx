@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DialogActions } from "@/features/admin/_components/dialog-actions";
 
 type AddMemberDialogProps = {
   open: boolean;
@@ -43,14 +43,13 @@ export function AddMemberDialog({
             required
           />
         </label>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={!email.trim() || email === myEmail || submitting}>
-            {submitting ? "Sending..." : "Send Invitation"}
-          </Button>
-        </div>
+        <DialogActions
+          submitting={submitting}
+          submitDisabled={!email.trim() || email === myEmail}
+          submitLabel="Send Invitation"
+          submittingLabel="Sending..."
+          onCancel={onClose}
+        />
       </form>
     </Dialog>
   );

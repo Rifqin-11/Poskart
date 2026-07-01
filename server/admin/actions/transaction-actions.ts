@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/server/admin/context";
 import {
   assertSupabaseResult,
   mapTransaction,
@@ -11,15 +11,8 @@ import {
   type RetryPrintTransactionRow,
 } from "../_shared/admin-types";
 
-async function verifyAuth() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  return { supabase, user };
-}
-
 export async function getTransactions(): Promise<Transaction[]> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("transactions")
     .select(TRANSACTION_COLUMNS)
@@ -35,7 +28,7 @@ export async function getTransactions(): Promise<Transaction[]> {
 export async function getFailedPrintsByBooth(
   boothName: string,
 ): Promise<Transaction[]> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("transactions")
     .select(TRANSACTION_COLUMNS)
@@ -52,7 +45,7 @@ export async function getFailedPrintsByBooth(
 }
 
 export async function retryPrint(transactionId: string): Promise<void> {
-  const { supabase, user } = await verifyAuth();
+  const { supabase, user } = await getAdminContext();
 
   const { data: current, error: readError } = await supabase
     .from("transactions")
@@ -137,7 +130,7 @@ export async function updateTransaction(
   id: string,
   patch: TransactionPatch,
 ): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase
     .from("transactions")
     .update({ ...patch, updated_at: new Date().toISOString() })
@@ -147,14 +140,14 @@ export async function updateTransaction(
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete transaction: ${error.message}`);
 }
 
 export async function deleteTransactions(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase.from("transactions").delete().in("id", ids);
   if (error) throw new Error(`Unable to delete transactions: ${error.message}`);
 }

@@ -5,12 +5,12 @@ import { toast } from "sonner";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { DialogActions } from "@/features/admin/_components/dialog-actions";
 import { pricingPlans } from "@/lib/constants/business";
 import { formatCurrency } from "@/lib/utils";
 import type { Organization } from "@/types/organization";
 import type { SubscriptionPlan } from "@/types/pricing";
-import type { TenantInput } from "@/server/admin/_shared/admin-types";
+import type { TenantInput } from "@/features/admin/superadmin/api";
 
 type TenantFormDialogProps = {
   title: string;
@@ -224,13 +224,13 @@ export function TenantFormDialog({
           reflected in this paid device limit.
         </div>
 
-        <div className="md:col-span-2 flex justify-end gap-2 pt-2 border-t border-zinc-100">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Saving..." : "Save"}
-          </Button>
+        <div className="border-t border-zinc-100 pt-2 md:col-span-2">
+          <DialogActions
+            submitting={submitting}
+            submitLabel="Save"
+            submittingLabel="Saving..."
+            onCancel={onClose}
+          />
         </div>
       </form>
     </Dialog>

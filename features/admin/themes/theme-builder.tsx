@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { layoutApi } from "@/features/admin/layout/api";
 import { useThemes } from "@/features/admin/themes/use-themes";
-import { layoutService } from "@/server/admin/layout-service";
 import { useThemeStore } from "@/stores/theme-store";
 
 export function ThemeBuilder() {
@@ -27,7 +27,7 @@ export function ThemeBuilder() {
           <Button
             onClick={async () => {
               try {
-                await layoutService.publishThemeSchema(schema);
+                await layoutApi.publishThemeSchema(schema);
                 publish();
                 toast.success("Theme schema published to Supabase");
               } catch (error) {

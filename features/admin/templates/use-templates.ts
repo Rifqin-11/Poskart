@@ -2,19 +2,19 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
-import { templateService } from "@/server/admin/template-service";
+import { templatesApi } from "@/features/admin/templates/api";
 
 export function useTemplates() {
-  return useQuery<Awaited<ReturnType<typeof templateService.getTemplates>>, Error>({
+  return useQuery<Awaited<ReturnType<typeof templatesApi.getTemplates>>, Error>({
     queryKey: adminQueryKeys.templates,
-    queryFn: templateService.getTemplates,
+    queryFn: templatesApi.getTemplates,
   });
 }
 
 export function useCreateTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: templateService.createTemplate,
+    mutationFn: templatesApi.createTemplate,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
   });
@@ -28,8 +28,8 @@ export function useUpdateTemplate() {
       patch,
     }: {
       id: string;
-      patch: Parameters<typeof templateService.updateTemplate>[1];
-    }) => templateService.updateTemplate(id, patch),
+      patch: Parameters<typeof templatesApi.updateTemplate>[1];
+    }) => templatesApi.updateTemplate(id, patch),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
   });
@@ -38,7 +38,7 @@ export function useUpdateTemplate() {
 export function useDeleteTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: templateService.deleteTemplate,
+    mutationFn: templatesApi.deleteTemplate,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
   });
@@ -47,7 +47,7 @@ export function useDeleteTemplate() {
 export function useReorderTemplates() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: templateService.reorderTemplates,
+    mutationFn: templatesApi.reorderTemplates,
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
   });

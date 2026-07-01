@@ -25,7 +25,7 @@ import {
 import type {
   AssetInput,
   AssetItem,
-} from "@/server/admin/_shared/admin-types";
+} from "@/features/admin/assets/api";
 
 import { AssetUploadDialog, AssetEditDialog } from "./_components/asset-form-dialog";
 

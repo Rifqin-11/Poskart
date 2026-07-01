@@ -9,7 +9,7 @@ import { uploadLibraryAsset } from "@/lib/services/storage-service";
 import type {
   AssetInput,
   AssetItem,
-} from "@/server/admin/_shared/admin-types";
+} from "@/features/admin/assets/api";
 
 type AssetUploadDialogProps = {
   initial: AssetInput;

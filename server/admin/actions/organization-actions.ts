@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/server/admin/context";
 import {
   subscriptionPlanMeta,
   subscriptionDisplayName,
@@ -11,15 +11,8 @@ import {
   type OrganizationMemberWithProfile,
 } from "../_shared/admin-types";
 
-async function verifyAuth() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  return { supabase, user };
-}
-
 export async function getOrganizations(): Promise<Organization[]> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("organizations")
     .select(
@@ -81,7 +74,7 @@ export async function getOrganizations(): Promise<Organization[]> {
 }
 
 export async function createOrganization(values: TenantInput): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const orgId = `org_${Date.now()}`;
 
   const { error: orgErr } = await supabase.from("organizations").insert({
@@ -109,7 +102,7 @@ export async function updateOrganization(
   id: string,
   patch: Partial<TenantInput>,
 ): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const dbPatch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
@@ -161,13 +154,13 @@ export async function updateOrganization(
 }
 
 export async function deleteOrganization(id: string): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase.from("organizations").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete organization: ${error.message}`);
 }
 
 export async function getMyOrganizationDetails() {
-  const { supabase, user } = await verifyAuth();
+  const { supabase, user } = await getAdminContext();
 
   const { data: profile, error: pErr } = await supabase
     .from("organization_members")
@@ -220,7 +213,7 @@ export async function getMyOrganizationDetails() {
 }
 
 export async function updateMyOrganizationName(name: string) {
-  const { supabase, user } = await verifyAuth();
+  const { supabase, user } = await getAdminContext();
 
   const { data: profile } = await supabase
     .from("organization_members")
@@ -241,7 +234,7 @@ export async function updateMyOrganizationName(name: string) {
 }
 
 export async function getMyOrganizationMembers() {
-  const { supabase, user } = await verifyAuth();
+  const { supabase, user } = await getAdminContext();
 
   const { data: profile } = await supabase
     .from("organization_members")
@@ -276,7 +269,7 @@ export async function getMyOrganizationMembers() {
 }
 
 export async function getMyOrganizationInvitations() {
-  const { supabase, user } = await verifyAuth();
+  const { supabase, user } = await getAdminContext();
 
   const { data: profile } = await supabase
     .from("organization_members")
@@ -296,7 +289,7 @@ export async function getMyOrganizationInvitations() {
 }
 
 export async function inviteUserToTenant(email: string) {
-  const { supabase, user } = await verifyAuth();
+  const { supabase, user } = await getAdminContext();
 
   const { data: profile } = await supabase
     .from("organization_members")
@@ -360,7 +353,7 @@ export async function inviteUserToTenant(email: string) {
 }
 
 export async function deleteTenantInvitation(id: string) {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase
     .from("organization_invitations")
     .delete()
@@ -370,7 +363,7 @@ export async function deleteTenantInvitation(id: string) {
 }
 
 export async function removeMemberFromTenant(memberId: string) {
-  const { supabase, user } = await verifyAuth();
+  const { supabase, user } = await getAdminContext();
 
   const { data: currentMembership } = await supabase
     .from("organization_members")

@@ -11,7 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import type { LatestAppRelease } from "@/server/releases/github-release";
+import type { LatestAppRelease } from "@/features/root/home/api";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },

@@ -2,7 +2,7 @@ import type {
   DashboardData,
   EventPeriodKey,
   KpiMetric,
-} from "@/server/admin/_shared/admin-types";
+} from "@/features/admin/dashboard/api";
 
 export const eventPeriodTabs: Array<{ key: EventPeriodKey; label: string }> = [
   { key: "daily", label: "Daily" },

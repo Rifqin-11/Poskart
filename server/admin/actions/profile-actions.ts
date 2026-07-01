@@ -1,7 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { type ProfileWithOrganization } from "../_shared/admin-types";
+import { getAdminContext } from "@/server/admin/context";
 
 type ProfileRow = {
   id: string;
@@ -24,15 +23,8 @@ type ProfileRow = {
   }> | null;
 };
 
-async function verifyAuth() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  return { supabase, user };
-}
-
 export async function getProfiles() {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("profiles")
     .select(
@@ -81,7 +73,7 @@ export async function updateProfile({
   patch: Record<string, unknown>;
   organizationId?: string | null;
 }) {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
 
   const { data: profile, error } = await supabase
     .from("profiles")
@@ -132,7 +124,7 @@ export async function updateProfile({
 }
 
 export async function deleteProfile(id: string) {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase.from("profiles").delete().eq("id", id);
   if (error) throw error;
   return true;

@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DialogActions } from "@/features/admin/_components/dialog-actions";
+import type { BoothInput } from "@/features/admin/devices/api";
 import { PRINTER_TUNING_LIMITS } from "@/lib/printer-tuning";
 import { cn } from "@/lib/utils";
-import type { BoothInput } from "@/server/admin/_shared/admin-types";
 import type { Device } from "@/types/device";
 
 type DeviceFormOptions = {
@@ -426,14 +427,12 @@ export function BoothFormDialog({
               </Button>
             ) : null}
           </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Saving…" : "Save configuration"}
-            </Button>
-          </div>
+          <DialogActions
+            submitting={submitting}
+            submitLabel="Save configuration"
+            submittingLabel="Saving..."
+            onCancel={onClose}
+          />
         </div>
       </form>
     </Dialog>

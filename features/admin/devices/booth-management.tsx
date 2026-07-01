@@ -35,7 +35,7 @@ import { usePricing } from "@/features/admin/pricing/use-pricing";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
 import { useTemplates } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
-import type { BoothInput, LayoutSchemaRow, Template, PricingProduct } from "@/server/admin/_shared/admin-types";
+import type { BoothInput, LayoutSchemaRow, Template, PricingProduct } from "@/features/admin/devices/api";
 import type { Device } from "@/types/device";
 
 import { BoothFormDialog } from "./_components/booth-form-dialog";

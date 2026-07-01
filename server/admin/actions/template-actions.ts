@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/server/admin/context";
 import {
   assertSupabaseResult,
   mapTemplate,
@@ -10,15 +10,8 @@ import {
   type TemplateRow,
 } from "../_shared/admin-types";
 
-async function verifyAuth() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-  return { supabase, user };
-}
-
 export async function getTemplates(): Promise<Template[]> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("templates")
     .select(
@@ -35,7 +28,7 @@ export async function getTemplates(): Promise<Template[]> {
 }
 
 export async function createTemplate(values: TemplateFormValues): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const now = new Date().toISOString();
   const id = `TPL-${Date.now()}`;
   const photoCount = countPhotoSlotsFromLayout(values.frameLayout);
@@ -75,7 +68,7 @@ export async function updateTemplate(
   id: string,
   values: Partial<TemplateFormValues>,
 ): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
     updated_at_label: "just now",
@@ -101,7 +94,7 @@ export async function updateTemplate(
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase.from("templates").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete template: ${error.message}`);
 }
@@ -109,7 +102,7 @@ export async function deleteTemplate(id: string): Promise<void> {
 export async function reorderTemplates(templateIds: string[]): Promise<void> {
   if (templateIds.length === 0) return;
 
-  const { supabase } = await verifyAuth();
+  const { supabase } = await getAdminContext();
   const { error } = await supabase.rpc("reorder_templates", {
     template_ids: templateIds,
   });

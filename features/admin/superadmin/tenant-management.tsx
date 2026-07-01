@@ -40,7 +40,7 @@ import {
   useUpdateSubscriptionPlan,
 } from "@/features/admin/pricing/use-pricing";
 import type { Organization } from "@/types/organization";
-import type { TenantInput } from "@/server/admin/_shared/admin-types";
+import type { TenantInput } from "@/features/admin/superadmin/api";
 import type { SubscriptionPlan } from "@/types/pricing";
 
 import { TenantFormDialog } from "./_components/tenant-form-dialog";

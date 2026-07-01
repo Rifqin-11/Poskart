@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
+import { DialogActions } from "@/features/admin/_components/dialog-actions";
 import type { SubscriptionPlan } from "@/types/pricing";
 
 type SubscriptionPlanDialogProps = {
@@ -125,13 +125,13 @@ export function SubscriptionPlanDialog({
           />
           Visible publicly on signup pricing selection
         </label>
-        <div className="md:col-span-2 flex justify-end gap-2 pt-2 border-t border-zinc-100">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Saving..." : "Save"}
-          </Button>
+        <div className="border-t border-zinc-100 pt-2 md:col-span-2">
+          <DialogActions
+            submitting={submitting}
+            submitLabel="Save"
+            submittingLabel="Saving..."
+            onCancel={onClose}
+          />
         </div>
       </form>
     </Dialog>

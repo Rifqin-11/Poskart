@@ -18,10 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
+import { DialogActions } from "@/features/admin/_components/dialog-actions";
+import { EmptyState } from "@/features/admin/_components/empty-state";
+import { PageHeader } from "@/features/admin/_components/page-header";
 import {
   Ticket,
   AlertCircle,
-  CheckCircle,
   Search,
   MonitorSmartphone,
   RefreshCw,
@@ -31,26 +33,6 @@ import {
 import { toast } from "sonner";
 
 const VOUCHER_REQUEST_TTL_MS = 5 * 60 * 1000;
-
-function PageHeader({
-  title,
-  description,
-  action,
-}: {
-  title: string;
-  description: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="mb-6 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 text-sm text-zinc-500">{description}</p>
-      </div>
-      {action}
-    </div>
-  );
-}
 
 function parseVoucherRequestTime(device: Device) {
   if (!device.voucherRequestedAt) return null;
@@ -152,35 +134,25 @@ export function VoucherApproval() {
         onOpenChange={(open) => !open && setSelectedDevice(null)}
         className="max-w-md"
       >
-        <div className="space-y-4 pt-2">
+        <form
+          className="space-y-4 pt-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleApprove();
+          }}
+        >
           <p className="text-sm text-zinc-600">
             Are you sure you want to send a voucher to{" "}
             <strong className="text-zinc-900">{selectedDevice?.name}</strong>?
           </p>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setSelectedDevice(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleApprove}
-              disabled={approveVoucher.isPending}
-              className="bg-zinc-900 text-white hover:bg-zinc-800"
-            >
-              {approveVoucher.isPending ? (
-                <>
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                  Sending…
-                </>
-              ) : (
-                <>
-                  <Send className="size-4 mr-2" />
-                  Yes, Send
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
+          <DialogActions
+            submitting={approveVoucher.isPending}
+            submitLabel="Yes, Send"
+            submittingLabel="Sending..."
+            onCancel={() => setSelectedDevice(null)}
+          />
+        </form>
       </Dialog>
 
       {/* 1. WAITING DEVICES PANEL (High Priority) */}
@@ -283,18 +255,12 @@ export function VoucherApproval() {
             })}
           </div>
         ) : (
-          <Card className="border-dashed border-zinc-200 bg-zinc-50/50">
-            <CardContent className="flex flex-col items-center justify-center py-10 text-center text-zinc-500">
-              <CheckCircle className="size-10 text-emerald-500 mb-3" />
-              <div className="font-semibold text-zinc-800">
-                All Devices Clear
-              </div>
-              <p className="text-xs text-zinc-500 mt-1 max-w-sm">
-                No active voucher approval requests. When a kiosk enters the
-                voucher sheet, it will appear here in real time.
-              </p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            title="All Devices Clear"
+            description="No active voucher approval requests. When a kiosk enters the voucher sheet, it will appear here in real time."
+            icon={MonitorSmartphone}
+            className="py-10"
+          />
         )}
       </div>
 
@@ -373,12 +339,12 @@ export function VoucherApproval() {
             })}
           </div>
         ) : (
-          <Card className="border-dashed border-zinc-200">
-            <CardContent className="flex flex-col items-center justify-center py-10 text-center text-zinc-400">
-              <MonitorSmartphone className="size-8 text-zinc-300 mb-2" />
-              <div className="text-sm">No other devices found.</div>
-            </CardContent>
-          </Card>
+          <EmptyState
+            title="No other devices found"
+            description="Adjust the search term or refresh the device list."
+            icon={MonitorSmartphone}
+            className="py-10"
+          />
         )}
       </div>
     </div>
