@@ -13,6 +13,7 @@ import {
   useTenantMembers,
 } from "@/features/admin/organization/use-organization";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import { ProfileCard } from "./_components/profile-card";
 import { EditProfileDialog } from "./_components/edit-profile-dialog";
@@ -22,6 +23,16 @@ import { MediaSettingsCard } from "./_components/media-settings-card";
 import { KioskDefaultsCard } from "./_components/kiosk-defaults-card";
 
 type SubscriptionGatewayMode = "duitku" | "midtrans" | "both";
+
+const SETTINGS_TABS = [
+  { id: "details", label: "My details" },
+  { id: "organization", label: "Organization" },
+  { id: "payment", label: "Payment" },
+  { id: "media", label: "Media & Gallery" },
+  { id: "kiosk", label: "Kiosk Defaults" },
+] as const;
+
+type SettingsTab = (typeof SETTINGS_TABS)[number]["id"];
 
 type SettingsForm = {
   // Flutter operational
@@ -99,6 +110,7 @@ export function SettingsPanel() {
     timezone: "Asia/Jakarta",
     memberRole: "",
   });
+  const [activeTab, setActiveTab] = useState<SettingsTab>("details");
   const [profileSaving, setProfileSaving] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
@@ -241,14 +253,15 @@ export function SettingsPanel() {
   const currentMember = members.find((m) => m.email === account.email);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Settings"
-        description="Kelola profil akun dan konfigurasi global yang dipakai dashboard POSKART."
+        description="Kelola profil akun, workspace, payment, media, dan default kiosk POSKART."
         action={
           <Button
             onClick={() => void handleSave()}
             disabled={saveConfig.isPending}
+            className="rounded-2xl"
           >
             <Save className="size-4" />
             {saveConfig.isPending ? "Saving..." : "Save app settings"}
@@ -256,38 +269,73 @@ export function SettingsPanel() {
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <ProfileCard
-          account={account}
-          currentMemberRole={currentMember?.role}
-          onEditProfile={() => {
-            setProfileDraft({
-              fullName: account.fullName,
-              phone: account.phone,
-              jobTitle: account.jobTitle,
-              timezone: account.timezone,
-              memberRole: currentMember?.role ?? "",
-            });
-            setEditProfileOpen(true);
-          }}
-        />
+      <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm shadow-zinc-200/70">
+        <div className="border-b border-zinc-100 p-3">
+          <div className="flex gap-1.5 overflow-x-auto rounded-[1.35rem] bg-zinc-50 p-1.5">
+            {SETTINGS_TABS.map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "h-10 shrink-0 rounded-2xl px-4 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-white text-zinc-950 shadow-sm"
+                      : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",
+                  )}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-        <OrganizationCard
-          isLoadingTenant={isLoadingTenant}
-          organizationName={organizationName}
-          planName={planName}
-          subscriptionActive={subscriptionActive}
-          subscriptionStatus={subscriptionStatus}
-          deviceLimit={tenant?.device_limit ?? 1}
-          expiresAt={expiresAt}
-        />
+        <div className="p-5 sm:p-6 lg:p-8">
+          {activeTab === "details" ? (
+            <ProfileCard
+              account={account}
+              currentMemberRole={currentMember?.role}
+              onEditProfile={() => {
+                setProfileDraft({
+                  fullName: account.fullName,
+                  phone: account.phone,
+                  jobTitle: account.jobTitle,
+                  timezone: account.timezone,
+                  memberRole: currentMember?.role ?? "",
+                });
+                setEditProfileOpen(true);
+              }}
+            />
+          ) : null}
+
+          {activeTab === "organization" ? (
+            <OrganizationCard
+              isLoadingTenant={isLoadingTenant}
+              organizationName={organizationName}
+              planName={planName}
+              subscriptionActive={subscriptionActive}
+              subscriptionStatus={subscriptionStatus}
+              deviceLimit={tenant?.device_limit ?? 1}
+              expiresAt={expiresAt}
+            />
+          ) : null}
+
+          {activeTab === "payment" ? (
+            <PaymentSettingsCard form={form} setForm={setForm} />
+          ) : null}
+
+          {activeTab === "media" ? (
+            <MediaSettingsCard form={form} setForm={setForm} />
+          ) : null}
+
+          {activeTab === "kiosk" ? (
+            <KioskDefaultsCard form={form} setForm={setForm} />
+          ) : null}
+        </div>
       </div>
-
-      <PaymentSettingsCard form={form} setForm={setForm} />
-
-      <MediaSettingsCard form={form} setForm={setForm} />
-
-      <KioskDefaultsCard form={form} setForm={setForm} />
 
       {editProfileOpen && (
         <EditProfileDialog

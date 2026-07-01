@@ -1,10 +1,13 @@
 "use client";
 
-import { Wrench } from "lucide-react";
+import { Link2, QrCode, Store, Wrench } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  SettingField,
+  SettingsCard,
+  SwitchSetting,
+} from "./settings-card";
 
 type SettingsForm = {
   merchant_name: string;
@@ -23,81 +26,83 @@ export function KioskDefaultsCard<T extends SettingsForm>({
   setForm,
 }: KioskDefaultsCardProps<T>) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Global kiosk defaults</CardTitle>
-        <CardDescription>
-          Organization-wide defaults consumed by dashboard flows and Flutter
-          startup config. Device-specific printer, template, and timer values
-          are managed from Devices.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-2">
-          <label className="block text-xs font-medium text-zinc-600">
-            Merchant name
+    <SettingsCard
+      title="Global kiosk defaults"
+      description="Organization-wide defaults consumed by dashboard flows and Flutter startup config."
+      icon={<Wrench className="size-4" />}
+    >
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <SettingField label="Merchant name">
+              <Input
+                placeholder="POSKART"
+                value={form.merchant_name}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    merchant_name: e.target.value,
+                  }))
+                }
+              />
+            </SettingField>
+            <SettingField label="QRIS payload prefix">
+              <Input
+                placeholder="qris://poskart/pay"
+                value={form.qris_payload_prefix}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    qris_payload_prefix: e.target.value,
+                  }))
+                }
+              />
+            </SettingField>
+          </div>
+          <SettingField label="Share base URL">
             <Input
-              className="mt-1"
-              placeholder="POSKART"
-              value={form.merchant_name}
+              placeholder="https://poskart.app/s"
+              value={form.share_base_url}
               onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  merchant_name: e.target.value,
-                }))
+                setForm((f) => ({ ...f, share_base_url: e.target.value }))
               }
             />
-          </label>
-          <label className="block text-xs font-medium text-zinc-600">
-            QRIS payload prefix
-            <Input
-              className="mt-1"
-              placeholder="qris://poskart/pay"
-              value={form.qris_payload_prefix}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  qris_payload_prefix: e.target.value,
-                }))
-              }
-            />
-          </label>
+          </SettingField>
         </div>
-        <label className="block text-xs font-medium text-zinc-600">
-          Share base URL
-          <Input
-            className="mt-1"
-            placeholder="https://poskart.app/s"
-            value={form.share_base_url}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, share_base_url: e.target.value }))
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="rounded-3xl border border-zinc-200 bg-white p-4">
+              <Store className="mb-2 size-3.5 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Merchant</div>
+              <div className="mt-1 truncate text-sm font-semibold text-zinc-950">
+                {form.merchant_name || "POSKART"}
+              </div>
+            </div>
+            <div className="rounded-3xl border border-zinc-200 bg-white p-4">
+              <QrCode className="mb-2 size-3.5 text-zinc-500" />
+              <div className="text-xs text-zinc-500">QRIS prefix</div>
+              <div className="mt-1 truncate text-sm font-semibold text-zinc-950">
+                {form.qris_payload_prefix || "-"}
+              </div>
+            </div>
+            <div className="rounded-3xl border border-zinc-200 bg-white p-4">
+              <Link2 className="mb-2 size-3.5 text-zinc-500" />
+              <div className="text-xs text-zinc-500">Share base</div>
+              <div className="mt-1 truncate text-sm font-semibold text-zinc-950">
+                {form.share_base_url || "-"}
+              </div>
+            </div>
+          </div>
+          <SwitchSetting
+            title="Global maintenance fallback"
+            description="Per-device maintenance is managed from Devices."
+            checked={form.maintenance_mode}
+            onCheckedChange={(v) =>
+              setForm((f) => ({ ...f, maintenance_mode: v }))
             }
           />
-        </label>
-        <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
-              <Wrench className="size-4" />
-              Global maintenance fallback
-            </div>
-            <p className="mt-1 text-xs leading-5 text-zinc-500">
-              Per-device maintenance is managed from Devices. This switch is
-              kept as the global fallback consumed by legacy config clients.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-zinc-600">
-              {form.maintenance_mode ? "Enabled" : "Disabled"}
-            </span>
-            <Switch
-              checked={form.maintenance_mode}
-              onCheckedChange={(v) =>
-                setForm((f) => ({ ...f, maintenance_mode: v }))
-              }
-            />
-          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </SettingsCard>
   );
 }
