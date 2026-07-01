@@ -16,7 +16,10 @@ import {
   isEditableTextNode,
   isMediaNode,
 } from "@/features/builder/utils";
-import { uploadBuilderImage } from "@/lib/services/storage-service";
+import {
+  uploadBuilderImage,
+  uploadBuilderMedia,
+} from "@/lib/services/storage-service";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { BuilderNode } from "@/types/builder";
 
@@ -53,6 +56,30 @@ export function PropertiesPanel({
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Unable to upload image",
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleMediaUpload = async (file?: File) => {
+    if (!selectedNode || !file) return;
+
+    setUploading(true);
+    try {
+      const media = await uploadBuilderMedia(file);
+      updateNodeProps(selectedNode.id, {
+        src: media.url,
+        alt: file.name,
+        mediaType: media.type,
+        storage: media.storage,
+      });
+      toast.success(
+        `${media.type === "video" ? "Video" : "Image"} uploaded to Cloudflare R2`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to upload media",
       );
     } finally {
       setUploading(false);
@@ -117,7 +144,7 @@ export function PropertiesPanel({
         <VisualMediaProperties
           selectedNode={selectedNode}
           uploading={uploading}
-          onImageUpload={handleImageUpload}
+          onMediaUpload={handleMediaUpload}
           updateNodeProps={updateNodeProps}
         />
       )}

@@ -101,7 +101,7 @@ export const COMPONENT_META: Record<
   { label: string; icon: LucideIcon }
 > = {
   text: { label: "Text", icon: Type },
-  image: { label: "Image", icon: ImageIcon },
+  image: { label: "Media", icon: Film },
   button: { label: "Button", icon: Link2 },
   qr: { label: "QR Download", icon: QrCode },
   "qr-link": { label: "QR Code Link", icon: QrCode },

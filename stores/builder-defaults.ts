@@ -73,7 +73,13 @@ export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
     type === "frame-preview" ||
     type === "background-decoration"
   ) {
-    return { src: "", alt: type, objectFit: "cover", radius: 8 };
+    return {
+      src: "",
+      alt: type,
+      mediaType: "image",
+      objectFit: "cover",
+      radius: 8,
+    };
   }
 
   if (type === "qr-link") {

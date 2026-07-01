@@ -23,40 +23,23 @@ export async function uploadBuilderImage(file: File) {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     throw new Error("Only JPG, PNG, WebP, GIF, or SVG images are supported.");
   }
-  if (file.size > MAX_IMAGE_SIZE) {
-    throw new Error("Image must be 8 MB or smaller.");
-  }
-  const supabase = createClient();
-  const filePath = `builder/${crypto.randomUUID()}-${safeFileName(file.name)}`;
-  const { error: uploadError } = await supabase.storage
-    .from(BUILDER_BUCKET)
-    .upload(filePath, file, {
-      cacheControl: "31536000",
-      upsert: false,
-    });
-  if (uploadError)
-    throw new Error(`Unable to upload image: ${uploadError.message}`);
-  const { data } = supabase.storage.from(BUILDER_BUCKET).getPublicUrl(filePath);
-  await supabase.from("assets").upsert({
-    id: `AST-${crypto.randomUUID()}`,
-    name: file.name,
-    folder: "Builder Uploads",
-    tag: "builder",
-    version: "v1",
-    size: `${Math.max(1, Math.round(file.size / 1024))} KB`,
-    updated_at: new Date().toISOString(),
-  });
-  return { url: data.publicUrl, path: filePath };
+  return uploadBuilderMedia(file);
 }
 
 /**
- * Upload image OR video to Supabase Storage.
+ * Upload image OR video to the private builder-assets API.
+ * The API stores files in Cloudflare R2 and returns a public delivery URL.
  * Images: JPG, PNG, WebP, GIF, SVG — max 8 MB
  * Videos: MP4, WebM, MOV — max 200 MB
  */
 export async function uploadBuilderMedia(
   file: File,
-): Promise<{ url: string; path: string; type: "image" | "video" }> {
+): Promise<{
+  url: string;
+  path: string;
+  type: "image" | "video";
+  storage?: string;
+}> {
   const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
   const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
 
@@ -69,23 +52,39 @@ export async function uploadBuilderMedia(
     throw new Error("Video must be 200 MB or smaller.");
 
   const supabase = createClient();
-  const folder = isVideo ? "builder/videos" : "builder/images";
-  const filePath = `${folder}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
+  if (!accessToken) {
+    throw new Error("You must be signed in to upload builder media.");
+  }
 
-  const { error } = await supabase.storage
-    .from(BUILDER_BUCKET)
-    .upload(filePath, file, {
-      cacheControl: "31536000",
-      upsert: false,
-      contentType: file.type,
-    });
-  if (error) throw new Error(`Unable to upload: ${error.message}`);
+  const formData = new FormData();
+  formData.append("file", file);
 
-  const { data } = supabase.storage.from(BUILDER_BUCKET).getPublicUrl(filePath);
+  const response = await fetch("/api/kiosk/builder/assets", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: formData,
+  });
+  const payload = (await response.json().catch(() => null)) as {
+    url?: string;
+    path?: string;
+    type?: "image" | "video";
+    storage?: string;
+    error?: string;
+  } | null;
+
+  if (!response.ok || !payload?.url || !payload.path || !payload.type) {
+    throw new Error(payload?.error || "Unable to upload builder media.");
+  }
+
   return {
-    url: data.publicUrl,
-    path: filePath,
-    type: isVideo ? "video" : "image",
+    url: payload.url,
+    path: payload.path,
+    type: payload.type,
+    storage: payload.storage,
   };
 }
 

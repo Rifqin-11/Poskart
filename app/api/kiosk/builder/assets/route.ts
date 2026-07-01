@@ -1,6 +1,8 @@
 import { jsonError, jsonOk, requireKioskContext } from "@/lib/kiosk/server";
+import { uploadR2Object } from "@/lib/r2/server";
 
-const BUILDER_BUCKET = "builder-assets";
+export const runtime = "nodejs";
+
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 200 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -17,10 +19,11 @@ const ALLOWED_VIDEO_TYPES = new Set([
 ]);
 
 function safeFileName(name: string) {
-  return name
+  const safe = name
     .toLowerCase()
     .replace(/[^a-z0-9.]+/g, "-")
     .replace(/(^-|-$)/g, "");
+  return safe || "media";
 }
 
 export async function POST(request: Request) {
@@ -61,24 +64,18 @@ export async function POST(request: Request) {
     }
 
     const folder = isVideo ? "builder/videos" : "builder/images";
-    const filePath = `${folder}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
-    const { error } = await context.client.storage
-      .from(BUILDER_BUCKET)
-      .upload(filePath, file, {
-        cacheControl: "31536000",
-        upsert: false,
-        contentType: file.type,
-      });
-    if (error) throw error;
-
-    const { data } = context.client.storage
-      .from(BUILDER_BUCKET)
-      .getPublicUrl(filePath);
+    const filePath = `organizations/${context.organizationId}/${folder}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+    const uploaded = await uploadR2Object({
+      key: filePath,
+      body: Buffer.from(await file.arrayBuffer()),
+      contentType: file.type,
+    });
 
     return jsonOk({
-      url: data.publicUrl,
-      path: filePath,
+      url: uploaded.url,
+      path: uploaded.key,
       type: isVideo ? "video" : "image",
+      storage: "cloudflare-r2",
     });
   } catch (error) {
     return jsonError(error);

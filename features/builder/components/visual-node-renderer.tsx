@@ -818,13 +818,36 @@ export function NodeRenderer({
   if (isMediaNode(node)) {
     const src = readString(node.props.src, "");
     const alt = readString(node.props.alt, node.type);
+    const mediaType = readString(node.props.mediaType, "image");
     const radius = readNumber(
       node.props.radius,
       node.type === "background-decoration" ? 0 : 8,
     );
     const objectFit = readString(node.props.objectFit, "cover");
+    const isVideo = mediaType === "video" || isDirectMp4Url(src);
 
     if (src) {
+      if (isVideo) {
+        return (
+          <video
+            aria-label={alt}
+            className="h-full w-full bg-zinc-950"
+            src={src}
+            autoPlay
+            muted
+            loop
+            playsInline
+            style={{
+              borderRadius: radius,
+              objectFit:
+                objectFit === "fill"
+                  ? "fill"
+                  : (objectFit as React.CSSProperties["objectFit"]),
+            }}
+          />
+        );
+      }
+
       return (
         <div
           aria-label={alt}
@@ -846,8 +869,12 @@ export function NodeRenderer({
         style={{ borderRadius: radius }}
       >
         <div>
-          <ImageIcon className="mx-auto mb-2 size-5" />
-          {node.type}
+          {mediaType === "video" ? (
+            <Film className="mx-auto mb-2 size-5" />
+          ) : (
+            <ImageIcon className="mx-auto mb-2 size-5" />
+          )}
+          {mediaType === "video" ? "video" : node.type}
         </div>
       </div>
     );
@@ -971,4 +998,14 @@ export function NodeRenderer({
       {readString(node.props.content, readString(node.props.label, node.type))}
     </div>
   );
+}
+
+function isDirectMp4Url(value: string) {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol.startsWith("http") &&
+      url.pathname.toLowerCase().endsWith(".mp4");
+  } catch {
+    return value.trim().toLowerCase().endsWith(".mp4");
+  }
 }
