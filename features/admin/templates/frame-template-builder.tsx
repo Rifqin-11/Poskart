@@ -40,7 +40,10 @@ import {
   upsertFrameBackground,
 } from "@/features/admin/templates/frame-builder.utils";
 import { useTouchContextMenu } from "@/lib/hooks/use-touch-context-menu";
-import { uploadBuilderImage } from "@/lib/services/storage-service";
+import {
+  getBuilderImageValidationError,
+  uploadBuilderImage,
+} from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
 import {
   type FrameLayout,
@@ -814,6 +817,11 @@ export function FrameTemplateBuilder({
 
   const uploadToNode = async (file?: File) => {
     if (!selectedNode || !file) return;
+    const validationError = getBuilderImageValidationError(file);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
 
     setUploading(true);
     try {

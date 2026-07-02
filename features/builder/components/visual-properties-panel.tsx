@@ -17,6 +17,8 @@ import {
   isMediaNode,
 } from "@/features/builder/utils";
 import {
+  getBuilderImageValidationError,
+  getBuilderMediaValidationError,
   uploadBuilderImage,
   uploadBuilderMedia,
 } from "@/lib/services/storage-service";
@@ -47,12 +49,17 @@ export function PropertiesPanel({
 
   const handleImageUpload = async (file?: File) => {
     if (!selectedNode || !file) return;
+    const validationError = getBuilderImageValidationError(file);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
 
     setUploading(true);
     try {
       const image = await uploadBuilderImage(file);
       updateNodeProps(selectedNode.id, { src: image.url, alt: file.name });
-      toast.success("Image uploaded to Supabase Storage");
+      toast.success("Image uploaded to Cloudflare R2");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Unable to upload image",
@@ -64,6 +71,11 @@ export function PropertiesPanel({
 
   const handleMediaUpload = async (file?: File) => {
     if (!selectedNode || !file) return;
+    const validationError = getBuilderMediaValidationError(file);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
 
     setUploading(true);
     try {

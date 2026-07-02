@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { readNumber, readString } from "@/features/admin/templates/frame-builder.utils";
+import { BUILDER_IMAGE_ACCEPT } from "@/lib/services/storage-service";
 import type { FrameLayout, FrameNode } from "@/types/frame-template";
 
 export function FramePropertiesPanel({
@@ -272,11 +273,12 @@ export function FramePropertiesPanel({
                     <Input
                       className="mt-1"
                       type="file"
-                      accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                      accept={BUILDER_IMAGE_ACCEPT}
                       disabled={uploading}
-                      onChange={(event) =>
-                        onUploadToNode(event.target.files?.[0])
-                      }
+                      onChange={(event) => {
+                        onUploadToNode(event.target.files?.[0]);
+                        event.target.value = "";
+                      }}
                     />
                   </label>
                   <label className="block text-xs font-medium text-zinc-500">

@@ -14,7 +14,11 @@ import {
   useTemplates,
   useUpdateTemplate,
 } from "@/features/admin/templates/use-templates";
-import { uploadBuilderImage } from "@/lib/services/storage-service";
+import {
+  BUILDER_IMAGE_ACCEPT,
+  getBuilderImageValidationError,
+  uploadBuilderImage,
+} from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { FrameLayout } from "@/types/frame-template";
@@ -165,6 +169,12 @@ export function TemplateBuilderWorkspace({
 
   const handleUpload = async (file?: File) => {
     if (!file) return;
+    const validationError = getBuilderImageValidationError(file);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     setUploading(true);
     try {
       const dimensions = await readImageDimensions(file);
@@ -286,9 +296,12 @@ export function TemplateBuilderWorkspace({
         <input
           className="sr-only"
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+          accept={BUILDER_IMAGE_ACCEPT}
           disabled={uploading}
-          onChange={(event) => handleUpload(event.target.files?.[0])}
+          onChange={(event) => {
+            void handleUpload(event.target.files?.[0]);
+            event.target.value = "";
+          }}
         />
       </label>
     </section>

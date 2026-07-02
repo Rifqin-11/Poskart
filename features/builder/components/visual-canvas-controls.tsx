@@ -7,7 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { ColorField, PanelSection } from "@/features/builder/components/visual-properties-primitives";
-import { uploadBuilderMedia } from "@/lib/services/storage-service";
+import {
+  BUILDER_MEDIA_ACCEPT,
+  BUILDER_MEDIA_HELP_TEXT,
+  getBuilderMediaValidationError,
+  uploadBuilderMedia,
+} from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { BuilderCanvas } from "@/types/builder";
@@ -39,6 +44,12 @@ export function CanvasControls() {
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
+    const validationError = getBuilderMediaValidationError(file);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     setUploading(true);
     try {
       const result = await uploadBuilderMedia(file);
@@ -351,16 +362,19 @@ export function CanvasControls() {
             ref={fileInputRef}
             type="file"
             className="hidden"
-            accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,video/mp4,video/webm,video/quicktime"
+            accept={BUILDER_MEDIA_ACCEPT}
             disabled={uploading}
-            onChange={(e) => void handleFile(e.target.files?.[0])}
+            onChange={(e) => {
+              void handleFile(e.target.files?.[0]);
+              e.target.value = "";
+            }}
           />
           <Upload className="size-3.5 text-zinc-400" />
           <div className="text-[10px] font-medium text-zinc-600">
             {uploading ? "Uploading…" : hasBg ? "Replace" : "Upload design"}
           </div>
           <div className="text-[9px] text-zinc-400">
-            Image / Video (MP4/WebM)
+            {BUILDER_MEDIA_HELP_TEXT}
           </div>
         </div>
 
@@ -372,7 +386,7 @@ export function CanvasControls() {
             value={bgImage ?? bgVideo ?? ""}
             onChange={(e) => {
               const v = e.target.value;
-              const isVideo = /\.(mp4|webm|mov)($|\?)/i.test(v);
+              const isVideo = /\.(mp4|mov|m4v|webm)($|\?)/i.test(v);
               if (isVideo)
                 setPageBackground(activePage, {
                   video: v || undefined,

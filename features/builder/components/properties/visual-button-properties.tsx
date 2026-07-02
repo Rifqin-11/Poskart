@@ -10,6 +10,7 @@ import {
 import { PAGE_ROLES, SEMANTIC_ROLES } from "@/features/builder/constants";
 import { readNumber, readString } from "@/features/builder/utils";
 import { sanitizeSvgMarkup } from "@/features/builder/visual-builder.utils";
+import { BUILDER_IMAGE_ACCEPT } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
 import type { BuilderNode } from "@/types/builder";
 
@@ -122,9 +123,12 @@ function ButtonImageDesign({
         <Input
           className="mt-0.5 bg-white"
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+          accept={BUILDER_IMAGE_ACCEPT}
           disabled={uploading}
-          onChange={(event) => onImageUpload(event.target.files?.[0])}
+          onChange={(event) => {
+            onImageUpload(event.target.files?.[0]);
+            event.target.value = "";
+          }}
         />
       </label>
     </div>

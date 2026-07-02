@@ -824,7 +824,7 @@ export function NodeRenderer({
       node.type === "background-decoration" ? 0 : 8,
     );
     const objectFit = readString(node.props.objectFit, "cover");
-    const isVideo = mediaType === "video" || isDirectMp4Url(src);
+    const isVideo = mediaType === "video" || isDirectVideoUrl(src);
 
     if (src) {
       if (isVideo) {
@@ -1000,12 +1000,14 @@ export function NodeRenderer({
   );
 }
 
-function isDirectMp4Url(value: string) {
+function isDirectVideoUrl(value: string) {
   try {
     const url = new URL(value.trim());
-    return url.protocol.startsWith("http") &&
-      url.pathname.toLowerCase().endsWith(".mp4");
+    return (
+      url.protocol.startsWith("http") &&
+      /\.(mp4|mov|m4v|webm)$/i.test(url.pathname)
+    );
   } catch {
-    return value.trim().toLowerCase().endsWith(".mp4");
+    return /\.(mp4|mov|m4v|webm)$/i.test(value.trim());
   }
 }

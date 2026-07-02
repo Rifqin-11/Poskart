@@ -1,6 +1,7 @@
 import "server-only";
 
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 type R2UploadInput = {
   key: string;
@@ -11,6 +12,17 @@ type R2UploadInput = {
 type R2UploadResult = {
   key: string;
   url: string;
+};
+
+type R2SignedUploadInput = {
+  key: string;
+  contentType: string;
+  expiresIn?: number;
+};
+
+type R2SignedUploadResult = R2UploadResult & {
+  uploadUrl: string;
+  expiresIn: number;
 };
 
 type R2Config = {
@@ -77,6 +89,14 @@ function getR2Client() {
   return client;
 }
 
+function getR2PublicUrl(key: string) {
+  const r2 = getR2Config();
+  return `${r2.publicBaseUrl}/${key
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/")}`;
+}
+
 export async function uploadR2Object({
   key,
   body,
@@ -96,9 +116,27 @@ export async function uploadR2Object({
 
   return {
     key,
-    url: `${r2.publicBaseUrl}/${key
-      .split("/")
-      .map((part) => encodeURIComponent(part))
-      .join("/")}`,
+    url: getR2PublicUrl(key),
+  };
+}
+
+export async function createR2SignedUploadUrl({
+  key,
+  contentType,
+  expiresIn = 300,
+}: R2SignedUploadInput): Promise<R2SignedUploadResult> {
+  const r2 = getR2Config();
+  const command = new PutObjectCommand({
+    Bucket: r2.bucket,
+    Key: key,
+    ContentType: contentType,
+    CacheControl: "public, max-age=31536000, immutable",
+  });
+
+  return {
+    key,
+    url: getR2PublicUrl(key),
+    uploadUrl: await getSignedUrl(getR2Client(), command, { expiresIn }),
+    expiresIn,
   };
 }
