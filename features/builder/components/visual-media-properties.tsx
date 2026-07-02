@@ -3,6 +3,7 @@
 import { Film } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { ColorKeyControls } from "@/features/builder/components/color-key-controls";
 import { PanelSection } from "@/features/builder/components/visual-properties-primitives";
 import { readNumber, readString } from "@/features/builder/utils";
 import {
@@ -103,6 +104,14 @@ export function VisualMediaProperties({
       {uploading && (
         <div className="text-xs text-zinc-500">Uploading media...</div>
       )}
+      {src && mediaType !== "video" && !directVideo ? (
+        <ColorKeyControls
+          value={selectedNode.props.colorKey}
+          onChange={(colorKey) =>
+            updateNodeProps(selectedNode.id, { colorKey })
+          }
+        />
+      ) : null}
     </PanelSection>
   );
 }

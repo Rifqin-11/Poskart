@@ -52,3 +52,38 @@ export function calculatePhotoResultGrid(node: BuilderNode) {
     modeLabel: mode === "auto" && manualColumns <= 0 ? "Auto" : "Manual",
   };
 }
+
+export function calculateTemplateGrid(node: BuilderNode) {
+  const count = Math.max(
+    1,
+    Math.min(24, Math.round(readNumber(node.props.tileCount, 4))),
+  );
+  const mode = readString(node.props.templateLayout, "auto");
+  const manualColumns = Math.round(readNumber(node.props.templateColumns, 0));
+  let columns: number;
+
+  if (manualColumns > 0) {
+    columns = manualColumns;
+  } else if (mode === "row") {
+    columns = count;
+  } else if (mode === "column") {
+    columns = 1;
+  } else if (mode === "grid") {
+    columns = Math.ceil(Math.sqrt(count));
+  } else {
+    const minTileWidth = Math.max(80, readNumber(node.props.minTileWidth, 280));
+    const gap = Math.max(0, readNumber(node.props.templateGap, 8));
+    columns = Math.floor((node.width + gap) / (minTileWidth + gap));
+  }
+
+  columns = Math.max(1, Math.min(count, columns));
+  const rows = Math.ceil(count / columns);
+  return {
+    count,
+    columns,
+    rows,
+    gap: Math.max(0, readNumber(node.props.templateGap, 8)),
+    label: `${rows}×${columns}`,
+    modeLabel: mode === "auto" && manualColumns <= 0 ? "Auto" : "Manual",
+  };
+}

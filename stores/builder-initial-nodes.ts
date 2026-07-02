@@ -211,7 +211,13 @@ export const initialBuilderNodes: BuilderNode[] = [
     locked: false,
     visible: true,
     zIndex: 10,
-    props: { minTileWidth: 280, tileCount: 4 },
+    props: {
+      minTileWidth: 280,
+      tileCount: 4,
+      templateLayout: "auto",
+      templateColumns: 0,
+      templateGap: 8,
+    },
   },
   {
     id: "tp-back",

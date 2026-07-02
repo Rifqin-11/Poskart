@@ -3,6 +3,7 @@
 import type { RefObject } from "react";
 import { motion } from "framer-motion";
 import { Rnd } from "react-rnd";
+import { ColorKeyImage } from "@/features/builder/components/color-key-image";
 import {
   builderResizeHandleWrapperStyle,
   builderSelectionOutlineStyle,
@@ -191,8 +192,6 @@ export function VisualCanvasStage({
             {snapPreview ? (
               <VisualSnapPreview preview={snapPreview} canvasWidth={canvas.width} />
             ) : null}
-            {activePage === "template" ? <TemplateLayoutGuide canvas={canvas} /> : null}
-
             {visibleNodes.map((node) =>
               node.visible ? (
                 <Rnd
@@ -310,12 +309,14 @@ function PageBackground({
   return (
     <>
       {background?.image ? (
-        <div
+        <ColorKeyImage
+          src={background.image}
+          fit="cover"
+          radius={28}
+          colorKey={background.colorKey}
           className="pointer-events-none absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: `url(${background.image})`,
             zIndex: background.zIndex ?? 0,
-            borderRadius: 28,
           }}
         />
       ) : null}
@@ -421,93 +422,6 @@ function VisualSnapPreview({
         style={{ fontSize: Math.max(10, canvasWidth * 0.01) }}
       >
         {preview.x}, {preview.y}
-      </div>
-    </div>
-  );
-}
-
-function TemplateLayoutGuide({ canvas }: { canvas: BuilderCanvas }) {
-  const sx = canvas.width / 1280;
-  const sy = canvas.height / 800;
-  const leftX = Math.round(84 * sx);
-  const topY = Math.round(148 * sy);
-  const leftW = Math.round(600 * sx);
-  const leftH = Math.round(540 * sy);
-  const rightX = Math.round(712 * sx);
-  const rightW = Math.round(484 * sx);
-  const dividerX = Math.round(700 * sx);
-  const fontSize = Math.max(9, Math.round(canvas.width * 0.008));
-
-  return (
-    <>
-      <TemplateGuideBox
-        label="Guide - Preview Area"
-        left={leftX}
-        top={topY}
-        width={leftW}
-        height={leftH}
-        fontSize={fontSize}
-      />
-      <TemplateGuideBox
-        label="Guide - Template Grid"
-        left={rightX}
-        top={topY}
-        width={rightW}
-        height={leftH}
-        fontSize={fontSize}
-      />
-      <div
-        className="pointer-events-none absolute"
-        style={{
-          left: dividerX,
-          top: topY,
-          width: 1,
-          height: leftH,
-          background: "rgba(234,88,12,0.18)",
-          zIndex: 1,
-        }}
-      />
-    </>
-  );
-}
-
-function TemplateGuideBox({
-  label,
-  left,
-  top,
-  width,
-  height,
-  fontSize,
-}: {
-  label: string;
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-  fontSize: number;
-}) {
-  return (
-    <div
-      className="pointer-events-none absolute"
-      style={{
-        left,
-        top,
-        width,
-        height,
-        border: "1px dashed rgba(234,88,12,0.30)",
-        borderRadius: 10,
-        zIndex: 1,
-        background: "rgba(234,88,12,0.03)",
-      }}
-    >
-      <div
-        className="absolute left-2 top-2 flex items-center gap-1 rounded px-1.5 py-0.5 italic text-orange-600/60"
-        style={{
-          fontSize,
-          background: "rgba(255,237,213,0.7)",
-        }}
-      >
-        {label}
       </div>
     </div>
   );

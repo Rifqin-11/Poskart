@@ -3,9 +3,14 @@
 import QRCodeSVG from "react-qr-code";
 import type React from "react";
 import { Camera, Film, Image as ImageIcon, Share2 } from "lucide-react";
+import { ColorKeyImage } from "@/features/builder/components/color-key-image";
 import { HOTSPOT_COLORS, SEMANTIC_ROLES } from "@/features/builder/constants";
 import { isMediaNode, readNumber, readString } from "@/features/builder/utils";
-import { calculatePhotoResultGrid, sanitizeSvgMarkup } from "@/features/builder/visual-builder.utils";
+import {
+  calculatePhotoResultGrid,
+  calculateTemplateGrid,
+  sanitizeSvgMarkup,
+} from "@/features/builder/visual-builder.utils";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { BuilderNode } from "@/types/builder";
@@ -630,14 +635,8 @@ export function NodeRenderer({
   }
 
   if (node.type === "template-list") {
-    const minTileWidth = readNumber(node.props.minTileWidth, 280);
-    const estimatedColumns = Math.max(
-      1,
-      Math.floor((node.width - 24) / minTileWidth),
-    );
-    const tileCount =
-      typeof node.props.tileCount === "number" ? node.props.tileCount : 4;
-    const tiles = Array.from({ length: tileCount });
+    const grid = calculateTemplateGrid(node);
+    const tiles = Array.from({ length: grid.count });
     return (
       <div
         className="relative h-full w-full overflow-hidden border-2 border-dashed border-orange-300 bg-orange-50"
@@ -650,7 +649,7 @@ export function NodeRenderer({
           {/* Grid header */}
           <div className="mb-2 flex items-center justify-between px-1">
             <span className="text-[9px] font-bold uppercase tracking-widest text-orange-500">
-              Template Grid (auto · {estimatedColumns} cols)
+              Template Grid ({grid.modeLabel.toLowerCase()} · {grid.columns} cols)
             </span>
             <span className="rounded bg-orange-200 px-1.5 py-0.5 text-[8px] font-semibold text-orange-700">
               template.select
@@ -658,9 +657,10 @@ export function NodeRenderer({
           </div>
           {/* Template tiles */}
           <div
-            className="grid h-[calc(100%-28px)] gap-2"
+            className="grid h-[calc(100%-28px)]"
             style={{
-              gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${minTileWidth}px), 1fr))`,
+              gap: grid.gap,
+              gridTemplateColumns: `repeat(${grid.columns}, minmax(0, 1fr))`,
             }}
           >
             {tiles.map((_, i) => (
@@ -849,16 +849,13 @@ export function NodeRenderer({
       }
 
       return (
-        <div
-          aria-label={alt}
-          role="img"
+        <ColorKeyImage
+          src={src}
+          alt={alt}
+          fit={objectFit}
+          radius={radius}
+          colorKey={node.props.colorKey}
           className="h-full w-full bg-center"
-          style={{
-            borderRadius: radius,
-            backgroundImage: `url(${src})`,
-            backgroundRepeat: "no-repeat",
-            backgroundSize: objectFit === "fill" ? "100% 100%" : objectFit,
-          }}
         />
       );
     }

@@ -68,6 +68,17 @@ export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
     };
   }
 
+  if (type === "template-list") {
+    return {
+      minTileWidth: 280,
+      tileCount: 4,
+      templateLayout: "auto",
+      templateColumns: 0,
+      templateGap: 8,
+      radius: 12,
+    };
+  }
+
   if (
     type === "image" ||
     type === "frame-preview" ||

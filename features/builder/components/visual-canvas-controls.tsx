@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { ColorKeyControls } from "@/features/builder/components/color-key-controls";
 import { ColorField, PanelSection } from "@/features/builder/components/visual-properties-primitives";
 import {
   BUILDER_MEDIA_ACCEPT,
@@ -54,7 +55,11 @@ export function CanvasControls() {
     try {
       const result = await uploadBuilderMedia(file);
       if (result.type === "video") {
-        setPageBackground(activePage, { image: undefined, video: result.url });
+        setPageBackground(activePage, {
+          image: undefined,
+          video: result.url,
+          colorKey: undefined,
+        });
       } else {
         setPageBackground(activePage, { image: result.url, video: undefined });
       }
@@ -69,7 +74,11 @@ export function CanvasControls() {
   };
 
   const clearBg = () =>
-    setPageBackground(activePage, { image: undefined, video: undefined });
+    setPageBackground(activePage, {
+      image: undefined,
+      video: undefined,
+      colorKey: undefined,
+    });
   const hasBg = !!(bgImage || bgVideo);
 
   const DEVICE_PRESETS = [
@@ -391,6 +400,7 @@ export function CanvasControls() {
                 setPageBackground(activePage, {
                   video: v || undefined,
                   image: undefined,
+                  colorKey: undefined,
                 });
               else
                 setPageBackground(activePage, {
@@ -400,6 +410,13 @@ export function CanvasControls() {
             }}
           />
         </label>
+
+        {bgImage && !bgVideo ? (
+          <ColorKeyControls
+            value={pageBg?.colorKey}
+            onChange={(colorKey) => setPageBackground(activePage, { colorKey })}
+          />
+        ) : null}
       </div>
 
       {!canvas.overlayMode && (

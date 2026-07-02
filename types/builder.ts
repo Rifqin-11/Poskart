@@ -1,3 +1,5 @@
+import type { ColorKeySettings } from "@/types/color-key";
+
 export type BuilderPage =
   | "landing"
   | "template"
@@ -53,7 +55,15 @@ export type BuilderCanvas = {
   backgroundVideo?: string;
   /** Per-page background images/videos — keyed by BuilderPage */
   pageBackgrounds?: Partial<
-    Record<BuilderPage, { image?: string; video?: string; zIndex?: number }>
+    Record<
+      BuilderPage,
+      {
+        image?: string;
+        video?: string;
+        zIndex?: number;
+        colorKey?: ColorKeySettings;
+      }
+    >
   >;
   /** If true, nodes render as colored hotspot overlays instead of real UI components */
   overlayMode?: boolean;

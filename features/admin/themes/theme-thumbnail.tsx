@@ -1,6 +1,7 @@
 "use client";
 
 import { ImageOff, Image as ImageIcon, Layers } from "lucide-react";
+import { ColorKeyImage } from "@/features/builder/components/color-key-image";
 import type { BuilderNode, BuilderPage, LayoutSchema } from "@/types/builder";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +62,8 @@ function MiniNode({
   const top = (node.y / canvasHeight) * 100;
   const width = (node.width / canvasWidth) * 100;
   const height = (node.height / canvasHeight) * 100;
-  const imageUrl = readString(node.props?.imageUrl);
+  const imageUrl =
+    readString(node.props?.src) || readString(node.props?.imageUrl);
 
   const isMedia =
     node.type === "image" ||
@@ -122,8 +124,12 @@ function MiniNode({
       }}
     >
       {isMedia && imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+        <ColorKeyImage
+          src={imageUrl}
+          fit="cover"
+          colorKey={node.props?.colorKey}
+          className="h-full w-full"
+        />
       ) : null}
       {isText ? (
         <div className="flex h-full w-full items-center justify-center px-0.5">
@@ -182,10 +188,10 @@ export function ThemeThumbnail({
       style={{ backgroundColor: safePreviewBackground(canvas.backgroundColor) }}
     >
       {pageBg ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <ColorKeyImage
           src={pageBg}
-          alt=""
+          fit="cover"
+          colorKey={pageBackground?.colorKey}
           className="absolute inset-0 h-full w-full object-cover"
           style={{ zIndex: pageBackground?.zIndex ?? 0 }}
         />

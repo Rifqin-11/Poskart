@@ -9,6 +9,7 @@ import { VisualButtonProperties } from "@/features/builder/components/properties
 import { VisualCountdownProperties } from "@/features/builder/components/properties/visual-countdown-properties";
 import { VisualPhotoResultProperties } from "@/features/builder/components/properties/visual-photo-result-properties";
 import { VisualQrProperties } from "@/features/builder/components/properties/visual-qr-properties";
+import { VisualTemplateGridProperties } from "@/features/builder/components/properties/visual-template-grid-properties";
 import { VisualTextProperties } from "@/features/builder/components/properties/visual-text-properties";
 import { VisualTransformProperties } from "@/features/builder/components/properties/visual-transform-properties";
 import { VisualMediaProperties } from "@/features/builder/components/visual-media-properties";
@@ -85,6 +86,7 @@ export function PropertiesPanel({
         alt: file.name,
         mediaType: media.type,
         storage: media.storage,
+        colorKey: media.type === "video" ? undefined : selectedNode.props.colorKey,
       });
       toast.success(
         `${media.type === "video" ? "Video" : "Image"} uploaded to Cloudflare R2`,
@@ -163,6 +165,13 @@ export function PropertiesPanel({
 
       {selectedNode.type === "photo-result" && (
         <VisualPhotoResultProperties
+          selectedNode={selectedNode}
+          updateNodeProps={updateNodeProps}
+        />
+      )}
+
+      {selectedNode.type === "template-list" && (
+        <VisualTemplateGridProperties
           selectedNode={selectedNode}
           updateNodeProps={updateNodeProps}
         />

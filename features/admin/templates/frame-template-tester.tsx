@@ -6,6 +6,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  applyColorKeyToImageData,
+  drawImageFitted,
+  normalizeColorKey,
+} from "@/lib/color-key";
 import { DEFAULT_FRAME_CANVAS, type FrameLayout, type FrameNode } from "@/types/frame-template";
 import type { Template } from "@/types/template";
 
@@ -158,6 +163,65 @@ function drawContainImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement
   ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
 }
 
+function drawFittedImage(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  fit: string,
+) {
+  if (fit === "contain") {
+    drawContainImage(ctx, image, x, y, width, height);
+  } else if (fit === "fill") {
+    ctx.drawImage(image, x, y, width, height);
+  } else {
+    drawCoverImage(ctx, image, x, y, width, height);
+  }
+}
+
+function drawColorKeyImage(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  fit: string,
+  colorKey: unknown,
+) {
+  const settings = normalizeColorKey(colorKey);
+  if (!settings.enabled) {
+    drawFittedImage(ctx, image, x, y, width, height, fit);
+    return;
+  }
+
+  const dpr = window.devicePixelRatio || 1;
+  const temp = document.createElement("canvas");
+  temp.width = Math.max(1, Math.round(width * dpr));
+  temp.height = Math.max(1, Math.round(height * dpr));
+  const tempCtx = temp.getContext("2d", { willReadFrequently: true });
+  if (!tempCtx) {
+    drawFittedImage(ctx, image, x, y, width, height, fit);
+    return;
+  }
+
+  tempCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  tempCtx.clearRect(0, 0, width, height);
+  drawImageFitted(tempCtx, image, width, height, fit);
+
+  try {
+    const imageData = tempCtx.getImageData(0, 0, temp.width, temp.height);
+    applyColorKeyToImageData(imageData, settings);
+    tempCtx.setTransform(1, 0, 0, 1, 0, 0);
+    tempCtx.putImageData(imageData, 0, 0);
+    ctx.drawImage(temp, x, y, width, height);
+  } catch {
+    drawFittedImage(ctx, image, x, y, width, height, fit);
+  }
+}
+
 function getSortedPhotoSlots(layout: FrameLayout) {
   const photoSlots = layout.nodes.filter((node) => node.type === "photo-slot");
   return [...photoSlots].sort((a, b) => {
@@ -213,13 +277,16 @@ async function renderFrameToCanvas(
         roundedRect(ctx, x, y, node.width, node.height, radius);
         ctx.clip();
         const fit = readString(node.props.objectFit, "cover");
-        if (fit === "contain") {
-          drawContainImage(ctx, image, x, y, node.width, node.height);
-        } else if (fit === "fill") {
-          ctx.drawImage(image, x, y, node.width, node.height);
-        } else {
-          drawCoverImage(ctx, image, x, y, node.width, node.height);
-        }
+        drawColorKeyImage(
+          ctx,
+          image,
+          x,
+          y,
+          node.width,
+          node.height,
+          fit,
+          node.props.colorKey,
+        );
       }
     }
 

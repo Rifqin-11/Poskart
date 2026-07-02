@@ -846,8 +846,7 @@ export function FrameTemplateBuilder({
         )}
       >
         <BuilderHeader
-          title="Frame Template Builder"
-          subtitle={templateName}
+          title={`Frame: ${templateName}`}
           onBack={requestClose}
           saveLabel={saveLabel}
           isSaving={isSavingLayout}

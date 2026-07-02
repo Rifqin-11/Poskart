@@ -12,6 +12,7 @@ import type {
   BuilderPage,
   LayoutSchema,
 } from "@/types/builder";
+import type { ColorKeySettings } from "@/types/color-key";
 import {
   createDefaultBuilderNodeProps,
   defaultBuilderCanvas,
@@ -50,7 +51,7 @@ type BuilderState = {
   updateCanvas: (patch: Partial<BuilderCanvas>) => void;
   setPageBackground: (
     page: BuilderPage,
-    bg: { image?: string; video?: string },
+    bg: { image?: string; video?: string; colorKey?: ColorKeySettings },
   ) => void;
   updateNode: (id: string, patch: Partial<BuilderNode>) => void;
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;

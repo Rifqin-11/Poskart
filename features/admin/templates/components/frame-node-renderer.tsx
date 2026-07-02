@@ -1,5 +1,6 @@
 "use client";
 
+import { ColorKeyImage } from "@/features/builder/components/color-key-image";
 import { readNumber, readString } from "@/features/admin/templates/frame-builder.utils";
 import type { FrameNode } from "@/types/frame-template";
 
@@ -24,13 +25,12 @@ export function FrameNodeRenderer({ node }: { node: FrameNode }) {
     const fit = readString(node.props.objectFit, "cover");
     if (src) {
       return (
-        <div
+        <ColorKeyImage
+          src={src}
+          fit={fit}
+          radius={readNumber(node.props.radius, 8)}
+          colorKey={node.props.colorKey}
           className="h-full w-full bg-center bg-no-repeat"
-          style={{
-            backgroundImage: `url(${src})`,
-            backgroundSize: fit === "fill" ? "100% 100%" : fit,
-            borderRadius: readNumber(node.props.radius, 8),
-          }}
         />
       );
     }

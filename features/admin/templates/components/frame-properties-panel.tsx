@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { ColorKeyControls } from "@/features/builder/components/color-key-controls";
 import { readNumber, readString } from "@/features/admin/templates/frame-builder.utils";
 import { BUILDER_IMAGE_ACCEPT } from "@/lib/services/storage-service";
 import type { FrameLayout, FrameNode } from "@/types/frame-template";
@@ -34,6 +35,12 @@ export function FramePropertiesPanel({
   onDeleteNode: (node: FrameNode) => void;
   onUploadToNode: (file?: File) => void;
 }) {
+  const frameBackgroundNode = layout.nodes.find(
+    (node) =>
+      node.id === "frame-background" &&
+      readString(node.props.src, "").trim().length > 0,
+  );
+
   return (
     <aside className="min-h-0 overflow-hidden border-l border-zinc-100">
       <ScrollArea className="h-full p-4">
@@ -89,6 +96,15 @@ export function FramePropertiesPanel({
               </div>
             </label>
           </section>
+
+          {frameBackgroundNode ? (
+            <ColorKeyControls
+              value={frameBackgroundNode.props.colorKey}
+              onChange={(colorKey) =>
+                onUpdateNodeProps(frameBackgroundNode.id, { colorKey })
+              }
+            />
+          ) : null}
 
           {selectedNode ? (
             <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
@@ -297,6 +313,15 @@ export function FramePropertiesPanel({
                       <option value="fill">Fill</option>
                     </Select>
                   </label>
+                  {selectedNode.id !== "frame-background" &&
+                  readString(selectedNode.props.src, "") ? (
+                    <ColorKeyControls
+                      value={selectedNode.props.colorKey}
+                      onChange={(colorKey) =>
+                        onUpdateNodeProps(selectedNode.id, { colorKey })
+                      }
+                    />
+                  ) : null}
                 </>
               ) : null}
 
