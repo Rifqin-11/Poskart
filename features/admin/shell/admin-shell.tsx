@@ -122,7 +122,7 @@ const navItems: AdminNavItem[] = [
     href: "/superadmin",
     label: "Super Admin",
     icon: Shield,
-    superAdminOnly: true,
+    superAdminOnly: false,
   },
   {
     href: "/settings",
