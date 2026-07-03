@@ -25,7 +25,12 @@ export function useUpdateTenant() {
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<TenantInput> }) =>
       superadminApi.updateOrganization(id, patch),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.organizations }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.organizations });
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.organizationDetails,
+      });
+    },
   });
 }
 

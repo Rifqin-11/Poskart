@@ -10,6 +10,10 @@ import {
   type TenantInput,
   type OrganizationMemberWithProfile,
 } from "../_shared/admin-types";
+import {
+  DEFAULT_ORGANIZATION_FEATURES,
+  normalizeOrganizationFeatures,
+} from "@/lib/organization-features";
 
 export async function getOrganizations(): Promise<Organization[]> {
   const { supabase } = await getAdminContext();
@@ -21,6 +25,7 @@ export async function getOrganizations(): Promise<Organization[]> {
       name,
       status,
       renewal_date,
+      features,
       devices:devices(count),
       organization_members:organization_members(count),
       subscriptions (
@@ -64,6 +69,7 @@ export async function getOrganizations(): Promise<Organization[]> {
       devices: devicesCount,
       users: usersCount,
       renewalDate: row.renewal_date,
+      features: normalizeOrganizationFeatures(row.features),
       planId: planId,
       subscriptionStatus: subStatus,
       subscriptionExpiresAt: expiresAt,
@@ -82,6 +88,9 @@ export async function createOrganization(values: TenantInput): Promise<void> {
     name: values.name,
     status: values.status,
     renewal_date: values.renewalDate,
+    features: normalizeOrganizationFeatures(
+      values.features ?? DEFAULT_ORGANIZATION_FEATURES,
+    ),
     updated_at: new Date().toISOString(),
   });
   if (orgErr)
@@ -109,6 +118,9 @@ export async function updateOrganization(
   if (patch.name !== undefined) dbPatch.name = patch.name;
   if (patch.status !== undefined) dbPatch.status = patch.status;
   if (patch.renewalDate !== undefined) dbPatch.renewal_date = patch.renewalDate;
+  if (patch.features !== undefined) {
+    dbPatch.features = normalizeOrganizationFeatures(patch.features);
+  }
 
   if (Object.keys(dbPatch).length > 1) {
     const { error } = await supabase
@@ -205,6 +217,7 @@ export async function getMyOrganizationDetails() {
     plan_id: sub?.plan_id ?? "free",
     plan_name: subscriptionDisplayName(sub),
     join_code: organization.join_code ?? null,
+    features: normalizeOrganizationFeatures(organization.features),
     subscription_status: sub?.status ?? "free",
     subscription_expires_at: sub?.current_period_end ?? null,
     device_limit: sub?.device_limit ?? planMeta?.included_devices ?? 1,

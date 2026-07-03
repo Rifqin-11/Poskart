@@ -10,4 +10,8 @@ export type Organization = {
   subscriptionStatus?: string;
   subscriptionExpiresAt?: string | null;
   deviceLimit?: number;
+  features?: {
+    posKasir: boolean;
+    money: boolean;
+  };
 };

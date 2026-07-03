@@ -16,6 +16,7 @@ import type { ThemePreset, ThemeSchema } from "@/types/theme";
 import type { Transaction } from "@/types/transaction";
 import type { FrameLayout } from "@/types/frame-template";
 import { normalizeQrisTransactionStatus } from "@/server/payments/qris-status";
+import type { OrganizationFeatureAccess } from "@/lib/organization-features";
 
 export type {
   ChartPoint,
@@ -307,6 +308,7 @@ export type OrganizationRow = {
   name: string;
   status: Organization["status"];
   renewal_date: string;
+  features?: Record<string, unknown> | null;
   devices?: { count: number }[] | null;
   organization_members?: { count: number }[] | null;
   subscriptions?: SubscriptionRow | SubscriptionRow[] | null;
@@ -426,7 +428,9 @@ export type BoothInput = Omit<
   | "voucherCommandUpdatedAt"
 >;
 
-export type TenantInput = Omit<Organization, "id">;
+export type TenantInput = Omit<Organization, "id" | "features"> & {
+  features?: OrganizationFeatureAccess;
+};
 
 export type DashboardData = {
   kpiMetrics: KpiMetric[];

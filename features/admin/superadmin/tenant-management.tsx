@@ -47,6 +47,7 @@ import { TenantFormDialog } from "./_components/tenant-form-dialog";
 import { SubscriptionPlanDialog } from "./_components/subscription-plan-dialog";
 import { PaymentGatewayManagement } from "./_components/payment-gateway-management";
 import { SaasPricingManagement } from "./_components/saas-pricing-management";
+import { DEFAULT_ORGANIZATION_FEATURES } from "@/lib/organization-features";
 
 type AdminUserProfile = {
   id: string;
@@ -69,6 +70,7 @@ const EMPTY_TENANT: TenantInput = {
   subscriptionStatus: "free",
   subscriptionExpiresAt: null,
   deviceLimit: 1,
+  features: DEFAULT_ORGANIZATION_FEATURES,
 };
 
 export function TenantManagement() {
@@ -153,6 +155,7 @@ export function TenantManagement() {
                     <TableHead>Org Status</TableHead>
                     <TableHead>Devices</TableHead>
                     <TableHead>Users</TableHead>
+                    <TableHead>Enabled Features</TableHead>
                     <TableHead>Renewal / Expiration</TableHead>
                     <TableHead />
                   </TableRow>
@@ -195,6 +198,22 @@ export function TenantManagement() {
                       </TableCell>
                       <TableCell>{organization.users}</TableCell>
                       <TableCell>
+                        <div className="flex flex-wrap gap-1.5">
+                          {organization.features?.posKasir ? (
+                            <Badge variant="outline">POS Kasir</Badge>
+                          ) : null}
+                          {organization.features?.money ? (
+                            <Badge variant="outline">Keuangan</Badge>
+                          ) : null}
+                          {!organization.features?.posKasir &&
+                          !organization.features?.money ? (
+                            <span className="text-xs text-zinc-400">
+                              SaaS default
+                            </span>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         {organization.subscriptionExpiresAt
                           ? new Date(
                               organization.subscriptionExpiresAt,
@@ -221,7 +240,7 @@ export function TenantManagement() {
                   {tenantsList.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={9}
                         className="py-8 text-center text-sm text-zinc-400"
                       >
                         No organizations yet. Click{" "}

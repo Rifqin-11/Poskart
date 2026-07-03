@@ -36,20 +36,35 @@ import { CommandSearch } from "@/components/ui/command";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
+import {
+  normalizeOrganizationFeatures,
+  type OrganizationFeatureKey,
+} from "@/lib/organization-features";
 
-const navItems = [
+type AdminNavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  requiresSubscription?: boolean;
+  superAdminOnly?: boolean;
+  organizationFeature?: OrganizationFeatureKey;
+};
+
+const navItems: AdminNavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   {
     href: "/pos",
     label: "POS Kasir",
     icon: PanelsTopLeft,
     requiresSubscription: true,
+    organizationFeature: "posKasir",
   },
   {
     href: "/money",
     label: "Keuangan",
     icon: WalletCards,
     requiresSubscription: true,
+    organizationFeature: "money",
   },
   {
     href: "/themes",
@@ -141,9 +156,20 @@ function SidebarContent({
 
   const adminMode = isSuperAdmin;
   const hasActiveSubscription = adminMode || tier === "Pro";
-  const filteredNavItems = navItems.filter(
-    (item) => !item.superAdminOnly || adminMode,
+  const organizationFeatures = normalizeOrganizationFeatures(
+    organization?.features,
   );
+  const filteredNavItems = navItems.filter((item) => {
+    if (item.superAdminOnly && !adminMode) return false;
+    if (
+      item.organizationFeature &&
+      !adminMode &&
+      !organizationFeatures[item.organizationFeature]
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -177,7 +203,7 @@ function SidebarContent({
             return (
               <Link
                 key={item.href}
-                href={`/organization?subscription=required&next=${encodeURIComponent(item.href)}`}
+                href={`/settings?tab=organization&subscription=required&next=${encodeURIComponent(item.href)}`}
                 onClick={onNavigate}
                 className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-zinc-400 transition-colors hover:bg-amber-50 hover:text-amber-700"
                 title="Requires an active POSKART subscription"
@@ -208,14 +234,14 @@ function SidebarContent({
       </nav>
 
       <Link
-        href="/organization"
+        href="/settings?tab=organization"
         onClick={onNavigate}
         className={cn(
           "mt-3 shrink-0 rounded-3xl border bg-white/90 p-3.5 shadow-sm shadow-zinc-200/70 transition-colors hover:border-zinc-300 hover:bg-white",
           hasActiveSubscription
             ? "border-emerald-200/80"
             : "border-amber-200/80 bg-amber-50/60",
-          pathname === "/organization" && "border-zinc-950 shadow-zinc-950/10",
+          pathname === "/settings" && "border-zinc-950 shadow-zinc-950/10",
         )}
       >
         <div className="flex items-start gap-3">
@@ -411,7 +437,7 @@ export function AdminShell({
                       </div>
                       <div className="py-1">
                         <Link
-                          href="/organization"
+                          href="/settings?tab=organization"
                           role="menuitem"
                           className="flex items-center gap-2 rounded-2xl px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
                           onClick={() => setAccountMenuOpen(false)}

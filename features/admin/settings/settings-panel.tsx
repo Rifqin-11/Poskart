@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,12 @@ const SETTINGS_TABS = [
 ] as const;
 
 type SettingsTab = (typeof SETTINGS_TABS)[number]["id"];
+
+function readSettingsTab(value: string | null): SettingsTab | null {
+  return SETTINGS_TABS.some((tab) => tab.id === value)
+    ? (value as SettingsTab)
+    : null;
+}
 
 type SettingsForm = {
   // Flutter operational
@@ -82,6 +89,7 @@ const DEFAULT_SETTINGS_FORM: SettingsForm = {
 };
 
 export function SettingsPanel() {
+  const searchParams = useSearchParams();
   const { data: config } = useAppConfig();
   const saveConfig = useSaveAppConfig();
   const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
@@ -110,7 +118,9 @@ export function SettingsPanel() {
     timezone: "Asia/Jakarta",
     memberRole: "",
   });
-  const [activeTab, setActiveTab] = useState<SettingsTab>("details");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() =>
+    readSettingsTab(searchParams.get("tab")) ?? "details",
+  );
   const [profileSaving, setProfileSaving] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
@@ -238,19 +248,16 @@ export function SettingsPanel() {
     }
   };
 
-  const organizationName = tenant?.name || "Loading organization...";
-  const subscriptionStatus = tenant?.subscription_status || "free";
-  const subscriptionActive = subscriptionStatus === "active";
-  const planName =
-    subscriptionStatus === "free"
-      ? "Free Account"
-      : tenant?.plan_name || "Pro Plan";
-
-  const expiresAt = tenant?.subscription_expires_at
-    ? new Date(tenant.subscription_expires_at)
-    : null;
+  const subscriptionActive = Boolean(tenant?.subscription_is_active);
 
   const currentMember = members.find((m) => m.email === account.email);
+  const subscriptionRequired =
+    searchParams.get("subscription") === "required";
+  const organizationOnly =
+    !isLoadingTenant && !subscriptionActive;
+  const visibleActiveTab: SettingsTab = organizationOnly
+    ? "organization"
+    : activeTab;
 
   return (
     <div className="space-y-4">
@@ -273,17 +280,23 @@ export function SettingsPanel() {
         <div className="border-b border-zinc-100 p-3">
           <div className="flex gap-1.5 overflow-x-auto rounded-[1.35rem] bg-zinc-50 p-1.5">
             {SETTINGS_TABS.map((tab) => {
-              const active = activeTab === tab.id;
+              const active = visibleActiveTab === tab.id;
+              const disabled =
+                organizationOnly && tab.id !== "organization";
               return (
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    if (!disabled) setActiveTab(tab.id);
+                  }}
+                  disabled={disabled}
                   className={cn(
                     "h-10 shrink-0 rounded-2xl px-4 text-sm font-medium transition-colors",
                     active
                       ? "bg-white text-zinc-950 shadow-sm"
                       : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",
+                    disabled && "cursor-not-allowed opacity-45 hover:bg-transparent",
                   )}
                 >
                   {tab.label}
@@ -294,7 +307,7 @@ export function SettingsPanel() {
         </div>
 
         <div className="p-5 sm:p-6 lg:p-8">
-          {activeTab === "details" ? (
+          {visibleActiveTab === "details" ? (
             <ProfileCard
               account={account}
               currentMemberRole={currentMember?.role}
@@ -311,27 +324,22 @@ export function SettingsPanel() {
             />
           ) : null}
 
-          {activeTab === "organization" ? (
+          {visibleActiveTab === "organization" ? (
             <OrganizationCard
-              isLoadingTenant={isLoadingTenant}
-              organizationName={organizationName}
-              planName={planName}
-              subscriptionActive={subscriptionActive}
-              subscriptionStatus={subscriptionStatus}
-              deviceLimit={tenant?.device_limit ?? 1}
-              expiresAt={expiresAt}
+              myEmail={account.email}
+              subscriptionRequired={subscriptionRequired}
             />
           ) : null}
 
-          {activeTab === "payment" ? (
+          {visibleActiveTab === "payment" ? (
             <PaymentSettingsCard form={form} setForm={setForm} />
           ) : null}
 
-          {activeTab === "media" ? (
+          {visibleActiveTab === "media" ? (
             <MediaSettingsCard form={form} setForm={setForm} />
           ) : null}
 
-          {activeTab === "kiosk" ? (
+          {visibleActiveTab === "kiosk" ? (
             <KioskDefaultsCard form={form} setForm={setForm} />
           ) : null}
         </div>

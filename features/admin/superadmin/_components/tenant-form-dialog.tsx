@@ -5,8 +5,14 @@ import { toast } from "sonner";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { DialogActions } from "@/features/admin/_components/dialog-actions";
 import { pricingPlans } from "@/lib/constants/business";
+import {
+  DEFAULT_ORGANIZATION_FEATURES,
+  ORGANIZATION_FEATURE_LABELS,
+  normalizeOrganizationFeatures,
+} from "@/lib/organization-features";
 import { formatCurrency } from "@/lib/utils";
 import type { Organization } from "@/types/organization";
 import type { SubscriptionPlan } from "@/types/pricing";
@@ -65,6 +71,9 @@ export function TenantFormDialog({
       subscriptionStatus: rest.subscriptionStatus || "free",
       subscriptionExpiresAt: rest.subscriptionExpiresAt || null,
       deviceLimit: rest.deviceLimit || 1,
+      features: normalizeOrganizationFeatures(
+        rest.features ?? DEFAULT_ORGANIZATION_FEATURES,
+      ),
     } as TenantInput;
   });
 
@@ -223,6 +232,51 @@ export function TenantFormDialog({
           Additional devices are billed at Rp 50K/device/month and should be
           reflected in this paid device limit.
         </div>
+
+        <section className="md:col-span-2 rounded-2xl border border-zinc-200 bg-white p-4">
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-zinc-950">
+              Operational features
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-zinc-500">
+              Aktifkan hanya untuk organisasi yang memang memakai alur booth
+              internal. Organisasi SaaS biasa tetap memakai dashboard kiosk,
+              themes, templates, transactions, gallery, dan devices.
+            </p>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2">
+            {(["posKasir", "money"] as const).map((featureKey) => (
+              <div
+                key={featureKey}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3"
+              >
+                <div>
+                  <div className="text-sm font-medium text-zinc-950">
+                    {ORGANIZATION_FEATURE_LABELS[featureKey]}
+                  </div>
+                  <div className="mt-0.5 text-xs text-zinc-500">
+                    {featureKey === "posKasir"
+                      ? "Tampilkan halaman POS Kasir untuk input penjualan manual."
+                      : "Tampilkan halaman Keuangan untuk dompet, pemasukan, pengeluaran, dan transfer."}
+                  </div>
+                </div>
+                <Switch
+                  checked={form.features?.[featureKey] ?? false}
+                  onCheckedChange={(checked) =>
+                    setForm({
+                      ...form,
+                      features: {
+                        ...normalizeOrganizationFeatures(form.features),
+                        [featureKey]: checked,
+                      },
+                    })
+                  }
+                  aria-label={`Toggle ${ORGANIZATION_FEATURE_LABELS[featureKey]}`}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
 
         <div className="border-t border-zinc-100 pt-2 md:col-span-2">
           <DialogActions

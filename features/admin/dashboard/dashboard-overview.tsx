@@ -333,7 +333,7 @@ export function DashboardOverview() {
                   </Link>
                 </>
               ) : (
-                <Link href="/organization?subscription=required" className={buttonVariants()}>
+                <Link href="/settings?tab=organization&subscription=required" className={buttonVariants()}>
                   <Plus className="size-4" />
                   Activate subscription
                 </Link>
@@ -421,7 +421,7 @@ export function DashboardOverview() {
               <EmptyPanelState
                 title="No devices connected"
                 description="Add a POSKART device to monitor battery, sync, template, and pricing status."
-                href={canUseOperatingTools ? "/devices" : "/organization?subscription=required"}
+                href={canUseOperatingTools ? "/devices" : "/settings?tab=organization&subscription=required"}
                 action={canUseOperatingTools ? "Add device" : "Activate subscription"}
               />
             )}
@@ -472,7 +472,7 @@ export function DashboardOverview() {
               <EmptyPanelState
                 title="No transactions yet"
                 description="QRIS payment activity and failed payment monitoring appear here after the first booth session."
-                href={canUseOperatingTools ? "/devices" : "/organization?subscription=required"}
+                href={canUseOperatingTools ? "/devices" : "/settings?tab=organization&subscription=required"}
                 action={canUseOperatingTools ? "Connect device" : "Activate subscription"}
               />
             )}

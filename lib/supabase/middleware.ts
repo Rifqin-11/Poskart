@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isSuperAdminEmail } from "@/lib/auth/admin";
+import { normalizeOrganizationFeatures } from "@/lib/organization-features";
 
 export async function updateSession(request: NextRequest) {
   if (request.nextUrl.pathname === "/" && request.nextUrl.searchParams.has("code")) {
@@ -41,6 +42,8 @@ export async function updateSession(request: NextRequest) {
     "/organization",
     "/pricing",
     "/onboarding",
+    "/pos",
+    "/money",
     "/builder",
     "/themes",
     "/templates",
@@ -54,6 +57,8 @@ export async function updateSession(request: NextRequest) {
   const authRoutes = ["/login", "/register"];
   const subscriptionRoutes = [
     "/builder",
+    "/pos",
+    "/money",
     "/themes",
     "/templates",
     "/transactions",
@@ -70,6 +75,14 @@ export async function updateSession(request: NextRequest) {
     protectedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const isAuthRoute = authRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const isSubscriptionRoute = subscriptionRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  const featureRoute =
+    pathname === "/pos" || pathname.startsWith("/pos/")
+      ? "posKasir"
+      : pathname === "/money" || pathname.startsWith("/money/")
+        ? "money"
+        : null;
+  const isOrganizationSettingsRoute =
+    pathname === "/settings" && request.nextUrl.searchParams.get("tab") === "organization";
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
@@ -109,7 +122,7 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (user && isSubscriptionRoute) {
+  if (user && isSubscriptionRoute && !isOrganizationSettingsRoute) {
     const email = typeof user.email === "string" ? user.email.toLowerCase() : "";
     const isSuperAdmin = isSuperAdminEmail(email);
 
@@ -138,10 +151,40 @@ export async function updateSession(request: NextRequest) {
 
       if (!hasActiveSubscription) {
         const url = request.nextUrl.clone();
-        url.pathname = "/organization";
+        url.pathname = "/settings";
         url.search = "";
+        url.searchParams.set("tab", "organization");
         url.searchParams.set("subscription", "required");
         url.searchParams.set("next", pathname);
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
+  if (user && featureRoute) {
+    const email = typeof user.email === "string" ? user.email.toLowerCase() : "";
+    const isSuperAdmin = isSuperAdminEmail(email);
+
+    if (!isSuperAdmin) {
+      const { data: member } = await supabase
+        .from("organization_members")
+        .select("organization_id")
+        .eq("profile_id", user.sub)
+        .limit(1)
+        .maybeSingle();
+
+      const { data: organization } = member?.organization_id
+        ? await supabase
+            .from("organizations")
+            .select("features")
+            .eq("id", member.organization_id)
+            .maybeSingle()
+        : { data: null };
+
+      if (!normalizeOrganizationFeatures(organization?.features)[featureRoute]) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dashboard";
+        url.search = "";
         return NextResponse.redirect(url);
       }
     }

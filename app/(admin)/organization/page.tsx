@@ -1,5 +1,5 @@
-import { OrganizationPanel } from "@/features/admin/organization";
+import { redirect } from "next/navigation";
 
 export default function OrganizationPage() {
-  return <OrganizationPanel />;
+  redirect("/settings?tab=organization");
 }
