@@ -16,6 +16,9 @@ export function VisualTemplateGridProperties({
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
 }) {
   const grid = calculateTemplateGrid(selectedNode);
+  const templateLayout = readString(selectedNode.props.templateLayout, "auto");
+  const manualColumns = readNumber(selectedNode.props.templateColumns, 0);
+  const autoMinTileActive = templateLayout === "auto" && manualColumns <= 0;
 
   return (
     <PanelSection
@@ -36,7 +39,7 @@ export function VisualTemplateGridProperties({
         Layout
         <Select
           className="mt-1"
-          value={readString(selectedNode.props.templateLayout, "auto")}
+          value={templateLayout}
           onChange={(event) =>
             updateNodeProps(selectedNode.id, {
               templateLayout: event.target.value,
@@ -53,7 +56,7 @@ export function VisualTemplateGridProperties({
 
       <div className="grid grid-cols-2 gap-2">
         <label className="text-xs font-medium text-zinc-500">
-          Tile count
+          Sample tile count
           <Input
             className="mt-1"
             type="number"
@@ -111,13 +114,21 @@ export function VisualTemplateGridProperties({
             onChange={(event) =>
               updateNodeProps(selectedNode.id, {
                 minTileWidth: Number(event.target.value),
+                templateLayout: "auto",
+                templateColumns: 0,
               })
             }
           />
         </label>
       </div>
       <div className="text-[10px] leading-4 text-zinc-400">
-        Use 0 manual columns to keep automatic layout.
+        {autoMinTileActive
+          ? "Auto min tile is a breakpoint: it changes the column count when the area can no longer fit another tile."
+          : "Auto min tile is ignored while manual columns or a forced layout is active. Editing it switches back to Auto."}
+      </div>
+      <div className="text-[10px] leading-4 text-zinc-400">
+        Tile count is only a preview sample. The Flutter kiosk uses real
+        templates and scrolls inside this grid when there are more items.
       </div>
     </PanelSection>
   );

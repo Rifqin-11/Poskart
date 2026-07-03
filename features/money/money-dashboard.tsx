@@ -23,9 +23,11 @@ import { toast } from "sonner";
 import {
   createMoneyCategory,
   createMoneyTag,
+  createMoneyWallet,
   deleteMoneyCategory,
   deleteMoneyEntry,
   deleteMoneyTag,
+  deleteMoneyWallet,
   saveMoneyEntry,
 } from "@/app/(admin)/money/actions";
 import { StatCard } from "@/features/admin/_components/stat-card";
@@ -56,13 +58,15 @@ import {
   getCategoryLabel,
   getMonthKey,
   getNetAmount,
-  walletLabels,
+  getWalletKind,
+  getWalletLabel,
   type WalletFilter,
 } from "@/features/money/money-dashboard.utils";
 import {
   CategoryManagerDialog,
   MoneyEntryDialog,
   TagManagerDialog,
+  WalletManagerDialog,
 } from "@/features/money/components/money-dialogs";
 import { cn, formatCurrency } from "@/lib/utils";
 import type {
@@ -70,16 +74,19 @@ import type {
   MoneyEntry,
   MoneyEntryType,
   MoneyTag,
+  MoneyWallet,
 } from "@/types/money";
 
 export function MoneyDashboard({
   entries,
   categories: customCategories,
   tags,
+  wallets,
 }: {
   entries: MoneyEntry[];
   categories: MoneyCustomCategory[];
   tags: MoneyTag[];
+  wallets: MoneyWallet[];
 }) {
   const router = useRouter();
   const confirmDelete = useConfirmDialog();
@@ -87,6 +94,8 @@ export function MoneyDashboard({
   const [editorOpen, setEditorOpen] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
+  const [walletManagerOpen, setWalletManagerOpen] = useState(false);
+  const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [editing, setEditing] = useState<MoneyEntry | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | MoneyEntryType>("all");
@@ -153,7 +162,9 @@ export function MoneyDashboard({
   );
 
   const selectedWalletLabel =
-    walletFilter === "all" ? "Keseluruhan" : walletLabels[walletFilter];
+    walletFilter === "all"
+      ? "Keseluruhan"
+      : getWalletLabel(walletFilter, wallets);
   const selectedMonthLabel =
     selectedMonth === "all" ? "Semua bulan" : formatMonthLabel(selectedMonth);
 
@@ -172,7 +183,7 @@ export function MoneyDashboard({
     const rows = filteredEntries.map((entry) => [
       formatDate(entry.occurredAt),
       getCategoryLabel(entry.category),
-      walletLabels[entry.walletType],
+      getWalletLabel(entry.walletType, wallets),
       entry.title,
       entry.notes || "",
       entry.tags.map((t) => t.name).join(", "),
@@ -210,7 +221,7 @@ export function MoneyDashboard({
     link.click();
     document.body.removeChild(link);
     toast.success("Laporan Excel (CSV) berhasil diekspor.");
-  }, [filteredEntries, selectedMonth]);
+  }, [filteredEntries, selectedMonth, wallets]);
 
   const exportToPDF = useCallback(() => {
     const printWindow = window.open("", "_blank");
@@ -227,7 +238,7 @@ export function MoneyDashboard({
         <td style="white-space: nowrap;">${formatDate(entry.occurredAt)}</td>
         <td>${getCategoryLabel(entry.category)}</td>
         <td><span style="display: inline-block; padding: 2px 6px; border: 1px solid #e4e4e7; border-radius: 4px; background: #fafafa; font-size: 10px;">${
-          walletLabels[entry.walletType]
+          getWalletLabel(entry.walletType, wallets)
         }</span></td>
         <td>
           <div style="font-weight: 500;">${entry.title}</div>
@@ -388,7 +399,7 @@ export function MoneyDashboard({
 
     printWindow.document.write(content);
     printWindow.document.close();
-  }, [filteredEntries, selectedMonthLabel, selectedWalletLabel, summary]);
+  }, [filteredEntries, selectedMonthLabel, selectedWalletLabel, summary, wallets]);
 
   const openCreate = () => {
     setEditing(null);
@@ -423,6 +434,7 @@ export function MoneyDashboard({
           entry={editing}
           customCategories={customCategories}
           tags={tags}
+          wallets={wallets}
           pending={pending}
           onClose={() => setEditorOpen(false)}
           onSubmit={(values) => {
@@ -518,6 +530,44 @@ export function MoneyDashboard({
           }}
         />
       ) : null}
+      {walletManagerOpen ? (
+        <WalletManagerDialog
+          wallets={wallets}
+          pending={pending}
+          onClose={() => setWalletManagerOpen(false)}
+          onCreate={(name) => {
+            startTransition(async () => {
+              const result = await createMoneyWallet({ name });
+              if (!result.success) {
+                toast.error(result.error ?? "Dompet gagal dibuat.");
+                return;
+              }
+              toast.success("Dompet berhasil ditambahkan.");
+              router.refresh();
+            });
+          }}
+          onDelete={(wallet) => {
+            confirmDelete.confirm({
+              title: "Hapus dompet?",
+              description: `Dompet "${wallet.name}" akan dihapus jika belum digunakan pada transaksi.`,
+              confirmLabel: "Hapus dompet",
+              destructive: true,
+              onConfirm: () => {
+                startTransition(async () => {
+                  const result = await deleteMoneyWallet(wallet.id);
+                  if (!result.success) {
+                    toast.error(result.error ?? "Dompet gagal dihapus.");
+                    return;
+                  }
+                  if (walletFilter === wallet.id) setWalletFilter("all");
+                  toast.success("Dompet berhasil dihapus.");
+                  router.refresh();
+                });
+              },
+            });
+          }}
+        />
+      ) : null}
 
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
@@ -530,23 +580,56 @@ export function MoneyDashboard({
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 xl:flex xl:flex-wrap">
-          <Button
-            variant="outline"
-            className="justify-center"
-            onClick={() => setCategoryManagerOpen(true)}
-          >
-            <Settings2 className="size-4" />
-            Kategori
-          </Button>
-          <Button
-            variant="outline"
-            className="justify-center"
-            onClick={() => setTagManagerOpen(true)}
-          >
-            <Tags className="size-4" />
-            Tag
-          </Button>
-
+          <div className="relative">
+            <Button
+              variant="outline"
+              className="w-full justify-center xl:w-auto"
+              onClick={() => setSettingsDropdownOpen(!settingsDropdownOpen)}
+            >
+              <Settings2 className="size-4" />
+              Atur
+            </Button>
+            {settingsDropdownOpen ? (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setSettingsDropdownOpen(false)}
+                />
+                <div className="absolute right-0 top-11 z-40 w-48 rounded-xl border border-zinc-200 bg-white p-1.5 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                  {[
+                    {
+                      label: "Kategori",
+                      icon: Settings2,
+                      onClick: () => setCategoryManagerOpen(true),
+                    },
+                    {
+                      label: "Tag",
+                      icon: Tags,
+                      onClick: () => setTagManagerOpen(true),
+                    },
+                    {
+                      label: "Dompet",
+                      icon: WalletCards,
+                      onClick: () => setWalletManagerOpen(true),
+                    },
+                  ].map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                      onClick={() => {
+                        item.onClick();
+                        setSettingsDropdownOpen(false);
+                      }}
+                    >
+                      <item.icon className="size-4 text-zinc-500" />
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
           <div className="relative">
             <Button
               variant="outline"
@@ -598,63 +681,56 @@ export function MoneyDashboard({
       </div>
 
       <Card>
-        <CardContent className="grid gap-4 p-4 xl:grid-cols-[minmax(420px,1fr)_minmax(220px,240px)_minmax(220px,240px)] xl:items-end">
+        <CardContent className="space-y-3 p-4">
           <div className="space-y-1.5">
             <div className="text-xs font-medium text-zinc-500">
               Akun keuangan
             </div>
-            <div className="grid w-full gap-1 rounded-xl border border-zinc-200 bg-zinc-50 p-1 sm:grid-cols-3">
-              <WalletFilterButton
-                active={walletFilter === "all"}
-                label="Semua"
-                icon={WalletCards}
-                onClick={() => setWalletFilter("all")}
-              />
-              <WalletFilterButton
-                active={walletFilter === "cash"}
-                label="Tunai"
-                icon={Banknote}
-                onClick={() => setWalletFilter("cash")}
-              />
-              <WalletFilterButton
-                active={walletFilter === "qris"}
-                label="QRIS"
-                icon={QrCode}
-                onClick={() => setWalletFilter("qris")}
-              />
+            <div className="flex items-stretch gap-2">
+              <div
+                className="grid min-w-0 flex-1 gap-1 rounded-xl border border-zinc-200 bg-zinc-50 p-1"
+                style={{
+                  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                }}
+              >
+                <WalletFilterButton
+                  active={walletFilter === "all"}
+                  label="Semua"
+                  icon={WalletCards}
+                  onClick={() => setWalletFilter("all")}
+                />
+                {wallets.map((wallet) => {
+                  const Icon =
+                    wallet.type === "cash"
+                      ? Banknote
+                      : wallet.type === "qris"
+                        ? QrCode
+                        : WalletCards;
+
+                  return (
+                    <WalletFilterButton
+                      key={wallet.id}
+                      active={walletFilter === wallet.id}
+                      label={wallet.name}
+                      icon={Icon}
+                      onClick={() => setWalletFilter(wallet.id)}
+                    />
+                  );
+                })}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11 shrink-0 rounded-full"
+                onClick={() => setWalletManagerOpen(true)}
+                aria-label="Tambah dompet"
+              >
+                <Plus className="size-4" />
+              </Button>
             </div>
           </div>
-          <label className="space-y-1.5 text-xs font-medium text-zinc-500">
-            Bulan
-            <Select
-              value={selectedMonth}
-              onChange={(event) => setSelectedMonth(event.target.value)}
-              className="w-full text-sm text-zinc-900"
-            >
-              <option value="all">Semua bulan</option>
-              {monthOptions.map((month) => (
-                <option key={month} value={month}>
-                  {formatMonthLabel(month)}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className="space-y-1.5 text-xs font-medium text-zinc-500">
-            Filter tag
-            <Select
-              value={tagFilter}
-              onChange={(event) => setTagFilter(event.target.value)}
-              className="w-full text-sm text-zinc-900"
-            >
-              <option value="all">Semua tag</option>
-              {tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.name}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <div className="text-xs text-zinc-500 xl:col-span-3">
+          <div className="text-xs text-zinc-500">
             Menampilkan data{" "}
             <span className="font-medium text-zinc-900">
               {selectedWalletLabel}
@@ -714,21 +790,53 @@ export function MoneyDashboard({
                 Rincian aktivitas keuangan berdasarkan akun dan kategori.
               </CardDescription>
             </div>
-            <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_160px]">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_170px_170px_150px]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
                 <Input
                   value={search}
-                  onChange={(event) => setSearch(event.target.value)}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setPage(1);
+                  }}
                   placeholder="Cari judul atau kategori"
                   className="pl-9"
                 />
               </div>
               <Select
+                value={selectedMonth}
+                onChange={(event) => {
+                  setSelectedMonth(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="all">Semua bulan</option>
+                {monthOptions.map((month) => (
+                  <option key={month} value={month}>
+                    {formatMonthLabel(month)}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                value={tagFilter}
+                onChange={(event) => {
+                  setTagFilter(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="all">Semua tag</option>
+                {tags.map((tag) => (
+                  <option key={tag.id} value={tag.id}>
+                    {tag.name}
+                  </option>
+                ))}
+              </Select>
+              <Select
                 value={typeFilter}
-                onChange={(event) =>
-                  setTypeFilter(event.target.value as "all" | MoneyEntryType)
-                }
+                onChange={(event) => {
+                  setTypeFilter(event.target.value as "all" | MoneyEntryType);
+                  setPage(1);
+                }}
               >
                 <option value="all">Semua jenis</option>
                 <option value="income">Uang masuk</option>
@@ -779,12 +887,14 @@ export function MoneyDashboard({
                         {getCategoryLabel(entry.category)}
                       </Badge>
                       <Badge variant="outline">
-                        {entry.walletType === "cash" ? (
+                        {getWalletKind(entry.walletType, wallets) === "cash" ? (
                           <Banknote className="mr-1 size-3.5" />
-                        ) : (
+                        ) : getWalletKind(entry.walletType, wallets) === "qris" ? (
                           <QrCode className="mr-1 size-3.5" />
+                        ) : (
+                          <WalletCards className="mr-1 size-3.5" />
                         )}
-                        {walletLabels[entry.walletType]}
+                        {getWalletLabel(entry.walletType, wallets)}
                       </Badge>
                       {entry.tags.map((tag) => (
                         <Badge key={tag.id} variant="outline">
@@ -792,7 +902,7 @@ export function MoneyDashboard({
                         </Badge>
                       ))}
                     </div>
-                    {entry.walletType === "qris" &&
+                    {getWalletKind(entry.walletType, wallets) === "qris" &&
                     entry.entryType === "income" &&
                     entry.feePercentage > 0 ? (
                       <div className="mt-2 text-xs text-zinc-500">
@@ -850,12 +960,14 @@ export function MoneyDashboard({
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {entry.walletType === "cash" ? (
+                            {getWalletKind(entry.walletType, wallets) === "cash" ? (
                               <Banknote className="mr-1 size-3.5" />
-                            ) : (
+                            ) : getWalletKind(entry.walletType, wallets) === "qris" ? (
                               <QrCode className="mr-1 size-3.5" />
+                            ) : (
+                              <WalletCards className="mr-1 size-3.5" />
                             )}
-                            {walletLabels[entry.walletType]}
+                            {getWalletLabel(entry.walletType, wallets)}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -891,7 +1003,7 @@ export function MoneyDashboard({
                               ? getNetAmount(entry)
                               : entry.amount,
                           )}
-                          {entry.walletType === "qris" &&
+                          {getWalletKind(entry.walletType, wallets) === "qris" &&
                           entry.entryType === "income" &&
                           entry.feePercentage > 0 ? (
                             <div className="mt-0.5 text-xs font-normal text-zinc-500">

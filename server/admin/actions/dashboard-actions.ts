@@ -20,6 +20,7 @@ import {
   type PosDashboardSaleRow,
   type RawTransactionRow,
 } from "../_shared/admin-types";
+import { normalizeQrisTransactionStatus } from "@/server/payments/qris-status";
 
 const EMPTY_POS_SUMMARY: PosDashboardSummary = {
   totalRevenue: 0,
@@ -80,11 +81,15 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
 
     let query = supabase
       .from("transactions")
-      .select("id,amount,status,provider,created_at");
+      .select(
+        "id,amount,status,provider,created_at,paid_at,duitku_status_code,gateway_response",
+      );
     if (organizationId) query = query.eq("organization_id", organizationId);
 
     const { data: allTx } = await query;
-    const rows = (allTx ?? []) as RawTransactionRow[];
+    const rows = ((allTx ?? []) as RawTransactionRow[]).map(
+      normalizeQrisTransactionStatus,
+    );
 
     const todayRows = rows.filter((r) => r.created_at >= startOfToday);
     const monthRows = rows.filter((r) => r.created_at >= startOfThisMonth);
@@ -209,7 +214,9 @@ async function getChartPoints(
 
       let query = supabase
         .from("transactions")
-        .select("amount,status,created_at")
+        .select(
+          "amount,status,provider,created_at,paid_at,duitku_status_code,gateway_response",
+        )
         .gte("created_at", cutoff.toISOString());
       if (organizationId) query = query.eq("organization_id", organizationId);
 
@@ -217,8 +224,13 @@ async function getChartPoints(
       const rows = (data ?? []) as {
         amount: number;
         status: string;
+        provider: string | null;
         created_at: string;
+        paid_at: string | null;
+        duitku_status_code: string | null;
+        gateway_response: Record<string, unknown> | null;
       }[];
+      const normalizedRows = rows.map(normalizeQrisTransactionStatus);
 
       return Array.from({ length: 7 }, (_, i) => {
         const day = new Date(now);
@@ -234,7 +246,7 @@ async function getChartPoints(
         const dayEnd = new Date(dayStart);
         dayEnd.setDate(dayStart.getDate() + 1);
 
-        const dayRows = rows.filter((r) => {
+        const dayRows = normalizedRows.filter((r) => {
           const d = new Date(r.created_at);
           return d >= dayStart && d < dayEnd;
         });
@@ -267,7 +279,9 @@ async function getChartPoints(
 
       let query = supabase
         .from("transactions")
-        .select("amount,status,created_at")
+        .select(
+          "amount,status,provider,created_at,paid_at,duitku_status_code,gateway_response",
+        )
         .gte("created_at", cutoff.toISOString());
       if (organizationId) query = query.eq("organization_id", organizationId);
 
@@ -275,8 +289,13 @@ async function getChartPoints(
       const rows = (data ?? []) as {
         amount: number;
         status: string;
+        provider: string | null;
         created_at: string;
+        paid_at: string | null;
+        duitku_status_code: string | null;
+        gateway_response: Record<string, unknown> | null;
       }[];
+      const normalizedRows = rows.map(normalizeQrisTransactionStatus);
 
       return Array.from({ length: 6 }, (_, i) => {
         const month = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
@@ -286,7 +305,7 @@ async function getChartPoints(
           1,
         );
 
-        const monthRows = rows.filter((r) => {
+        const monthRows = normalizedRows.filter((r) => {
           const d = new Date(r.created_at);
           return d >= month && d < nextMonth;
         });

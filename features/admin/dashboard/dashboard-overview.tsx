@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   Area,
   AreaChart,
@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/features/admin/_components/empty-state";
 import { LoadingState } from "@/features/admin/_components/loading-state";
@@ -51,6 +52,136 @@ const dashboardInnerCardClass =
 const dashboardSoftItemClass =
   "rounded-2xl border border-zinc-100 bg-white/85 shadow-sm shadow-zinc-100/70 backdrop-blur";
 
+const dashboardMonthFormatter = new Intl.DateTimeFormat("id-ID", {
+  month: "long",
+  year: "numeric",
+});
+
+function getDashboardMonthKey(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getDashboardDateKey(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function formatDashboardMonthLabel(monthKey: string) {
+  const [year, month] = monthKey.split("-").map(Number);
+  if (!year || !month) return monthKey;
+  return dashboardMonthFormatter.format(new Date(year, month - 1, 1));
+}
+
+function buildMonthEventPeriod(
+  monthKey: string,
+  transactions: Transaction[],
+): EventPeriodStatistics {
+  const label =
+    monthKey === "all" ? "Bulanan" : formatDashboardMonthLabel(monthKey);
+  const paidRows = transactions.filter(
+    (transaction) => transaction.status === "paid",
+  );
+  const qrisRows = transactions.filter(
+    (transaction) => transaction.provider === "QRIS",
+  );
+  const qrisPaid = qrisRows.filter(
+    (transaction) => transaction.status === "paid",
+  ).length;
+  const paymentMethods = buildTransactionBreakdown(
+    paidRows,
+    (transaction) => transaction.provider,
+  );
+  const topFrames = buildTransactionBreakdown(
+    paidRows,
+    (transaction) => transaction.packageName || "Tanpa paket",
+  ).slice(0, 5);
+  const revenueSeries = buildMonthRevenueSeries(monthKey, paidRows);
+
+  return {
+    key: "monthly",
+    label,
+    startsAt:
+      monthKey === "all"
+        ? new Date().toISOString()
+        : new Date(`${monthKey}-01T00:00:00`).toISOString(),
+    totalSessions: paidRows.length,
+    totalPrints: paidRows.reduce(
+      (sum, transaction) => sum + (transaction.printCount ?? 0),
+      0,
+    ),
+    totalRevenue: paidRows.reduce(
+      (sum, transaction) => sum + transaction.amount,
+      0,
+    ),
+    qrisTotal: qrisRows.length,
+    qrisPaid,
+    qrisFailed: qrisRows.length - qrisPaid,
+    qrisSuccessRate: qrisRows.length > 0 ? (qrisPaid / qrisRows.length) * 100 : 0,
+    paymentMethods,
+    topFrames,
+    revenueSeries,
+  };
+}
+
+function buildTransactionBreakdown(
+  transactions: Transaction[],
+  getLabel: (transaction: Transaction) => string,
+): EventBreakdownItem[] {
+  const totals = new Map<string, EventBreakdownItem>();
+
+  for (const transaction of transactions) {
+    const label = getLabel(transaction);
+    const current = totals.get(label) ?? {
+      label,
+      value: 0,
+      revenue: 0,
+      sessions: 0,
+      prints: 0,
+    };
+    current.value += 1;
+    current.revenue += transaction.amount;
+    current.sessions += 1;
+    current.prints += transaction.printCount ?? 0;
+    totals.set(label, current);
+  }
+
+  return Array.from(totals.values()).sort((a, b) => b.revenue - a.revenue);
+}
+
+function buildMonthRevenueSeries(
+  monthKey: string,
+  transactions: Transaction[],
+) {
+  if (monthKey === "all") return [];
+  const [year, month] = monthKey.split("-").map(Number);
+  if (!year || !month) return [];
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  return Array.from({ length: daysInMonth }, (_, index) => {
+    const day = index + 1;
+    const dayKey = `${monthKey}-${String(day).padStart(2, "0")}`;
+    const dayTransactions = transactions.filter((transaction) =>
+      getDashboardDateKey(transaction.createdAtRaw) === dayKey,
+    );
+
+    return {
+      label: String(day),
+      revenue: dayTransactions.reduce(
+        (sum, transaction) => sum + transaction.amount,
+        0,
+      ),
+      sessions: dayTransactions.length,
+      prints: dayTransactions.reduce(
+        (sum, transaction) => sum + (transaction.printCount ?? 0),
+        0,
+      ),
+    };
+  });
+}
+
 function useClientMounted() {
   return useSyncExternalStore(
     () => () => undefined,
@@ -65,22 +196,59 @@ export function DashboardOverview() {
   const chartsMounted = useClientMounted();
   const [selectedEventPeriod, setSelectedEventPeriod] =
     useState<EventPeriodKey>("daily");
-
-  if (isLoading) {
-    return <LoadingState />;
-  }
+  const [selectedMonth, setSelectedMonth] = useState("all");
 
   const dashboardData = data ?? emptyDashboardData;
-  const eventPeriod = dashboardData.eventStats.periods[selectedEventPeriod];
+  const monthOptions = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          getDashboardMonthKey(new Date().toISOString()),
+          ...dashboardData.transactions
+            .map((transaction) =>
+              getDashboardMonthKey(transaction.createdAtRaw),
+            )
+            .filter(Boolean),
+        ]),
+      ).sort((a, b) => b.localeCompare(a)),
+    [dashboardData.transactions],
+  );
+  const selectedMonthTransactions = useMemo(
+    () =>
+      selectedMonth === "all"
+        ? dashboardData.transactions
+        : dashboardData.transactions.filter(
+            (transaction) =>
+              getDashboardMonthKey(transaction.createdAtRaw) === selectedMonth,
+          ),
+    [dashboardData.transactions, selectedMonth],
+  );
+  const selectedMonthPeriod = useMemo(
+    () => buildMonthEventPeriod(selectedMonth, selectedMonthTransactions),
+    [selectedMonth, selectedMonthTransactions],
+  );
+  const eventPeriod =
+    selectedMonth === "all"
+      ? dashboardData.eventStats.periods[selectedEventPeriod]
+      : selectedMonthPeriod;
+  const feedTransactions =
+    selectedMonth === "all"
+      ? dashboardData.transactions
+      : selectedMonthTransactions;
   const activeBooths = dashboardData.devices.filter((device: Device) => device.status === "online").length;
   const hasWeeklyChart = dashboardData.weeklyChart.length > 0;
   const hasMonthlyChart = dashboardData.monthlyChart.length > 0;
   const hasDevices = dashboardData.devices.length > 0;
   const hasTransactions = dashboardData.transactions.length > 0;
+  const hasFeedTransactions = feedTransactions.length > 0;
   const hasPosSales = dashboardData.posSummary.totalTransactions > 0;
   const isEmptyWorkspace =
     !hasDevices && !hasTransactions && !hasPosSales && !hasWeeklyChart && !hasMonthlyChart;
   const canUseOperatingTools = subscription?.tier === "Pro";
+
+  if (isLoading) {
+    return <LoadingState />;
+  }
 
   return (
     <div className="space-y-6">
@@ -90,13 +258,34 @@ export function DashboardOverview() {
             Statistik {eventPeriod.label}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-            Semua angka di bawah mengikuti tab periode yang dipilih.
+            {selectedMonth === "all"
+              ? "Semua angka di bawah mengikuti tab periode yang dipilih."
+              : "Semua angka di bawah difilter berdasarkan bulan yang dipilih."}
           </p>
         </div>
-        <PeriodTabs
-          selectedPeriod={selectedEventPeriod}
-          onSelectPeriod={setSelectedEventPeriod}
-        />
+        <div className="flex flex-col gap-2 rounded-3xl border border-zinc-200 bg-white/80 p-1.5 shadow-sm backdrop-blur sm:flex-row sm:items-center">
+          <label className="min-w-[220px]">
+            <span className="sr-only">Bulan</span>
+            <Select
+              value={selectedMonth}
+              onChange={(event) => setSelectedMonth(event.target.value)}
+              className="h-11 w-full rounded-2xl border-zinc-100 bg-white px-4 text-sm font-medium text-zinc-900 shadow-none"
+            >
+              <option value="all">Semua periode</option>
+              {monthOptions.map((month) => (
+                <option key={month} value={month}>
+                  {formatDashboardMonthLabel(month)}
+                </option>
+              ))}
+            </Select>
+          </label>
+          {selectedMonth === "all" ? (
+            <PeriodTabs
+              selectedPeriod={selectedEventPeriod}
+              onSelectPeriod={setSelectedEventPeriod}
+            />
+          ) : null}
+        </div>
       </div>
 
       {isError ? (
@@ -248,8 +437,8 @@ export function DashboardOverview() {
             <Badge variant="outline">Live</Badge>
           </CardHeader>
           <CardContent className="space-y-3">
-            {hasTransactions ? (
-              dashboardData.transactions.slice(0, 5).map((transaction: Transaction) => (
+            {hasFeedTransactions ? (
+              feedTransactions.slice(0, 5).map((transaction: Transaction) => (
                 <div
                   key={transaction.id}
                   className={cn(
@@ -431,16 +620,16 @@ function PeriodTabs({
   onSelectPeriod: (period: EventPeriodKey) => void;
 }) {
   return (
-    <div className="inline-flex w-fit rounded-2xl border border-zinc-200 bg-white/85 p-1 shadow-sm backdrop-blur">
+    <div className="inline-flex h-11 w-full rounded-2xl bg-zinc-50 p-1 sm:w-fit">
       {eventPeriodTabs.map((tab) => (
         <button
           key={tab.key}
           type="button"
           onClick={() => onSelectPeriod(tab.key)}
-          className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+          className={`h-9 flex-1 rounded-xl px-4 text-sm font-medium transition sm:flex-none ${
             selectedPeriod === tab.key
               ? "bg-zinc-950 text-white shadow-sm"
-              : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
+              : "text-zinc-500 hover:bg-white hover:text-zinc-900"
           }`}
         >
           {tab.label}

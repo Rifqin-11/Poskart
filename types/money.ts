@@ -1,5 +1,5 @@
 export type MoneyEntryType = "income" | "expense";
-export type MoneyWalletType = "cash" | "qris";
+export type MoneyWalletType = string;
 
 export type MoneyCategory = string;
 
@@ -20,6 +20,17 @@ export type MoneyTag = {
 };
 
 export type MoneyTagInput = {
+  name: string;
+};
+
+export type MoneyWallet = {
+  id: MoneyWalletType;
+  name: string;
+  type: "cash" | "qris" | "custom";
+  isDefault: boolean;
+};
+
+export type MoneyWalletInput = {
   name: string;
 };
 

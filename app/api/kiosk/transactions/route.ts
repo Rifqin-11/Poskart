@@ -5,6 +5,10 @@ import {
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
 import { resolveKioskPricingProduct } from "@/lib/kiosk/pricing";
+import {
+  isDuitkuTransactionPaid,
+  normalizeQrisTransactionStatus,
+} from "@/server/payments/qris-status";
 
 type TransactionBody = {
   deviceId?: string;
@@ -128,6 +132,14 @@ export async function POST(request: Request) {
 
     if (transactionError) throw transactionError;
 
+    if (provider === "QRIS") {
+      await restoreConfirmedQrisPaidStatus(
+        context.client,
+        context.organizationId,
+        transaction.id,
+      );
+    }
+
     return jsonOk({ success: true, transactionId: transaction.id });
   } catch (error) {
     return jsonError(error);
@@ -143,7 +155,7 @@ function resolveTransactionStatus({
   requestedStatus?: TransactionStatus;
   existingTransaction: ExistingTransaction | null;
 }): TransactionStatus {
-  const existingIsPaid = isExistingTransactionPaid(existingTransaction);
+  const existingIsPaid = isDuitkuTransactionPaid(existingTransaction);
 
   if (existingIsPaid) {
     return "paid";
@@ -159,19 +171,36 @@ function resolveTransactionStatus({
   return requestedStatus ?? "paid";
 }
 
-function isExistingTransactionPaid(transaction: ExistingTransaction | null) {
-  if (!transaction) return false;
-  if (transaction.status === "paid") return true;
-  if (transaction.paid_at) return true;
-  if (transaction.duitku_status_code === "00") return true;
+async function restoreConfirmedQrisPaidStatus(
+  client: Awaited<ReturnType<typeof requireKioskContext>>["client"],
+  organizationId: string,
+  transactionId: string,
+) {
+  const { data, error: readError } = await client
+    .from("transactions")
+    .select("status,paid_at,duitku_status_code,gateway_response")
+    .eq("organization_id", organizationId)
+    .eq("id", transactionId)
+    .eq("provider", "QRIS")
+    .maybeSingle();
 
-  const gatewayResponse = transaction.gateway_response;
-  if (!gatewayResponse || typeof gatewayResponse !== "object") return false;
+  if (readError) throw readError;
+  if (!isDuitkuTransactionPaid((data ?? null) as ExistingTransaction | null)) {
+    return;
+  }
 
-  return (
-    gatewayResponse.statusCode === "00" ||
-    gatewayResponse.resultCode === "00"
-  );
+  const { error } = await client
+    .from("transactions")
+    .update({
+      status: "paid",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("organization_id", organizationId)
+    .eq("id", transactionId)
+    .eq("provider", "QRIS")
+    .neq("status", "paid");
+
+  if (error) throw error;
 }
 
 export async function GET(request: Request) {
@@ -191,15 +220,20 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
+    const normalizedTransactions =
+      transactions?.map((transaction) =>
+        normalizeQrisTransactionStatus(transaction),
+      ) ?? [];
+
     // Calculate total money (paid transactions)
     const totalAmount =
-      transactions
-        ?.filter((t) => t.status === "paid")
+      normalizedTransactions
+        .filter((t) => t.status === "paid")
         .reduce((sum, t) => sum + (t.amount ?? 0), 0) ?? 0;
 
     return jsonOk({
       totalAmount,
-      transactions: transactions ?? [],
+      transactions: normalizedTransactions,
     });
   } catch (error) {
     return jsonError(error);

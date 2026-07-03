@@ -114,10 +114,6 @@ export async function GalleryPage() {
   return (
     <div className="space-y-8">
       <header>
-        <div className="flex items-center gap-2 text-sm font-medium text-zinc-500">
-          <Images className="size-4" />
-          Cloud gallery
-        </div>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
           Gallery
         </h1>

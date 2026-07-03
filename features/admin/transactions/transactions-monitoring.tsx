@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Edit2, SlidersHorizontal, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Edit2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,12 @@ function renderPaymentMethod(
   );
 }
 
+function getTransactionDateKey(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export function TransactionsMonitoring() {
   const { data = [] } = useTransactions();
   const updateTransaction = useUpdateTransaction();
@@ -73,13 +79,31 @@ export function TransactionsMonitoring() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
+  const [packageFilter, setPackageFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("");
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const paymentMethodOptions = useMemo(
+    () =>
+      Array.from(new Set(data.map(getTransactionPaymentMethod))).sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [data],
+  );
+  const packageOptions = useMemo(
+    () =>
+      Array.from(new Set(data.map((transaction) => transaction.packageName)))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [data],
+  );
 
   const filtered = data.filter((t: Transaction) => {
+    const paymentMethod = getTransactionPaymentMethod(t);
     const matchSearch =
       !search ||
       t.id.toLowerCase().includes(search.toLowerCase()) ||
@@ -87,8 +111,26 @@ export function TransactionsMonitoring() {
       t.customer.toLowerCase().includes(search.toLowerCase()) ||
       t.packageName.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || t.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchPaymentMethod =
+      paymentMethodFilter === "all" || paymentMethod === paymentMethodFilter;
+    const matchPackage =
+      packageFilter === "all" || t.packageName === packageFilter;
+    const matchDate =
+      !dateFilter || getTransactionDateKey(t.createdAtRaw) === dateFilter;
+    return (
+      matchSearch &&
+      matchStatus &&
+      matchPaymentMethod &&
+      matchPackage &&
+      matchDate
+    );
   });
+  const hasActiveFilters =
+    search.trim() ||
+    statusFilter !== "all" ||
+    paymentMethodFilter !== "all" ||
+    packageFilter !== "all" ||
+    dateFilter;
   const activePage = Math.min(
     page,
     Math.max(1, Math.ceil(filtered.length / pageSize)),
@@ -131,11 +173,6 @@ export function TransactionsMonitoring() {
       <PageHeader
         title="Transaction & QRIS Monitoring"
         description="Track live payments, failed logs, manual verification, retry, and refund tools."
-        action={
-          <Button variant="outline">
-            <SlidersHorizontal className="size-4" /> Filters
-          </Button>
-        }
       />
 
       <TransactionDetailsDialog
@@ -156,7 +193,7 @@ export function TransactionsMonitoring() {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex w-full flex-col gap-3 sm:flex-row md:max-w-xl">
+            <div className="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.2fr)_150px_170px_190px_160px_auto]">
               <Input
                 placeholder="Search by ID, device, customer…"
                 value={search}
@@ -178,6 +215,57 @@ export function TransactionsMonitoring() {
                 <option value="failed">Failed</option>
                 <option value="refunded">Refunded</option>
               </Select>
+              <Select
+                value={paymentMethodFilter}
+                onChange={(e) => {
+                  setPaymentMethodFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="all">All methods</option>
+                {paymentMethodOptions.map((method) => (
+                  <option key={method} value={method}>
+                    {method}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                value={packageFilter}
+                onChange={(e) => {
+                  setPackageFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="all">All packages</option>
+                {packageOptions.map((packageName) => (
+                  <option key={packageName} value={packageName}>
+                    {packageName}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => {
+                  setDateFilter(e.target.value);
+                  setPage(1);
+                }}
+                aria-label="Filter transaction date"
+              />
+              <Button
+                variant="outline"
+                disabled={!hasActiveFilters}
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setPaymentMethodFilter("all");
+                  setPackageFilter("all");
+                  setDateFilter("");
+                  setPage(1);
+                }}
+              >
+                Reset
+              </Button>
             </div>
             <div className="text-xs text-zinc-500 flex items-center gap-4">
               <span>

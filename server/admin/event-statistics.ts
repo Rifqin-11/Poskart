@@ -9,6 +9,7 @@ import type {
   EventPeriodStatistics,
   EventStatisticsData,
 } from "@/server/admin/_shared/admin-types";
+import { normalizeQrisTransactionStatus } from "@/server/payments/qris-status";
 
 type EventTransactionRow = {
   id: string;
@@ -18,6 +19,9 @@ type EventTransactionRow = {
   created_at: string;
   print_count: number | null;
   template_id: string | null;
+  paid_at: string | null;
+  duitku_status_code: string | null;
+  gateway_response: Record<string, unknown> | null;
   templates?: { name?: string | null } | { name?: string | null }[] | null;
 };
 
@@ -46,7 +50,7 @@ export async function getEventStatisticsForOrganization(
   const { data, error } = await client
     .from("transactions")
     .select(
-      "id,amount,status,provider,created_at,print_count,template_id,templates(name)",
+      "id,amount,status,provider,created_at,print_count,template_id,paid_at,duitku_status_code,gateway_response,templates(name)",
     )
     .eq("organization_id", organizationId)
     .gte("created_at", earliestStart.toISOString())
@@ -54,7 +58,9 @@ export async function getEventStatisticsForOrganization(
 
   if (error) throw error;
 
-  const rows = (data ?? []) as EventTransactionRow[];
+  const rows = ((data ?? []) as EventTransactionRow[]).map(
+    normalizeQrisTransactionStatus,
+  );
 
   return {
     generatedAt: now.toISOString(),

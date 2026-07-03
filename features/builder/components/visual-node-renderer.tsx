@@ -15,6 +15,14 @@ import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { BuilderNode } from "@/types/builder";
 
+const OVERLAY_REAL_RENDER_TYPES = new Set<BuilderNode["type"]>([
+  "photo-result",
+  "frame-preview",
+  "preview-media-toggle",
+  "template-list",
+  "template-preview",
+]);
+
 /** Hotspot overlay — shown when canvas has a background image/video */
 function HotspotOverlay({ node }: { node: BuilderNode }) {
   const canvas = useBuilderStore((state) => state.canvas);
@@ -156,10 +164,12 @@ export function NodeRenderer({
   const scaledDefaultFontSize = Math.max(14, Math.round(canvas.width * 0.028));
   const fontSize = readNumber(node.props.fontSize, scaledDefaultFontSize);
 
-  // When a background image/video is set, all nodes become hotspot overlays, except camera.continue and QR codes
+  // Overlay mode keeps generic controls as hotspots, while visual preview slots
+  // still render their real layout so the builder remains readable.
   if (
     isOverlayMode &&
     !isCameraContinue &&
+    !OVERLAY_REAL_RENDER_TYPES.has(node.type) &&
     node.type !== "qr" &&
     node.type !== "qr-placeholder"
   ) {
@@ -382,7 +392,12 @@ export function NodeRenderer({
 
     return (
       <div
-        className="relative flex h-full w-full flex-col items-center justify-between overflow-visible border border-zinc-300 p-3"
+        className={cn(
+          "relative flex h-full w-full flex-col items-center justify-between overflow-visible p-3",
+          qrTransparentBackground
+            ? "border border-transparent"
+            : "border border-zinc-300",
+        )}
         style={{
           borderRadius: readNumber(node.props.radius, 12),
           backgroundColor: qrTransparentBackground ? "transparent" : qrBgColor,
@@ -637,6 +652,16 @@ export function NodeRenderer({
   if (node.type === "template-list") {
     const grid = calculateTemplateGrid(node);
     const tiles = Array.from({ length: grid.count });
+    const innerWidth = Math.max(1, node.width - 16);
+    const headerHeight = 28;
+    const viewportHeight = Math.max(1, node.height - 16 - headerHeight);
+    const tileWidth =
+      (innerWidth - Math.max(0, grid.columns - 1) * grid.gap) / grid.columns;
+    const tileHeight = Math.max(48, tileWidth / 1.08);
+    const contentHeight =
+      grid.rows * tileHeight + Math.max(0, grid.rows - 1) * grid.gap;
+    const overflows = contentHeight > viewportHeight + 2;
+
     return (
       <div
         className="relative h-full w-full overflow-hidden border-2 border-dashed border-orange-300 bg-orange-50"
@@ -656,35 +681,46 @@ export function NodeRenderer({
             </span>
           </div>
           {/* Template tiles */}
-          <div
-            className="grid h-[calc(100%-28px)]"
-            style={{
-              gap: grid.gap,
-              gridTemplateColumns: `repeat(${grid.columns}, minmax(0, 1fr))`,
-            }}
-          >
-            {tiles.map((_, i) => (
-              <div
-                key={i}
-                className="relative overflow-hidden rounded-lg border border-orange-200 bg-white shadow-sm"
-              >
-                <div className="absolute inset-0 flex flex-col gap-1 p-2">
-                  <div className="h-3/4 rounded bg-orange-100" />
-                  <div className="h-1/6 rounded bg-orange-50" />
-                </div>
-                <div className="absolute inset-1 rounded border border-dashed border-orange-300/60" />
-                <div className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-semibold text-orange-400">
-                  Frame {i + 1}
-                </div>
-                {i === 0 && (
-                  <div className="absolute inset-0 rounded-lg border-2 border-orange-500 bg-orange-500/10">
-                    <div className="absolute right-1 top-1 rounded-full bg-orange-500 p-0.5">
-                      <div className="size-1.5 rounded-full bg-white" />
-                    </div>
+          <div className="relative h-[calc(100%-28px)] overflow-hidden">
+            <div
+              className="grid"
+              style={{
+                gap: grid.gap,
+                gridAutoRows: `${tileHeight}px`,
+                gridTemplateColumns: `repeat(${grid.columns}, minmax(0, 1fr))`,
+              }}
+            >
+              {tiles.map((_, i) => (
+                <div
+                  key={i}
+                  className="relative overflow-hidden rounded-lg border border-orange-200 bg-white shadow-sm"
+                >
+                  <div className="absolute inset-0 flex flex-col gap-1 p-2">
+                    <div className="h-3/4 rounded bg-orange-100" />
+                    <div className="h-1/6 rounded bg-orange-50" />
                   </div>
-                )}
-              </div>
-            ))}
+                  <div className="absolute inset-1 rounded border border-dashed border-orange-300/60" />
+                  <div className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-semibold text-orange-400">
+                    Frame {i + 1}
+                  </div>
+                  {i === 0 && (
+                    <div className="absolute inset-0 rounded-lg border-2 border-orange-500 bg-orange-500/10">
+                      <div className="absolute right-1 top-1 rounded-full bg-orange-500 p-0.5">
+                        <div className="size-1.5 rounded-full bg-white" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {overflows ? (
+              <>
+                <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-orange-50 via-orange-50/90 to-transparent" />
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full border border-orange-200 bg-white/95 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-orange-600 shadow-sm">
+                  Scrolls in kiosk
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       </div>
@@ -727,7 +763,12 @@ export function NodeRenderer({
     // Realistic-looking QR placeholder — no real data, just visual structure
     return (
       <div
-        className="grid h-full w-full place-items-center border-2 border-dashed border-zinc-300 p-3"
+        className={cn(
+          "grid h-full w-full place-items-center p-3",
+          qrTransparentBackground
+            ? "border-2 border-transparent"
+            : "border-2 border-dashed border-zinc-300",
+        )}
         style={{
           borderRadius: readNumber(node.props.radius, 8),
           backgroundColor: qrTransparentBackground ? "transparent" : qrBgColor,

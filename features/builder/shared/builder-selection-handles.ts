@@ -1,8 +1,9 @@
 import type { CSSProperties } from "react";
-import type { HandleStyles } from "react-rnd";
+import type { HandleClasses, HandleStyles } from "react-rnd";
 
-const selectionColor = "#8b5cf6";
+const selectionColor = "#cbd5e1";
 const selectionShadow = "0 2px 8px rgba(15, 23, 42, 0.18)";
+const resizeHandleClassName = "builder-resize-handle";
 
 const cornerHandle: CSSProperties = {
   width: 22,
@@ -11,6 +12,8 @@ const cornerHandle: CSSProperties = {
   border: "2px solid #a1a1aa",
   background: "#ffffff",
   boxShadow: selectionShadow,
+  transition:
+    "background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease",
   zIndex: 30,
 };
 
@@ -18,6 +21,8 @@ const sideHandle: CSSProperties = {
   border: "2px solid #a1a1aa",
   background: "#ffffff",
   boxShadow: selectionShadow,
+  transition:
+    "background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease",
   zIndex: 30,
 };
 
@@ -89,6 +94,17 @@ export const builderHiddenResizeHandleStyles: HandleStyles = {
   topRight: { opacity: 0 },
   bottomLeft: { opacity: 0 },
   bottomRight: { opacity: 0 },
+};
+
+export const builderResizeHandleClasses: HandleClasses = {
+  top: resizeHandleClassName,
+  right: resizeHandleClassName,
+  bottom: resizeHandleClassName,
+  left: resizeHandleClassName,
+  topLeft: resizeHandleClassName,
+  topRight: resizeHandleClassName,
+  bottomLeft: resizeHandleClassName,
+  bottomRight: resizeHandleClassName,
 };
 
 export const builderResizeHandleWrapperStyle: CSSProperties = {

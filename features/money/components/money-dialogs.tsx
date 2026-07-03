@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownCircle, ArrowUpCircle, Plus, Tag, Tags, Trash2 } from "lucide-react";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Plus,
+  Tag,
+  Tags,
+  Trash2,
+  WalletCards,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,6 +24,7 @@ import type {
   MoneyEntryInput,
   MoneyEntryType,
   MoneyTag,
+  MoneyWallet,
   MoneyWalletType,
 } from "@/types/money";
 
@@ -23,6 +32,7 @@ export function MoneyEntryDialog({
   entry,
   customCategories,
   tags,
+  wallets,
   pending,
   onClose,
   onSubmit,
@@ -30,6 +40,7 @@ export function MoneyEntryDialog({
   entry: MoneyEntry | null;
   customCategories: MoneyCustomCategory[];
   tags: MoneyTag[];
+  wallets: MoneyWallet[];
   pending: boolean;
   onClose: () => void;
   onSubmit: (values: MoneyEntryInput) => void;
@@ -144,8 +155,11 @@ export function MoneyEntryDialog({
                 setWalletType(event.target.value as MoneyWalletType)
               }
             >
-              <option value="cash">Tunai</option>
-              <option value="qris">QRIS</option>
+              {wallets.map((wallet) => (
+                <option key={wallet.id} value={wallet.id}>
+                  {wallet.name}
+                </option>
+              ))}
             </Select>
           </label>
           <label className="space-y-1.5 text-sm font-medium">
@@ -252,6 +266,103 @@ export function MoneyEntryDialog({
           </Button>
         </div>
       </form>
+    </Dialog>
+  );
+}
+
+export function WalletManagerDialog({
+  wallets,
+  pending,
+  onClose,
+  onCreate,
+  onDelete,
+}: {
+  wallets: MoneyWallet[];
+  pending: boolean;
+  onClose: () => void;
+  onCreate: (name: string) => void;
+  onDelete: (wallet: MoneyWallet) => void;
+}) {
+  const [name, setName] = useState("");
+  const customWallets = wallets.filter((wallet) => !wallet.isDefault);
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title="Kelola dompet"
+      overlayClassName="z-[80]"
+    >
+      <div className="space-y-5">
+        <p className="text-sm text-zinc-500">
+          Tambahkan dompet operasional selain Tunai dan QRIS, misalnya Bank BCA,
+          E-Wallet, atau Kas Event.
+        </p>
+        <form
+          className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:flex-row"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onCreate(name);
+            setName("");
+          }}
+        >
+          <Input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            minLength={2}
+            maxLength={40}
+            placeholder="Contoh: Bank BCA, Kas Event"
+            required
+          />
+          <Button type="submit" disabled={pending || name.trim().length < 2}>
+            <Plus className="size-4" />
+            Tambah dompet
+          </Button>
+        </form>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <WalletCards className="size-4" />
+            Dompet tersedia
+          </div>
+          <div className="divide-y overflow-hidden rounded-xl border border-zinc-200">
+            {wallets.map((wallet) => (
+              <div
+                key={wallet.id}
+                className="flex items-center justify-between gap-3 px-4 py-3"
+              >
+                <div>
+                  <div className="text-sm font-medium">{wallet.name}</div>
+                  <div className="text-xs text-zinc-500">
+                    {wallet.isDefault ? "Dompet bawaan" : "Dompet kustom"}
+                  </div>
+                </div>
+                {!wallet.isDefault ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-zinc-400 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => onDelete(wallet)}
+                    aria-label={`Hapus dompet ${wallet.name}`}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          {!customWallets.length ? (
+            <div className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
+              Belum ada dompet kustom.
+            </div>
+          ) : null}
+        </div>
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Selesai
+          </Button>
+        </div>
+      </div>
     </Dialog>
   );
 }

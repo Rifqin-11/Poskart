@@ -1,12 +1,14 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { defaultMoneyWallets } from "@/features/money/money-dashboard.utils";
 import type {
   MoneyCategory,
   MoneyCustomCategory,
   MoneyEntry,
   MoneyEntryType,
   MoneyTag,
+  MoneyWallet,
   MoneyWalletType,
 } from "@/types/money";
 
@@ -31,6 +33,11 @@ type MoneyCategoryRow = {
 
 type MoneyTagRow = {
   id: string;
+  name: string;
+};
+
+type MoneyWalletRow = {
+  code: string;
   name: string;
 };
 
@@ -99,6 +106,30 @@ export async function getMoneyTags(): Promise<MoneyTag[]> {
     id: row.id,
     name: row.name,
   }));
+}
+
+export async function getMoneyWallets(): Promise<MoneyWallet[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("money_wallets")
+    .select("code,name")
+    .order("name");
+
+  if (error) {
+    if (error.code === "42P01" || error.code === "42703") {
+      return defaultMoneyWallets;
+    }
+    throw new Error(`Gagal memuat dompet keuangan: ${error.message}`);
+  }
+
+  const customWallets = ((data ?? []) as MoneyWalletRow[]).map((row) => ({
+    id: row.code,
+    name: row.name,
+    type: "custom" as const,
+    isDefault: false,
+  }));
+
+  return [...defaultMoneyWallets, ...customWallets];
 }
 
 export async function getMoneyCategories(): Promise<MoneyCustomCategory[]> {

@@ -12,6 +12,7 @@ export type Transaction = {
   provider: TransactionProvider;
   createdAt: string;
   createdAtRaw: string;
+  printCount: number;
   printStatus: PrintStatus;
   printAttempts: number;
   printLastError?: string | null;

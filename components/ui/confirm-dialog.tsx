@@ -25,7 +25,13 @@ export function ConfirmDialog({
   if (!options) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title={options.title} className="max-w-md">
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={options.title}
+      className="max-w-md"
+      overlayClassName="z-[90]"
+    >
       <div className="space-y-5">
         {options.description ? (
           <p className="text-sm leading-6 text-zinc-500">{options.description}</p>

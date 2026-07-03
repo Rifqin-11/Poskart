@@ -10,17 +10,24 @@ export function Dialog({
   title,
   children,
   className,
+  overlayClassName,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   children: React.ReactNode;
   className?: string;
+  overlayClassName?: string;
 }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/30 p-2 backdrop-blur-sm sm:p-4">
+    <div
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/30 p-2 backdrop-blur-sm sm:p-4",
+        overlayClassName,
+      )}
+    >
       <div
         className={cn(
           "flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]",

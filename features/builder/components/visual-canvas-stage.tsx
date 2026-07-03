@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Rnd } from "react-rnd";
 import { ColorKeyImage } from "@/features/builder/components/color-key-image";
 import {
+  builderResizeHandleClasses,
   builderResizeHandleWrapperStyle,
   builderSelectionOutlineStyle,
   getBuilderResizeHandleStyles,
@@ -111,6 +112,13 @@ export function VisualCanvasStage({
   onEditCancel: () => void;
   onStartEdit: (node: BuilderNode) => void;
 }) {
+  const shouldShowSelectionOutline = (node: BuilderNode) =>
+    selectedId === node.id &&
+    !(
+      (node.type === "qr" || node.type === "qr-placeholder") &&
+      node.props.qrTransparentBackground === true
+    );
+
   return (
     <div
       ref={canvasRef}
@@ -206,6 +214,7 @@ export function VisualCanvasStage({
                   resizeHandleStyles={getBuilderResizeHandleStyles(
                     selectedId === node.id,
                   )}
+                  resizeHandleClasses={builderResizeHandleClasses}
                   resizeHandleWrapperStyle={builderResizeHandleWrapperStyle}
                   onClick={(event: React.MouseEvent) => {
                     event.stopPropagation();
@@ -264,7 +273,7 @@ export function VisualCanvasStage({
                     zIndex: node.zIndex,
                     opacity: node.opacity,
                     transform: `rotate(${node.rotation}deg)`,
-                    ...(selectedId === node.id
+                    ...(shouldShowSelectionOutline(node)
                       ? builderSelectionOutlineStyle
                       : {}),
                   }}

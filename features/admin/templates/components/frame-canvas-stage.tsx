@@ -3,7 +3,9 @@
 import type { RefObject } from "react";
 import { Rnd } from "react-rnd";
 import {
+  builderResizeHandleClasses,
   builderResizeHandleWrapperStyle,
+  builderSelectionOutlineStyle,
   getBuilderResizeHandleStyles,
 } from "@/features/builder/shared/builder-selection-handles";
 import { FrameNodeRenderer } from "@/features/admin/templates/components/frame-node-renderer";
@@ -169,6 +171,7 @@ export function FrameCanvasStage({
                   resizeHandleStyles={getBuilderResizeHandleStyles(
                     selectedId === node.id,
                   )}
+                  resizeHandleClasses={builderResizeHandleClasses}
                   resizeHandleWrapperStyle={builderResizeHandleWrapperStyle}
                   onClick={(event: React.MouseEvent) => {
                     event.stopPropagation();
@@ -264,15 +267,14 @@ export function FrameCanvasStage({
                   )}
                 >
                   <div
-                    className={cn(
-                      "h-full w-full",
-                      selectedId === node.id &&
-                        "outline outline-[3px] outline-offset-0 outline-violet-500",
-                    )}
+                    className="h-full w-full"
                     style={{
                       transform: `rotate(${node.rotation}deg)`,
                       transformOrigin: "center center",
                       willChange: node.rotation === 0 ? undefined : "transform",
+                      ...(selectedId === node.id
+                        ? builderSelectionOutlineStyle
+                        : {}),
                     }}
                   >
                     <FrameNodeRenderer node={node} />

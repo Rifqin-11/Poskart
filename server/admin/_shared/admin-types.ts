@@ -15,6 +15,7 @@ import type { Organization } from "@/types/organization";
 import type { ThemePreset, ThemeSchema } from "@/types/theme";
 import type { Transaction } from "@/types/transaction";
 import type { FrameLayout } from "@/types/frame-template";
+import { normalizeQrisTransactionStatus } from "@/server/payments/qris-status";
 
 export type {
   ChartPoint,
@@ -35,7 +36,7 @@ export type {
 import { pricingPlans } from "@/lib/constants/business";
 
 export const TRANSACTION_COLUMNS =
-  "id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_status,print_attempts,print_last_error";
+  "id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_count,print_status,print_attempts,print_last_error,paid_at,duitku_status_code,gateway_response";
 
 export const BOOTH_COLUMNS =
   "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at";
@@ -45,17 +46,22 @@ export type TransactionRow = Omit<
   | "device"
   | "packageName"
   | "createdAt"
+  | "printCount"
   | "printStatus"
   | "printAttempts"
   | "printLastError"
 > & {
   booth: string; // actual DB column name in transactions table
   package_name: string;
-  created_at_label: string;
-  created_at: string;
-  print_status: Transaction["printStatus"];
-  print_attempts: number;
-  print_last_error: string | null;
+    created_at_label: string;
+    created_at: string;
+    print_count: number | null;
+    print_status: Transaction["printStatus"];
+    print_attempts: number;
+    print_last_error: string | null;
+  paid_at: string | null;
+  duitku_status_code: string | null;
+  gateway_response: Record<string, unknown> | null;
 };
 
 export type RawTransactionRow = {
@@ -64,6 +70,9 @@ export type RawTransactionRow = {
   status: string;
   provider: string;
   created_at: string;
+  paid_at: string | null;
+  duitku_status_code: string | null;
+  gateway_response: Record<string, unknown> | null;
 };
 
 export type TransactionPatch = {
@@ -441,21 +450,26 @@ export function assertSupabaseResult<T>(
   return data ?? ([] as T);
 }
 
-export const mapTransaction = (row: TransactionRow): Transaction => ({
-  id: row.id,
-  device: row.booth, // 'booth' is the DB column name, mapped to 'device' for the app type
-  location: row.location,
-  customer: row.customer,
-  packageName: row.package_name,
-  amount: row.amount,
-  status: row.status,
-  provider: row.provider,
-  createdAt: row.created_at_label,
-  createdAtRaw: row.created_at,
-  printStatus: row.print_status ?? "pending",
-  printAttempts: row.print_attempts ?? 0,
-  printLastError: row.print_last_error ?? null,
-});
+export const mapTransaction = (row: TransactionRow): Transaction => {
+  const normalized = normalizeQrisTransactionStatus(row);
+
+  return {
+    id: row.id,
+    device: row.booth, // 'booth' is the DB column name, mapped to 'device' for the app type
+    location: row.location,
+    customer: row.customer,
+    packageName: row.package_name,
+    amount: row.amount,
+    status: normalized.status as Transaction["status"],
+    provider: row.provider,
+    createdAt: row.created_at_label,
+    createdAtRaw: row.created_at,
+    printCount: row.print_count ?? 0,
+    printStatus: row.print_status ?? "pending",
+    printAttempts: row.print_attempts ?? 0,
+    printLastError: row.print_last_error ?? null,
+  };
+};
 
 export function normalizeAssignmentList(
   values?: string[] | null,

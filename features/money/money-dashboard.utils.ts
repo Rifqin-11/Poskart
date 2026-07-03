@@ -2,15 +2,20 @@ import type {
   MoneyCategory,
   MoneyEntry,
   MoneyEntryType,
+  MoneyWallet,
   MoneyWalletType,
 } from "@/types/money";
 
 export type WalletFilter = "all" | MoneyWalletType;
 
-export const walletLabels: Record<MoneyWalletType, string> = {
-  cash: "Tunai",
-  qris: "QRIS",
-};
+export const defaultMoneyWallets: MoneyWallet[] = [
+  { id: "cash", name: "Tunai", type: "cash", isDefault: true },
+  { id: "qris", name: "QRIS", type: "qris", isDefault: true },
+];
+
+export const walletLabels: Record<string, string> = Object.fromEntries(
+  defaultMoneyWallets.map((wallet) => [wallet.id, wallet.name]),
+);
 
 export const categoryLabels: Record<MoneyCategory, string> = {
   opening_balance: "Saldo awal",
@@ -89,4 +94,21 @@ export function getNetAmount(entry: MoneyEntry) {
 
 export function getCategoryLabel(category: MoneyCategory) {
   return categoryLabels[category] ?? category;
+}
+
+export function getWalletLabel(
+  walletType: MoneyWalletType,
+  wallets: MoneyWallet[] = defaultMoneyWallets,
+) {
+  return wallets.find((wallet) => wallet.id === walletType)?.name ??
+    walletLabels[walletType] ??
+    walletType;
+}
+
+export function getWalletKind(
+  walletType: MoneyWalletType,
+  wallets: MoneyWallet[] = defaultMoneyWallets,
+) {
+  return wallets.find((wallet) => wallet.id === walletType)?.type ??
+    (walletType === "qris" ? "qris" : walletType === "cash" ? "cash" : "custom");
 }

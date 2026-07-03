@@ -46,6 +46,10 @@ html {
   background-size: 24px 24px;
 }
 
+.builder-resize-handle:hover {
+  background-color: #e2e8f0 !important;
+}
+
 /* ── Landing Page Animations ─────────────────────────────────── */
 
 @keyframes scrolly-enter {

@@ -1,8 +1,10 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { defaultMoneyWallets } from "@/features/money/money-dashboard.utils";
 import type {
   MoneyActionState,
   MoneyCategoryInput,
@@ -10,6 +12,7 @@ import type {
   MoneyEntryInput,
   MoneyEntryType,
   MoneyTagInput,
+  MoneyWalletInput,
   MoneyWalletType,
 } from "@/types/money";
 
@@ -61,7 +64,21 @@ async function validateMoneyEntry(
 ): Promise<string | null> {
   const amount = Math.round(Number(values.amount));
   const feePercentage = Number(values.feePercentage);
-  if (!["cash", "qris"].includes(values.walletType)) {
+  const walletIsDefault = defaultMoneyWallets.some(
+    (wallet) => wallet.id === values.walletType,
+  );
+  if (!walletIsDefault) {
+    const { data: wallet } = await context.supabase
+      .from("money_wallets")
+      .select("code")
+      .eq("organization_id", context.organizationId)
+      .eq("code", values.walletType)
+      .maybeSingle();
+    if (!wallet) {
+      return "Dompet uang tidak valid.";
+    }
+  }
+  if (!values.walletType.trim()) {
     return "Dompet uang tidak valid.";
   }
   if (!["income", "expense"].includes(values.entryType)) {
@@ -230,6 +247,87 @@ export async function createMoneyTag(
     }
     return { success: false, error: `Gagal membuat tag: ${error.message}` };
   }
+
+  revalidatePath("/money");
+  return { success: true };
+}
+
+export async function createMoneyWallet(
+  values: MoneyWalletInput,
+): Promise<MoneyActionState> {
+  const context = await getContext();
+  if (!context)
+    return { success: false, error: "Sesi atau organisasi tidak valid." };
+
+  const name = values.name.trim().replace(/\s+/g, " ");
+  if (name.length < 2 || name.length > 40) {
+    return { success: false, error: "Nama dompet harus 2-40 karakter." };
+  }
+  if (
+    defaultMoneyWallets.some(
+      (wallet) => wallet.name.toLowerCase() === name.toLowerCase(),
+    )
+  ) {
+    return { success: false, error: "Dompet tersebut sudah tersedia." };
+  }
+
+  const { error } = await context.supabase.from("money_wallets").insert({
+    organization_id: context.organizationId,
+    code: `wallet_${randomUUID()}`,
+    name,
+    created_by: context.user.id,
+  });
+  if (error) {
+    if (error.code === "23505") {
+      return { success: false, error: "Dompet dengan nama tersebut sudah ada." };
+    }
+    return { success: false, error: `Gagal membuat dompet: ${error.message}` };
+  }
+
+  revalidatePath("/money");
+  return { success: true };
+}
+
+export async function deleteMoneyWallet(
+  walletCode: string,
+): Promise<MoneyActionState> {
+  const context = await getContext();
+  if (!context)
+    return { success: false, error: "Sesi atau organisasi tidak valid." };
+  if (defaultMoneyWallets.some((wallet) => wallet.id === walletCode)) {
+    return { success: false, error: "Dompet bawaan tidak dapat dihapus." };
+  }
+
+  const { data: usedEntry, error: usedError } = await context.supabase
+    .from("money_entries")
+    .select("id")
+    .eq("organization_id", context.organizationId)
+    .eq("wallet_type", walletCode)
+    .limit(1)
+    .maybeSingle();
+  if (usedError) {
+    return {
+      success: false,
+      error: `Gagal memeriksa penggunaan dompet: ${usedError.message}`,
+    };
+  }
+  if (usedEntry) {
+    return {
+      success: false,
+      error: "Dompet sudah digunakan pada transaksi dan tidak dapat dihapus.",
+    };
+  }
+
+  const { data, error } = await context.supabase
+    .from("money_wallets")
+    .delete()
+    .eq("code", walletCode)
+    .eq("organization_id", context.organizationId)
+    .select("code")
+    .maybeSingle();
+  if (error)
+    return { success: false, error: `Gagal menghapus dompet: ${error.message}` };
+  if (!data) return { success: false, error: "Dompet tidak ditemukan." };
 
   revalidatePath("/money");
   return { success: true };

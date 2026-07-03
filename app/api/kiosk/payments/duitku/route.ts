@@ -12,6 +12,7 @@ import {
   mapDuitkuTransactionStatusCode,
 } from "@/server/payments/duitku";
 import { resolveKioskPricingProduct } from "@/lib/kiosk/pricing";
+import { isDuitkuTransactionPaid } from "@/server/payments/qris-status";
 
 type CreatePaymentBody = {
   deviceId?: string;
@@ -33,6 +34,9 @@ type TransactionRow = {
   duitku_qr_string: string | null;
   payment_expires_at: string | null;
   gateway_status_checked_at: string | null;
+  paid_at: string | null;
+  duitku_status_code: string | null;
+  gateway_response: Record<string, unknown> | null;
 };
 
 export async function POST(request: Request) {
@@ -63,7 +67,7 @@ export async function POST(request: Request) {
     );
 
     const existing = await loadTransaction(context, sessionId);
-    if (existing && existing.status === "paid") {
+    if (existing && isDuitkuTransactionPaid(existing)) {
       return jsonOk({
         status: "paid",
         sessionId,
@@ -200,7 +204,7 @@ async function loadTransaction(
   const { data, error } = await context.client
     .from("transactions")
     .select(
-      "id,status,amount,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at",
+      "id,status,amount,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,duitku_status_code,gateway_response",
     )
     .eq("organization_id", context.organizationId)
     .eq("id", sessionId)
@@ -236,7 +240,7 @@ async function refreshTransactionStatus(
     .eq("id", transaction.id)
     .eq("organization_id", context.organizationId)
     .select(
-      "id,status,amount,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at",
+      "id,status,amount,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,duitku_status_code,gateway_response",
     )
     .single();
 
@@ -269,12 +273,15 @@ function isExpired(transaction: TransactionRow) {
 }
 
 function formatStatus(transaction: TransactionRow) {
+  const normalizedStatus = isDuitkuTransactionPaid(transaction)
+    ? "paid"
+    : transaction.status;
   const expiresAt = transaction.payment_expires_at;
-  const expired = transaction.status === "pending" && isExpired(transaction);
+  const expired = normalizedStatus === "pending" && isExpired(transaction);
 
   return {
     sessionId: transaction.id,
-    status: expired ? "failed" : transaction.status,
+    status: expired ? "failed" : normalizedStatus,
     merchantOrderId: transaction.merchant_order_id,
     reference: transaction.payment_reference,
     qrString: transaction.duitku_qr_string,
