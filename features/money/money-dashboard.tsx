@@ -2,6 +2,7 @@
 
 import {
   ArrowDownCircle,
+  ArrowLeftRight,
   ArrowUpCircle,
   Banknote,
   Edit2,
@@ -29,6 +30,7 @@ import {
   deleteMoneyTag,
   deleteMoneyWallet,
   saveMoneyEntry,
+  saveMoneyTransfer,
 } from "@/app/(admin)/money/actions";
 import { StatCard } from "@/features/admin/_components/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +62,7 @@ import {
   getNetAmount,
   getWalletKind,
   getWalletLabel,
+  isTransferEntry,
   type WalletFilter,
 } from "@/features/money/money-dashboard.utils";
 import {
@@ -98,7 +101,9 @@ export function MoneyDashboard({
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [editing, setEditing] = useState<MoneyEntry | null>(null);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | MoneyEntryType>("all");
+  const [typeFilter, setTypeFilter] = useState<
+    "all" | MoneyEntryType | "transfer"
+  >("all");
   const [walletFilter, setWalletFilter] = useState<WalletFilter>("all");
   const [tagFilter, setTagFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -133,7 +138,10 @@ export function MoneyDashboard({
     const query = search.trim().toLowerCase();
     return scopedEntries.filter(
       (entry) =>
-        (typeFilter === "all" || entry.entryType === typeFilter) &&
+        (typeFilter === "all" ||
+          (typeFilter === "transfer"
+            ? isTransferEntry(entry)
+            : entry.entryType === typeFilter)) &&
         (!query ||
           entry.title.toLowerCase().includes(query) ||
           entry.notes?.toLowerCase().includes(query) ||
@@ -143,14 +151,29 @@ export function MoneyDashboard({
   }, [scopedEntries, search, typeFilter]);
 
   const summary = useMemo(() => {
+    const includeTransferFlow = walletFilter !== "all";
     const income = scopedEntries
-      .filter((entry) => entry.entryType === "income")
+      .filter(
+        (entry) =>
+          entry.entryType === "income" &&
+          (includeTransferFlow || !isTransferEntry(entry)),
+      )
       .reduce((total, entry) => total + getNetAmount(entry), 0);
     const expense = scopedEntries
-      .filter((entry) => entry.entryType === "expense")
+      .filter(
+        (entry) =>
+          entry.entryType === "expense" &&
+          (includeTransferFlow || !isTransferEntry(entry)),
+      )
       .reduce((total, entry) => total + entry.amount, 0);
-    return { income, expense, balance: income - expense };
-  }, [scopedEntries]);
+    const balance = scopedEntries.reduce(
+      (total, entry) =>
+        total +
+        (entry.entryType === "income" ? getNetAmount(entry) : -entry.amount),
+      0,
+    );
+    return { income, expense, balance };
+  }, [scopedEntries, walletFilter]);
   const activePage = Math.min(
     page,
     Math.max(1, Math.ceil(filteredEntries.length / pageSize)),
@@ -409,7 +432,9 @@ export function MoneyDashboard({
   const handleDelete = (entry: MoneyEntry) => {
     confirmDelete.confirm({
       title: "Hapus transaksi?",
-      description: `Hapus "${entry.title}" senilai ${formatCurrency(entry.amount)}?`,
+      description: entry.transferGroupId
+        ? `Hapus transfer "${entry.title}" senilai ${formatCurrency(entry.amount)} dari kedua dompet?`
+        : `Hapus "${entry.title}" senilai ${formatCurrency(entry.amount)}?`,
       confirmLabel: "Hapus",
       destructive: true,
       onConfirm: () => {
@@ -449,6 +474,18 @@ export function MoneyDashboard({
                   ? "Transaksi berhasil diperbarui."
                   : "Transaksi berhasil ditambahkan.",
               );
+              setEditorOpen(false);
+              router.refresh();
+            });
+          }}
+          onTransferSubmit={(values) => {
+            startTransition(async () => {
+              const result = await saveMoneyTransfer(values);
+              if (!result.success) {
+                toast.error(result.error ?? "Transfer gagal disimpan.");
+                return;
+              }
+              toast.success("Transfer berhasil ditambahkan.");
               setEditorOpen(false);
               router.refresh();
             });
@@ -684,7 +721,7 @@ export function MoneyDashboard({
         <CardContent className="space-y-3 p-4">
           <div className="space-y-1.5">
             <div className="text-xs font-medium text-zinc-500">
-              Akun keuangan
+              Dompet:
             </div>
             <div className="flex items-stretch gap-2">
               <div
@@ -834,13 +871,16 @@ export function MoneyDashboard({
               <Select
                 value={typeFilter}
                 onChange={(event) => {
-                  setTypeFilter(event.target.value as "all" | MoneyEntryType);
+                  setTypeFilter(
+                    event.target.value as "all" | MoneyEntryType | "transfer",
+                  );
                   setPage(1);
                 }}
               >
                 <option value="all">Semua jenis</option>
                 <option value="income">Uang masuk</option>
                 <option value="expense">Uang keluar</option>
+                <option value="transfer">Transfer</option>
               </Select>
             </div>
           </div>
@@ -884,6 +924,9 @@ export function MoneyDashboard({
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Badge variant="outline">
+                        {isTransferEntry(entry) ? (
+                          <ArrowLeftRight className="mr-1 size-3.5" />
+                        ) : null}
                         {getCategoryLabel(entry.category)}
                       </Badge>
                       <Badge variant="outline">
@@ -914,6 +957,7 @@ export function MoneyDashboard({
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={Boolean(entry.transferGroupId)}
                         onClick={() => {
                           setEditing(entry);
                           setEditorOpen(true);
@@ -956,7 +1000,19 @@ export function MoneyDashboard({
                           {formatDate(entry.occurredAt)}
                         </TableCell>
                         <TableCell>
-                          {getCategoryLabel(entry.category)}
+                          <div className="flex items-center gap-1.5">
+                            {isTransferEntry(entry) ? (
+                              <ArrowLeftRight className="size-3.5 text-zinc-400" />
+                            ) : null}
+                            {getCategoryLabel(entry.category)}
+                          </div>
+                          {entry.transferDirection ? (
+                            <div className="mt-0.5 text-xs text-zinc-500">
+                              {entry.transferDirection === "out"
+                                ? "Keluar dari dompet asal"
+                                : "Masuk ke dompet tujuan"}
+                            </div>
+                          ) : null}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
@@ -1016,6 +1072,7 @@ export function MoneyDashboard({
                           <Button
                             variant="ghost"
                             size="icon"
+                            disabled={Boolean(entry.transferGroupId)}
                             onClick={() => {
                               setEditing(entry);
                               setEditorOpen(true);

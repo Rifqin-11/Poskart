@@ -1,4 +1,5 @@
 export type MoneyEntryType = "income" | "expense";
+export type MoneyEntryMode = MoneyEntryType | "transfer";
 export type MoneyWalletType = string;
 
 export type MoneyCategory = string;
@@ -46,6 +47,8 @@ export type MoneyEntry = {
   tags: MoneyTag[];
   occurredAt: string;
   createdAt: string;
+  transferGroupId: string | null;
+  transferDirection: "out" | "in" | null;
 };
 
 export type MoneyEntryInput = {
@@ -55,6 +58,16 @@ export type MoneyEntryInput = {
   category: MoneyCategory;
   amount: number;
   feePercentage: number;
+  title: string;
+  notes: string;
+  tagIds: string[];
+  occurredAt: string;
+};
+
+export type MoneyTransferInput = {
+  fromWalletType: MoneyWalletType;
+  toWalletType: MoneyWalletType;
+  amount: number;
   title: string;
   notes: string;
   tagIds: string[];

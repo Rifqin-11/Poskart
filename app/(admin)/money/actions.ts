@@ -12,6 +12,7 @@ import type {
   MoneyEntryInput,
   MoneyEntryType,
   MoneyTagInput,
+  MoneyTransferInput,
   MoneyWalletInput,
   MoneyWalletType,
 } from "@/types/money";
@@ -64,23 +65,8 @@ async function validateMoneyEntry(
 ): Promise<string | null> {
   const amount = Math.round(Number(values.amount));
   const feePercentage = Number(values.feePercentage);
-  const walletIsDefault = defaultMoneyWallets.some(
-    (wallet) => wallet.id === values.walletType,
-  );
-  if (!walletIsDefault) {
-    const { data: wallet } = await context.supabase
-      .from("money_wallets")
-      .select("code")
-      .eq("organization_id", context.organizationId)
-      .eq("code", values.walletType)
-      .maybeSingle();
-    if (!wallet) {
-      return "Dompet uang tidak valid.";
-    }
-  }
-  if (!values.walletType.trim()) {
-    return "Dompet uang tidak valid.";
-  }
+  const walletError = await validateMoneyWalletCode(values.walletType, context);
+  if (walletError) return walletError;
   if (!["income", "expense"].includes(values.entryType)) {
     return "Jenis transaksi tidak valid.";
   }
@@ -132,6 +118,47 @@ async function validateMoneyEntry(
     return "Tanggal transaksi tidak valid.";
   }
   return null;
+}
+
+async function validateMoneyWalletCode(
+  walletCode: MoneyWalletType,
+  context: NonNullable<Awaited<ReturnType<typeof getContext>>>,
+) {
+  if (!walletCode.trim()) {
+    return "Dompet uang tidak valid.";
+  }
+  const walletIsDefault = defaultMoneyWallets.some(
+    (wallet) => wallet.id === walletCode,
+  );
+  if (walletIsDefault) return null;
+
+  const { data: wallet } = await context.supabase
+    .from("money_wallets")
+    .select("code")
+    .eq("organization_id", context.organizationId)
+    .eq("code", walletCode)
+    .maybeSingle();
+  return wallet ? null : "Dompet uang tidak valid.";
+}
+
+async function validateMoneyTags(
+  tagIds: string[],
+  context: NonNullable<Awaited<ReturnType<typeof getContext>>>,
+) {
+  const uniqueTagIds = Array.from(new Set(tagIds));
+  if (uniqueTagIds.length > 10) {
+    return "Maksimal 10 tag untuk setiap transaksi.";
+  }
+  if (!uniqueTagIds.length) return null;
+
+  const { data: validTags } = await context.supabase
+    .from("money_tags")
+    .select("id")
+    .eq("organization_id", context.organizationId)
+    .in("id", uniqueTagIds);
+  return (validTags ?? []).length === uniqueTagIds.length
+    ? null
+    : "Satu atau beberapa tag tidak valid untuk organisasi ini.";
 }
 
 function toDatabasePayload(
@@ -216,6 +243,116 @@ export async function saveMoneyEntry(
       return {
         success: false,
         error: `Transaksi tersimpan, tetapi tag gagal ditambahkan: ${tagInsertError.message}`,
+      };
+    }
+  }
+
+  revalidatePath("/money");
+  return { success: true };
+}
+
+export async function saveMoneyTransfer(
+  values: MoneyTransferInput,
+): Promise<MoneyActionState> {
+  const context = await getContext();
+  if (!context)
+    return { success: false, error: "Sesi atau organisasi tidak valid." };
+
+  const amount = Math.round(Number(values.amount));
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { success: false, error: "Nominal harus lebih besar dari nol." };
+  }
+  if (values.fromWalletType === values.toWalletType) {
+    return {
+      success: false,
+      error: "Dompet asal dan dompet tujuan harus berbeda.",
+    };
+  }
+
+  const fromWalletError = await validateMoneyWalletCode(
+    values.fromWalletType,
+    context,
+  );
+  if (fromWalletError) return { success: false, error: fromWalletError };
+
+  const toWalletError = await validateMoneyWalletCode(
+    values.toWalletType,
+    context,
+  );
+  if (toWalletError) return { success: false, error: toWalletError };
+
+  if (!values.title.trim() || values.title.trim().length > 120) {
+    return { success: false, error: "Judul wajib diisi dan maksimal 120 karakter." };
+  }
+  if (values.notes.trim().length > 500) {
+    return { success: false, error: "Catatan maksimal 500 karakter." };
+  }
+  if (Number.isNaN(new Date(values.occurredAt).getTime())) {
+    return { success: false, error: "Tanggal transfer tidak valid." };
+  }
+
+  const tagError = await validateMoneyTags(values.tagIds, context);
+  if (tagError) return { success: false, error: tagError };
+
+  const transferGroupId = randomUUID();
+  const occurredAt = new Date(values.occurredAt).toISOString();
+  const now = new Date().toISOString();
+  const basePayload = {
+    organization_id: context.organizationId,
+    category: "transfer",
+    amount,
+    fee_percentage: 0,
+    title: values.title.trim(),
+    notes: values.notes.trim() || null,
+    occurred_at: occurredAt,
+    created_by: context.user.id,
+    updated_at: now,
+    transfer_group_id: transferGroupId,
+  };
+
+  const { data: savedEntries, error } = await context.supabase
+    .from("money_entries")
+    .insert([
+      {
+        ...basePayload,
+        wallet_type: values.fromWalletType,
+        entry_type: "expense",
+        transfer_direction: "out",
+      },
+      {
+        ...basePayload,
+        wallet_type: values.toWalletType,
+        entry_type: "income",
+        transfer_direction: "in",
+      },
+    ])
+    .select("id");
+
+  if (error) {
+    return {
+      success: false,
+      error: `Gagal menyimpan transfer: ${error.message}`,
+    };
+  }
+
+  const uniqueTagIds = Array.from(new Set(values.tagIds));
+  const entryIds = (savedEntries ?? []).map((entry) => entry.id);
+  if (uniqueTagIds.length && entryIds.length) {
+    const { error: tagInsertError } = await context.supabase
+      .from("money_entry_tags")
+      .insert(
+        entryIds.flatMap((entryId) =>
+          uniqueTagIds.map((tagId) => ({
+            organization_id: context.organizationId,
+            money_entry_id: entryId,
+            money_tag_id: tagId,
+          })),
+        ),
+      );
+    if (tagInsertError) {
+      return {
+        success: false,
+        error: `Transfer tersimpan, tetapi tag gagal ditambahkan: ${tagInsertError.message}`,
       };
     }
   }
@@ -428,16 +565,31 @@ export async function deleteMoneyEntry(
   if (!context)
     return { success: false, error: "Sesi atau organisasi tidak valid." };
 
-  const { data, error } = await context.supabase
+  const { data: entry, error: lookupError } = await context.supabase
     .from("money_entries")
-    .delete()
+    .select("id,transfer_group_id")
     .eq("id", entryId)
     .eq("organization_id", context.organizationId)
-    .select("id")
     .maybeSingle();
+  if (lookupError)
+    return {
+      success: false,
+      error: `Gagal memeriksa transaksi: ${lookupError.message}`,
+    };
+  if (!entry) return { success: false, error: "Transaksi tidak ditemukan." };
+
+  const deleteQuery = context.supabase
+    .from("money_entries")
+    .delete()
+    .eq("organization_id", context.organizationId);
+  const { data, error } = entry.transfer_group_id
+    ? await deleteQuery
+        .eq("transfer_group_id", entry.transfer_group_id)
+        .select("id")
+    : await deleteQuery.eq("id", entryId).select("id");
   if (error)
     return { success: false, error: `Gagal menghapus transaksi: ${error.message}` };
-  if (!data) return { success: false, error: "Transaksi tidak ditemukan." };
+  if (!data?.length) return { success: false, error: "Transaksi tidak ditemukan." };
 
   revalidatePath("/money");
   return { success: true };

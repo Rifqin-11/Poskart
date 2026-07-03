@@ -5,6 +5,7 @@ import {
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
 import { deleteCloudinaryAssets } from "@/lib/cloudinary/server";
+import { shouldShowGallerySession } from "@/lib/gallery/session-visibility";
 
 export async function GET(request: Request) {
   try {
@@ -36,6 +37,15 @@ export async function GET(request: Request) {
 
     if (photosError) throw photosError;
 
+    const { data: livePhotoJobs, error: livePhotoJobsError } = sessionIds.length
+      ? await context.client
+          .from("live_photo_render_jobs")
+          .select("session_id,status,updated_at")
+          .in("session_id", sessionIds)
+      : { data: [], error: null };
+
+    if (livePhotoJobsError) throw livePhotoJobsError;
+
     const { data: transactions, error: transactionsError } = sessionIds.length
       ? await context.client
           .from("transactions")
@@ -46,6 +56,16 @@ export async function GET(request: Request) {
 
     if (transactionsError) throw transactionsError;
 
+    const photoCountBySessionId = new Map<string, number>();
+    for (const photo of photos ?? []) {
+      photoCountBySessionId.set(
+        photo.session_id,
+        (photoCountBySessionId.get(photo.session_id) ?? 0) + 1,
+      );
+    }
+    const livePhotoJobBySessionId = new Map(
+      (livePhotoJobs ?? []).map((job) => [job.session_id, job]),
+    );
     const transactionBySessionId = new Map(
       (transactions ?? []).map((transaction) => [transaction.id, transaction]),
     );
@@ -57,10 +77,24 @@ export async function GET(request: Request) {
         print_count: transaction?.print_count ?? 0,
       };
     });
+    const now = Date.now();
+    const visibleSessions = enrichedSessions.filter((session) =>
+      shouldShowGallerySession({
+        session,
+        photoCount: photoCountBySessionId.get(session.id) ?? 0,
+        livePhotoJob: livePhotoJobBySessionId.get(session.id),
+        now,
+      }),
+    );
+    const visibleSessionIds = new Set(
+      visibleSessions.map((session) => session.id),
+    );
 
     return jsonOk({
-      sessions: enrichedSessions,
-      photos: photos ?? [],
+      sessions: visibleSessions,
+      photos: (photos ?? []).filter((photo) =>
+        visibleSessionIds.has(photo.session_id),
+      ),
     });
   } catch (error) {
     return jsonError(error);

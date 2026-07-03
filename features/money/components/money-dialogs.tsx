@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   ArrowDownCircle,
+  ArrowLeftRight,
   ArrowUpCircle,
   Plus,
   Tag,
@@ -22,8 +23,10 @@ import type {
   MoneyCustomCategory,
   MoneyEntry,
   MoneyEntryInput,
+  MoneyEntryMode,
   MoneyEntryType,
   MoneyTag,
+  MoneyTransferInput,
   MoneyWallet,
   MoneyWalletType,
 } from "@/types/money";
@@ -36,6 +39,7 @@ export function MoneyEntryDialog({
   pending,
   onClose,
   onSubmit,
+  onTransferSubmit,
 }: {
   entry: MoneyEntry | null;
   customCategories: MoneyCustomCategory[];
@@ -44,12 +48,20 @@ export function MoneyEntryDialog({
   pending: boolean;
   onClose: () => void;
   onSubmit: (values: MoneyEntryInput) => void;
+  onTransferSubmit: (values: MoneyTransferInput) => void;
 }) {
-  const [entryType, setEntryType] = useState<MoneyEntryType>(
+  const [entryType, setEntryType] = useState<MoneyEntryMode>(
     entry?.entryType ?? "income",
   );
   const [walletType, setWalletType] = useState<MoneyWalletType>(
     entry?.walletType ?? "cash",
+  );
+  const [fromWalletType, setFromWalletType] = useState<MoneyWalletType>(
+    wallets[0]?.id ?? "cash",
+  );
+  const [toWalletType, setToWalletType] = useState<MoneyWalletType>(
+    wallets.find((wallet) => wallet.id !== (wallets[0]?.id ?? "cash"))?.id ??
+      "qris",
   );
   const [category, setCategory] = useState<MoneyCategory>(
     entry?.category ?? "opening_balance",
@@ -65,16 +77,19 @@ export function MoneyEntryDialog({
     toLocalDateTime(entry?.occurredAt ?? new Date().toISOString()),
   );
 
-  const changeType = (nextType: MoneyEntryType) => {
+  const changeType = (nextType: MoneyEntryMode) => {
     setEntryType(nextType);
-    setCategory(categories[nextType][0].value);
+    if (nextType !== "transfer") {
+      setCategory(categories[nextType][0].value);
+    }
   };
   const availableCategories = [
-    ...categories[entryType],
+    ...(entryType === "transfer" ? [] : categories[entryType]),
     ...customCategories
       .filter((item) => item.entryType === entryType)
       .map((item) => ({ value: item.name, label: item.name })),
   ];
+  const transferWalletInvalid = fromWalletType === toWalletType;
 
   return (
     <Dialog
@@ -86,6 +101,18 @@ export function MoneyEntryDialog({
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
+          if (entryType === "transfer") {
+            onTransferSubmit({
+              fromWalletType,
+              toWalletType,
+              amount,
+              title,
+              notes,
+              tagIds: selectedTagIds,
+              occurredAt,
+            });
+            return;
+          }
           onSubmit({
             id: entry?.id,
             walletType,
@@ -100,7 +127,7 @@ export function MoneyEntryDialog({
           });
         }}
       >
-        <div className="grid grid-cols-2 gap-2">
+        <div className={entry ? "grid grid-cols-2 gap-2" : "grid grid-cols-3 gap-2"}>
           <Button
             type="button"
             variant={entryType === "income" ? "default" : "outline"}
@@ -117,62 +144,146 @@ export function MoneyEntryDialog({
             <ArrowDownCircle className="size-4" />
             Pengeluaran
           </Button>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="space-y-1.5 text-sm font-medium">
-            Kategori
-            <Select
-              value={category}
-              onChange={(event) =>
-                setCategory(event.target.value as MoneyCategory)
-              }
+          {!entry ? (
+            <Button
+              type="button"
+              variant={entryType === "transfer" ? "default" : "outline"}
+              onClick={() => changeType("transfer")}
             >
-              {availableCategories.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className="space-y-1.5 text-sm font-medium">
-            Nominal transaksi
-            <Input
-              type="number"
-              min={1}
-              value={amount || ""}
-              onChange={(event) => setAmount(Number(event.target.value))}
-              placeholder="0"
-              required
-            />
-          </label>
+              <ArrowLeftRight className="size-4" />
+              Transfer
+            </Button>
+          ) : null}
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="space-y-1.5 text-sm font-medium">
-            Dompet
-            <Select
-              value={walletType}
-              onChange={(event) =>
-                setWalletType(event.target.value as MoneyWalletType)
-              }
-            >
-              {wallets.map((wallet) => (
-                <option key={wallet.id} value={wallet.id}>
-                  {wallet.name}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label className="space-y-1.5 text-sm font-medium">
-            Catatan transaksi
-            <Input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              maxLength={120}
-              placeholder="Contoh: Pendapatan acara"
-              required
-            />
-          </label>
-        </div>
+        {entryType === "transfer" ? (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-1.5 text-sm font-medium">
+                Dari dompet
+                <Select
+                  value={fromWalletType}
+                  onChange={(event) => {
+                    const nextWallet = event.target.value as MoneyWalletType;
+                    setFromWalletType(nextWallet);
+                    if (nextWallet === toWalletType) {
+                      setToWalletType(
+                        wallets.find((wallet) => wallet.id !== nextWallet)
+                          ?.id ?? nextWallet,
+                      );
+                    }
+                  }}
+                >
+                  {wallets.map((wallet) => (
+                    <option key={wallet.id} value={wallet.id}>
+                      {wallet.name}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="space-y-1.5 text-sm font-medium">
+                Ke dompet
+                <Select
+                  value={toWalletType}
+                  onChange={(event) =>
+                    setToWalletType(event.target.value as MoneyWalletType)
+                  }
+                >
+                  {wallets.map((wallet) => (
+                    <option key={wallet.id} value={wallet.id}>
+                      {wallet.name}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-1.5 text-sm font-medium">
+                Nominal transfer
+                <Input
+                  type="number"
+                  min={1}
+                  value={amount || ""}
+                  onChange={(event) => setAmount(Number(event.target.value))}
+                  placeholder="0"
+                  required
+                />
+              </label>
+              <label className="space-y-1.5 text-sm font-medium">
+                Catatan transfer
+                <Input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  maxLength={120}
+                  placeholder="Contoh: Setor tunai ke bank"
+                  required
+                />
+              </label>
+            </div>
+            {transferWalletInvalid ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                Pilih dua dompet yang berbeda untuk melakukan transfer.
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-1.5 text-sm font-medium">
+                Kategori
+                <Select
+                  value={category}
+                  onChange={(event) =>
+                    setCategory(event.target.value as MoneyCategory)
+                  }
+                >
+                  {availableCategories.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="space-y-1.5 text-sm font-medium">
+                Nominal transaksi
+                <Input
+                  type="number"
+                  min={1}
+                  value={amount || ""}
+                  onChange={(event) => setAmount(Number(event.target.value))}
+                  placeholder="0"
+                  required
+                />
+              </label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-1.5 text-sm font-medium">
+                Dompet
+                <Select
+                  value={walletType}
+                  onChange={(event) =>
+                    setWalletType(event.target.value as MoneyWalletType)
+                  }
+                >
+                  {wallets.map((wallet) => (
+                    <option key={wallet.id} value={wallet.id}>
+                      {wallet.name}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="space-y-1.5 text-sm font-medium">
+                Catatan transaksi
+                <Input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  maxLength={120}
+                  placeholder="Contoh: Pendapatan acara"
+                  required
+                />
+              </label>
+            </div>
+          </>
+        )}
         {walletType === "qris" && entryType === "income" ? (
           <label className="block space-y-1.5 text-sm font-medium">
             Potongan QRIS (opsional)
@@ -261,8 +372,15 @@ export function MoneyEntryDialog({
           <Button type="button" variant="outline" onClick={onClose}>
             Batal
           </Button>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Menyimpan..." : "Simpan transaksi"}
+          <Button
+            type="submit"
+            disabled={pending || (entryType === "transfer" && transferWalletInvalid)}
+          >
+            {pending
+              ? "Menyimpan..."
+              : entryType === "transfer"
+                ? "Simpan transfer"
+                : "Simpan transaksi"}
           </Button>
         </div>
       </form>

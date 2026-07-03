@@ -41,10 +41,10 @@ export async function POST(request: Request) {
         file.photoIndex >= 0,
     );
 
-    if (!sessionId || files.length > 30) {
+    if (!sessionId || files.length === 0 || files.length > 30) {
       return jsonOk(
         {
-          error: "A session ID and up to 30 valid files are required.",
+          error: "A session ID and 1-30 valid files are required.",
           code: "KIOSK_GALLERY_UPLOAD_INVALID",
         },
         { status: 400 },
@@ -63,17 +63,8 @@ export async function POST(request: Request) {
         social_media_consent: body.socialMediaConsent === true,
         share_url: shareUrl,
         updated_at: new Date().toISOString(),
-      });
+    });
     if (sessionError) throw sessionError;
-
-    if (files.length === 0) {
-      return jsonOk({
-        uploadUrl: "",
-        apiKey: "",
-        uploads: [],
-        shareUrl,
-      });
-    }
 
     return jsonOk({
       ...createCloudinaryUploadSignatures({

@@ -5,12 +5,17 @@ import {
   ExternalLink,
   ImageIcon,
   Images,
+  Loader2,
 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { DeleteSessionButton } from "@/app/(admin)/gallery/delete-button";
 import { PrintSessionButton } from "@/app/(admin)/gallery/print-button";
+import {
+  isActiveLivePhotoJob,
+  shouldShowGallerySession,
+} from "@/lib/gallery/session-visibility";
 
 type GallerySessionRow = {
   id: string;
@@ -27,6 +32,12 @@ type GalleryPhotoRow = {
   kind: "raw" | "framed";
   photo_index: number;
   secure_url: string;
+};
+
+type LivePhotoJobRow = {
+  session_id: string;
+  status: string | null;
+  updated_at: string | null;
 };
 
 export async function GalleryPage() {
@@ -68,14 +79,41 @@ export async function GalleryPage() {
         .order("photo_index", { ascending: true })
     : { data: [] };
   const photoRows = (photos ?? []) as GalleryPhotoRow[];
+  const { data: livePhotoJobs } = sessionIds.length
+    ? await supabase
+        .from("live_photo_render_jobs")
+        .select("session_id,status,updated_at")
+        .in("session_id", sessionIds)
+    : { data: [] };
+  const livePhotoJobRows = (livePhotoJobs ?? []) as LivePhotoJobRow[];
 
-  if (rows.length === 0) {
+  const photosBySessionId = photoRows.reduce<Map<string, GalleryPhotoRow[]>>(
+    (map, photo) => {
+      const existing = map.get(photo.session_id) ?? [];
+      existing.push(photo);
+      map.set(photo.session_id, existing);
+      return map;
+    },
+    new Map(),
+  );
+  const livePhotoJobBySessionId = new Map(
+    livePhotoJobRows.map((job) => [job.session_id, job]),
+  );
+  const visibleRows = rows.filter((session) =>
+    shouldShowGallerySession({
+      session,
+      photoCount: photosBySessionId.get(session.id)?.length ?? 0,
+      livePhotoJob: livePhotoJobBySessionId.get(session.id),
+    }),
+  );
+
+  if (visibleRows.length === 0) {
     return (
       <GalleryEmpty message="Hasil photobooth akan muncul setelah kiosk membuat QR dan menyelesaikan upload." />
     );
   }
 
-  const sessionsByDate = rows.reduce<
+  const sessionsByDate = visibleRows.reduce<
     Map<string, { label: string; sessions: GallerySessionRow[] }>
   >((groups, session) => {
     const date = new Date(session.created_at);
@@ -136,9 +174,10 @@ export async function GalleryPage() {
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {group.sessions.map((session) => {
-              const sessionPhotos = photoRows.filter(
-                (photo) => photo.session_id === session.id,
-              );
+              const sessionPhotos = photosBySessionId.get(session.id) ?? [];
+              const livePhotoJob = livePhotoJobBySessionId.get(session.id);
+              const isLivePhotoProcessing =
+                sessionPhotos.length === 0 && isActiveLivePhotoJob(livePhotoJob);
               const framed = sessionPhotos.find(
                 (photo) => photo.kind === "framed",
               );
@@ -174,7 +213,14 @@ export async function GalleryPage() {
                       />
                     ) : (
                       <div className="grid size-full place-items-center text-zinc-400">
-                        <ImageIcon className="size-7" />
+                        {isLivePhotoProcessing ? (
+                          <div className="flex flex-col items-center gap-2 text-xs font-medium text-zinc-500">
+                            <Loader2 className="size-6 animate-spin" />
+                            Live Photo diproses
+                          </div>
+                        ) : (
+                          <ImageIcon className="size-7" />
+                        )}
                       </div>
                     )}
                     {gif && (
@@ -212,6 +258,7 @@ export async function GalleryPage() {
                           {rawCount} raw
                           {hasGif ? " · GIF" : ""}
                           {framedLivePhoto ? " · Live Photo" : ""}
+                          {isLivePhotoProcessing ? " · Processing" : ""}
                         </p>
                       </div>
                       <div className="flex gap-1.5 shrink-0">

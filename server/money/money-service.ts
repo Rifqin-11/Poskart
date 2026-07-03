@@ -23,6 +23,8 @@ type MoneyEntryRow = {
   notes: string | null;
   occurred_at: string;
   created_at: string;
+  transfer_group_id: string | null;
+  transfer_direction: "out" | "in" | null;
 };
 
 type MoneyCategoryRow = {
@@ -53,7 +55,7 @@ export async function getMoneyEntries(): Promise<MoneyEntry[]> {
       supabase
         .from("money_entries")
         .select(
-          "id,wallet_type,entry_type,category,amount,fee_percentage,title,notes,occurred_at,created_at",
+          "id,wallet_type,entry_type,category,amount,fee_percentage,title,notes,occurred_at,created_at,transfer_group_id,transfer_direction",
         )
         .order("occurred_at", { ascending: false })
         .limit(2000),
@@ -91,6 +93,8 @@ export async function getMoneyEntries(): Promise<MoneyEntry[]> {
     ),
     occurredAt: row.occurred_at,
     createdAt: row.created_at,
+    transferGroupId: row.transfer_group_id,
+    transferDirection: row.transfer_direction,
   }));
 }
 

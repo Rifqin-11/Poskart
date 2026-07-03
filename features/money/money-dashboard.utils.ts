@@ -18,6 +18,7 @@ export const walletLabels: Record<string, string> = Object.fromEntries(
 );
 
 export const categoryLabels: Record<MoneyCategory, string> = {
+  transfer: "Transfer antar dompet",
   opening_balance: "Saldo awal",
   sales_income: "Pendapatan penjualan",
   other_income: "Pendapatan lainnya",
@@ -90,6 +91,10 @@ export function getNetAmount(entry: MoneyEntry) {
   }
   const feeAmount = Math.round((entry.amount * entry.feePercentage) / 100);
   return entry.amount - feeAmount;
+}
+
+export function isTransferEntry(entry: Pick<MoneyEntry, "category">) {
+  return entry.category === "transfer";
 }
 
 export function getCategoryLabel(category: MoneyCategory) {
