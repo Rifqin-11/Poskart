@@ -309,6 +309,7 @@ export type OrganizationRow = {
   status: Organization["status"];
   renewal_date: string;
   features?: Record<string, unknown> | null;
+  payment_collection_mode?: "platform" | "custom" | null;
   devices?: { count: number }[] | null;
   organization_members?: { count: number }[] | null;
   subscriptions?: SubscriptionRow | SubscriptionRow[] | null;

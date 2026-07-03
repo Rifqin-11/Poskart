@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Building2,
   CreditCard,
   KeyRound,
   LockKeyhole,
   MailPlus,
+  Landmark,
   ShieldCheck,
   Store,
   Timer,
@@ -41,6 +42,9 @@ import {
   SettingsCard,
   SettingsPanelBlock,
 } from "./settings-card";
+import { PayoutAccountForm } from "@/features/admin/payout/payout-account-form";
+import { getMyPayoutSummary } from "@/server/admin/actions/payout-actions";
+import type { PayoutAccount } from "@/types/payout";
 
 type OrganizationCardProps = {
   myEmail: string;
@@ -110,6 +114,21 @@ export function OrganizationCard({
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] =
     useState(subscriptionRequired);
+  const [payoutAccount, setPayoutAccount] = useState<PayoutAccount | null>(
+    null,
+  );
+
+  const loadPayoutAccount = useCallback(() => {
+    getMyPayoutSummary()
+      .then((summary) => setPayoutAccount(summary.payoutAccount))
+      .catch(() => {
+        // Payout settings are non-critical for the organization settings page.
+      });
+  }, []);
+
+  useEffect(() => {
+    loadPayoutAccount();
+  }, [loadPayoutAccount]);
 
   const organizationName = editedName ?? tenant?.name ?? "";
   const planName = tenant?.plan_name ?? "Free organization";
@@ -266,6 +285,18 @@ export function OrganizationCard({
             {isFreeAccount ? "View subscription plans" : "Manage billing"}
           </Button>
         </div>
+      </SettingsCard>
+
+      <SettingsCard
+        icon={<Landmark className="size-4" />}
+        title="Payout account"
+        description="Rekening tujuan pencairan hasil photobooth dari payment gateway POSKART."
+      >
+        <PayoutAccountForm
+          account={payoutAccount}
+          compact
+          onSaved={loadPayoutAccount}
+        />
       </SettingsCard>
 
       <SettingsCard

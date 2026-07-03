@@ -5,12 +5,17 @@ import { CreditCard, Check, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 type SubscriptionGatewayMode = "duitku" | "midtrans" | "both";
 
 export function PaymentGatewayManagement() {
   const [gateway, setGateway] = useState<SubscriptionGatewayMode>("duitku");
+  const [gatewayFeePercentage, setGatewayFeePercentage] = useState(0);
+  const [platformFeePercentage, setPlatformFeePercentage] = useState(0);
+  const [payoutAdjustmentAmount, setPayoutAdjustmentAmount] = useState(0);
+  const [minimumPayoutAmount, setMinimumPayoutAmount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -24,6 +29,10 @@ export function PaymentGatewayManagement() {
         });
         const payload = (await response.json().catch(() => null)) as {
           gateway?: SubscriptionGatewayMode;
+          gatewayFeePercentage?: number;
+          platformFeePercentage?: number;
+          payoutAdjustmentAmount?: number;
+          minimumPayoutAmount?: number;
           message?: string;
         } | null;
 
@@ -33,6 +42,10 @@ export function PaymentGatewayManagement() {
 
         if (!cancelled) {
           setGateway(payload?.gateway ?? "duitku");
+          setGatewayFeePercentage(Number(payload?.gatewayFeePercentage ?? 0));
+          setPlatformFeePercentage(Number(payload?.platformFeePercentage ?? 0));
+          setPayoutAdjustmentAmount(Number(payload?.payoutAdjustmentAmount ?? 0));
+          setMinimumPayoutAmount(Number(payload?.minimumPayoutAmount ?? 0));
         }
       } catch (error) {
         if (!cancelled) {
@@ -60,7 +73,13 @@ export function PaymentGatewayManagement() {
       const response = await fetch("/api/admin/payment-gateway", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gateway }),
+        body: JSON.stringify({
+          gateway,
+          gatewayFeePercentage,
+          platformFeePercentage,
+          payoutAdjustmentAmount,
+          minimumPayoutAmount,
+        }),
       });
       const payload = (await response.json().catch(() => null)) as {
         message?: string;
@@ -172,6 +191,65 @@ export function PaymentGatewayManagement() {
           </span>
           . Server-side checkout validation also follows this setting, so hidden
           gateways cannot be forced from the browser form.
+        </div>
+
+        <div className="grid gap-3 rounded-2xl border border-zinc-200 bg-white p-4 md:grid-cols-4">
+          <label className="block text-xs font-medium text-zinc-600">
+            Gateway fee (%)
+            <Input
+              className="mt-1.5"
+              type="number"
+              min={0}
+              max={100}
+              step={0.01}
+              value={gatewayFeePercentage}
+              onChange={(event) =>
+                setGatewayFeePercentage(Number(event.target.value) || 0)
+              }
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            POSKART platform fee (%)
+            <Input
+              className="mt-1.5"
+              type="number"
+              min={0}
+              max={100}
+              step={0.01}
+              value={platformFeePercentage}
+              onChange={(event) =>
+                setPlatformFeePercentage(Number(event.target.value) || 0)
+              }
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Default adjustment
+            <Input
+              className="mt-1.5"
+              type="number"
+              value={payoutAdjustmentAmount}
+              onChange={(event) =>
+                setPayoutAdjustmentAmount(Number(event.target.value) || 0)
+              }
+            />
+          </label>
+          <label className="block text-xs font-medium text-zinc-600">
+            Minimum payout
+            <Input
+              className="mt-1.5"
+              type="number"
+              min={0}
+              value={minimumPayoutAmount}
+              onChange={(event) =>
+                setMinimumPayoutAmount(Number(event.target.value) || 0)
+              }
+            />
+          </label>
+          <p className="text-xs leading-5 text-zinc-500 md:col-span-4">
+            Fee ini dipakai sebagai fallback saat response gateway tidak
+            menyediakan biaya transaksi. Default adjustment dipakai saat invoice
+            payout dibuat.
+          </p>
         </div>
 
         <Button onClick={() => void saveGateway()} disabled={loading || saving}>

@@ -55,6 +55,10 @@ type SettingsForm = {
   qris_webhook_secret: string;
   qris_auto_retry: boolean;
   subscription_payment_gateway: SubscriptionGatewayMode;
+  gateway_fee_percentage: number;
+  platform_fee_percentage: number;
+  payout_adjustment_amount: number;
+  minimum_payout_amount: number;
   // Device
   printer_name: string;
   booth_timeout_seconds: number;
@@ -79,6 +83,10 @@ const DEFAULT_SETTINGS_FORM: SettingsForm = {
   qris_webhook_secret: "",
   qris_auto_retry: true,
   subscription_payment_gateway: "duitku",
+  gateway_fee_percentage: 0,
+  platform_fee_percentage: 0,
+  payout_adjustment_amount: 0,
+  minimum_payout_amount: 0,
   printer_name: "POSKART-THERMAL-01",
   booth_timeout_seconds: 90,
   download_expiry_hours: 168,
@@ -143,6 +151,10 @@ export function SettingsPanel() {
         qris_auto_retry: config.qris_auto_retry ?? true,
         subscription_payment_gateway:
           config.subscription_payment_gateway ?? "duitku",
+        gateway_fee_percentage: config.gateway_fee_percentage ?? 0,
+        platform_fee_percentage: config.platform_fee_percentage ?? 0,
+        payout_adjustment_amount: config.payout_adjustment_amount ?? 0,
+        minimum_payout_amount: config.minimum_payout_amount ?? 0,
         printer_name: config.printer_name ?? "POSKART-THERMAL-01",
         booth_timeout_seconds: config.booth_timeout_seconds ?? 90,
         download_expiry_hours: config.download_expiry_hours ?? 168,

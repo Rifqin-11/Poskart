@@ -725,7 +725,7 @@ export function MoneyDashboard({
             </div>
             <div className="flex items-stretch gap-2">
               <div
-                className="grid min-w-0 flex-1 gap-1 rounded-xl border border-zinc-200 bg-zinc-50 p-1"
+                className="grid min-w-0 flex-1 gap-1 rounded-full border border-zinc-200 bg-zinc-50 p-1"
                 style={{
                   gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
                 }}
@@ -1138,7 +1138,7 @@ function WalletFilterButton({
       type="button"
       variant="ghost"
       className={cn(
-        "min-w-0 rounded-lg px-2",
+        "min-w-0 rounded-full px-2",
         active
           ? "bg-white text-zinc-950 shadow-sm hover:bg-white"
           : "text-zinc-500",

@@ -91,6 +91,12 @@ const navItems: AdminNavItem[] = [
     requiresSubscription: true,
   },
   {
+    href: "/invoices",
+    label: "Invoices",
+    icon: ReceiptText,
+    requiresSubscription: true,
+  },
+  {
     href: "/gallery",
     label: "Gallery",
     icon: Images,

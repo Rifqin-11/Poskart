@@ -26,6 +26,7 @@ export async function getOrganizations(): Promise<Organization[]> {
       status,
       renewal_date,
       features,
+      payment_collection_mode,
       devices:devices(count),
       organization_members:organization_members(count),
       subscriptions (
@@ -70,6 +71,7 @@ export async function getOrganizations(): Promise<Organization[]> {
       users: usersCount,
       renewalDate: row.renewal_date,
       features: normalizeOrganizationFeatures(row.features),
+      paymentCollectionMode: row.payment_collection_mode ?? "platform",
       planId: planId,
       subscriptionStatus: subStatus,
       subscriptionExpiresAt: expiresAt,
@@ -91,6 +93,7 @@ export async function createOrganization(values: TenantInput): Promise<void> {
     features: normalizeOrganizationFeatures(
       values.features ?? DEFAULT_ORGANIZATION_FEATURES,
     ),
+    payment_collection_mode: values.paymentCollectionMode ?? "platform",
     updated_at: new Date().toISOString(),
   });
   if (orgErr)
@@ -120,6 +123,9 @@ export async function updateOrganization(
   if (patch.renewalDate !== undefined) dbPatch.renewal_date = patch.renewalDate;
   if (patch.features !== undefined) {
     dbPatch.features = normalizeOrganizationFeatures(patch.features);
+  }
+  if (patch.paymentCollectionMode !== undefined) {
+    dbPatch.payment_collection_mode = patch.paymentCollectionMode;
   }
 
   if (Object.keys(dbPatch).length > 1) {
@@ -218,6 +224,8 @@ export async function getMyOrganizationDetails() {
     plan_name: subscriptionDisplayName(sub),
     join_code: organization.join_code ?? null,
     features: normalizeOrganizationFeatures(organization.features),
+    payment_collection_mode:
+      organization.payment_collection_mode ?? "platform",
     subscription_status: sub?.status ?? "free",
     subscription_expires_at: sub?.current_period_end ?? null,
     device_limit: sub?.device_limit ?? planMeta?.included_devices ?? 1,

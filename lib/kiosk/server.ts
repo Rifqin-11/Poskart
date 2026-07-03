@@ -395,7 +395,7 @@ export async function buildKioskBootstrap(
   ] = await Promise.all([
     context.client
       .from("organizations")
-      .select("id,name,status,join_code")
+      .select("id,name,status,join_code,payment_collection_mode")
       .eq("id", context.organizationId)
       .single(),
     context.client

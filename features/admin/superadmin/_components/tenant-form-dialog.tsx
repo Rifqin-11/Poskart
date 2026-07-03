@@ -71,6 +71,7 @@ export function TenantFormDialog({
       subscriptionStatus: rest.subscriptionStatus || "free",
       subscriptionExpiresAt: rest.subscriptionExpiresAt || null,
       deviceLimit: rest.deviceLimit || 1,
+      paymentCollectionMode: rest.paymentCollectionMode ?? "platform",
       features: normalizeOrganizationFeatures(
         rest.features ?? DEFAULT_ORGANIZATION_FEATURES,
       ),
@@ -232,6 +233,32 @@ export function TenantFormDialog({
           Additional devices are billed at Rp 50K/device/month and should be
           reflected in this paid device limit.
         </div>
+
+        <section className="md:col-span-2 rounded-2xl border border-zinc-200 bg-white p-4">
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-zinc-950">
+              Payment collection
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-zinc-500">
+              POSKART PG masuk ke saldo payout organisasi. Custom PG hanya
+              menjadi laporan karena dana masuk ke payment gateway organisasi.
+            </p>
+          </div>
+          <Select
+            value={form.paymentCollectionMode ?? "platform"}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                paymentCollectionMode: event.target.value as
+                  | "platform"
+                  | "custom",
+              })
+            }
+          >
+            <option value="platform">POSKART shared payment gateway</option>
+            <option value="custom">Custom organization payment gateway</option>
+          </Select>
+        </section>
 
         <section className="md:col-span-2 rounded-2xl border border-zinc-200 bg-white p-4">
           <div className="mb-3">

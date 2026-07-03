@@ -10,6 +10,7 @@ export type Organization = {
   subscriptionStatus?: string;
   subscriptionExpiresAt?: string | null;
   deviceLimit?: number;
+  paymentCollectionMode?: "platform" | "custom";
   features?: {
     posKasir: boolean;
     money: boolean;

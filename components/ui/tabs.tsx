@@ -59,7 +59,7 @@ export function TabsTrigger({
       type="button"
       onClick={() => context?.setValue(value)}
       className={cn(
-        "inline-flex h-7 items-center justify-center rounded-md px-3 text-xs font-medium text-zinc-500 transition-colors",
+        "inline-flex h-7 items-center justify-center rounded-full px-3 text-xs font-medium text-zinc-500 transition-colors",
         selected && "bg-white text-zinc-950 shadow-sm",
         className,
       )}

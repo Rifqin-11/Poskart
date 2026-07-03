@@ -47,6 +47,7 @@ import { TenantFormDialog } from "./_components/tenant-form-dialog";
 import { SubscriptionPlanDialog } from "./_components/subscription-plan-dialog";
 import { PaymentGatewayManagement } from "./_components/payment-gateway-management";
 import { SaasPricingManagement } from "./_components/saas-pricing-management";
+import { PayoutInvoiceManagement } from "./_components/payout-invoice-management";
 import { DEFAULT_ORGANIZATION_FEATURES } from "@/lib/organization-features";
 
 type AdminUserProfile = {
@@ -70,6 +71,7 @@ const EMPTY_TENANT: TenantInput = {
   subscriptionStatus: "free",
   subscriptionExpiresAt: null,
   deviceLimit: 1,
+  paymentCollectionMode: "platform",
   features: DEFAULT_ORGANIZATION_FEATURES,
 };
 
@@ -141,6 +143,7 @@ export function TenantManagement() {
             <TabsTrigger value="users">Registered Users</TabsTrigger>
             <TabsTrigger value="saas-pricing">SaaS Pricing</TabsTrigger>
             <TabsTrigger value="payment-gateway">Payment Gateway</TabsTrigger>
+            <TabsTrigger value="payout-invoices">Payout Invoices</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="organizations">
@@ -155,6 +158,7 @@ export function TenantManagement() {
                     <TableHead>Org Status</TableHead>
                     <TableHead>Devices</TableHead>
                     <TableHead>Users</TableHead>
+                    <TableHead>Collection</TableHead>
                     <TableHead>Enabled Features</TableHead>
                     <TableHead>Renewal / Expiration</TableHead>
                     <TableHead />
@@ -198,6 +202,19 @@ export function TenantManagement() {
                       </TableCell>
                       <TableCell>{organization.users}</TableCell>
                       <TableCell>
+                        <Badge
+                          variant={
+                            organization.paymentCollectionMode === "custom"
+                              ? "secondary"
+                              : "outline"
+                          }
+                        >
+                          {organization.paymentCollectionMode === "custom"
+                            ? "Custom PG"
+                            : "POSKART PG"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex flex-wrap gap-1.5">
                           {organization.features?.posKasir ? (
                             <Badge variant="outline">POS Kasir</Badge>
@@ -240,7 +257,7 @@ export function TenantManagement() {
                   {tenantsList.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={9}
+                        colSpan={10}
                         className="py-8 text-center text-sm text-zinc-400"
                       >
                         No organizations yet. Click{" "}
@@ -339,6 +356,9 @@ export function TenantManagement() {
         </TabsContent>
         <TabsContent value="payment-gateway">
           <PaymentGatewayManagement />
+        </TabsContent>
+        <TabsContent value="payout-invoices">
+          <PayoutInvoiceManagement organizations={tenantsList} />
         </TabsContent>
       </Tabs>
 

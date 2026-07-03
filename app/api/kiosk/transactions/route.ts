@@ -109,6 +109,7 @@ export async function POST(request: Request) {
       existingTransaction: (existingTransaction ??
         null) as ExistingTransaction | null,
     });
+    const collectionMode = await resolveOrganizationCollectionMode(context);
     const { error: transactionError } = await context.client
       .from("transactions")
       .upsert({
@@ -121,6 +122,7 @@ export async function POST(request: Request) {
         amount: product.amount,
         status,
         provider,
+        collection_mode: collectionMode,
         template_id: templateId,
         print_count: product.printCount,
         created_at_label: now,
@@ -144,6 +146,18 @@ export async function POST(request: Request) {
   } catch (error) {
     return jsonError(error);
   }
+}
+
+async function resolveOrganizationCollectionMode(
+  context: Awaited<ReturnType<typeof requireKioskContext>>,
+) {
+  const { data } = await context.client
+    .from("organizations")
+    .select("payment_collection_mode")
+    .eq("id", context.organizationId)
+    .maybeSingle();
+
+  return data?.payment_collection_mode === "custom" ? "custom" : "platform";
 }
 
 function resolveTransactionStatus({

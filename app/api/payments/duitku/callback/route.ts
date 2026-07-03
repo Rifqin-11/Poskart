@@ -1,8 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { recordDuitkuPaymentLedgerEntry } from "@/server/payments/payment-ledger";
 import {
+  checkDuitkuTransactionStatus,
   mapDuitkuResultCode,
+  mapDuitkuTransactionStatusCode,
   type DuitkuCallbackPayload,
   verifyDuitkuCallbackSignature,
 } from "@/server/payments/duitku";
@@ -68,16 +71,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "OK" });
   }
 
+  const { data: transaction, error: transactionLookupError } = await supabase
+    .from("transactions")
+    .select(
+      "id,organization_id,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,booth,package_name,paid_at,created_at,gateway_response",
+    )
+    .eq("merchant_order_id", payload.merchantOrderId)
+    .maybeSingle();
+
+  if (transactionLookupError) {
+    return NextResponse.json(
+      { message: transactionLookupError.message },
+      { status: 500 },
+    );
+  }
+
+  const verifiedStatus = await checkDuitkuTransactionStatus(
+    payload.merchantOrderId,
+  );
+  const verifiedMappedStatus = mapDuitkuTransactionStatusCode(
+    verifiedStatus.statusCode,
+  );
   const now = new Date().toISOString();
   const { error: transactionError } = await supabase
     .from("transactions")
     .update({
-      status,
-      payment_reference: payload.reference ?? null,
-      duitku_status_code: payload.resultCode ?? null,
-      duitku_status_message: status,
-      gateway_response: payload,
-      paid_at: status === "paid" ? now : null,
+      status: verifiedMappedStatus,
+      payment_reference:
+        verifiedStatus.reference ?? payload.reference ?? transaction?.payment_reference ?? null,
+      duitku_status_code: verifiedStatus.statusCode ?? payload.resultCode ?? null,
+      duitku_status_message: verifiedStatus.statusMessage ?? verifiedMappedStatus,
+      gateway_status_checked_at: now,
+      gateway_response: {
+        callback: payload,
+        verified: verifiedStatus.raw,
+      },
+      paid_at: verifiedMappedStatus === "paid" ? now : null,
       updated_at: now,
     })
     .eq("merchant_order_id", payload.merchantOrderId);
@@ -87,6 +116,20 @@ export async function POST(request: NextRequest) {
       { message: transactionError.message },
       { status: 500 },
     );
+  }
+
+  if (transaction && verifiedMappedStatus === "paid") {
+    await recordDuitkuPaymentLedgerEntry(supabase, {
+      transaction: {
+        ...transaction,
+        payment_reference:
+          verifiedStatus.reference ?? payload.reference ?? transaction.payment_reference,
+        paid_at: now,
+        gateway_response: verifiedStatus.raw,
+      },
+      verifiedStatus,
+      callbackPayload: payload,
+    });
   }
 
   return NextResponse.json({ message: "OK" });

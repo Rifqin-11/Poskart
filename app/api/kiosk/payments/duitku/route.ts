@@ -5,6 +5,8 @@ import {
   requireKioskContext,
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { recordDuitkuPaymentLedgerEntry } from "@/server/payments/payment-ledger";
 import {
   checkDuitkuTransactionStatus,
   createDuitkuDirectPayment,
@@ -27,14 +29,21 @@ type CreatePaymentBody = {
 
 type TransactionRow = {
   id: string;
+  organization_id: string | null;
   status: "paid" | "pending" | "failed" | "refunded";
   amount: number;
+  provider: string | null;
+  collection_mode: string | null;
+  payment_gateway: string | null;
   merchant_order_id: string | null;
   payment_reference: string | null;
   duitku_qr_string: string | null;
   payment_expires_at: string | null;
   gateway_status_checked_at: string | null;
   paid_at: string | null;
+  created_at: string | null;
+  booth: string | null;
+  package_name: string | null;
   duitku_status_code: string | null;
   gateway_response: Record<string, unknown> | null;
 };
@@ -110,6 +119,7 @@ export async function POST(request: Request) {
 
     const now = new Date().toISOString();
     const templateId = body.templateId?.trim() || null;
+    const collectionMode = await resolveOrganizationCollectionMode(context);
     const { error } = await context.client.from("transactions").upsert({
       id: sessionId,
       organization_id: context.organizationId,
@@ -120,6 +130,7 @@ export async function POST(request: Request) {
       amount: product.amount,
       status: "pending",
       provider: "QRIS",
+      collection_mode: collectionMode,
       payment_gateway: "duitku",
       merchant_order_id: payment.merchantOrderId,
       payment_reference: payment.reference ?? null,
@@ -197,6 +208,16 @@ export async function GET(request: Request) {
   }
 }
 
+async function resolveOrganizationCollectionMode(context: KioskRequestContext) {
+  const { data } = await context.client
+    .from("organizations")
+    .select("payment_collection_mode")
+    .eq("id", context.organizationId)
+    .maybeSingle();
+
+  return data?.payment_collection_mode === "custom" ? "custom" : "platform";
+}
+
 async function loadTransaction(
   context: KioskRequestContext,
   sessionId: string,
@@ -204,7 +225,7 @@ async function loadTransaction(
   const { data, error } = await context.client
     .from("transactions")
     .select(
-      "id,status,amount,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,duitku_status_code,gateway_response",
+      "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response",
     )
     .eq("organization_id", context.organizationId)
     .eq("id", sessionId)
@@ -240,11 +261,17 @@ async function refreshTransactionStatus(
     .eq("id", transaction.id)
     .eq("organization_id", context.organizationId)
     .select(
-      "id,status,amount,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,duitku_status_code,gateway_response",
+      "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response",
     )
     .single();
 
   if (error) throw error;
+  if (mappedStatus === "paid") {
+    await recordDuitkuPaymentLedgerEntry(createSupabaseAdminClient(), {
+      transaction: data as TransactionRow,
+      verifiedStatus: status,
+    });
+  }
   return formatStatus(data as TransactionRow);
 }
 
