@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Users } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +48,7 @@ import { SubscriptionPlanDialog } from "./_components/subscription-plan-dialog";
 import { PaymentGatewayManagement } from "./_components/payment-gateway-management";
 import { SaasPricingManagement } from "./_components/saas-pricing-management";
 import { PayoutInvoiceManagement } from "./_components/payout-invoice-management";
+import { TransactionActionRequestManagement } from "./_components/transaction-action-request-management";
 import { DEFAULT_ORGANIZATION_FEATURES } from "@/lib/organization-features";
 
 type AdminUserProfile = {
@@ -131,142 +132,141 @@ export function TenantManagement() {
         title="Super Admin Dashboard"
         description="Multi-organization SaaS controls and registered user accounts."
         action={
-          <Button onClick={() => setCreating(true)}>
+          <Button className="w-full sm:w-auto" onClick={() => setCreating(true)}>
             <Users className="size-4" /> Create organization
           </Button>
         }
       />
       <Tabs defaultValue="organizations">
-        <div className="mb-4 w-full bg-white p-2 rounded-full">
-          <TabsList>
+        <div className="mb-4 w-full rounded-[28px] bg-white p-2 shadow-sm">
+          <TabsList className="w-full justify-start rounded-[22px]">
             <TabsTrigger value="organizations">Organizations</TabsTrigger>
             <TabsTrigger value="users">Registered Users</TabsTrigger>
             <TabsTrigger value="saas-pricing">SaaS Pricing</TabsTrigger>
             <TabsTrigger value="payment-gateway">Payment Gateway</TabsTrigger>
             <TabsTrigger value="payout-invoices">Payout Invoices</TabsTrigger>
+            <TabsTrigger value="transaction-requests">
+              Transaction Requests
+            </TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="organizations">
           <Card>
             <CardContent className="pt-5">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Organization</TableHead>
-                    <TableHead>Plan</TableHead>
-                    <TableHead>Subscription Status</TableHead>
-                    <TableHead>Org Status</TableHead>
-                    <TableHead>Devices</TableHead>
-                    <TableHead>Users</TableHead>
-                    <TableHead>Collection</TableHead>
-                    <TableHead>Enabled Features</TableHead>
-                    <TableHead>Renewal / Expiration</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedOrganizations.map((organization) => (
-                    <TableRow key={organization.id}>
-                      <TableCell className="font-medium">
-                        {organization.name}
-                      </TableCell>
-                      <TableCell>{organization.plan}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            organization.subscriptionStatus === "active"
-                              ? "success"
-                              : organization.subscriptionStatus ===
-                                    "trialing" ||
-                                  organization.subscriptionStatus === "trial"
-                                ? "warning"
-                                : "secondary"
-                          }
-                        >
-                          {organization.subscriptionStatus || "free"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            organization.status === "active"
-                              ? "outline"
-                              : "secondary"
-                          }
-                        >
-                          {organization.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {organization.devices} / {organization.deviceLimit ?? 1}
-                      </TableCell>
-                      <TableCell>{organization.users}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            organization.paymentCollectionMode === "custom"
-                              ? "secondary"
-                              : "outline"
-                          }
-                        >
-                          {organization.paymentCollectionMode === "custom"
-                            ? "Custom PG"
-                            : "POSKART PG"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1.5">
-                          {organization.features?.posKasir ? (
-                            <Badge variant="outline">POS Kasir</Badge>
-                          ) : null}
-                          {organization.features?.money ? (
-                            <Badge variant="outline">Keuangan</Badge>
-                          ) : null}
-                          {!organization.features?.posKasir &&
-                          !organization.features?.money ? (
-                            <span className="text-xs text-zinc-400">
-                              SaaS default
-                            </span>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {organization.subscriptionExpiresAt
-                          ? new Date(
-                              organization.subscriptionExpiresAt,
-                            ).toLocaleDateString()
-                          : "Never"}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu
-                          items={[
-                            {
-                              label: "Edit",
-                              onClick: () => setEditing(organization),
-                            },
-                            {
-                              label: "Delete",
-                              destructive: true,
-                              onClick: () => handleDelete(organization),
-                            },
-                          ]}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {tenantsList.length === 0 ? (
+              <div className="hidden overflow-x-auto xl:block">
+                <Table className="min-w-[1180px]">
+                  <TableHeader>
                     <TableRow>
-                      <TableCell
-                        colSpan={10}
-                        className="py-8 text-center text-sm text-zinc-400"
-                      >
-                        No organizations yet. Click{" "}
-                        <strong>Create organization</strong>.
-                      </TableCell>
+                      <TableHead>Organization</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Subscription Status</TableHead>
+                      <TableHead>Org Status</TableHead>
+                      <TableHead>Devices</TableHead>
+                      <TableHead>Users</TableHead>
+                      <TableHead>Collection</TableHead>
+                      <TableHead>Enabled Features</TableHead>
+                      <TableHead>Renewal / Expiration</TableHead>
+                      <TableHead />
                     </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedOrganizations.map((organization) => (
+                      <TableRow key={organization.id}>
+                        <TableCell className="font-medium">
+                          {organization.name}
+                        </TableCell>
+                        <TableCell>{organization.plan}</TableCell>
+                        <TableCell>
+                          <SubscriptionStatusBadge organization={organization} />
+                        </TableCell>
+                        <TableCell>
+                          <OrganizationStatusBadge organization={organization} />
+                        </TableCell>
+                        <TableCell>
+                          {organization.devices} / {organization.deviceLimit ?? 1}
+                        </TableCell>
+                        <TableCell>{organization.users}</TableCell>
+                        <TableCell>
+                          <PaymentCollectionBadge organization={organization} />
+                        </TableCell>
+                        <TableCell>
+                          <OrganizationFeatureBadges organization={organization} />
+                        </TableCell>
+                        <TableCell>
+                          <OrganizationExpiry organization={organization} />
+                        </TableCell>
+                        <TableCell>
+                          <OrganizationActions
+                            organization={organization}
+                            onEdit={setEditing}
+                            onDelete={handleDelete}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {tenantsList.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={10}
+                          className="py-8 text-center text-sm text-zinc-400"
+                        >
+                          No organizations yet. Click{" "}
+                          <strong>Create organization</strong>.
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="grid gap-3 xl:hidden">
+                {paginatedOrganizations.map((organization) => (
+                  <div
+                    key={organization.id}
+                    className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-zinc-950">
+                          {organization.name}
+                        </div>
+                        <div className="mt-1 text-xs text-zinc-500">
+                          {organization.plan} · {organization.users} users
+                        </div>
+                      </div>
+                      <OrganizationActions
+                        organization={organization}
+                        onEdit={setEditing}
+                        onDelete={handleDelete}
+                      />
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      <SubscriptionStatusBadge organization={organization} />
+                      <OrganizationStatusBadge organization={organization} />
+                      <PaymentCollectionBadge organization={organization} />
+                    </div>
+                    <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                      <CompactInfo label="Devices">
+                        {organization.devices} / {organization.deviceLimit ?? 1}
+                      </CompactInfo>
+                      <CompactInfo label="Renewal / expiration">
+                        <OrganizationExpiry organization={organization} />
+                      </CompactInfo>
+                    </div>
+                    <div className="mt-4 border-t border-zinc-100 pt-3">
+                      <div className="mb-2 text-xs font-medium text-zinc-500">
+                        Enabled features
+                      </div>
+                      <OrganizationFeatureBadges organization={organization} />
+                    </div>
+                  </div>
+                ))}
+                {tenantsList.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-400">
+                    No organizations yet. Click{" "}
+                    <strong>Create organization</strong>.
+                  </div>
+                ) : null}
+              </div>
               <TablePagination
                 page={organizationPage}
                 pageSize={pageSize}
@@ -285,60 +285,94 @@ export function TenantManagement() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Email</TableHead>
-                    <TableHead>System Role</TableHead>
-                    <TableHead>Organization</TableHead>
-                    <TableHead>Joined At</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedProfiles.map((profile) => (
-                    <TableRow key={profile.id}>
-                      <TableCell className="font-medium">
-                        {profile.email}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            profile.role === "admin" ? "warning" : "secondary"
-                          }
-                        >
-                          {profile.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-zinc-600">
-                        {profile.organizationName || "None"}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(profile.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingProfile(profile)}
-                        >
-                          Edit User
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {profiles.length === 0 && !isLoadingProfiles && (
+              <div className="hidden overflow-x-auto lg:block">
+                <Table className="min-w-[760px]">
+                  <TableHeader>
                     <TableRow>
-                      <TableCell
-                        colSpan={5}
-                        className="text-center text-zinc-500 py-8"
-                      >
-                        No users found.
-                      </TableCell>
+                      <TableHead>Email</TableHead>
+                      <TableHead>System Role</TableHead>
+                      <TableHead>Organization</TableHead>
+                      <TableHead>Joined At</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedProfiles.map((profile) => (
+                      <TableRow key={profile.id}>
+                        <TableCell className="font-medium">
+                          {profile.email}
+                        </TableCell>
+                        <TableCell>
+                          <UserRoleBadge role={profile.role} />
+                        </TableCell>
+                        <TableCell className="text-zinc-600">
+                          {profile.organizationName || "None"}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(profile.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingProfile(profile)}
+                          >
+                            Edit User
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {profiles.length === 0 && !isLoadingProfiles && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={5}
+                          className="text-center text-zinc-500 py-8"
+                        >
+                          No users found.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="grid gap-3 lg:hidden">
+                {paginatedProfiles.map((profile) => (
+                  <div
+                    key={profile.id}
+                    className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-zinc-950">
+                          {profile.email}
+                        </div>
+                        <div className="mt-1 text-xs text-zinc-500">
+                          Joined{" "}
+                          {new Date(profile.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <UserRoleBadge role={profile.role} />
+                    </div>
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-100 pt-3">
+                      <CompactInfo label="Organization">
+                        {profile.organizationName || "None"}
+                      </CompactInfo>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingProfile(profile)}
+                      >
+                        Edit User
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {profiles.length === 0 && !isLoadingProfiles ? (
+                  <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500">
+                    No users found.
+                  </div>
+                ) : null}
+              </div>
               <TablePagination
                 page={userPage}
                 pageSize={pageSize}
@@ -359,6 +393,9 @@ export function TenantManagement() {
         </TabsContent>
         <TabsContent value="payout-invoices">
           <PayoutInvoiceManagement organizations={tenantsList} />
+        </TabsContent>
+        <TabsContent value="transaction-requests">
+          <TransactionActionRequestManagement />
         </TabsContent>
       </Tabs>
 
@@ -508,6 +545,136 @@ export function TenantManagement() {
           }}
         />
       ) : null}
+    </div>
+  );
+}
+
+function SubscriptionStatusBadge({
+  organization,
+}: {
+  organization: Organization;
+}) {
+  return (
+    <Badge
+      variant={
+        organization.subscriptionStatus === "active"
+          ? "success"
+          : organization.subscriptionStatus === "trialing" ||
+              organization.subscriptionStatus === "trial"
+            ? "warning"
+            : "secondary"
+      }
+    >
+      {organization.subscriptionStatus || "free"}
+    </Badge>
+  );
+}
+
+function OrganizationStatusBadge({
+  organization,
+}: {
+  organization: Organization;
+}) {
+  return (
+    <Badge variant={organization.status === "active" ? "outline" : "secondary"}>
+      {organization.status}
+    </Badge>
+  );
+}
+
+function PaymentCollectionBadge({
+  organization,
+}: {
+  organization: Organization;
+}) {
+  return (
+    <Badge
+      variant={
+        organization.paymentCollectionMode === "custom" ? "secondary" : "outline"
+      }
+    >
+      {organization.paymentCollectionMode === "custom"
+        ? "Custom PG"
+        : "POSKART PG"}
+    </Badge>
+  );
+}
+
+function OrganizationFeatureBadges({
+  organization,
+}: {
+  organization: Organization;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {organization.features?.posKasir ? (
+        <Badge variant="outline">POS Kasir</Badge>
+      ) : null}
+      {organization.features?.money ? (
+        <Badge variant="outline">Keuangan</Badge>
+      ) : null}
+      {!organization.features?.posKasir && !organization.features?.money ? (
+        <span className="text-xs text-zinc-400">SaaS default</span>
+      ) : null}
+    </div>
+  );
+}
+
+function OrganizationExpiry({ organization }: { organization: Organization }) {
+  return (
+    <>
+      {organization.subscriptionExpiresAt
+        ? new Date(organization.subscriptionExpiresAt).toLocaleDateString()
+        : "Never"}
+    </>
+  );
+}
+
+function OrganizationActions({
+  organization,
+  onEdit,
+  onDelete,
+}: {
+  organization: Organization;
+  onEdit: (organization: Organization) => void;
+  onDelete: (organization: Organization) => void;
+}) {
+  return (
+    <DropdownMenu
+      items={[
+        {
+          label: "Edit",
+          onClick: () => onEdit(organization),
+        },
+        {
+          label: "Delete",
+          destructive: true,
+          onClick: () => onDelete(organization),
+        },
+      ]}
+    />
+  );
+}
+
+function UserRoleBadge({ role }: { role: string }) {
+  return (
+    <Badge variant={role === "admin" ? "warning" : "secondary"}>{role}</Badge>
+  );
+}
+
+function CompactInfo({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="mt-1 truncate text-sm font-medium text-zinc-900">
+        {children}
+      </div>
     </div>
   );
 }

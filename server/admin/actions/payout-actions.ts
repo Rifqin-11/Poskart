@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getAdminContext } from "@/server/admin/context";
 import { isSuperAdminEmail } from "@/lib/auth/admin";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createAdminNotification } from "@/server/admin/notifications";
 import type {
   PayoutAccount,
   PayoutActionState,
@@ -68,6 +69,9 @@ type PayoutInvoiceRow = {
   reviewed_at: string | null;
   paid_at: string | null;
   payment_reference: string | null;
+  payment_proof_url: string | null;
+  payment_proof_key: string | null;
+  payment_proof_uploaded_at: string | null;
   notes: string | null;
   review_notes: string | null;
   rejection_reason: string | null;
@@ -92,9 +96,12 @@ type PayoutInvoiceItemRow = {
 };
 
 const DEFAULT_PAYOUT_SETTINGS: PayoutSettings = {
+  gatewayFeeType: "percentage",
   gatewayFeePercentage: 0,
+  gatewayFeeFixedAmount: 0,
+  platformFeeType: "percentage",
   platformFeePercentage: 0,
-  payoutAdjustmentAmount: 0,
+  platformFeeFixedAmount: 0,
   minimumPayoutAmount: 0,
 };
 
@@ -156,6 +163,9 @@ function mapPayoutInvoice(
     reviewedAt: row.reviewed_at,
     paidAt: row.paid_at,
     paymentReference: row.payment_reference,
+    paymentProofUrl: row.payment_proof_url,
+    paymentProofKey: row.payment_proof_key,
+    paymentProofUploadedAt: row.payment_proof_uploaded_at,
     notes: row.notes,
     reviewNotes: row.review_notes,
     rejectionReason: row.rejection_reason,
@@ -211,7 +221,7 @@ async function getPayoutSettings(
   const { data, error } = await supabase
     .from("app_configs")
     .select(
-      "gateway_fee_percentage,platform_fee_percentage,payout_adjustment_amount,minimum_payout_amount",
+      "gateway_fee_type,gateway_fee_percentage,gateway_fee_fixed_amount,platform_fee_type,platform_fee_percentage,platform_fee_fixed_amount,minimum_payout_amount",
     )
     .eq("id", "default")
     .maybeSingle();
@@ -224,14 +234,21 @@ async function getPayoutSettings(
   }
 
   return {
+    gatewayFeeType: normalizeFeeType(data?.gateway_fee_type),
     gatewayFeePercentage: Number(data?.gateway_fee_percentage ?? 0),
+    gatewayFeeFixedAmount: Number(data?.gateway_fee_fixed_amount ?? 0),
+    platformFeeType: normalizeFeeType(data?.platform_fee_type),
     platformFeePercentage: Number(data?.platform_fee_percentage ?? 0),
-    payoutAdjustmentAmount: Number(data?.payout_adjustment_amount ?? 0),
+    platformFeeFixedAmount: Number(data?.platform_fee_fixed_amount ?? 0),
     minimumPayoutAmount: Number(data?.minimum_payout_amount ?? 0),
   };
 }
 
-function calculateLine(row: EligibleLedgerEntryRow) {
+function calculateLine(row: EligibleLedgerEntryRow, settings: PayoutSettings) {
+  const grossAmount = Number(row.gross_amount);
+  const gatewayFeeAmount = calculateGatewayFee(row, settings, grossAmount);
+  const platformFeeAmount = 0;
+
   return {
     ledgerEntryId: row.id,
     transactionId: row.transaction_id,
@@ -239,16 +256,88 @@ function calculateLine(row: EligibleLedgerEntryRow) {
     booth: row.booth,
     packageName: row.package_name,
     transactionPaidAt: row.paid_at ?? row.created_at,
-    grossAmount: Number(row.gross_amount),
-    gatewayFeeAmount: Number(row.gateway_fee_amount),
-    platformFeeAmount: Number(row.platform_fee_amount),
-    netAmount: Number(row.net_amount),
+    grossAmount,
+    gatewayFeeAmount,
+    platformFeeAmount,
+    netAmount: Math.max(0, grossAmount - gatewayFeeAmount - platformFeeAmount),
   };
+}
+
+function calculatePayoutPlatformFee(
+  lineNetAmount: number,
+  settings: PayoutSettings,
+) {
+  return calculateConfiguredFee(
+    lineNetAmount,
+    settings.platformFeeType,
+    settings.platformFeePercentage,
+    settings.platformFeeFixedAmount,
+  );
+}
+
+function calculateGatewayFee(
+  row: EligibleLedgerEntryRow,
+  settings: PayoutSettings,
+  grossAmount: number,
+) {
+  const feeFromDuitku = parseMoney(readObject(row.verified_response)?.fee);
+  return (
+    feeFromDuitku ??
+    calculateConfiguredFee(
+      grossAmount,
+      settings.gatewayFeeType,
+      settings.gatewayFeePercentage,
+      settings.gatewayFeeFixedAmount,
+    )
+  );
+}
+
+function calculateConfiguredFee(
+  grossAmount: number,
+  feeType: "percentage" | "fixed",
+  percentage: number,
+  fixedAmount: number,
+) {
+  if (feeType === "fixed") {
+    return Math.max(0, Math.round(Number(fixedAmount)));
+  }
+  return Math.max(0, Math.round((grossAmount * Number(percentage ?? 0)) / 100));
+}
+
+function readObject(value: unknown) {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function parseMoney(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.round(value));
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value.replace(/[^\d.-]/g, ""));
+    if (Number.isFinite(parsed)) return Math.max(0, Math.round(parsed));
+  }
+  return null;
+}
+
+async function notifySafely(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  input: Parameters<typeof createAdminNotification>[1],
+) {
+  try {
+    await createAdminNotification(supabase, input);
+  } catch (error) {
+    console.error("[payout-notification]", error);
+  }
 }
 
 function mapAvailableLedgerEntry(
   row: EligibleLedgerEntryRow,
+  settings: PayoutSettings,
 ): PayoutAvailableLedgerEntry {
+  const line = calculateLine(row, settings);
+
   return {
     id: row.id,
     transactionId: row.transaction_id,
@@ -258,10 +347,10 @@ function mapAvailableLedgerEntry(
     packageName: row.package_name,
     paidAt: row.paid_at,
     verifiedAt: row.verified_at,
-    grossAmount: Number(row.gross_amount),
-    gatewayFeeAmount: Number(row.gateway_fee_amount),
-    platformFeeAmount: Number(row.platform_fee_amount),
-    netAmount: Number(row.net_amount),
+    grossAmount: line.grossAmount,
+    gatewayFeeAmount: line.gatewayFeeAmount,
+    platformFeeAmount: line.platformFeeAmount,
+    netAmount: line.netAmount,
   };
 }
 
@@ -372,7 +461,7 @@ async function loadInvoices(
   let query = supabase
     .from("payout_invoices")
     .select(
-      "id,invoice_number,organization_id,organizations(name),status,gross_amount,gateway_fee_amount,platform_fee_amount,adjustment_amount,net_amount,requested_amount,requested_at,reviewed_at,paid_at,payment_reference,notes,review_notes,rejection_reason,account_snapshot,fee_snapshot",
+      "id,invoice_number,organization_id,organizations(name),status,gross_amount,gateway_fee_amount,platform_fee_amount,adjustment_amount,net_amount,requested_amount,requested_at,reviewed_at,paid_at,payment_reference,payment_proof_url,payment_proof_key,payment_proof_uploaded_at,notes,review_notes,rejection_reason,account_snapshot,fee_snapshot",
     )
     .order("requested_at", { ascending: false });
 
@@ -444,7 +533,7 @@ export async function getMyPayoutSummary() {
     loadInvoices(supabase, { organizationId }),
   ]);
 
-  const lines = eligibleRows.map((row) => calculateLine(row));
+  const lines = eligibleRows.map((row) => calculateLine(row, settings));
   const available = sumLines(lines);
   const pendingNetAmount = invoices
     .filter((invoice) => ["requested", "approved"].includes(invoice.status))
@@ -476,8 +565,11 @@ export async function getMyPayoutInvoices() {
 
 export async function getMyAvailablePayoutLedgerEntries() {
   const { supabase, organizationId } = await getOrganizationContext();
-  const rows = await loadEligibleLedgerEntries(supabase, organizationId);
-  return rows.map(mapAvailableLedgerEntry);
+  const [settings, rows] = await Promise.all([
+    getPayoutSettings(supabase),
+    loadEligibleLedgerEntries(supabase, organizationId),
+  ]);
+  return rows.map((row) => mapAvailableLedgerEntry(row, settings));
 }
 
 export async function saveMyPayoutAccount(
@@ -569,7 +661,7 @@ export async function requestPayout(
     let selectedNetAmount = 0;
 
     for (const row of eligibleRows) {
-      const line = calculateLine(row);
+      const line = calculateLine(row, settings);
       if (line.netAmount <= 0) continue;
       if (
         selectedLines.length > 0 &&
@@ -596,6 +688,11 @@ export async function requestPayout(
     }
 
     const totals = sumLines(selectedLines);
+    const platformFeeAmount = calculatePayoutPlatformFee(
+      totals.netAmount,
+      settings,
+    );
+    const invoiceNetAmount = Math.max(0, totals.netAmount - platformFeeAmount);
     const now = new Date().toISOString();
     const invoiceNumber = `PO-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
     const accountSnapshot = {
@@ -604,15 +701,15 @@ export async function requestPayout(
       accountHolderName: account.accountHolderName,
     };
     const feeSnapshot = {
+      gatewayFeeType: settings.gatewayFeeType,
       gatewayFeePercentage: settings.gatewayFeePercentage,
+      gatewayFeeFixedAmount: settings.gatewayFeeFixedAmount,
+      platformFeeType: settings.platformFeeType,
       platformFeePercentage: settings.platformFeePercentage,
-      payoutAdjustmentAmount: settings.payoutAdjustmentAmount,
+      platformFeeFixedAmount: settings.platformFeeFixedAmount,
+      minimumPayoutAmount: settings.minimumPayoutAmount,
       source: "request",
     };
-    const invoiceNetAmount = Math.max(
-      0,
-      totals.netAmount + settings.payoutAdjustmentAmount,
-    );
 
     const { data: invoice, error: invoiceError } = await ledgerClient
       .from("payout_invoices")
@@ -623,8 +720,8 @@ export async function requestPayout(
         status: "requested",
         gross_amount: totals.grossAmount,
         gateway_fee_amount: totals.gatewayFeeAmount,
-        platform_fee_amount: totals.platformFeeAmount,
-        adjustment_amount: settings.payoutAdjustmentAmount,
+        platform_fee_amount: platformFeeAmount,
+        adjustment_amount: 0,
         net_amount: invoiceNetAmount,
         requested_amount: requestedAmount,
         requested_by: user.id,
@@ -751,6 +848,19 @@ export async function requestPayout(
 
     revalidatePath("/invoices");
     revalidatePath("/superadmin");
+    await notifySafely(ledgerClient, {
+      audience: "superadmin",
+      type: "payout.requested",
+      title: "Request pencairan baru",
+      body: `${invoiceNumber} menunggu review Super Admin.`,
+      href: "/superadmin",
+      organizationId,
+      metadata: {
+        invoiceId: invoice.id,
+        invoiceNumber,
+        netAmount: invoiceNetAmount,
+      },
+    });
     return { success: true };
   } catch (error) {
     return {
@@ -777,14 +887,17 @@ export async function savePayoutSettingsForSuperadmin(
 ): Promise<PayoutActionState> {
   try {
     const { supabase } = await requireSuperAdmin();
+    const gatewayFeeType = normalizeFeeType(values.gatewayFeeType);
     const gatewayFeePercentage = normalizePercentage(
       values.gatewayFeePercentage,
     );
+    const gatewayFeeFixedAmount = normalizeMoney(values.gatewayFeeFixedAmount);
+    const platformFeeType = normalizeFeeType(values.platformFeeType);
     const platformFeePercentage = normalizePercentage(
       values.platformFeePercentage,
     );
-    const payoutAdjustmentAmount = Math.round(
-      Number(values.payoutAdjustmentAmount ?? 0),
+    const platformFeeFixedAmount = normalizeMoney(
+      values.platformFeeFixedAmount,
     );
     const minimumPayoutAmount = Math.max(
       0,
@@ -793,11 +906,13 @@ export async function savePayoutSettingsForSuperadmin(
 
     const { error } = await supabase.from("app_configs").upsert({
       id: "default",
+      gateway_fee_type: gatewayFeeType,
       gateway_fee_percentage: gatewayFeePercentage,
+      gateway_fee_fixed_amount: gatewayFeeFixedAmount,
+      platform_fee_type: platformFeeType,
       platform_fee_percentage: platformFeePercentage,
-      payout_adjustment_amount: Number.isFinite(payoutAdjustmentAmount)
-        ? payoutAdjustmentAmount
-        : 0,
+      platform_fee_fixed_amount: platformFeeFixedAmount,
+      payout_adjustment_amount: 0,
       minimum_payout_amount: Number.isFinite(minimumPayoutAmount)
         ? minimumPayoutAmount
         : 0,
@@ -823,6 +938,16 @@ function normalizePercentage(value: unknown) {
   return Math.min(100, Math.max(0, parsed));
 }
 
+function normalizeMoney(value: unknown) {
+  const parsed = Math.round(Number(value ?? 0));
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, parsed);
+}
+
+function normalizeFeeType(value: unknown) {
+  return value === "fixed" ? "fixed" : "percentage";
+}
+
 export async function approvePayoutInvoice(
   id: string,
   reviewPatch: ReviewPayoutInput,
@@ -833,7 +958,7 @@ export async function approvePayoutInvoice(
 
     const { data: invoice, error: invoiceError } = await supabase
       .from("payout_invoices")
-      .select("id,status")
+      .select("id,invoice_number,organization_id,status,net_amount")
       .eq("id", id)
       .maybeSingle();
 
@@ -870,6 +995,19 @@ export async function approvePayoutInvoice(
 
     revalidatePath("/invoices");
     revalidatePath("/superadmin");
+    await notifySafely(ledgerClient, {
+      audience: "organization",
+      organizationId: invoice.organization_id as string,
+      type: "payout.approved",
+      title: "Pencairan disetujui",
+      body: `${invoice.invoice_number} sudah disetujui dan menunggu transfer.`,
+      href: "/invoices",
+      metadata: {
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoice_number,
+        netAmount: invoice.net_amount,
+      },
+    });
     return { success: true };
   } catch (error) {
     return {
@@ -887,6 +1025,15 @@ export async function rejectPayoutInvoice(
     const { supabase, user } = await requireSuperAdmin();
     const ledgerClient = createSupabaseAdminClient();
     const now = new Date().toISOString();
+    const { data: invoice, error: invoiceError } = await supabase
+      .from("payout_invoices")
+      .select("id,invoice_number,organization_id,net_amount")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (invoiceError) throw invoiceError;
+    if (!invoice) return { success: false, error: "Invoice tidak ditemukan." };
+
     const { error } = await supabase
       .from("payout_invoices")
       .update({
@@ -921,6 +1068,19 @@ export async function rejectPayoutInvoice(
 
     revalidatePath("/invoices");
     revalidatePath("/superadmin");
+    await notifySafely(ledgerClient, {
+      audience: "organization",
+      organizationId: invoice.organization_id as string,
+      type: "payout.rejected",
+      title: "Pencairan ditolak",
+      body: `${invoice.invoice_number} ditolak. Saldo dikembalikan ke eligible payout.`,
+      href: "/invoices",
+      metadata: {
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoice_number,
+        netAmount: invoice.net_amount,
+      },
+    });
     return { success: true };
   } catch (error) {
     return {
@@ -934,12 +1094,21 @@ export async function markPayoutInvoicePaid(
   id: string,
   paymentReference: string,
   paidAt?: string,
+  proof?: { url?: string | null; key?: string | null },
 ): Promise<PayoutActionState> {
   try {
     const { supabase, user } = await requireSuperAdmin();
     const ledgerClient = createSupabaseAdminClient();
     const now = new Date().toISOString();
     const paidAtValue = paidAt ? new Date(paidAt).toISOString() : now;
+    const { data: invoice, error: invoiceError } = await supabase
+      .from("payout_invoices")
+      .select("id,invoice_number,organization_id,net_amount")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (invoiceError) throw invoiceError;
+    if (!invoice) return { success: false, error: "Invoice tidak ditemukan." };
 
     const { error } = await supabase
       .from("payout_invoices")
@@ -948,6 +1117,9 @@ export async function markPayoutInvoicePaid(
         paid_by: user.id,
         paid_at: paidAtValue,
         payment_reference: paymentReference.trim() || null,
+        payment_proof_url: proof?.url || null,
+        payment_proof_key: proof?.key || null,
+        payment_proof_uploaded_at: proof?.url ? now : null,
         reviewed_at: now,
         reviewed_by: user.id,
         updated_at: now,
@@ -969,6 +1141,19 @@ export async function markPayoutInvoicePaid(
 
     revalidatePath("/invoices");
     revalidatePath("/superadmin");
+    await notifySafely(ledgerClient, {
+      audience: "organization",
+      organizationId: invoice.organization_id as string,
+      type: "payout.paid",
+      title: "Pencairan sudah ditransfer",
+      body: `${invoice.invoice_number} sudah ditandai cair.`,
+      href: "/invoices",
+      metadata: {
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoice_number,
+        netAmount: invoice.net_amount,
+      },
+    });
     return { success: true };
   } catch (error) {
     return {

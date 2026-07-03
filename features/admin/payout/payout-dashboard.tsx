@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { BadgeDollarSign, Clock3, Download, Landmark, Wallet } from "lucide-react";
 import { toast } from "sonner";
@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import { StatCard } from "@/features/admin/_components/stat-card";
+import { cn } from "@/lib/utils";
 import {
   formatPayoutCurrency,
   formatPayoutDate,
@@ -43,7 +43,6 @@ export function PayoutDashboard({
   const [isPending, startTransition] = useTransition();
   const [requestForm, setRequestForm] = useState({
     amount: summary.availableNetAmount,
-    notes: "",
   });
 
   const hasAccount = Boolean(summary.payoutAccount);
@@ -60,6 +59,15 @@ export function PayoutDashboard({
     }),
     { grossAmount: 0, feeAmount: 0, netAmount: 0 },
   );
+  const requestEstimate = useMemo(
+    () =>
+      estimatePayoutRequest(
+        availableLedgerEntries,
+        requestForm.amount,
+        summary.settings,
+      ),
+    [availableLedgerEntries, requestForm.amount, summary.settings],
+  );
 
   const submitRequest = () => {
     if (!summary.payoutAccount) {
@@ -71,7 +79,6 @@ export function PayoutDashboard({
       const result = await requestPayout({
         amount: requestForm.amount,
         accountId: summary.payoutAccount!.id,
-        notes: requestForm.notes,
       });
       if (!result.success) {
         toast.error(result.error ?? "Gagal request pencairan");
@@ -95,7 +102,6 @@ export function PayoutDashboard({
             onClick={() => {
               setRequestForm({
                 amount: summary.availableNetAmount,
-                notes: "",
               });
               setRequestOpen(true);
             }}
@@ -139,11 +145,7 @@ export function PayoutDashboard({
         />
       </div>
 
-      <PayoutSettingsSummary
-        summary={summary}
-        canRequest={canRequest}
-        hasAccount={hasAccount}
-      />
+      <PayoutSettingsSummary summary={summary} />
 
       <Card>
         <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -321,10 +323,18 @@ export function PayoutDashboard({
       >
         <div className="space-y-4">
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-6 text-zinc-600">
-            Saldo tersedia:{" "}
-            <span className="font-semibold text-zinc-950">
-              {formatPayoutCurrency(summary.availableNetAmount)}
-            </span>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>Saldo tersedia</span>
+              <span className="font-semibold text-zinc-950">
+                {formatPayoutCurrency(summary.availableNetAmount)}
+              </span>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span>Minimal request</span>
+              <span className="font-medium text-zinc-700">
+                {formatPayoutCurrency(summary.settings.minimumPayoutAmount)}
+              </span>
+            </div>
           </div>
           <label className="block text-xs font-medium text-zinc-600">
             Nominal request
@@ -342,20 +352,34 @@ export function PayoutDashboard({
               }
             />
           </label>
-          <label className="block text-xs font-medium text-zinc-600">
-            Catatan
-            <Textarea
-              className="mt-1.5"
-              value={requestForm.notes}
-              placeholder="Opsional"
-              onChange={(event) =>
-                setRequestForm((current) => ({
-                  ...current,
-                  notes: event.target.value,
-                }))
-              }
+          <div className="grid gap-2 rounded-2xl border border-zinc-200 bg-white p-3 text-xs md:grid-cols-4">
+            <EstimateStat
+              label="Gross"
+              value={formatPayoutCurrency(requestEstimate.grossAmount)}
             />
-          </label>
+            <EstimateStat
+              label="Potongan Duitku"
+              value={formatPayoutCurrency(requestEstimate.gatewayFeeAmount)}
+            />
+            <EstimateStat
+              label="Potongan POSKART"
+              value={formatPayoutCurrency(requestEstimate.platformFeeAmount)}
+            />
+            <EstimateStat
+              label="Didapat"
+              value={formatPayoutCurrency(requestEstimate.netAmount)}
+              strong
+            />
+          </div>
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-900">
+            Biaya terdiri dari gateway fee Duitku per transaksi QRIS dan biaya
+            penarikan POSKART satu kali untuk request pencairan ini.
+          </div>
+          {requestForm.amount < summary.settings.minimumPayoutAmount ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+              Nominal request masih di bawah minimal pencairan.
+            </div>
+          ) : null}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setRequestOpen(false)}>
               Batal
@@ -377,12 +401,8 @@ export function PayoutDashboard({
 
 function PayoutSettingsSummary({
   summary,
-  canRequest,
-  hasAccount,
 }: {
   summary: PayoutSummary;
-  canRequest: boolean;
-  hasAccount: boolean;
 }) {
   const router = useRouter();
   const account = summary.payoutAccount;
@@ -434,17 +454,30 @@ function PayoutSettingsSummary({
               diverifikasi dan masuk melalui payment gateway POSKART.
             </CardDescription>
           </div>
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm leading-6 text-zinc-600">
+            Gateway fee adalah potongan Duitku dari setiap transaksi QRIS.
+            Platform fee adalah biaya penarikan POSKART yang dikenakan satu kali
+            saat invoice pencairan dibuat.
+          </div>
           <div className="grid gap-3 md:grid-cols-3">
             <PayoutRuleStat
               label="Gateway fee fallback"
-              value={`${summary.settings.gatewayFeePercentage}%`}
+              value={formatFeeSetting(
+                summary.settings.gatewayFeeType,
+                summary.settings.gatewayFeePercentage,
+                summary.settings.gatewayFeeFixedAmount,
+              )}
             />
             <PayoutRuleStat
-              label="Platform fee POSKART"
-              value={`${summary.settings.platformFeePercentage}%`}
+              label="Platform fee per pencairan"
+              value={formatFeeSetting(
+                summary.settings.platformFeeType,
+                summary.settings.platformFeePercentage,
+                summary.settings.platformFeeFixedAmount,
+              )}
             />
             <PayoutRuleStat
-              label="Minimum payout"
+              label="Minimal request"
               value={formatPayoutCurrency(summary.settings.minimumPayoutAmount)}
             />
           </div>
@@ -452,6 +485,84 @@ function PayoutSettingsSummary({
       </CardContent>
     </Card>
   );
+}
+
+function EstimateStat({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl bg-zinc-50 px-3 py-2">
+      <div className="text-zinc-500">{label}</div>
+      <div
+        className={cn(
+          "mt-1 font-semibold text-zinc-950",
+          strong && "text-emerald-700",
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function estimatePayoutRequest(
+  entries: PayoutAvailableLedgerEntry[],
+  requestedAmount: number,
+  settings: PayoutSummary["settings"],
+) {
+  const requestedNetAmount = Math.max(0, Math.round(Number(requestedAmount)));
+  let grossAmount = 0;
+  let gatewayFeeAmount = 0;
+  let ledgerNetAmount = 0;
+  let count = 0;
+
+  for (const entry of entries) {
+    if (entry.netAmount <= 0) continue;
+    if (count > 0 && ledgerNetAmount + entry.netAmount > requestedNetAmount) {
+      break;
+    }
+    if (count === 0 && entry.netAmount > requestedNetAmount) break;
+
+    grossAmount += entry.grossAmount;
+    gatewayFeeAmount += entry.gatewayFeeAmount;
+    ledgerNetAmount += entry.netAmount;
+    count += 1;
+  }
+
+  const platformFeeAmount =
+    count > 0 ? calculateFrontendConfiguredFee(ledgerNetAmount, settings) : 0;
+  const netAmount = Math.max(0, ledgerNetAmount - platformFeeAmount);
+
+  return { count, grossAmount, gatewayFeeAmount, platformFeeAmount, netAmount };
+}
+
+function calculateFrontendConfiguredFee(
+  baseAmount: number,
+  settings: PayoutSummary["settings"],
+) {
+  if (settings.platformFeeType === "fixed") {
+    return Math.max(0, Math.round(settings.platformFeeFixedAmount));
+  }
+  return Math.max(
+    0,
+    Math.round((baseAmount * Number(settings.platformFeePercentage ?? 0)) / 100),
+  );
+}
+
+function formatFeeSetting(
+  type: "percentage" | "fixed",
+  percentage: number,
+  fixedAmount: number,
+) {
+  return type === "fixed"
+    ? formatPayoutCurrency(fixedAmount)
+    : `${percentage}%`;
 }
 
 function ReadonlyField({ label, value }: { label: string; value: string }) {
@@ -468,6 +579,30 @@ function PayoutRuleStat({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3">
       <div className="text-xs text-zinc-500">{label}</div>
       <div className="mt-2 text-lg font-semibold text-zinc-950">{value}</div>
+    </div>
+  );
+}
+
+function InvoiceAmountMetric({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div>
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div
+        className={cn(
+          "mt-1 font-semibold text-zinc-950",
+          strong && "text-emerald-700",
+        )}
+      >
+        {value}
+      </div>
     </div>
   );
 }
@@ -518,6 +653,29 @@ function InvoiceDetailDialog({
                 {invoice.paymentReference ?? "-"}
               </div>
             </div>
+          </div>
+          <div className="grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm md:grid-cols-4">
+            <InvoiceAmountMetric
+              label="Gross"
+              value={formatPayoutCurrency(invoice.grossAmount)}
+            />
+            <InvoiceAmountMetric
+              label="Fee Duitku"
+              value={formatPayoutCurrency(invoice.gatewayFeeAmount)}
+            />
+            <InvoiceAmountMetric
+              label="Biaya penarikan"
+              value={formatPayoutCurrency(invoice.platformFeeAmount)}
+            />
+            <InvoiceAmountMetric
+              label="Didapat"
+              value={formatPayoutCurrency(invoice.netAmount)}
+              strong
+            />
+          </div>
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-900">
+            Fee Duitku berasal dari setiap transaksi QRIS. Biaya penarikan
+            POSKART dikenakan satu kali pada invoice pencairan ini.
           </div>
           <Table>
             <TableHeader>

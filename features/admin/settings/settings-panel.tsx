@@ -55,8 +55,12 @@ type SettingsForm = {
   qris_webhook_secret: string;
   qris_auto_retry: boolean;
   subscription_payment_gateway: SubscriptionGatewayMode;
+  gateway_fee_type: "percentage" | "fixed";
   gateway_fee_percentage: number;
+  gateway_fee_fixed_amount: number;
+  platform_fee_type: "percentage" | "fixed";
   platform_fee_percentage: number;
+  platform_fee_fixed_amount: number;
   payout_adjustment_amount: number;
   minimum_payout_amount: number;
   // Device
@@ -83,8 +87,12 @@ const DEFAULT_SETTINGS_FORM: SettingsForm = {
   qris_webhook_secret: "",
   qris_auto_retry: true,
   subscription_payment_gateway: "duitku",
+  gateway_fee_type: "percentage",
   gateway_fee_percentage: 0,
+  gateway_fee_fixed_amount: 0,
+  platform_fee_type: "percentage",
   platform_fee_percentage: 0,
+  platform_fee_fixed_amount: 0,
   payout_adjustment_amount: 0,
   minimum_payout_amount: 0,
   printer_name: "POSKART-THERMAL-01",
@@ -151,8 +159,12 @@ export function SettingsPanel() {
         qris_auto_retry: config.qris_auto_retry ?? true,
         subscription_payment_gateway:
           config.subscription_payment_gateway ?? "duitku",
+        gateway_fee_type: config.gateway_fee_type ?? "percentage",
         gateway_fee_percentage: config.gateway_fee_percentage ?? 0,
+        gateway_fee_fixed_amount: config.gateway_fee_fixed_amount ?? 0,
+        platform_fee_type: config.platform_fee_type ?? "percentage",
         platform_fee_percentage: config.platform_fee_percentage ?? 0,
+        platform_fee_fixed_amount: config.platform_fee_fixed_amount ?? 0,
         payout_adjustment_amount: config.payout_adjustment_amount ?? 0,
         minimum_payout_amount: config.minimum_payout_amount ?? 0,
         printer_name: config.printer_name ?? "POSKART-THERMAL-01",

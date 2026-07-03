@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Edit2, Trash2 } from "lucide-react";
+import { type ComponentType, type ReactNode, useMemo, useState } from "react";
+import { Banknote, Printer, ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -21,15 +20,13 @@ import {
 import { TablePagination } from "@/components/ui/table-pagination";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import {
-  useDeleteTransaction,
-  useDeleteTransactions,
+  useRequestTransactionAction,
   useTransactions,
-  useUpdateTransaction,
 } from "@/features/admin/transactions/use-transactions";
+import { useAppConfig } from "@/features/admin/settings/use-settings";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
-import type { Transaction } from "@/types/transaction";
-
-import { TransactionDetailsDialog } from "./_components/transaction-details-dialog";
+import type { AppConfigRow } from "@/types/app-config";
+import type { Transaction, TransactionActionType } from "@/types/transaction";
 
 function getTransactionPaymentMethod(transaction: Transaction) {
   if (transaction.provider === "Voucher") return "Voucher";
@@ -64,27 +61,163 @@ function renderPaymentMethod(
   );
 }
 
+function getTransactionActionLabel(action: TransactionActionType) {
+  if (action === "verify") return "Verifikasi";
+  if (action === "refund") return "Refund";
+  return "Arsip";
+}
+
+function getTransactionActionItems(
+  transaction: Transaction,
+  onRequest: (transaction: Transaction, action: TransactionActionType) => void,
+) {
+  const items: { label: string; onClick: () => void; destructive?: boolean }[] =
+    [];
+
+  if (transaction.status !== "paid" && transaction.status !== "refunded") {
+    items.push({
+      label: "Verifikasi",
+      onClick: () => onRequest(transaction, "verify"),
+    });
+  }
+
+  if (transaction.status === "paid") {
+    items.push({
+      label: "Refund",
+      destructive: true,
+      onClick: () => onRequest(transaction, "refund"),
+    });
+  }
+
+  items.push({
+    label: "Arsip",
+    destructive: true,
+    onClick: () => onRequest(transaction, "archive"),
+  });
+
+  return items;
+}
+
 function getTransactionDateKey(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function calculateConfiguredFee(
+  amount: number,
+  feeType?: AppConfigRow["gateway_fee_type"],
+  percentage?: number,
+  fixedAmount?: number,
+) {
+  if (feeType === "fixed") {
+    return Math.max(0, Math.round(Number(fixedAmount ?? 0)));
+  }
+  return Math.max(0, Math.round((amount * Number(percentage ?? 0)) / 100));
+}
+
+function getTransactionGatewayFee(
+  transaction: Transaction,
+  config?: AppConfigRow | null,
+) {
+  const paymentMethod = getTransactionPaymentMethod(transaction);
+  if (paymentMethod !== "QRIS" || transaction.status !== "paid") return 0;
+
+  return calculateConfiguredFee(
+    transaction.amount,
+    config?.gateway_fee_type,
+    config?.gateway_fee_percentage,
+    config?.gateway_fee_fixed_amount,
+  );
+}
+
+function getTransactionNetAmount(
+  transaction: Transaction,
+  config?: AppConfigRow | null,
+) {
+  return Math.max(
+    0,
+    transaction.amount - getTransactionGatewayFee(transaction, config),
+  );
+}
+
+function formatPercentage(value?: number) {
+  return `${Number(value ?? 0).toLocaleString("en-US", {
+    maximumFractionDigits: 2,
+  })}%`;
+}
+
+function getConfiguredFeeRuleLabel(config?: AppConfigRow | null) {
+  if (config?.gateway_fee_type === "fixed") {
+    return formatCurrency(Number(config.gateway_fee_fixed_amount ?? 0));
+  }
+  return formatPercentage(config?.gateway_fee_percentage);
+}
+
+function getTransactionFeeRuleLabel(
+  transaction: Transaction,
+  config?: AppConfigRow | null,
+) {
+  const fee = getTransactionGatewayFee(transaction, config);
+  if (fee <= 0) return "Rp 0";
+  if (config?.gateway_fee_type === "fixed") return formatCurrency(fee);
+  return formatPercentage(config?.gateway_fee_percentage);
+}
+
+function AmountBreakdown({
+  gross,
+  feeLabel,
+  className = "",
+}: {
+  gross: number;
+  feeLabel: string;
+  className?: string;
+}) {
+  return (
+    <div className={`mt-1 space-y-0.5 text-xs text-zinc-500 ${className}`}>
+      <div>Bruto {formatCurrency(gross)}</div>
+      <div>potongan {feeLabel}</div>
+    </div>
+  );
+}
+
+function TransactionSummaryMetric({
+  icon: Icon,
+  label,
+  value,
+  description,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  description: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3 border-zinc-100 md:border-r md:pr-5 md:last:border-r-0">
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-700">
+        <Icon className="size-5" />
+      </div>
+      <div className="min-w-0">
+        <div className="text-sm text-zinc-500">{label}</div>
+        <div className="mt-1 truncate text-2xl font-semibold text-zinc-950">
+          {value}
+        </div>
+        <div className="mt-1 text-xs text-zinc-500">{description}</div>
+      </div>
+    </div>
+  );
+}
+
 export function TransactionsMonitoring() {
   const { data = [] } = useTransactions();
-  const updateTransaction = useUpdateTransaction();
-  const deleteTransaction = useDeleteTransaction();
-  const deleteTransactions = useDeleteTransactions();
-  const confirmDelete = useConfirmDialog();
+  const { data: config } = useAppConfig();
+  const requestAction = useRequestTransactionAction();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [packageFilter, setPackageFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
-  const [editing, setEditing] = useState<Transaction | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const paymentMethodOptions = useMemo(
@@ -125,6 +258,26 @@ export function TransactionsMonitoring() {
       matchDate
     );
   });
+  const summary = filtered.reduce(
+    (acc, transaction) => {
+      const isPaid = transaction.status === "paid";
+      const netAmount = getTransactionNetAmount(transaction, config);
+      return {
+        revenue: acc.revenue + (isPaid ? netAmount : 0),
+        printCount: acc.printCount + (isPaid ? transaction.printCount : 0),
+        transactionCount: acc.transactionCount + 1,
+        paidCount: acc.paidCount + (isPaid ? 1 : 0),
+        grossRevenue: acc.grossRevenue + (isPaid ? transaction.amount : 0),
+      };
+    },
+    {
+      revenue: 0,
+      printCount: 0,
+      transactionCount: 0,
+      paidCount: 0,
+      grossRevenue: 0,
+    },
+  );
   const hasActiveFilters =
     search.trim() ||
     statusFilter !== "all" ||
@@ -140,55 +293,63 @@ export function TransactionsMonitoring() {
     activePage * pageSize,
   );
 
-  async function handleDelete(id: string) {
-    await deleteTransaction.mutateAsync(id);
-    toast.success("Transaction deleted");
-    setSelectedIds((prev) => prev.filter((item) => item !== id));
-    setDeletingId(null);
-  }
-
-  function handleDeleteSelected() {
-    confirmDelete.confirm({
-      title: "Hapus transaksi terpilih?",
-      description: `Apakah Anda yakin ingin menghapus ${selectedIds.length} transaksi yang dipilih? Data tidak dapat dikembalikan.`,
-      confirmLabel: "Hapus Semua",
-      destructive: true,
-      onConfirm: async () => {
-        try {
-          await deleteTransactions.mutateAsync(selectedIds);
-          toast.success(`${selectedIds.length} transaksi berhasil dihapus`);
-          setSelectedIds([]);
-        } catch (err) {
-          toast.error(
-            err instanceof Error ? err.message : "Gagal menghapus transaksi",
-          );
-        }
-      },
-    });
+  async function handleRequestAction(
+    transaction: Transaction,
+    action: TransactionActionType,
+  ) {
+    try {
+      await requestAction.mutateAsync({
+        transactionId: transaction.id,
+        action,
+      });
+      toast.success(
+        `${getTransactionActionLabel(action)} menunggu approval Super Admin.`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Gagal membuat request",
+      );
+    }
   }
 
   return (
     <div>
-      {confirmDelete.dialog}
       <PageHeader
         title="Transaction & QRIS Monitoring"
         description="Track live payments, failed logs, manual verification, retry, and refund tools."
       />
 
-      <TransactionDetailsDialog
-        transaction={editing}
-        submitting={updateTransaction.isPending}
-        onClose={() => setEditing(null)}
-        onSubmit={async (patch) => {
-          if (!editing) return;
-          await updateTransaction.mutateAsync({
-            id: editing.id,
-            patch,
-          });
-          toast.success("Transaction updated");
-          setEditing(null);
-        }}
-      />
+      <Card className="mb-4">
+        <CardContent className="grid gap-4 p-5 md:grid-cols-3">
+          <TransactionSummaryMetric
+            icon={Banknote}
+            label="Jumlah pendapatan"
+            value={formatCurrency(summary.revenue)}
+            description={
+              <div className="space-y-0.5">
+                <div>Bruto {formatCurrency(summary.grossRevenue)}</div>
+                <div>potongan QRIS {getConfiguredFeeRuleLabel(config)}</div>
+              </div>
+            }
+          />
+          <TransactionSummaryMetric
+            icon={Printer}
+            label="Jumlah print"
+            value={`${summary.printCount} print`}
+            description="Dari transaksi paid"
+          />
+          <TransactionSummaryMetric
+            icon={ReceiptText}
+            label="Jumlah transaksi"
+            value={`${summary.transactionCount} transaksi`}
+            description={
+              hasActiveFilters
+                ? `Hasil filter dari ${data.length} transaksi`
+                : "Semua transaksi"
+            }
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -271,59 +432,20 @@ export function TransactionsMonitoring() {
               <span>
                 {filtered.length} of {data.length} transactions
               </span>
-              {selectedIds.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={handleDeleteSelected}
-                  className="flex items-center gap-1.5 animate-in fade-in duration-200"
-                >
-                  <Trash2 className="size-3.5" /> Hapus Terpilih (
-                  {selectedIds.length})
-                </Button>
-              )}
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="hidden xl:block overflow-x-auto">
-            <Table className="min-w-[1120px]">
+          <div className="hidden overflow-x-auto xl:block">
+            <Table className="min-w-180">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">
-                    <input
-                      type="checkbox"
-                      className="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950 accent-zinc-900 cursor-pointer"
-                      checked={
-                        filtered.length > 0 &&
-                        filtered.every((t) => selectedIds.includes(t.id))
-                      }
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedIds((prev) => {
-                            const newIds = [...prev];
-                            filtered.forEach((t) => {
-                              if (!newIds.includes(t.id)) newIds.push(t.id);
-                            });
-                            return newIds;
-                          });
-                          return;
-                        }
-                        setSelectedIds((prev) =>
-                          prev.filter(
-                            (id) => !filtered.some((t) => t.id === id),
-                          ),
-                        );
-                      }}
-                      aria-label="Pilih semua transaksi"
-                    />
-                  </TableHead>
                   <TableHead>ID</TableHead>
                   <TableHead>Tanggal & Jam</TableHead>
                   <TableHead>Device</TableHead>
                   <TableHead>Payment Method</TableHead>
                   <TableHead>Package</TableHead>
-                  <TableHead>Amount</TableHead>
+                  <TableHead>Amount net</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -332,36 +454,16 @@ export function TransactionsMonitoring() {
                 {paginatedTransactions.map((transaction: Transaction) => {
                   const paymentMethod =
                     getTransactionPaymentMethod(transaction);
+                  const netAmount = getTransactionNetAmount(transaction, config);
+                  const hasGatewayFeeBreakdown =
+                    paymentMethod === "QRIS" && transaction.status === "paid";
+                  const feeRuleLabel = getTransactionFeeRuleLabel(
+                    transaction,
+                    config,
+                  );
 
                   return (
-                    <TableRow
-                      key={transaction.id}
-                      className={
-                        selectedIds.includes(transaction.id)
-                          ? "bg-zinc-50/60"
-                          : ""
-                      }
-                    >
-                      <TableCell className="w-12">
-                        <input
-                          type="checkbox"
-                          className="size-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950 accent-zinc-900 cursor-pointer"
-                          checked={selectedIds.includes(transaction.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedIds((prev) => [
-                                ...prev,
-                                transaction.id,
-                              ]);
-                              return;
-                            }
-                            setSelectedIds((prev) =>
-                              prev.filter((id) => id !== transaction.id),
-                            );
-                          }}
-                          aria-label={`Pilih transaksi ${transaction.id.slice(0, 8)}`}
-                        />
-                      </TableCell>
+                    <TableRow key={transaction.id}>
                       <TableCell className="max-w-[120px] font-mono text-xs break-words">
                         {transaction.id}
                       </TableCell>
@@ -377,68 +479,38 @@ export function TransactionsMonitoring() {
                       <TableCell className="max-w-[160px] break-words">
                         {transaction.packageName}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {formatCurrency(transaction.amount)}
+                      <TableCell className="min-w-[140px]">
+                        <div className="whitespace-nowrap font-medium text-zinc-950">
+                          {formatCurrency(netAmount)}
+                        </div>
+                        {hasGatewayFeeBreakdown ? (
+                          <AmountBreakdown
+                            gross={transaction.amount}
+                            feeLabel={feeRuleLabel}
+                          />
+                        ) : null}
                       </TableCell>
                       <TableCell>
                         {renderTransactionStatus(transaction.status)}
                       </TableCell>
                       <TableCell>
-                        {deletingId === transaction.id ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-zinc-500">
-                              Delete?
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              disabled={deleteTransaction.isPending}
-                              onClick={() => void handleDelete(transaction.id)}
-                            >
-                              {deleteTransaction.isPending ? "…" : "Yes"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setDeletingId(null)}
-                            >
-                              No
-                            </Button>
-                          </div>
+                        {transaction.pendingAction ? (
+                          <Badge variant="warning">
+                            {getTransactionActionLabel(
+                              transaction.pendingAction.action,
+                            )}
+                          </Badge>
                         ) : (
                           <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditing(transaction)}
-                            >
-                              <Edit2 className="size-3.5" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-500 hover:text-red-700"
-                              onClick={() => setDeletingId(transaction.id)}
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
                             <DropdownMenu
-                              items={[
-                                {
-                                  label: "Manual verify",
-                                  onClick: () =>
-                                    toast.success("Payment verified"),
-                                },
-                                {
-                                  label: "Retry QRIS",
-                                  onClick: () => toast.message("Retry sent"),
-                                },
-                                {
-                                  label: "Refund",
-                                  destructive: true,
-                                  onClick: () => toast.error("Refund queued"),
-                                },
-                              ]}
+                              items={getTransactionActionItems(
+                                transaction,
+                                (selectedTransaction, action) =>
+                                  void handleRequestAction(
+                                    selectedTransaction,
+                                    action,
+                                  ),
+                              )}
                             />
                           </div>
                         )}
@@ -449,7 +521,7 @@ export function TransactionsMonitoring() {
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={9}
+                      colSpan={8}
                       className="py-10 text-center text-sm text-zinc-400"
                     >
                       No transactions found.
@@ -462,11 +534,18 @@ export function TransactionsMonitoring() {
           <div className="space-y-3 xl:hidden">
             {paginatedTransactions.map((transaction: Transaction) => {
               const paymentMethod = getTransactionPaymentMethod(transaction);
+              const netAmount = getTransactionNetAmount(transaction, config);
+              const hasGatewayFeeBreakdown =
+                paymentMethod === "QRIS" && transaction.status === "paid";
+              const feeRuleLabel = getTransactionFeeRuleLabel(
+                transaction,
+                config,
+              );
 
               return (
                 <div
                   key={transaction.id}
-                  className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm"
+                  className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -474,27 +553,28 @@ export function TransactionsMonitoring() {
                         {renderPaymentMethod(paymentMethod)}
                         {renderTransactionStatus(transaction.status)}
                       </div>
-                      <p className="mt-2 break-all font-mono text-xs text-zinc-500">
+                      <p className="mt-2 text-lg font-semibold text-zinc-950">
+                        {formatCurrency(netAmount)}
+                      </p>
+                      {hasGatewayFeeBreakdown ? (
+                        <AmountBreakdown
+                          gross={transaction.amount}
+                          feeLabel={feeRuleLabel}
+                        />
+                      ) : null}
+                      <p className="mt-1 break-all font-mono text-xs text-zinc-500">
                         {transaction.id}
                       </p>
                     </div>
-                    <input
-                      type="checkbox"
-                      className="mt-1 size-4 shrink-0 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-950 accent-zinc-900 cursor-pointer"
-                      checked={selectedIds.includes(transaction.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedIds((prev) => [...prev, transaction.id]);
-                          return;
-                        }
-                        setSelectedIds((prev) =>
-                          prev.filter((id) => id !== transaction.id),
-                        );
-                      }}
-                      aria-label={`Pilih transaksi ${transaction.id.slice(0, 8)}`}
-                    />
+                    {transaction.pendingAction ? (
+                      <Badge variant="warning">
+                        {getTransactionActionLabel(
+                          transaction.pendingAction.action,
+                        )}
+                      </Badge>
+                    ) : null}
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3">
+                  <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
                     <div>
                       <p className="text-xs text-zinc-500">Tanggal</p>
                       <p className="mt-1 text-zinc-700">
@@ -514,12 +594,6 @@ export function TransactionsMonitoring() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-zinc-500">Amount</p>
-                      <p className="mt-1 font-medium text-zinc-900">
-                        {formatCurrency(transaction.amount)}
-                      </p>
-                    </div>
-                    <div>
                       <p className="text-xs text-zinc-500">Customer</p>
                       <p className="mt-1 break-words text-zinc-900">
                         {transaction.customer}
@@ -530,65 +604,22 @@ export function TransactionsMonitoring() {
                       <p className="mt-1 text-zinc-900">{paymentMethod}</p>
                     </div>
                   </div>
-                  <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-                    {deletingId === transaction.id ? (
-                      <>
-                        <span className="mr-auto text-xs text-zinc-500">
-                          Delete?
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          disabled={deleteTransaction.isPending}
-                          onClick={() => void handleDelete(transaction.id)}
-                        >
-                          {deleteTransaction.isPending ? "…" : "Yes"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setDeletingId(null)}
-                        >
-                          No
-                        </Button>
-                      </>
+                  <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-zinc-100 pt-3">
+                    {transaction.pendingAction ? (
+                      <span className="text-xs text-zinc-500">
+                        Menunggu approval Super Admin
+                      </span>
                     ) : (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEditing(transaction)}
-                        >
-                          <Edit2 className="size-3.5" />
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-500 hover:text-red-700"
-                          onClick={() => setDeletingId(transaction.id)}
-                        >
-                          <Trash2 className="size-3.5" />
-                          Delete
-                        </Button>
-                        <DropdownMenu
-                          items={[
-                            {
-                              label: "Manual verify",
-                              onClick: () => toast.success("Payment verified"),
-                            },
-                            {
-                              label: "Retry QRIS",
-                              onClick: () => toast.message("Retry sent"),
-                            },
-                            {
-                              label: "Refund",
-                              destructive: true,
-                              onClick: () => toast.error("Refund queued"),
-                            },
-                          ]}
-                        />
-                      </>
+                      <DropdownMenu
+                        items={getTransactionActionItems(
+                          transaction,
+                          (selectedTransaction, action) =>
+                            void handleRequestAction(
+                              selectedTransaction,
+                              action,
+                            ),
+                        )}
+                      />
                     )}
                   </div>
                 </div>

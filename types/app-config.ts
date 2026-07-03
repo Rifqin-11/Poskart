@@ -35,8 +35,12 @@ export type AppConfigRow = {
   qris_webhook_secret: string;
   qris_auto_retry: boolean;
   subscription_payment_gateway: "duitku" | "midtrans" | "both";
+  gateway_fee_type: "percentage" | "fixed";
   gateway_fee_percentage: number;
+  gateway_fee_fixed_amount: number;
+  platform_fee_type: "percentage" | "fixed";
   platform_fee_percentage: number;
+  platform_fee_fixed_amount: number;
   payout_adjustment_amount: number;
   minimum_payout_amount: number;
   // Device

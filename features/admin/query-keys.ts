@@ -1,6 +1,8 @@
 export const adminQueryKeys = {
   dashboard: ["dashboard"] as const,
   transactions: ["transactions"] as const,
+  transactionActionRequests: ["transaction-action-requests"] as const,
+  adminNotifications: ["admin-notifications"] as const,
   failedPrints: (boothName?: string | null) => ["failed-prints", boothName ?? null] as const,
   devices: ["devices"] as const,
   templates: ["templates"] as const,

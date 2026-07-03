@@ -32,35 +32,45 @@ export function useRetryPrint() {
   });
 }
 
-export function useUpdateTransaction() {
+export function useRequestTransactionAction() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: transactionsApi.updateTransaction,
+    mutationFn: transactionsApi.requestTransactionAction,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.transactionActionRequests,
+      });
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.adminNotifications,
+      });
     },
   });
 }
 
-export function useDeleteTransaction() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: transactionsApi.deleteTransaction,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
-    },
+export function useTransactionActionRequests() {
+  return useQuery<
+    Awaited<ReturnType<typeof transactionsApi.getTransactionActionRequestsForSuperadmin>>,
+    Error
+  >({
+    queryKey: adminQueryKeys.transactionActionRequests,
+    queryFn: transactionsApi.getTransactionActionRequestsForSuperadmin,
   });
 }
 
-export function useDeleteTransactions() {
+export function useReviewTransactionActionRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: transactionsApi.deleteTransactions,
+    mutationFn: transactionsApi.reviewTransactionActionRequest,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.transactionActionRequests,
+      });
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.adminNotifications,
+      });
     },
   });
 }

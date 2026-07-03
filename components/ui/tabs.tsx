@@ -36,7 +36,10 @@ export function Tabs({
 export function TabsList({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("inline-flex h-9 items-center rounded-full bg-zinc-100 p-1", className)}
+      className={cn(
+        "flex min-h-9 flex-wrap items-center gap-1 rounded-full bg-zinc-100 p-1",
+        className,
+      )}
       {...props}
     />
   );
@@ -59,7 +62,7 @@ export function TabsTrigger({
       type="button"
       onClick={() => context?.setValue(value)}
       className={cn(
-        "inline-flex h-7 items-center justify-center rounded-full px-3 text-xs font-medium text-zinc-500 transition-colors",
+        "inline-flex h-7 items-center justify-center whitespace-nowrap rounded-full px-3 text-xs font-medium text-zinc-500 transition-colors",
         selected && "bg-white text-zinc-950 shadow-sm",
         className,
       )}

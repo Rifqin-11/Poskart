@@ -4,7 +4,8 @@ export const transactionsApi = {
   getTransactions: transactionService.getTransactions,
   getFailedPrintsByBooth: transactionService.getFailedPrintsByBooth,
   retryPrint: transactionService.retryPrint,
-  updateTransaction: transactionService.updateTransaction,
-  deleteTransaction: transactionService.deleteTransaction,
-  deleteTransactions: transactionService.deleteTransactions,
+  requestTransactionAction: transactionService.requestTransactionAction,
+  getTransactionActionRequestsForSuperadmin:
+    transactionService.getTransactionActionRequestsForSuperadmin,
+  reviewTransactionActionRequest: transactionService.reviewTransactionActionRequest,
 };

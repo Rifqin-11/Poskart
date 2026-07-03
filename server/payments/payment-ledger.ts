@@ -25,8 +25,9 @@ type LedgerTransactionRow = {
 };
 
 type PayoutFeeSettings = {
+  gatewayFeeType: "percentage" | "fixed";
   gatewayFeePercentage: number;
-  platformFeePercentage: number;
+  gatewayFeeFixedAmount: number;
 };
 
 export async function recordDuitkuPaymentLedgerEntry(
@@ -77,10 +78,13 @@ export async function recordDuitkuPaymentLedgerEntry(
   const gatewayFeeFromDuitku = parseMoney(verifiedStatus.fee);
   const gatewayFeeAmount =
     gatewayFeeFromDuitku ??
-    Math.round((grossAmount * settings.gatewayFeePercentage) / 100);
-  const platformFeeAmount = Math.round(
-    (grossAmount * settings.platformFeePercentage) / 100,
-  );
+    calculateConfiguredFee(
+      grossAmount,
+      settings.gatewayFeeType,
+      settings.gatewayFeePercentage,
+      settings.gatewayFeeFixedAmount,
+    );
+  const platformFeeAmount = 0;
   const netAmount = Math.max(0, grossAmount - gatewayFeeAmount - platformFeeAmount);
   const now = new Date().toISOString();
   const paidAt = transaction.paid_at ?? now;
@@ -131,21 +135,44 @@ async function loadPayoutFeeSettings(
 ): Promise<PayoutFeeSettings> {
   const { data, error } = await supabase
     .from("app_configs")
-    .select("gateway_fee_percentage,platform_fee_percentage")
+    .select(
+      "gateway_fee_type,gateway_fee_percentage,gateway_fee_fixed_amount",
+    )
     .eq("id", "default")
     .maybeSingle();
 
   if (error) {
     if (error.code === "42703" || error.code === "42P01") {
-      return { gatewayFeePercentage: 0, platformFeePercentage: 0 };
+      return {
+        gatewayFeeType: "percentage",
+        gatewayFeePercentage: 0,
+        gatewayFeeFixedAmount: 0,
+      };
     }
     throw new Error(`Gagal memuat fee payout: ${error.message}`);
   }
 
   return {
+    gatewayFeeType: normalizeFeeType(data?.gateway_fee_type),
     gatewayFeePercentage: Number(data?.gateway_fee_percentage ?? 0),
-    platformFeePercentage: Number(data?.platform_fee_percentage ?? 0),
+    gatewayFeeFixedAmount: Number(data?.gateway_fee_fixed_amount ?? 0),
   };
+}
+
+function calculateConfiguredFee(
+  grossAmount: number,
+  feeType: "percentage" | "fixed",
+  percentage: number,
+  fixedAmount: number,
+) {
+  if (feeType === "fixed") {
+    return Math.max(0, Math.round(Number(fixedAmount)));
+  }
+  return Math.max(0, Math.round((grossAmount * Number(percentage ?? 0)) / 100));
+}
+
+function normalizeFeeType(value: unknown): "percentage" | "fixed" {
+  return value === "fixed" ? "fixed" : "percentage";
 }
 
 function parseMoney(value: unknown) {

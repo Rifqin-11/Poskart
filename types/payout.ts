@@ -6,6 +6,7 @@ export type PayoutStatus =
   | "canceled";
 
 export type PaymentCollectionMode = "platform" | "custom";
+export type PayoutFeeType = "percentage" | "fixed";
 
 export type PayoutAccount = {
   id: string;
@@ -19,16 +20,22 @@ export type PayoutAccount = {
 };
 
 export type PayoutSettings = {
+  gatewayFeeType: PayoutFeeType;
   gatewayFeePercentage: number;
+  gatewayFeeFixedAmount: number;
+  platformFeeType: PayoutFeeType;
   platformFeePercentage: number;
-  payoutAdjustmentAmount: number;
+  platformFeeFixedAmount: number;
   minimumPayoutAmount: number;
 };
 
 export type SavePayoutSettingsInput = {
+  gatewayFeeType: PayoutFeeType;
   gatewayFeePercentage: number;
+  gatewayFeeFixedAmount: number;
+  platformFeeType: PayoutFeeType;
   platformFeePercentage: number;
-  payoutAdjustmentAmount: number;
+  platformFeeFixedAmount: number;
   minimumPayoutAmount?: number;
 };
 
@@ -91,6 +98,9 @@ export type PayoutInvoice = {
   reviewedAt: string | null;
   paidAt: string | null;
   paymentReference: string | null;
+  paymentProofUrl: string | null;
+  paymentProofKey: string | null;
+  paymentProofUploadedAt: string | null;
   notes: string | null;
   reviewNotes: string | null;
   rejectionReason: string | null;

@@ -1,5 +1,18 @@
 export type PrintStatus = "pending" | "printed" | "failed" | "reprinting";
 export type TransactionProvider = "QRIS" | "Cash" | "Voucher";
+export type TransactionActionType = "verify" | "refund" | "archive";
+export type TransactionActionStatus =
+  | "requested"
+  | "approved"
+  | "rejected"
+  | "canceled";
+
+export type TransactionPendingAction = {
+  id: string;
+  action: TransactionActionType;
+  status: TransactionActionStatus;
+  requestedAt: string;
+};
 
 export type Transaction = {
   id: string;
@@ -16,4 +29,30 @@ export type Transaction = {
   printStatus: PrintStatus;
   printAttempts: number;
   printLastError?: string | null;
+  pendingAction?: TransactionPendingAction | null;
+};
+
+export type TransactionActionRequest = {
+  id: string;
+  transactionId: string;
+  organizationId: string;
+  organizationName: string | null;
+  action: TransactionActionType;
+  status: TransactionActionStatus;
+  reason: string | null;
+  requestedBy: string | null;
+  requestedByEmail: string | null;
+  requestedAt: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNotes: string | null;
+  transaction: {
+    id: string;
+    booth: string;
+    packageName: string;
+    amount: number;
+    status: Transaction["status"];
+    provider: TransactionProvider;
+    createdAt: string;
+  } | null;
 };
