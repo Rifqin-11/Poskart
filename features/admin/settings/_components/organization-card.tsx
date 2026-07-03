@@ -13,6 +13,9 @@ import {
   Timer,
   Trash2,
   UserRound,
+  Copy,
+  Check,
+  LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -37,18 +40,26 @@ import {
   useTenantInvitations,
   useTenantMembers,
   useUpdateTenantName,
+  useLeaveOrganization,
+  useTransferOwnership,
+  useUpdateMemberRole,
+  usePendingJoinRequests,
+  useAcceptJoinRequest,
+  useRejectJoinRequest,
 } from "@/features/admin/organization/use-organization";
 import {
   SettingsCard,
   SettingsPanelBlock,
 } from "./settings-card";
 import { PayoutAccountForm } from "@/features/admin/payout/payout-account-form";
+import { Select } from "@/components/ui/select";
 import { getMyPayoutSummary } from "@/server/admin/actions/payout-actions";
 import type { PayoutAccount } from "@/types/payout";
 
 type OrganizationCardProps = {
   myEmail: string;
   subscriptionRequired: boolean;
+  isEditing: boolean;
 };
 
 type OrganizationMemberRow = {
@@ -56,12 +67,22 @@ type OrganizationMemberRow = {
   email: string;
   role: string;
   created_at: string;
+  profile_id?: string;
 };
 
 type OrganizationInvitationRow = {
   id: string;
   email: string;
   created_at: string;
+};
+
+type OrganizationJoinRequestRow = {
+  id: string;
+  created_at: string;
+  profile: {
+    id: string;
+    email: string;
+  };
 };
 
 function formatDate(value?: string | null) {
@@ -100,6 +121,7 @@ function OrganizationMetric({
 export function OrganizationCard({
   myEmail,
   subscriptionRequired,
+  isEditing,
 }: OrganizationCardProps) {
   const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
   const { data: members = [] } = useTenantMembers();
@@ -108,9 +130,19 @@ export function OrganizationCard({
   const inviteUser = useInviteUser();
   const deleteInvitation = useDeleteInvitation();
   const removeMember = useRemoveMember();
+  const leaveOrg = useLeaveOrganization();
+  const transferOwnership = useTransferOwnership();
+  const updateMemberRole = useUpdateMemberRole();
+  const { data: pendingRequests = [] } = usePendingJoinRequests();
+  const acceptJoinRequest = useAcceptJoinRequest();
+  const rejectJoinRequest = useRejectJoinRequest();
+  
   const confirmRemove = useConfirmDialog();
+  const confirmTransfer = useConfirmDialog();
+  const confirmLeave = useConfirmDialog();
 
   const [editedName, setEditedName] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] =
     useState(subscriptionRequired);
@@ -139,10 +171,23 @@ export function OrganizationCard({
   const joinCode = tenant?.join_code ?? "Pending";
   const memberRows = members as OrganizationMemberRow[];
   const invitationRows = invitations as OrganizationInvitationRow[];
+  const requestRows = pendingRequests as OrganizationJoinRequestRow[];
+
+  const currentMember = memberRows.find((m) => m.email === myEmail);
+  const myRole = currentMember?.role ?? "partner";
+
+  const isOwner = myRole === "owner";
+  const isAdmin = myRole === "admin";
+  const canManageTeam = isOwner || isAdmin;
+  const canEditDetails = isOwner || isAdmin;
+  const canViewPayout = isOwner;
+  const canViewSubscription = isOwner;
 
   return (
     <div className="space-y-8">
       {confirmRemove.dialog}
+      {confirmTransfer.dialog}
+      {confirmLeave.dialog}
       {subscriptionRequired || isFreeAccount ? (
         <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <div className="flex items-start gap-3">
@@ -182,66 +227,95 @@ export function OrganizationCard({
                     : tenant?.name ?? "POSKART Workspace"}
                 </div>
               </div>
-              <Badge
-                variant={subscriptionActive ? "default" : "secondary"}
-                className="capitalize"
-              >
-                {subscriptionActive ? "active" : subscriptionStatus}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={subscriptionActive ? "default" : "secondary"}
+                  className="capitalize"
+                >
+                  {subscriptionActive ? "active" : subscriptionStatus}
+                </Badge>
+              </div>
             </div>
           </SettingsPanelBlock>
 
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <label className="block text-xs font-medium text-zinc-600">
-              Edit organization name
-              <Input
-                className="mt-1.5"
-                value={organizationName}
-                onChange={(event) => setEditedName(event.target.value)}
-                placeholder="POSKART Admin"
-              />
-            </label>
-            <Button
-              className="self-end rounded-2xl"
-              disabled={
-                !organizationName.trim() ||
-                organizationName === tenant?.name ||
-                updateName.isPending
-              }
-              onClick={() => {
-                updateName.mutate(organizationName.trim(), {
-                  onSuccess: () => {
-                    toast.success("Organization name updated");
-                    setEditedName(null);
-                  },
-                  onError: (err) =>
-                    toast.error(
-                      err instanceof Error
-                        ? err.message
-                        : "Failed to update organization",
-                    ),
-                });
-              }}
-            >
-              {updateName.isPending ? "Saving..." : "Save name"}
-            </Button>
-          </div>
-
-          <div className="rounded-3xl border border-zinc-200 bg-zinc-50/70 p-4">
-            <div className="flex items-center gap-2 text-xs font-medium text-zinc-500">
-              <KeyRound className="size-3.5" />
-              Organization join code
-            </div>
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="inline-flex w-fit rounded-2xl border border-zinc-200 bg-white px-4 py-2 font-mono text-sm font-semibold tracking-[0.24em] text-zinc-950">
-                {joinCode}
+          {isEditing && canEditDetails && (
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <label className="block text-xs font-medium text-zinc-600">
+                Edit organization name
+                <Input
+                  className="mt-1.5"
+                  value={organizationName}
+                  onChange={(event) => setEditedName(event.target.value)}
+                  placeholder="POSKART Admin"
+                />
+              </label>
+              <div className="flex gap-2 self-end">
+                <Button
+                  className="rounded-2xl"
+                  disabled={
+                    !organizationName.trim() ||
+                    organizationName === tenant?.name ||
+                    updateName.isPending
+                  }
+                  onClick={() => {
+                    updateName.mutate(organizationName.trim(), {
+                      onSuccess: () => {
+                        toast.success("Organization name updated");
+                        setEditedName(null);
+                      },
+                      onError: (err) =>
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "Failed to update organization",
+                        ),
+                    });
+                  }}
+                >
+                  {updateName.isPending ? "Saving..." : "Save name"}
+                </Button>
               </div>
-              <p className="text-xs leading-5 text-zinc-500">
-                Bagikan code ini ke staff agar mereka bisa join workspace saat
-                onboarding.
-              </p>
             </div>
-          </div>
+          )}
+
+          {canManageTeam && (
+            <div className="rounded-3xl border border-zinc-200 bg-zinc-50/70 p-4">
+              <div className="flex items-center gap-2 text-xs font-medium text-zinc-500">
+                <KeyRound className="size-3.5" />
+                Organization join code
+              </div>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex w-fit rounded-2xl border border-zinc-200 bg-white px-4 py-2 font-mono text-sm font-semibold tracking-[0.24em] text-zinc-950">
+                    {joinCode}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="rounded-2xl shrink-0"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(joinCode);
+                      toast.success("Join code disalin");
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    title="Salin join code"
+                  >
+                    {copied ? (
+                      <Check className="size-4 text-emerald-500" />
+                    ) : (
+                      <Copy className="size-4 text-zinc-500" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs leading-5 text-zinc-500">
+                  Bagikan code ini ke staff agar mereka bisa join workspace saat
+                  onboarding.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </SettingsCard>
 
@@ -277,27 +351,32 @@ export function OrganizationCard({
               value={formatDate(tenant?.subscription_expires_at)}
             />
           </div>
-          <Button
-            type="button"
-            className="w-full rounded-2xl"
-            onClick={() => setSubscriptionDialogOpen(true)}
-          >
-            {isFreeAccount ? "View subscription plans" : "Manage billing"}
-          </Button>
+          {canViewSubscription && (
+            <Button
+              type="button"
+              className="w-full rounded-2xl"
+              onClick={() => setSubscriptionDialogOpen(true)}
+            >
+              {isFreeAccount ? "View subscription plans" : "Manage billing"}
+            </Button>
+          )}
         </div>
       </SettingsCard>
 
-      <SettingsCard
-        icon={<Landmark className="size-4" />}
-        title="Payout account"
-        description="Rekening tujuan pencairan hasil photobooth dari payment gateway POSKART."
-      >
-        <PayoutAccountForm
-          account={payoutAccount}
-          compact
-          onSaved={loadPayoutAccount}
-        />
-      </SettingsCard>
+      {canViewPayout && (
+        <SettingsCard
+          icon={<Landmark className="size-4" />}
+          title="Payout account"
+          description="Rekening tujuan pencairan hasil photobooth dari payment gateway POSKART."
+        >
+          <PayoutAccountForm
+            account={payoutAccount}
+            compact
+            onSaved={loadPayoutAccount}
+            isEditing={isEditing}
+          />
+        </SettingsCard>
+      )}
 
       <SettingsCard
         icon={<UserRound className="size-4" />}
@@ -306,17 +385,19 @@ export function OrganizationCard({
         className="border-b-0 pb-0"
       >
         <div className="space-y-5">
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-2xl"
-              onClick={() => setInviteDialogOpen(true)}
-            >
-              <MailPlus className="size-4" />
-              Invite member
-            </Button>
-          </div>
+          {canManageTeam && isEditing && (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-2xl"
+                onClick={() => setInviteDialogOpen(true)}
+              >
+                <MailPlus className="size-4" />
+                Invite member
+              </Button>
+            </div>
+          )}
 
           <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white">
             <Table>
@@ -325,7 +406,7 @@ export function OrganizationCard({
                   <TableHead>User Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Joined At</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  {canManageTeam && isEditing && <TableHead className="text-right">Action</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -340,48 +421,118 @@ export function OrganizationCard({
                       ) : null}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          member.role === "admin" ? "warning" : "secondary"
-                        }
-                      >
-                        {member.role}
-                      </Badge>
+                      {isEditing && isOwner && member.email !== myEmail ? (
+                        <Select
+                          className="h-8 w-28 rounded-xl text-xs py-0"
+                          value={member.role}
+                          disabled={updateMemberRole.isPending}
+                          onChange={(e) => {
+                            const newRole = e.target.value;
+                            updateMemberRole.mutate(
+                              { memberId: member.id, role: newRole },
+                              {
+                                onSuccess: () => {
+                                  toast.success(`Role ${member.email} berhasil diubah menjadi ${newRole}`);
+                                },
+                                onError: (err) => {
+                                  toast.error(
+                                    err instanceof Error
+                                      ? err.message
+                                      : "Gagal mengubah role",
+                                  );
+                                },
+                              }
+                            );
+                          }}
+                        >
+                          <option value="admin">admin</option>
+                          <option value="designer">designer</option>
+                          <option value="akuntan">akuntan</option>
+                          <option value="partner">partner</option>
+                        </Select>
+                      ) : (
+                        <Badge
+                          variant={
+                            member.role === "admin" ? "warning" : "secondary"
+                          }
+                        >
+                          {member.role}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-zinc-500">
                       {formatDate(member.created_at)}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-zinc-500 hover:bg-red-50 hover:text-red-600"
-                        disabled={member.email === myEmail}
-                        onClick={() => {
-                          confirmRemove.confirm({
-                            title: "Remove member?",
-                            description: `Remove ${member.email} from organization?`,
-                            confirmLabel: "Remove",
-                            destructive: true,
-                            onConfirm: () => {
-                              removeMember.mutate(member.id, {
-                                onSuccess: () => toast.success("Member removed"),
-                                onError: (err) =>
-                                  toast.error(
-                                    err instanceof Error
-                                      ? err.message
-                                      : "Failed to remove member",
-                                  ),
-                              });
-                            },
-                          });
-                        }}
-                      >
-                        <Trash2 className="size-4" />
-                        Remove
-                      </Button>
-                    </TableCell>
+                    {canManageTeam && isEditing && (
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {member.email !== myEmail && (
+                            <>
+                              {isOwner && member.profile_id && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                                  onClick={() => {
+                                    confirmTransfer.confirm({
+                                      title: "Transfer Kepemilikan?",
+                                      description: `Pindahkan kepemilikan workspace ke ${member.email}? Peran Anda akan diturunkan menjadi Admin.`,
+                                      confirmLabel: "Transfer",
+                                      onConfirm: () => {
+                                        transferOwnership.mutate(member.profile_id!, {
+                                          onSuccess: () => toast.success("Kepemilikan berhasil dipindahkan"),
+                                          onError: (err) =>
+                                            toast.error(
+                                              err instanceof Error
+                                                ? err.message
+                                                : "Gagal memindahkan kepemilikan",
+                                            ),
+                                        });
+                                      },
+                                    });
+                                  }}
+                                >
+                                  <KeyRound className="size-4 mr-1 text-amber-500" />
+                                  Make Owner
+                                </Button>
+                              )}
+
+                              {((isOwner) || (isAdmin && member.role !== "owner" && member.role !== "admin")) && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-zinc-500 hover:bg-red-50 hover:text-red-600"
+                                  onClick={() => {
+                                    confirmRemove.confirm({
+                                      title: "Remove member?",
+                                      description: `Remove ${member.email} from organization?`,
+                                      confirmLabel: "Remove",
+                                      destructive: true,
+                                      onConfirm: () => {
+                                        removeMember.mutate(member.id, {
+                                          onSuccess: () => toast.success("Member removed"),
+                                          onError: (err) =>
+                                            toast.error(
+                                              err instanceof Error
+                                                ? err.message
+                                                : "Failed to remove member",
+                                            ),
+                                        });
+                                      },
+                                    });
+                                  }}
+                                >
+                                  <Trash2 className="size-4 mr-1" />
+                                  Remove
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
                 {!memberRows.length ? (
@@ -398,7 +549,7 @@ export function OrganizationCard({
             </Table>
           </div>
 
-          {invitationRows.length ? (
+          {canManageTeam && invitationRows.length > 0 && (
             <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white">
               <div className="border-b border-zinc-100 px-4 py-3 text-sm font-semibold text-zinc-950">
                 Pending invitations
@@ -408,7 +559,7 @@ export function OrganizationCard({
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>Invited At</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    {isEditing && <TableHead className="text-right">Action</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -420,34 +571,158 @@ export function OrganizationCard({
                       <TableCell className="text-zinc-500">
                         {formatDate(invitation.created_at)}
                       </TableCell>
+                      {isEditing && (
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-zinc-500 hover:bg-red-50 hover:text-red-600"
+                            onClick={() => {
+                              deleteInvitation.mutate(invitation.id, {
+                                onSuccess: () =>
+                                  toast.success("Invitation cancelled"),
+                                onError: (err) =>
+                                  toast.error(
+                                    err instanceof Error
+                                      ? err.message
+                                      : "Failed to cancel invitation",
+                                  ),
+                              });
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {canManageTeam && requestRows.length > 0 && (
+            <div className="overflow-hidden rounded-3xl border border-amber-200 bg-white shadow-sm">
+              <div className="border-b border-amber-100 bg-amber-50/50 px-4 py-3 text-sm font-semibold text-amber-900 flex items-center justify-between">
+                <span>Pending Join Requests</span>
+                <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-100">{requestRows.length} requests</Badge>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User Email</TableHead>
+                    <TableHead>Requested At</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {requestRows.map((request) => (
+                    <TableRow key={request.id}>
+                      <TableCell className="font-medium">
+                        {request.profile?.email ?? "Unknown User"}
+                      </TableCell>
+                      <TableCell className="text-zinc-500">
+                        {formatDate(request.created_at)}
+                      </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-zinc-500 hover:bg-red-50 hover:text-red-600"
-                          onClick={() => {
-                            deleteInvitation.mutate(invitation.id, {
-                              onSuccess: () =>
-                                toast.success("Invitation cancelled"),
-                              onError: (err) =>
-                                toast.error(
-                                  err instanceof Error
-                                    ? err.message
-                                    : "Failed to cancel invitation",
-                                ),
-                            });
-                          }}
-                        >
-                          Cancel
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                            disabled={acceptJoinRequest.isPending || rejectJoinRequest.isPending}
+                            onClick={() => {
+                              acceptJoinRequest.mutate(request.id, {
+                                onSuccess: () => toast.success("Permintaan bergabung diterima!"),
+                                onError: (err) =>
+                                  toast.error(
+                                    err instanceof Error
+                                      ? err.message
+                                      : "Gagal menerima permintaan",
+                                  ),
+                              });
+                            }}
+                          >
+                            <Check className="size-3.5 mr-1" />
+                            Accept
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-xl text-zinc-500 hover:bg-red-50 hover:text-red-600"
+                            disabled={acceptJoinRequest.isPending || rejectJoinRequest.isPending}
+                            onClick={() => {
+                              rejectJoinRequest.mutate(request.id, {
+                                onSuccess: () => toast.success("Permintaan bergabung ditolak"),
+                                onError: (err) =>
+                                  toast.error(
+                                    err instanceof Error
+                                      ? err.message
+                                      : "Gagal menolak permintaan",
+                                  ),
+                              });
+                            }}
+                          >
+                            Reject
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
-          ) : null}
+          )}
+        </div>
+      </SettingsCard>
+
+      <SettingsCard
+        icon={<LogOut className="size-4" />}
+        title="Leave Workspace"
+        description="Keluar dari organisasi/workspace ini."
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-zinc-500 leading-6">
+            Setelah keluar, Anda tidak akan lagi memiliki akses ke workspace ini. Anda akan dialihkan ke halaman onboarding untuk bergabung dengan workspace baru atau membuat workspace sendiri.
+          </p>
+          {isOwner && members.length === 1 ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-800">
+              Anda adalah satu-satunya pemilik. Anda tidak dapat meninggalkan workspace ini sebelum memindahkan kepemilikan ke anggota lain atau menghapus workspace.
+            </div>
+          ) : isOwner && members.length > 1 ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-800">
+              Anda adalah pemilik workspace ini. Harap transfer kepemilikan ke anggota lain terlebih dahulu sebelum meninggalkan workspace.
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="destructive"
+              className="rounded-2xl"
+              disabled={leaveOrg.isPending}
+              onClick={() => {
+                confirmLeave.confirm({
+                  title: "Keluar dari Workspace?",
+                  description: "Apakah Anda yakin ingin keluar dari organisasi/workspace ini? Aksi ini tidak dapat dibatalkan.",
+                  confirmLabel: leaveOrg.isPending ? "Keluar..." : "Keluar",
+                  destructive: true,
+                  onConfirm: () => {
+                    leaveOrg.mutate(undefined, {
+                      onError: (err) =>
+                        toast.error(
+                          err instanceof Error ? err.message : "Gagal keluar dari organisasi",
+                        ),
+                    });
+                  },
+                });
+              }}
+            >
+              <LogOut className="size-4 mr-2" />
+              {leaveOrg.isPending ? "Keluar..." : "Keluar dari Organisasi"}
+            </Button>
+          )}
         </div>
       </SettingsCard>
 

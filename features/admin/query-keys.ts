@@ -22,4 +22,5 @@ export const adminQueryKeys = {
   organizationDetails: ["organization-details"] as const,
   organizationMembers: ["organization-members"] as const,
   organizationInvitations: ["organization-invitations"] as const,
+  organizationJoinRequests: ["organization-join-requests"] as const,
 };

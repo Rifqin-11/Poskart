@@ -1,4 +1,5 @@
 export type PayoutStatus =
+  | "pending_approval"
   | "requested"
   | "approved"
   | "paid"

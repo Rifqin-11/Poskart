@@ -8,4 +8,11 @@ export const organizationApi = {
   inviteUser: organizationService.inviteUser,
   deleteInvitation: organizationService.deleteInvitation,
   removeMember: organizationService.removeMember,
+  leaveOrganization: organizationService.leaveOrganization,
+  transferOwnership: organizationService.transferOwnership,
+  updateMemberRole: organizationService.updateMemberRole,
+  acceptJoinRequest: organizationService.acceptJoinRequest,
+  rejectJoinRequest: organizationService.rejectJoinRequest,
+  cancelJoinRequest: organizationService.cancelJoinRequest,
+  getPendingJoinRequests: organizationService.getPendingJoinRequests,
 };

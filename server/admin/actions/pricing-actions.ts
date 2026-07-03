@@ -1,6 +1,6 @@
 "use server";
 
-import { getAdminContext } from "@/server/admin/context";
+import { getAdminContext, verifyRole } from "@/server/admin/context";
 import { PRICING_PLAN_ORDER } from "@/lib/constants/business";
 import {
   assertSupabaseResult,
@@ -31,7 +31,7 @@ export async function getPricingProducts(): Promise<PricingProduct[]> {
 export async function createPricingProduct(
   values: PricingProductInput,
 ): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "akuntan"]);
   const id = `PRC-${Date.now()}`;
   const { error } = await supabase.from("pricing_products").insert({
     id,
@@ -53,7 +53,7 @@ export async function updatePricingProduct(
   id: string,
   patch: Partial<PricingProductInput>,
 ): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "akuntan"]);
   const dbPatch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
@@ -79,7 +79,7 @@ export async function updatePricingProduct(
 }
 
 export async function deletePricingProduct(id: string): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "akuntan"]);
   const { error } = await supabase
     .from("pricing_products")
     .delete()
@@ -109,7 +109,7 @@ export async function updateSubscriptionPlan(
   id: string,
   values: SubscriptionPlanInput,
 ): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "akuntan"]);
   const includedDevices = Math.max(1, Math.floor(values.includedDevices || 1));
   const durationMonths = Math.max(1, Math.floor(values.durationMonths || 1));
   const additionalDevicePriceMonthly = Math.max(

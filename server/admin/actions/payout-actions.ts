@@ -21,7 +21,7 @@ import type {
   SavePayoutAccountInput,
 } from "@/types/payout";
 
-type MembershipRole = "owner" | "admin" | "staff" | "designer";
+type MembershipRole = "owner" | "admin" | "designer" | "akuntan" | "partner";
 
 type PayoutAccountRow = {
   id: string;
@@ -184,7 +184,7 @@ function readString(value: unknown) {
 }
 
 function isManageableRole(role?: string | null) {
-  return role === "owner" || role === "admin";
+  return role === "owner" || role === "admin" || role === "akuntan";
 }
 
 async function getOrganizationContext(options?: { requireManager?: boolean }) {
@@ -201,7 +201,7 @@ async function getOrganizationContext(options?: { requireManager?: boolean }) {
 
   const role = data.role as MembershipRole;
   if (options?.requireManager && !isManageableRole(role)) {
-    throw new Error("Hanya owner/admin organisasi yang bisa mengajukan payout.");
+    throw new Error("Hanya owner/admin/akuntan organisasi yang bisa mengajukan payout.");
   }
 
   return { supabase, user, organizationId: data.organization_id as string, role };
@@ -576,9 +576,14 @@ export async function saveMyPayoutAccount(
   values: SavePayoutAccountInput,
 ): Promise<PayoutActionState> {
   try {
-    const { supabase, organizationId } = await getOrganizationContext({
+    const { supabase, organizationId, role } = await getOrganizationContext({
       requireManager: true,
     });
+    
+    if (role === "akuntan") {
+      return { success: false, error: "Hanya owner atau admin yang dapat mengubah rekening pencairan." };
+    }
+
     const bankName = values.bankName.trim();
     const accountNumber = values.accountNumber.trim();
     const accountHolderName = values.accountHolderName.trim();
@@ -629,9 +634,11 @@ export async function requestPayout(
   values: RequestPayoutInput,
 ): Promise<PayoutActionState> {
   try {
-    const { supabase, user, organizationId } = await getOrganizationContext({
+    const { supabase, user, organizationId, role } = await getOrganizationContext({
       requireManager: true,
     });
+    const isAccountant = role === "akuntan";
+    const initialStatus = isAccountant ? "pending_approval" : "requested";
     const ledgerClient = createSupabaseAdminClient();
     const requestedAmount = Math.round(Number(values.amount));
     if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
@@ -717,7 +724,7 @@ export async function requestPayout(
         invoice_number: invoiceNumber,
         organization_id: organizationId,
         payout_account_id: account.id,
-        status: "requested",
+        status: initialStatus,
         gross_amount: totals.grossAmount,
         gateway_fee_amount: totals.gatewayFeeAmount,
         platform_fee_amount: platformFeeAmount,
@@ -748,7 +755,7 @@ export async function requestPayout(
     const { data: lockedRows, error: lockError } = await ledgerClient
       .from("payment_ledger_entries")
       .update({
-        settlement_status: "requested",
+        settlement_status: initialStatus,
         payout_invoice_id: invoice.id,
         updated_at: now,
       })
@@ -788,7 +795,7 @@ export async function requestPayout(
     await ledgerClient
       .from("transactions")
       .update({
-        payout_status: "requested",
+        payout_status: initialStatus,
         payout_invoice_id: invoice.id,
         updated_at: now,
       })
@@ -848,19 +855,34 @@ export async function requestPayout(
 
     revalidatePath("/invoices");
     revalidatePath("/superadmin");
-    await notifySafely(ledgerClient, {
-      audience: "superadmin",
-      type: "payout.requested",
-      title: "Request pencairan baru",
-      body: `${invoiceNumber} menunggu review Super Admin.`,
-      href: "/superadmin",
-      organizationId,
-      metadata: {
-        invoiceId: invoice.id,
-        invoiceNumber,
-        netAmount: invoiceNetAmount,
-      },
-    });
+    if (isAccountant) {
+      await notifySafely(ledgerClient, {
+        audience: "organization",
+        type: "payout.needs_approval",
+        title: "Persetujuan Pencairan",
+        body: `Akuntan mengajukan draf pencairan sebesar Rp ${invoiceNetAmount.toLocaleString("id-ID")}. Mohon ditinjau.`,
+        href: "/invoices",
+        organizationId,
+        metadata: {
+          invoiceId: invoice.id,
+          invoiceNumber,
+        },
+      });
+    } else {
+      await notifySafely(ledgerClient, {
+        audience: "superadmin",
+        type: "payout.requested",
+        title: "Request pencairan baru",
+        body: `${invoiceNumber} menunggu review Super Admin.`,
+        href: "/superadmin",
+        organizationId,
+        metadata: {
+          invoiceId: invoice.id,
+          invoiceNumber,
+          netAmount: invoiceNetAmount,
+        },
+      });
+    }
     return { success: true };
   } catch (error) {
     return {
@@ -1159,6 +1181,263 @@ export async function markPayoutInvoicePaid(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Gagal mark paid.",
+    };
+  }
+}
+
+export async function approveInternalPayoutRequest(
+  invoiceId: string,
+): Promise<PayoutActionState> {
+  try {
+    const { supabase, user, organizationId, role } = await getOrganizationContext({
+      requireManager: true,
+    });
+    
+    if (role === "akuntan") {
+      return { success: false, error: "Hanya owner atau admin yang dapat menyetujui pencairan." };
+    }
+
+    const ledgerClient = createSupabaseAdminClient();
+    const now = new Date().toISOString();
+
+    const { data: invoice, error: fetchError } = await supabase
+      .from("payout_invoices")
+      .select("id, status, invoice_number, net_amount, requested_by")
+      .eq("id", invoiceId)
+      .eq("organization_id", organizationId)
+      .single();
+
+    if (fetchError || !invoice) {
+      return { success: false, error: "Invoice tidak ditemukan." };
+    }
+
+    if (invoice.status !== "pending_approval") {
+      return { success: false, error: "Invoice tidak dalam status pending_approval." };
+    }
+
+    // Update the invoice status
+    const { error: updateError } = await supabase
+      .from("payout_invoices")
+      .update({
+        status: "requested",
+        reviewed_by: user.id,
+        reviewed_at: now,
+        updated_at: now,
+      })
+      .eq("id", invoiceId);
+
+    if (updateError) {
+      return { success: false, error: "Gagal menyetujui invoice." };
+    }
+
+    // Update related transactions and payment_ledger_entries status
+    await ledgerClient
+      .from("transactions")
+      .update({ payout_status: "requested", updated_at: now })
+      .eq("payout_invoice_id", invoiceId);
+
+    await ledgerClient
+      .from("payment_ledger_entries")
+      .update({ settlement_status: "requested", updated_at: now })
+      .eq("payout_invoice_id", invoiceId);
+
+    revalidatePath("/invoices");
+    revalidatePath("/superadmin");
+    
+    // Notify superadmin
+    await notifySafely(ledgerClient, {
+      audience: "superadmin",
+      type: "payout.requested",
+      title: "Request pencairan disetujui internal",
+      body: `${invoice.invoice_number} disetujui owner/admin dan menunggu review Super Admin.`,
+      href: "/superadmin",
+      organizationId,
+      metadata: {
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoice_number,
+        netAmount: invoice.net_amount,
+      },
+    });
+
+    // Notify the accountant who requested it
+    if (invoice.requested_by) {
+       await notifySafely(ledgerClient, {
+         audience: "user",
+         recipientProfileId: invoice.requested_by,
+         organizationId,
+         type: "payout.approved_internal",
+         title: "Draf Pencairan Disetujui",
+         body: `Draf pencairan ${invoice.invoice_number} telah disetujui dan diteruskan ke Platform.`,
+         href: "/invoices",
+       });
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal menyetujui payout.",
+    };
+  }
+}
+
+export async function rejectInternalPayoutRequest(
+  invoiceId: string,
+  reason: string,
+): Promise<PayoutActionState> {
+  try {
+    const { supabase, user, organizationId, role } = await getOrganizationContext({
+      requireManager: true,
+    });
+    
+    if (role === "akuntan") {
+      return { success: false, error: "Hanya owner atau admin yang dapat menolak pencairan." };
+    }
+
+    const ledgerClient = createSupabaseAdminClient();
+    const now = new Date().toISOString();
+
+    const { data: invoice, error: fetchError } = await supabase
+      .from("payout_invoices")
+      .select("id, status, invoice_number, requested_by")
+      .eq("id", invoiceId)
+      .eq("organization_id", organizationId)
+      .single();
+
+    if (fetchError || !invoice) {
+      return { success: false, error: "Invoice tidak ditemukan." };
+    }
+
+    if (invoice.status !== "pending_approval") {
+      return { success: false, error: "Invoice tidak dalam status pending_approval." };
+    }
+
+    // Unlink items
+    await ledgerClient
+      .from("payment_ledger_entries")
+      .update({
+        settlement_status: null,
+        payout_invoice_id: null,
+        updated_at: now,
+      })
+      .eq("payout_invoice_id", invoiceId);
+
+    await ledgerClient
+      .from("transactions")
+      .update({
+        payout_status: null,
+        payout_invoice_id: null,
+        updated_at: now,
+      })
+      .eq("payout_invoice_id", invoiceId);
+
+    // Update invoice status
+    const { error: updateError } = await supabase
+      .from("payout_invoices")
+      .update({
+        status: "rejected",
+        reviewed_by: user.id,
+        reviewed_at: now,
+        rejection_reason: reason.trim() || "Ditolak oleh admin/owner organisasi.",
+        updated_at: now,
+      })
+      .eq("id", invoiceId);
+
+    if (updateError) {
+      return { success: false, error: "Gagal menolak invoice." };
+    }
+
+    revalidatePath("/invoices");
+
+    if (invoice.requested_by) {
+      await notifySafely(ledgerClient, {
+        audience: "user",
+        recipientProfileId: invoice.requested_by,
+        organizationId,
+        type: "payout.rejected_internal",
+        title: "Draf Pencairan Ditolak",
+        body: `Draf pencairan ${invoice.invoice_number} ditolak. Alasan: ${reason}`,
+        href: "/invoices",
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal menolak payout.",
+    };
+  }
+}
+
+export async function cancelInternalPayoutRequest(
+  invoiceId: string,
+): Promise<PayoutActionState> {
+  try {
+    const { supabase, user, organizationId } = await getOrganizationContext({
+      requireManager: true,
+    });
+    
+    const ledgerClient = createSupabaseAdminClient();
+    const now = new Date().toISOString();
+
+    const { data: invoice, error: fetchError } = await supabase
+      .from("payout_invoices")
+      .select("id, status, requested_by")
+      .eq("id", invoiceId)
+      .eq("organization_id", organizationId)
+      .single();
+
+    if (fetchError || !invoice) {
+      return { success: false, error: "Invoice tidak ditemukan." };
+    }
+
+    if (invoice.status !== "pending_approval") {
+      return { success: false, error: "Invoice tidak dalam status pending_approval atau sudah tidak bisa dibatalkan." };
+    }
+
+    if (invoice.requested_by !== user.id) {
+      return { success: false, error: "Hanya pembuat yang dapat membatalkan draf ini." };
+    }
+
+    // Unlink items
+    await ledgerClient
+      .from("payment_ledger_entries")
+      .update({
+        settlement_status: null,
+        payout_invoice_id: null,
+        updated_at: now,
+      })
+      .eq("payout_invoice_id", invoiceId);
+
+    await ledgerClient
+      .from("transactions")
+      .update({
+        payout_status: null,
+        payout_invoice_id: null,
+        updated_at: now,
+      })
+      .eq("payout_invoice_id", invoiceId);
+
+    // Update invoice status
+    const { error: updateError } = await supabase
+      .from("payout_invoices")
+      .update({
+        status: "canceled",
+        updated_at: now,
+      })
+      .eq("id", invoiceId);
+
+    if (updateError) {
+      return { success: false, error: "Gagal membatalkan draf invoice." };
+    }
+
+    revalidatePath("/invoices");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal membatalkan draf payout.",
     };
   }
 }

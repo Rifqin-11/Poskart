@@ -35,6 +35,7 @@ import { usePricing } from "@/features/admin/pricing/use-pricing";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
 import { useTemplates } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 import type { BoothInput, LayoutSchemaRow, Template, PricingProduct } from "@/features/admin/devices/api";
 import type { Device } from "@/types/device";
 
@@ -72,6 +73,7 @@ export function BoothManagement() {
   const { data: subscriptionStatus } = useSubscriptionStatus();
   const { data: layouts = [] } = useLayoutSchemas();
   const { data: templates = [] } = useTemplates();
+  const { isReadOnly } = usePermission();
   const { data: pricingProducts = [] } = usePricing();
   const createBooth = useCreateBooth();
   const updateBooth = useUpdateBooth();
@@ -137,8 +139,14 @@ export function BoothManagement() {
             </Button>
             <Button
               onClick={() => setCreating(true)}
-              disabled={deviceLimitReached}
-              title={deviceLimitReached ? "Device limit reached" : "Add device"}
+              disabled={deviceLimitReached || isReadOnly("devices")}
+              title={
+                isReadOnly("devices")
+                  ? "Read-only access"
+                  : deviceLimitReached
+                    ? "Device limit reached"
+                    : "Add device"
+              }
             >
               <Plus className="size-4" /> Add device
             </Button>
@@ -335,7 +343,8 @@ export function BoothManagement() {
                   <Printer className="size-4" /> Failed prints
                 </Button>
                 <Button size="sm" onClick={() => setEditing(device)}>
-                  <SlidersHorizontal className="size-4" /> Configure
+                  <SlidersHorizontal className="size-4" />{" "}
+                  {isReadOnly("devices") ? "View details" : "Configure"}
                 </Button>
               </div>
             </CardContent>
@@ -348,7 +357,11 @@ export function BoothManagement() {
               <div className="text-sm font-medium text-zinc-500">
                 No devices yet
               </div>
-              <Button className="mt-3" onClick={() => setCreating(true)}>
+              <Button
+                className="mt-3"
+                disabled={isReadOnly("devices")}
+                onClick={() => setCreating(true)}
+              >
                 <Plus className="size-4" /> Add device
               </Button>
             </CardContent>

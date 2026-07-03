@@ -36,6 +36,7 @@ import {
 import type { LayoutSchemaRow } from "@/features/admin/layout/api";
 import type { Device } from "@/types/device";
 import { cn } from "@/lib/utils";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 
 // ── Assign Devices Modal ─────────────────────────────────────────────────────
 
@@ -271,6 +272,7 @@ function AssignDevicesModal({
 // ── BuilderThemesPage ────────────────────────────────────────────────────────
 
 export function BuilderThemesPage() {
+  const { isReadOnly } = usePermission();
   const { data: layouts = [], isLoading } = useLayoutSchemas();
   const setActive = useSetActiveLayout();
   const deactivate = useDeactivateLayout();
@@ -350,13 +352,15 @@ export function BuilderThemesPage() {
             the kiosk.
           </p>
         </div>
-        <a
-          href="/themes/builder/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800"
-        >
-          <Plus className="size-4" />
-          Create Theme
-        </a>
+        {!isReadOnly("themes") && (
+          <a
+            href="/themes/builder/new"
+            className="inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800"
+          >
+            <Plus className="size-4" />
+            Create Theme
+          </a>
+        )}
       </div>
 
       {/* Active banner */}
@@ -459,13 +463,15 @@ export function BuilderThemesPage() {
             Create your first theme, customize the kiosk experience, then save
             it to this library.
           </p>
-          <a
-            href="/themes/builder/new"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
-          >
-            <Plus className="size-4" />
-            Create Theme
-          </a>
+          {!isReadOnly("themes") && (
+            <a
+              href="/themes/builder/new"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
+            >
+              <Plus className="size-4" />
+              Create Theme
+            </a>
+          )}
         </div>
       )}
 
@@ -521,6 +527,7 @@ function ThemeCard({
   onCancelDelete,
   onConfirmDelete,
 }: ThemeCardProps) {
+  const { isReadOnly } = usePermission();
   const isActive = layout.is_active;
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -568,56 +575,58 @@ function ThemeCard({
           </div>
 
           {/* Menu */}
-          <div className="relative shrink-0">
-            <button
-              onClick={() => setMenuOpen((o) => !o)}
-              className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
-            >
-              <MoreVertical className="size-4" />
-            </button>
-            {menuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setMenuOpen(false)}
-                />
-                <div className="absolute right-0 top-7 z-20 min-w-[140px] rounded-lg border border-zinc-200 bg-white py-1 shadow-lg">
-                  {!isActive && (
+          {!isReadOnly("themes") && (
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+              >
+                <MoreVertical className="size-4" />
+              </button>
+              {menuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 top-7 z-20 min-w-[140px] rounded-lg border border-zinc-200 bg-white py-1 shadow-lg">
+                    {!isActive && (
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onActivate();
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
+                      >
+                        <Power className="size-3.5 text-emerald-600" /> Activate
+                      </button>
+                    )}
+                    {isActive && (
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onDeactivate();
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
+                      >
+                        <PowerOff className="size-3.5 text-orange-500" />{" "}
+                        Deactivate
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setMenuOpen(false);
-                        onActivate();
+                        onRequestDelete();
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
                     >
-                      <Power className="size-3.5 text-emerald-600" /> Activate
+                      <Trash2 className="size-3.5" /> Delete
                     </button>
-                  )}
-                  {isActive && (
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onDeactivate();
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
-                    >
-                      <PowerOff className="size-3.5 text-orange-500" />{" "}
-                      Deactivate
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onRequestDelete();
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    <Trash2 className="size-3.5" /> Delete
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Status badge */}
@@ -654,7 +663,7 @@ function ThemeCard({
           /* Main action */
           <button
             onClick={isActive ? onDeactivate : onActivate}
-            disabled={isLoading}
+            disabled={isLoading || isReadOnly("themes")}
             className={cn(
               "mt-auto flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors disabled:opacity-50",
               isActive

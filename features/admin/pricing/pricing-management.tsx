@@ -30,6 +30,7 @@ import {
   useUpdatePricing,
 } from "@/features/admin/pricing/use-pricing";
 import { formatCurrency } from "@/lib/utils";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 import type { PricingProduct, PricingProductInput } from "@/types/pricing";
 
 import { PricingFormDialog } from "./_components/pricing-form-dialog";
@@ -48,6 +49,7 @@ const EMPTY_PRICING: PricingProductInput = {
 export function PricingManagement() {
   const { data = [] } = usePricing();
   const createPricing = useCreatePricing();
+  const { isReadOnly } = usePermission();
   const updatePricing = useUpdatePricing();
   const deletePricing = useDeletePricing();
   const [editing, setEditing] = useState<PricingProduct | null>(null);
@@ -95,7 +97,7 @@ export function PricingManagement() {
         title="Pricing & Product Management"
         description="Configure packages, promos, QR download, Live Photo, multi-slot GIF, and print limits."
         action={
-          <Button onClick={() => setCreating(true)}>
+          <Button disabled={isReadOnly("pricing")} onClick={() => setCreating(true)}>
             <CreditCard className="size-4" /> Add package
           </Button>
         }
@@ -136,6 +138,7 @@ export function PricingManagement() {
                   <TableCell>
                     <Switch
                       checked={product.qrisDownload}
+                      disabled={isReadOnly("pricing")}
                       onCheckedChange={(v) =>
                         handleToggle(product, "qrisDownload", v)
                       }
@@ -144,6 +147,7 @@ export function PricingManagement() {
                   <TableCell>
                     <Switch
                       checked={product.livePhotoEnabled}
+                      disabled={isReadOnly("pricing")}
                       onCheckedChange={(v) =>
                         handleToggle(product, "livePhotoEnabled", v)
                       }
@@ -152,6 +156,7 @@ export function PricingManagement() {
                   <TableCell>
                     <Switch
                       checked={product.gifEnabled}
+                      disabled={isReadOnly("pricing")}
                       onCheckedChange={(v) =>
                         handleToggle(product, "gifEnabled", v)
                       }
@@ -160,6 +165,7 @@ export function PricingManagement() {
                   <TableCell>
                     <Switch
                       checked={product.active}
+                      disabled={isReadOnly("pricing")}
                       onCheckedChange={(v) =>
                         handleToggle(product, "active", v)
                       }
@@ -170,6 +176,7 @@ export function PricingManagement() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        disabled={isReadOnly("pricing")}
                         onClick={() => setEditing(product)}
                       >
                         <Edit2 className="size-3.5" />
@@ -178,6 +185,7 @@ export function PricingManagement() {
                         variant="ghost"
                         size="icon"
                         className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        disabled={isReadOnly("pricing")}
                         onClick={() => handleDelete(product)}
                       >
                         <Trash2 className="size-3.5" />

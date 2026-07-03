@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import { StatCard } from "@/features/admin/_components/stat-card";
@@ -19,7 +21,8 @@ import {
   getPayoutStatusClassName,
   getPayoutStatusLabel,
 } from "@/features/admin/payout/payout-format";
-import { requestPayout } from "@/server/admin/actions/payout-actions";
+import { requestPayout, approveInternalPayoutRequest, rejectInternalPayoutRequest, cancelInternalPayoutRequest } from "@/server/admin/actions/payout-actions";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 import type {
   PayoutAvailableLedgerEntry,
   PayoutInvoice,
@@ -36,6 +39,7 @@ export function PayoutDashboard({
   availableLedgerEntries: PayoutAvailableLedgerEntry[];
 }) {
   const router = useRouter();
+  const { isReadOnly } = usePermission();
   const [requestOpen, setRequestOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<PayoutInvoice | null>(
     null,
@@ -98,7 +102,7 @@ export function PayoutDashboard({
         action={
           <Button
             className="rounded-2xl"
-            disabled={!canRequest}
+            disabled={!canRequest || isReadOnly("invoices")}
             onClick={() => {
               setRequestForm({
                 amount: summary.availableNetAmount,
@@ -619,6 +623,70 @@ function InvoiceDetailDialog({
   invoice: PayoutInvoice | null;
   onClose: () => void;
 }) {
+  const { isOwnerOrAdmin, role } = usePermission();
+  const [isPendingAction, startTransition] = useTransition();
+  const { confirm, dialog: confirmDialogNode } = useConfirmDialog();
+  const [rejectReason, setRejectReason] = useState("");
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
+
+  const handleApprove = () => {
+    if (!invoice) return;
+    startTransition(async () => {
+      const result = await approveInternalPayoutRequest(invoice.id);
+      if (result.success) {
+        toast.success("Draf pencairan berhasil disetujui");
+        onClose();
+      } else {
+        toast.error(result.error ?? "Gagal menyetujui draf pencairan");
+      }
+    });
+  };
+
+  const handleReject = () => {
+    setIsRejectOpen(true);
+    setRejectReason("");
+  };
+
+  const submitReject = () => {
+    if (!invoice) return;
+    if (!rejectReason.trim()) {
+      toast.error("Alasan penolakan wajib diisi");
+      return;
+    }
+    startTransition(async () => {
+      const result = await rejectInternalPayoutRequest(invoice.id, rejectReason);
+      if (result.success) {
+        toast.success("Draf pencairan ditolak");
+        setIsRejectOpen(false);
+        onClose();
+      } else {
+        toast.error(result.error ?? "Gagal menolak draf pencairan");
+      }
+    });
+  };
+
+  const handleCancel = () => {
+    if (!invoice) return;
+    confirm({
+      title: "Batalkan Draf Pencairan?",
+      description: "Yakin ingin membatalkan draf pencairan ini? Ledger yang terkunci akan dilepas kembali.",
+      confirmLabel: "Batalkan Draf",
+      cancelLabel: "Tutup",
+      destructive: true,
+      onConfirm: () => {
+        startTransition(async () => {
+          const result = await cancelInternalPayoutRequest(invoice.id);
+          if (result.success) {
+            toast.success("Draf pencairan berhasil dibatalkan");
+            onClose();
+          } else {
+            toast.error(result.error ?? "Gagal membatalkan draf pencairan");
+          }
+        });
+      },
+    });
+  };
+
   return (
     <Dialog
       open={Boolean(invoice)}
@@ -709,8 +777,69 @@ function InvoiceDetailDialog({
               ))}
             </TableBody>
           </Table>
+
+          {invoice.status === "pending_approval" && (
+            <div className="flex justify-end gap-2 pt-4">
+              {isOwnerOrAdmin ? (
+                <>
+                  <Button
+                    variant="destructive"
+                    disabled={isPendingAction}
+                    onClick={handleReject}
+                  >
+                    Tolak Draf
+                  </Button>
+                  <Button
+                    disabled={isPendingAction}
+                    onClick={handleApprove}
+                  >
+                    Setujui Pencairan
+                  </Button>
+                </>
+              ) : role === "akuntan" ? (
+                <Button
+                  variant="outline"
+                  disabled={isPendingAction}
+                  onClick={handleCancel}
+                >
+                  Batalkan Draf
+                </Button>
+              ) : null}
+            </div>
+          )}
         </div>
       ) : null}
+
+      <Dialog open={isRejectOpen} onOpenChange={setIsRejectOpen} title="Tolak Draf Pencairan">
+        <div className="space-y-4">
+          <p className="text-sm leading-6 text-zinc-500">
+            Berikan alasan penolakan agar Akuntan mengetahui mengapa draf ini ditolak.
+          </p>
+          <Textarea
+            placeholder="Alasan penolakan..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            disabled={isPendingAction}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              disabled={isPendingAction}
+              onClick={() => setIsRejectOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isPendingAction}
+              onClick={submitReject}
+            >
+              {isPendingAction ? "Memproses..." : "Tolak Draf"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+      {confirmDialogNode}
     </Dialog>
   );
 }

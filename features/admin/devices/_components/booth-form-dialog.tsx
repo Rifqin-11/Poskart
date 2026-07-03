@@ -14,6 +14,7 @@ import { DialogActions } from "@/features/admin/_components/dialog-actions";
 import type { BoothInput } from "@/features/admin/devices/api";
 import { PRINTER_TUNING_LIMITS } from "@/lib/printer-tuning";
 import { cn } from "@/lib/utils";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 import type { Device } from "@/types/device";
 
 type DeviceFormOptions = {
@@ -41,6 +42,8 @@ export function BoothFormDialog({
   onDelete,
   onSubmit,
 }: BoothFormDialogProps) {
+  const { isReadOnly } = usePermission();
+  const readOnly = isReadOnly("devices");
   const [form, setForm] = useState<BoothInput>(() => {
     const { id: _ignored, ...rest } = initial as Device;
     void _ignored;
@@ -96,6 +99,7 @@ export function BoothFormDialog({
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Device 01"
+                disabled={readOnly}
               />
             </label>
             <label className="block text-xs font-medium text-zinc-600">
@@ -105,6 +109,7 @@ export function BoothFormDialog({
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
                 placeholder="PVJ Bandung"
+                disabled={readOnly}
               />
             </label>
             <div className="block text-xs font-medium text-zinc-600">
@@ -162,6 +167,7 @@ export function BoothFormDialog({
                 className="mt-1"
                 value={form.theme}
                 onChange={(e) => setForm({ ...form, theme: e.target.value })}
+                disabled={readOnly}
               >
                 <option value="">Use default theme</option>
                 {includeCurrentOption(options.themes, form.theme).map(
@@ -186,6 +192,7 @@ export function BoothFormDialog({
                   options.frameTemplates,
                   form.frameTemplates,
                 )}
+                disabled={readOnly}
                 onChange={(values) =>
                   setForm({
                     ...form,
@@ -205,6 +212,7 @@ export function BoothFormDialog({
                   options.pricingProfiles,
                   form.pricingProfiles,
                 )}
+                disabled={readOnly}
                 onChange={(values) =>
                   setForm({
                     ...form,
@@ -243,6 +251,7 @@ export function BoothFormDialog({
                   </span>
                   <Switch
                     checked={maintenanceEnabled}
+                    disabled={readOnly}
                     onCheckedChange={(checked) =>
                       setForm({
                         ...form,
@@ -303,6 +312,7 @@ export function BoothFormDialog({
                     max={PRINTER_TUNING_LIMITS.bottomSafeZoneMm.max}
                     step={PRINTER_TUNING_LIMITS.bottomSafeZoneMm.step}
                     value={form.printerBottomSafeZoneMm ?? 0}
+                    disabled={readOnly}
                     onChange={(e) =>
                       setForm({
                         ...form,
@@ -320,6 +330,7 @@ export function BoothFormDialog({
                     max={PRINTER_TUNING_LIMITS.brightness.max}
                     step={PRINTER_TUNING_LIMITS.brightness.step}
                     value={form.printerBrightness ?? 0}
+                    disabled={readOnly}
                     onChange={(e) =>
                       setForm({
                         ...form,
@@ -337,6 +348,7 @@ export function BoothFormDialog({
                     max={PRINTER_TUNING_LIMITS.contrast.max}
                     step={PRINTER_TUNING_LIMITS.contrast.step}
                     value={form.printerContrast ?? 0}
+                    disabled={readOnly}
                     onChange={(e) =>
                       setForm({
                         ...form,
@@ -354,6 +366,7 @@ export function BoothFormDialog({
                     max={PRINTER_TUNING_LIMITS.dotDensity.max}
                     step={PRINTER_TUNING_LIMITS.dotDensity.step}
                     value={form.printerDotDensity ?? 1}
+                    disabled={readOnly}
                     onChange={(e) =>
                       setForm({
                         ...form,
@@ -383,6 +396,7 @@ export function BoothFormDialog({
                     max={1800}
                     placeholder="e.g. 300 (5 min) — leave empty for default"
                     value={form.sessionCountdownSeconds ?? ""}
+                    disabled={readOnly}
                     onChange={(e) =>
                       setForm({
                         ...form,
@@ -404,6 +418,7 @@ export function BoothFormDialog({
                     max={600}
                     placeholder="e.g. 60 — leave empty to use default"
                     value={form.paymentCountdownSeconds ?? ""}
+                    disabled={readOnly}
                     onChange={(e) =>
                       setForm({
                         ...form,
@@ -420,19 +435,27 @@ export function BoothFormDialog({
 
         <div className="mt-4 flex flex-col gap-3 border-t border-zinc-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            {onDelete ? (
+            {onDelete && !readOnly ? (
               <Button type="button" variant="destructive" onClick={onDelete}>
                 <Trash2 className="size-4" />
                 Delete device
               </Button>
             ) : null}
           </div>
-          <DialogActions
-            submitting={submitting}
-            submitLabel="Save configuration"
-            submittingLabel="Saving..."
-            onCancel={onClose}
-          />
+          {readOnly ? (
+            <div className="flex justify-end">
+              <Button type="button" className="rounded-2xl" onClick={onClose}>
+                Close
+              </Button>
+            </div>
+          ) : (
+            <DialogActions
+              submitting={submitting}
+              submitLabel="Save configuration"
+              submittingLabel="Saving..."
+              onCancel={onClose}
+            />
+          )}
         </div>
       </form>
     </Dialog>
@@ -470,6 +493,7 @@ function DeviceMultiSelect({
   options,
   className,
   onChange,
+  disabled,
 }: {
   label?: string;
   values: string[];
@@ -477,11 +501,13 @@ function DeviceMultiSelect({
   options: string[];
   className?: string;
   onChange: (values: string[]) => void;
+  disabled?: boolean;
 }) {
   const selectedValues = normalizeStringList(values);
   const normalizedOptions = includeCurrentOptions(options, selectedValues);
 
   const toggleValue = (option: string) => {
+    if (disabled) return;
     if (selectedValues.includes(option)) {
       onChange(selectedValues.filter((value) => value !== option));
       return;
@@ -505,12 +531,14 @@ function DeviceMultiSelect({
                 <button
                   key={option}
                   type="button"
+                  disabled={disabled}
                   onClick={() => toggleValue(option)}
                   className={cn(
                     "inline-flex min-h-8 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
                     selected
                       ? "border-zinc-950 bg-zinc-950 text-white"
                       : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 hover:text-zinc-950",
+                    disabled && "opacity-60 cursor-not-allowed",
                   )}
                 >
                   {selected ? <Check className="size-3.5" /> : null}

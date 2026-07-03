@@ -5,10 +5,16 @@ import { Trash2, Loader2 } from "lucide-react";
 import { deleteGallerySession } from "./actions";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 
 export function DeleteSessionButton({ sessionId }: { sessionId: string }) {
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const { isReadOnly } = usePermission();
+
+  if (isReadOnly("gallery")) {
+    return null;
+  }
 
   const handleDelete = async () => {
     setLoading(true);

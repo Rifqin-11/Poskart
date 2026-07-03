@@ -10,7 +10,16 @@ import {
   inviteUserToTenant,
   deleteTenantInvitation,
   removeMemberFromTenant,
+  leaveMyOrganization,
+  transferMyOrganizationOwnership,
+  updateMemberRole,
 } from "@/server/admin/actions/organization-actions";
+import {
+  acceptJoinRequestAction,
+  rejectJoinRequestAction,
+  cancelJoinRequestAction,
+  getPendingJoinRequestsAction,
+} from "@/server/admin/actions/join-request-actions";
 
 export const organizationService = {
   getOrganizations,
@@ -24,4 +33,11 @@ export const organizationService = {
   inviteUser: inviteUserToTenant,
   deleteInvitation: deleteTenantInvitation,
   removeMember: removeMemberFromTenant,
+  leaveOrganization: leaveMyOrganization,
+  transferOwnership: transferMyOrganizationOwnership,
+  updateMemberRole,
+  acceptJoinRequest: acceptJoinRequestAction,
+  rejectJoinRequest: rejectJoinRequestAction,
+  cancelJoinRequest: cancelJoinRequestAction,
+  getPendingJoinRequests: getPendingJoinRequestsAction,
 };

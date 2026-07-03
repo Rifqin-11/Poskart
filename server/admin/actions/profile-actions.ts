@@ -107,7 +107,7 @@ export async function updateProfile({
           .insert({
             organization_id: organizationId,
             profile_id: id,
-            role: "staff",
+            role: "partner",
           });
         if (mErr) throw mErr;
       }

@@ -238,11 +238,15 @@ export async function updateMyOrganizationName(name: string) {
 
   const { data: profile } = await supabase
     .from("organization_members")
-    .select("organization_id")
+    .select("organization_id, role")
     .eq("profile_id", user.id)
     .limit(1)
     .single();
   if (!profile?.organization_id) throw new Error("No organization associated");
+
+  if (profile.role !== "owner" && profile.role !== "admin") {
+    throw new Error("Hanya pemilik atau admin yang dapat mengubah nama organisasi.");
+  }
 
   const { data, error } = await supabase
     .from("organizations")
@@ -314,11 +318,15 @@ export async function inviteUserToTenant(email: string) {
 
   const { data: profile } = await supabase
     .from("organization_members")
-    .select("organization_id")
+    .select("organization_id, role")
     .eq("profile_id", user.id)
     .limit(1)
     .single();
   if (!profile?.organization_id) throw new Error("No organization associated");
+
+  if (profile.role !== "owner" && profile.role !== "admin") {
+    throw new Error("Hanya pemilik atau admin yang dapat mengundang anggota.");
+  }
 
   const { data: existingProfile } = await supabase
     .from("profiles")
@@ -343,7 +351,7 @@ export async function inviteUserToTenant(email: string) {
       .insert({
         organization_id: profile.organization_id,
         profile_id: existingProfile.id,
-        role: "staff",
+        role: "partner",
       });
     if (memberErr) throw memberErr;
     return { status: "joined" };
@@ -374,7 +382,20 @@ export async function inviteUserToTenant(email: string) {
 }
 
 export async function deleteTenantInvitation(id: string) {
-  const { supabase } = await getAdminContext();
+  const { supabase, user } = await getAdminContext();
+
+  const { data: profile } = await supabase
+    .from("organization_members")
+    .select("organization_id, role")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+  if (!profile?.organization_id) throw new Error("No organization associated");
+
+  if (profile.role !== "owner" && profile.role !== "admin") {
+    throw new Error("Hanya pemilik atau admin yang dapat membatalkan undangan.");
+  }
+
   const { error } = await supabase
     .from("organization_invitations")
     .delete()
@@ -388,7 +409,7 @@ export async function removeMemberFromTenant(memberId: string) {
 
   const { data: currentMembership } = await supabase
     .from("organization_members")
-    .select("organization_id")
+    .select("organization_id, role")
     .eq("profile_id", user.id)
     .limit(1)
     .single();
@@ -396,9 +417,13 @@ export async function removeMemberFromTenant(memberId: string) {
     throw new Error("No organization associated");
   }
 
+  if (currentMembership.role !== "owner" && currentMembership.role !== "admin") {
+    throw new Error("Hanya pemilik atau admin yang dapat menghapus anggota.");
+  }
+
   const { data: member, error: memberErr } = await supabase
     .from("organization_members")
-    .select("id, profile_id, organization_id")
+    .select("id, profile_id, organization_id, role")
     .eq("id", memberId)
     .eq("organization_id", currentMembership.organization_id)
     .maybeSingle();
@@ -409,10 +434,148 @@ export async function removeMemberFromTenant(memberId: string) {
     throw new Error("You cannot remove yourself from your own organization");
   }
 
+  if (currentMembership.role === "admin" && (member.role === "owner" || member.role === "admin")) {
+    throw new Error("Admin tidak dapat menghapus pemilik atau sesama admin.");
+  }
+
   const { error: deleteErr } = await supabase
     .from("organization_members")
     .delete()
     .eq("id", member.id);
   if (deleteErr) throw deleteErr;
+  return true;
+}
+
+export async function leaveMyOrganization() {
+  const { supabase, user } = await getAdminContext();
+
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("organization_id, role")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+  if (!membership?.organization_id) {
+    throw new Error("Tidak ada organisasi terkait.");
+  }
+
+  if (membership.role === "owner") {
+    const { count, error: countErr } = await supabase
+      .from("organization_members")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", membership.organization_id)
+      .eq("role", "owner");
+    if (countErr) throw countErr;
+
+    if (count !== null && count <= 1) {
+      throw new Error("Anda adalah satu-satunya pemilik. Harap pindahkan kepemilikan atau hapus workspace terlebih dahulu.");
+    }
+  }
+
+  const { error: deleteErr } = await supabase
+    .from("organization_members")
+    .delete()
+    .eq("organization_id", membership.organization_id)
+    .eq("profile_id", user.id);
+  if (deleteErr) throw deleteErr;
+
+  return true;
+}
+
+export async function transferMyOrganizationOwnership(targetMemberProfileId: string) {
+  const { supabase, user } = await getAdminContext();
+
+  const { data: currentMembership } = await supabase
+    .from("organization_members")
+    .select("organization_id, role")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+  if (!currentMembership?.organization_id || currentMembership.role !== "owner") {
+    throw new Error("Hanya pemilik organisasi yang dapat memindahkan kepemilikan.");
+  }
+
+  const { data: targetMembership, error: targetErr } = await supabase
+    .from("organization_members")
+    .select("id, role")
+    .eq("organization_id", currentMembership.organization_id)
+    .eq("profile_id", targetMemberProfileId)
+    .maybeSingle();
+  if (targetErr) throw targetErr;
+  if (!targetMembership) {
+    throw new Error("Target anggota tidak ditemukan di organisasi ini.");
+  }
+
+  if (targetMemberProfileId === user.id) {
+    throw new Error("Anda sudah menjadi pemilik organisasi ini.");
+  }
+
+  // Update target user to owner
+  const { error: updateTargetErr } = await supabase
+    .from("organization_members")
+    .update({ role: "owner", updated_at: new Date().toISOString() })
+    .eq("id", targetMembership.id);
+  if (updateTargetErr) throw updateTargetErr;
+
+  // Downgrade current user to admin
+  const { error: updateCurrentErr } = await supabase
+    .from("organization_members")
+    .update({ role: "admin", updated_at: new Date().toISOString() })
+    .eq("organization_id", currentMembership.organization_id)
+    .eq("profile_id", user.id);
+  if (updateCurrentErr) throw updateCurrentErr;
+
+  return true;
+}
+
+export async function updateMemberRole(memberId: string, newRole: string) {
+  const { supabase, user } = await getAdminContext();
+
+  // Validate current user role (must be owner)
+  const { data: currentMembership, error: currentMembershipErr } = await supabase
+    .from("organization_members")
+    .select("organization_id, role")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+
+  if (currentMembershipErr || !currentMembership || currentMembership.role !== "owner") {
+    throw new Error("Hanya pemilik organisasi (owner) yang dapat mengubah role anggota.");
+  }
+
+  // Get target member
+  const { data: targetMember, error: targetMemberErr } = await supabase
+    .from("organization_members")
+    .select("id, profile_id, organization_id, role")
+    .eq("id", memberId)
+    .limit(1)
+    .single();
+
+  if (targetMemberErr || !targetMember) {
+    throw new Error("Anggota tidak ditemukan.");
+  }
+
+  if (targetMember.organization_id !== currentMembership.organization_id) {
+    throw new Error("Anggota tidak berada di dalam organisasi Anda.");
+  }
+
+  // Prevent user from changing their own role
+  if (targetMember.profile_id === user.id) {
+    throw new Error("Anda tidak dapat mengubah role Anda sendiri.");
+  }
+
+  // Cannot change role to owner via this action (must use transfer ownership)
+  if (newRole === "owner") {
+    throw new Error("Gunakan fitur Transfer Kepemilikan untuk mengubah role menjadi owner.");
+  }
+
+  // Update target member's role
+  const { error: updateErr } = await supabase
+    .from("organization_members")
+    .update({ role: newRole, updated_at: new Date().toISOString() })
+    .eq("id", memberId);
+
+  if (updateErr) throw updateErr;
+
   return true;
 }

@@ -28,6 +28,7 @@ import {
   useTemplates,
 } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 import type { Template } from "@/types/template";
 
 import { SortableTemplateCard } from "./_components/template-card";
@@ -39,6 +40,7 @@ export function TemplateManagement() {
   const { data = EMPTY_TEMPLATES } = useTemplates();
   const deleteTemplate = useDeleteTemplate();
   const reorderTemplates = useReorderTemplates();
+  const { isReadOnly } = usePermission();
   const [orderedTemplates, setOrderedTemplates] = useState<Template[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [testTemplate, setTestTemplate] = useState<Template | null>(null);
@@ -83,6 +85,7 @@ export function TemplateManagement() {
   };
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (isReadOnly("templates")) return;
     if (!over || active.id === over.id) return;
 
     const oldIndex = orderedTemplates.findIndex(
@@ -141,9 +144,11 @@ export function TemplateManagement() {
                 <List className="size-4" />
               </Button>
             </div>
-            <Button onClick={openAdd}>
-              <CloudUpload className="size-4" /> Add template
-            </Button>
+            {!isReadOnly("templates") && (
+              <Button onClick={openAdd}>
+                <CloudUpload className="size-4" /> Add template
+              </Button>
+            )}
           </div>
         }
       />
@@ -158,9 +163,11 @@ export function TemplateManagement() {
             <div className="mt-1 text-xs text-zinc-400">
               Create your first frame template for the Flutter app.
             </div>
-            <Button className="mt-4" onClick={openAdd}>
-              Add template
-            </Button>
+            {!isReadOnly("templates") && (
+              <Button className="mt-4" onClick={openAdd}>
+                Add template
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (

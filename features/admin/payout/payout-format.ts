@@ -23,6 +23,7 @@ export function formatPayoutDate(value?: string | null) {
 
 export function getPayoutStatusLabel(status: PayoutStatus) {
   const labels: Record<PayoutStatus, string> = {
+    pending_approval: "Menunggu Persetujuan",
     requested: "Requested",
     approved: "Approved",
     paid: "Paid",
@@ -34,6 +35,7 @@ export function getPayoutStatusLabel(status: PayoutStatus) {
 
 export function getPayoutStatusClassName(status: PayoutStatus) {
   const classes: Record<PayoutStatus, string> = {
+    pending_approval: "bg-purple-50 text-purple-700 border-purple-200",
     requested: "bg-amber-50 text-amber-700 border-amber-200",
     approved: "bg-blue-50 text-blue-700 border-blue-200",
     paid: "bg-emerald-50 text-emerald-700 border-emerald-200",

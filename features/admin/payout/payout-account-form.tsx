@@ -6,16 +6,19 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { saveMyPayoutAccount } from "@/server/admin/actions/payout-actions";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 import type { PayoutAccount } from "@/types/payout";
 
 export function PayoutAccountForm({
   account,
   compact = false,
   onSaved,
+  isEditing = false,
 }: {
   account: PayoutAccount | null;
   compact?: boolean;
   onSaved?: () => void;
+  isEditing?: boolean;
 }) {
   return (
     <PayoutAccountFields
@@ -23,6 +26,7 @@ export function PayoutAccountForm({
       account={account}
       compact={compact}
       onSaved={onSaved}
+      isEditing={isEditing}
     />
   );
 }
@@ -31,11 +35,14 @@ function PayoutAccountFields({
   account,
   compact,
   onSaved,
+  isEditing = false,
 }: {
   account: PayoutAccount | null;
   compact: boolean;
   onSaved?: () => void;
+  isEditing?: boolean;
 }) {
+  const { isOwnerOrAdmin } = usePermission();
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState({
     bankName: account?.bankName ?? "",
@@ -54,6 +61,58 @@ function PayoutAccountFields({
       onSaved?.();
     });
   };
+
+  if (!isEditing) {
+    return (
+      <div
+        className={
+          compact
+            ? "space-y-4"
+            : "rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm space-y-4"
+        }
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {!compact ? (
+            <div className="flex items-start gap-3">
+              <div className="grid size-10 place-items-center rounded-2xl bg-zinc-100 text-zinc-700">
+                <Landmark className="size-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-950">
+                  Rekening pencairan
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                  Rekening ini akan disnapshot ke invoice saat request pencairan
+                  dibuat.
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4">
+            <div className="text-xs font-medium text-zinc-500">Bank</div>
+            <div className="mt-1.5 text-sm font-semibold text-zinc-950">
+              {account?.bankName || "-"}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4">
+            <div className="text-xs font-medium text-zinc-500">Nomor rekening</div>
+            <div className="mt-1.5 text-sm font-semibold text-zinc-950">
+              {account?.accountNumber || "-"}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4">
+            <div className="text-xs font-medium text-zinc-500">Nama pemilik</div>
+            <div className="mt-1.5 text-sm font-semibold text-zinc-950">
+              {account?.accountHolderName || "-"}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -130,7 +189,7 @@ function PayoutAccountFields({
           type="button"
           className="rounded-2xl"
           onClick={submit}
-          disabled={isPending}
+          disabled={isPending || isReadOnly("invoices")}
         >
           <Save className="size-4" />
           {isPending ? "Menyimpan..." : "Simpan rekening"}

@@ -62,3 +62,63 @@ export function useRemoveMember() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.organizationMembers }),
   });
 }
+
+export function useLeaveOrganization() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: organizationApi.leaveOrganization,
+    onSuccess: () => {
+      queryClient.clear();
+      window.location.href = "/onboarding";
+    },
+  });
+}
+
+export function useTransferOwnership() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: organizationApi.transferOwnership,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.organizationMembers });
+    },
+  });
+}
+
+export function useUpdateMemberRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ memberId, role }: { memberId: string; role: string }) =>
+      organizationApi.updateMemberRole(memberId, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.organizationMembers });
+    },
+  });
+}
+
+export function usePendingJoinRequests() {
+  return useQuery<Awaited<ReturnType<typeof organizationApi.getPendingJoinRequests>>, Error>({
+    queryKey: adminQueryKeys.organizationJoinRequests,
+    queryFn: organizationApi.getPendingJoinRequests,
+  });
+}
+
+export function useAcceptJoinRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: organizationApi.acceptJoinRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.organizationJoinRequests });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.organizationMembers });
+    },
+  });
+}
+
+export function useRejectJoinRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: organizationApi.rejectJoinRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.organizationJoinRequests });
+    },
+  });
+}

@@ -105,27 +105,11 @@ export function EditProfileDialog({
         </label>
         <label className="block text-xs font-medium text-zinc-600">
           Role
-          {currentMemberRole === "owner" ? (
-            <Select
-              className="mt-1"
-              value={profileDraft.memberRole}
-              onChange={(ev) =>
-                setProfileDraft((d) => ({ ...d, memberRole: ev.target.value }))
-              }
-            >
-              <option value="owner">owner</option>
-              <option value="admin">admin</option>
-              <option value="operator">operator</option>
-              <option value="akutansi">akutansi</option>
-              <option value="partner">partner</option>
-            </Select>
-          ) : (
-            <Input
-              className="mt-1 bg-zinc-50"
-              value={currentMemberRole ?? "member"}
-              readOnly
-            />
-          )}
+          <Input
+            className="mt-1 bg-zinc-50 font-semibold capitalize"
+            value={currentMemberRole ?? "member"}
+            readOnly
+          />
         </label>
         <div className="col-span-2 border-t border-zinc-200 pt-4">
           <DialogActions

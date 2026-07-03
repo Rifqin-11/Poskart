@@ -1,6 +1,6 @@
 "use server";
 
-import { getAdminContext } from "@/server/admin/context";
+import { getAdminContext, verifyRole } from "@/server/admin/context";
 import {
   assertSupabaseResult,
   mapTemplate,
@@ -28,7 +28,7 @@ export async function getTemplates(): Promise<Template[]> {
 }
 
 export async function createTemplate(values: TemplateFormValues): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const now = new Date().toISOString();
   const id = `TPL-${Date.now()}`;
   const photoCount = countPhotoSlotsFromLayout(values.frameLayout);
@@ -68,7 +68,7 @@ export async function updateTemplate(
   id: string,
   values: Partial<TemplateFormValues>,
 ): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
     updated_at_label: "just now",
@@ -94,7 +94,7 @@ export async function updateTemplate(
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const { error } = await supabase.from("templates").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete template: ${error.message}`);
 }
@@ -102,7 +102,7 @@ export async function deleteTemplate(id: string): Promise<void> {
 export async function reorderTemplates(templateIds: string[]): Promise<void> {
   if (templateIds.length === 0) return;
 
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const { error } = await supabase.rpc("reorder_templates", {
     template_ids: templateIds,
   });

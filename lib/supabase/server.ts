@@ -20,12 +20,25 @@ export async function getSupabaseServerClient() {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
           });
-        } catch {
-          // Server Components can read cookies but cannot write them. Session
-          // refresh cookie writes are handled by proxy.ts or Server Actions.
-        }
+        } catch {}
       },
     },
+  });
+}
+
+export async function getServiceRoleClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  return createServerClient(url, key, {
+    cookies: {
+      getAll() { return []; },
+      setAll() {},
+    }
   });
 }
 

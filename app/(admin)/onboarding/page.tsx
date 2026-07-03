@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import {
   createOrganizationAction,
   joinOrganizationAction,
+  cancelMyPendingRequestAction,
 } from "@/app/(admin)/onboarding/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,92 @@ export default async function OnboardingPage({
 
   if (membership?.organization_id) {
     redirect("/dashboard");
+  }
+
+  // Fetch pending join requests for the current user
+  const { data: pendingRequest } = await supabase
+    .from("organization_join_requests")
+    .select(`
+      id,
+      status,
+      created_at,
+      organization:organizations(name)
+    `)
+    .eq("profile_id", data.user.id)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (pendingRequest) {
+    const orgName = (pendingRequest.organization as any)?.name ?? "organisasi";
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="text-center">
+            <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-amber-100/50 ring-1 ring-amber-200/50 shadow-sm">
+              <UsersRound className="size-6 text-amber-600" />
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+              Menunggu Persetujuan
+            </h1>
+            <p className="mt-2 text-sm text-zinc-500">
+              Permintaan Anda untuk bergabung dengan <strong className="text-zinc-900 font-medium">{orgName}</strong> sedang ditinjau. Anda akan mendapatkan akses setelah disetujui.
+            </p>
+          </div>
+
+          {params.error ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 shadow-sm">
+              {params.error}
+            </div>
+          ) : null}
+          {params.success ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700 shadow-sm">
+              {params.success}
+            </div>
+          ) : null}
+
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm ring-1 ring-zinc-200/50">
+            <div className="border-b border-zinc-100 bg-zinc-50/80 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-zinc-700">Status</span>
+                <div className="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex size-2 rounded-full bg-amber-500"></span>
+                  </span>
+                  Dalam Peninjauan
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-5">
+              <div className="mb-6 space-y-1.5">
+                <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Dikirim Pada</p>
+                <p className="text-sm font-medium text-zinc-900">
+                  {new Date(pendingRequest.created_at).toLocaleString("id-ID", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </p>
+              </div>
+              <form action={cancelMyPendingRequestAction}>
+                <input type="hidden" name="requestId" value={pendingRequest.id} />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="w-full rounded-xl border-zinc-200 text-zinc-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                >
+                  Batalkan Permintaan
+                </Button>
+              </form>
+            </div>
+          </div>
+
+          <p className="text-center text-xs leading-relaxed text-zinc-400">
+            Ingin bergabung dengan workspace lain? <br/>
+            Batalkan permintaan ini untuk memasukkan kode baru.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (

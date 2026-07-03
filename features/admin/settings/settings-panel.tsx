@@ -51,6 +51,7 @@ type SettingsForm = {
   auto_return_duration_seconds: number;
   default_template_id: string;
   // Payment
+  payment_mode: "sharing" | "private";
   qris_provider_merchant_id: string;
   qris_webhook_secret: string;
   qris_auto_retry: boolean;
@@ -83,6 +84,7 @@ const DEFAULT_SETTINGS_FORM: SettingsForm = {
   flash_duration_ms: 220,
   auto_return_duration_seconds: 8,
   default_template_id: "",
+  payment_mode: "sharing",
   qris_provider_merchant_id: "",
   qris_webhook_secret: "",
   qris_auto_retry: true,
@@ -111,6 +113,7 @@ export function SettingsPanel() {
   const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
   const { data: members = [] } = useTenantMembers();
 
+  const [isEditingOrg, setIsEditingOrg] = useState(false);
   const [form, setForm] = useState<SettingsForm>(DEFAULT_SETTINGS_FORM);
   const [account, setAccount] = useState<{
     email: string;
@@ -275,35 +278,71 @@ export function SettingsPanel() {
   const subscriptionActive = Boolean(tenant?.subscription_is_active);
 
   const currentMember = members.find((m) => m.email === account.email);
+  const myRole = currentMember?.role ?? "partner";
+  const canEditOrg = myRole === "owner" || myRole === "admin";
+  const isOwnerOrAdmin = myRole === "owner" || myRole === "admin";
+
+  const visibleTabs = SETTINGS_TABS.filter((tab) => {
+    if (!isOwnerOrAdmin) {
+      return tab.id === "details" || tab.id === "organization";
+    }
+    return true;
+  });
+
   const subscriptionRequired =
     searchParams.get("subscription") === "required";
   const organizationOnly =
     !isLoadingTenant && !subscriptionActive;
   const visibleActiveTab: SettingsTab = organizationOnly
     ? "organization"
-    : activeTab;
+    : (visibleTabs.some((t) => t.id === activeTab) ? activeTab : "details");
+
+  const getHeaderAction = () => {
+    if (visibleActiveTab === "organization") {
+      if (!canEditOrg) return null;
+      return (
+        <Button
+          onClick={() => setIsEditingOrg((prev) => !prev)}
+          variant={isEditingOrg ? "outline" : "default"}
+          className="rounded-2xl"
+        >
+          {isEditingOrg ? "Selesai Edit" : "Edit Organisasi"}
+        </Button>
+      );
+    }
+
+    if (
+      visibleActiveTab === "payment" ||
+      visibleActiveTab === "media" ||
+      visibleActiveTab === "kiosk"
+    ) {
+      return (
+        <Button
+          onClick={() => void handleSave()}
+          disabled={saveConfig.isPending}
+          className="rounded-2xl"
+        >
+          <Save className="size-4" />
+          {saveConfig.isPending ? "Saving..." : "Save app settings"}
+        </Button>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Settings"
         description="Kelola profil akun, workspace, payment, media, dan default kiosk POSKART."
-        action={
-          <Button
-            onClick={() => void handleSave()}
-            disabled={saveConfig.isPending}
-            className="rounded-2xl"
-          >
-            <Save className="size-4" />
-            {saveConfig.isPending ? "Saving..." : "Save app settings"}
-          </Button>
-        }
+        action={getHeaderAction()}
       />
 
       <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm shadow-zinc-200/70">
         <div className="border-b border-zinc-100 p-3">
           <div className="flex gap-1.5 overflow-x-auto rounded-[1.35rem] bg-zinc-50 p-1.5">
-            {SETTINGS_TABS.map((tab) => {
+            {visibleTabs.map((tab) => {
               const active = visibleActiveTab === tab.id;
               const disabled =
                 organizationOnly && tab.id !== "organization";
@@ -352,6 +391,7 @@ export function SettingsPanel() {
             <OrganizationCard
               myEmail={account.email}
               subscriptionRequired={subscriptionRequired}
+              isEditing={isEditingOrg}
             />
           ) : null}
 

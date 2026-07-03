@@ -1,6 +1,6 @@
 "use server";
 
-import { getAdminContext } from "@/server/admin/context";
+import { getAdminContext, verifyRole } from "@/server/admin/context";
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
 import {
   assertSupabaseResult,
@@ -104,7 +104,7 @@ export async function saveLayoutAsTheme(
   schema: LayoutSchema,
   existingId?: string,
 ): Promise<string> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const id = existingId ?? `LYT-${Date.now()}`;
   const { error } = await supabase.from("layout_schemas").upsert({
     id,
@@ -119,7 +119,7 @@ export async function saveLayoutAsTheme(
 }
 
 export async function setActiveLayout(id: string): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   // Deactivate all
   const { error: e1 } = await supabase
     .from("layout_schemas")
@@ -139,7 +139,7 @@ export async function setActiveLayout(id: string): Promise<void> {
 }
 
 export async function deactivateLayout(id: string): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const { error } = await supabase
     .from("layout_schemas")
     .update({
@@ -152,7 +152,7 @@ export async function deactivateLayout(id: string): Promise<void> {
 }
 
 export async function deleteLayout(id: string): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const { error } = await supabase.from("layout_schemas").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete layout: ${error.message}`);
 }
@@ -173,7 +173,7 @@ export async function getLayoutSchema(): Promise<LayoutSchemaRow | null> {
 }
 
 export async function publishLayoutSchema(schema: LayoutSchema): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const { error } = await supabase.from("layout_schemas").upsert({
     id: "default-photobooth",
     name: "Default Photobooth Layout",
@@ -188,7 +188,7 @@ export async function publishLayoutSchema(schema: LayoutSchema): Promise<void> {
 }
 
 export async function publishThemeSchema(schema: ThemeSchema): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const { error } = await supabase.from("theme_presets").upsert({
     id: "THM-ACTIVE",
     name: "Active POSKART Theme",

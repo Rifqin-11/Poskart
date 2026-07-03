@@ -2,6 +2,7 @@
 
 import { getAdminContext } from "@/server/admin/context";
 import { isSuperAdminEmail } from "@/lib/auth/admin";
+import { getServiceRoleClient } from "@/lib/supabase/server";
 import type {
   AdminNotification,
   CreateAdminNotificationInput,
@@ -46,6 +47,9 @@ export async function createAdminNotification(
   supabase: SupabaseLike,
   input: CreateAdminNotificationInput,
 ) {
+  // Use service role client to bypass RLS when creating notifications programmatically from the backend
+  const serviceRoleClient = await getServiceRoleClient();
+
   if (input.audience === "organization" && input.organizationId) {
     const { data: members, error: memberError } = await supabase
       .from("organization_members")
@@ -53,7 +57,7 @@ export async function createAdminNotification(
       .eq("organization_id", input.organizationId);
 
     if (!memberError && members?.length) {
-      const { error } = await supabase.from("admin_notifications").insert(
+      const { error } = await serviceRoleClient.from("admin_notifications").insert(
         members
           .map((member) => member.profile_id as string | null)
           .filter((profileId): profileId is string => Boolean(profileId))
@@ -83,7 +87,7 @@ export async function createAdminNotification(
       .eq("role", "admin");
 
     if (!adminError && admins?.length) {
-      const { error } = await supabase.from("admin_notifications").insert(
+      const { error } = await serviceRoleClient.from("admin_notifications").insert(
         admins
           .map((admin) => admin.id as string | null)
           .filter((profileId): profileId is string => Boolean(profileId))
@@ -106,7 +110,7 @@ export async function createAdminNotification(
     }
   }
 
-  const { error } = await supabase.from("admin_notifications").insert({
+  const { error } = await serviceRoleClient.from("admin_notifications").insert({
     audience: input.audience,
     recipient_profile_id: input.recipientProfileId ?? null,
     organization_id: input.organizationId ?? null,

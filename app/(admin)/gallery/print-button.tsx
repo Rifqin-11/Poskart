@@ -6,6 +6,7 @@ import { Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 import { queueGalleryPrint } from "./actions";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 
 export function PrintSessionButton({
   sessionId,
@@ -16,6 +17,11 @@ export function PrintSessionButton({
 }) {
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
+  const { isReadOnly } = usePermission();
+
+  if (isReadOnly("gallery")) {
+    return null;
+  }
 
   const handlePrint = async () => {
     setLoading(true);

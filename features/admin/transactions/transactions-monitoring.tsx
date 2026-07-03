@@ -24,6 +24,7 @@ import {
   useTransactions,
 } from "@/features/admin/transactions/use-transactions";
 import { useAppConfig } from "@/features/admin/settings/use-settings";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { AppConfigRow } from "@/types/app-config";
 import type { Transaction, TransactionActionType } from "@/types/transaction";
@@ -212,6 +213,7 @@ export function TransactionsMonitoring() {
   const { data = [] } = useTransactions();
   const { data: config } = useAppConfig();
   const requestAction = useRequestTransactionAction();
+  const { isReadOnly } = usePermission();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -500,7 +502,7 @@ export function TransactionsMonitoring() {
                               transaction.pendingAction.action,
                             )}
                           </Badge>
-                        ) : (
+                        ) : !isReadOnly("transactions") ? (
                           <div className="flex items-center gap-1">
                             <DropdownMenu
                               items={getTransactionActionItems(
@@ -513,7 +515,7 @@ export function TransactionsMonitoring() {
                               )}
                             />
                           </div>
-                        )}
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   );
@@ -609,7 +611,7 @@ export function TransactionsMonitoring() {
                       <span className="text-xs text-zinc-500">
                         Menunggu approval Super Admin
                       </span>
-                    ) : (
+                    ) : !isReadOnly("transactions") ? (
                       <DropdownMenu
                         items={getTransactionActionItems(
                           transaction,
@@ -620,7 +622,7 @@ export function TransactionsMonitoring() {
                             ),
                         )}
                       />
-                    )}
+                    ) : null}
                   </div>
                 </div>
               );

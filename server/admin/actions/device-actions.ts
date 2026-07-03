@@ -1,6 +1,6 @@
 "use server";
 
-import { getAdminContext } from "@/server/admin/context";
+import { getAdminContext, verifyRole } from "@/server/admin/context";
 import {
   PRINTER_TUNING_LIMITS,
   clampPrinterTuningValue,
@@ -30,7 +30,7 @@ export async function getDevices(): Promise<Device[]> {
 }
 
 export async function createDevice(values: BoothInput): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin"]);
   const id = `BTH-${Date.now()}`;
   const frameTemplates = normalizeAssignmentList(
     values.frameTemplates,
@@ -88,7 +88,7 @@ export async function updateDevice(
   id: string,
   patch: Partial<BoothInput>,
 ): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin"]);
   const dbPatch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
@@ -160,13 +160,13 @@ export async function updateDevice(
 }
 
 export async function deleteDevice(id: string): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin"]);
   const { error } = await supabase.from("devices").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete device: ${error.message}`);
 }
 
 export async function approveVoucherRequest(id: string, code = "FREE"): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const now = new Date().toISOString();
   const normalizedCode = code.trim().toUpperCase() || "FREE";
   const { error } = await supabase
@@ -182,7 +182,7 @@ export async function approveVoucherRequest(id: string, code = "FREE"): Promise<
 }
 
 export async function rejectVoucherRequest(id: string): Promise<void> {
-  const { supabase } = await getAdminContext();
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const { error } = await supabase
     .from("devices")
     .update({

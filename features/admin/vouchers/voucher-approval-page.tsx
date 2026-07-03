@@ -31,6 +31,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 
 const VOUCHER_REQUEST_TTL_MS = 5 * 60 * 1000;
 
@@ -67,6 +68,7 @@ export function VoucherApproval() {
   const { data: devices = [], refetch, isLoading } = useBooths();
   const approveVoucher = useApproveVoucherRequest();
   const rejectVoucher = useRejectVoucherRequest();
+  const { isReadOnly } = usePermission();
 
   const [search, setSearch] = useState("");
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
@@ -227,6 +229,7 @@ export function VoucherApproval() {
                     <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                       <Button
                         className="bg-yellow-600 font-semibold text-white shadow-sm hover:bg-yellow-700"
+                        disabled={isReadOnly("vouchers")}
                         onClick={() => setSelectedDevice(device)}
                       >
                         <Ticket className="size-4 mr-2" /> Approve Voucher
@@ -234,7 +237,7 @@ export function VoucherApproval() {
                       <Button
                         variant="outline"
                         className="border-yellow-200 hover:bg-yellow-50 text-zinc-700"
-                        disabled={rejectVoucher.isPending}
+                        disabled={rejectVoucher.isPending || isReadOnly("vouchers")}
                         onClick={async () => {
                           try {
                             await rejectVoucher.mutateAsync(device.id);
@@ -327,7 +330,7 @@ export function VoucherApproval() {
                       variant="outline"
                       size="sm"
                       className="w-full mt-4 border-zinc-200 hover:bg-zinc-50 text-xs"
-                      disabled={!isOnline}
+                      disabled={!isOnline || isReadOnly("vouchers")}
                       onClick={() => setSelectedDevice(device)}
                     >
                       <Send className="size-3.5 mr-1.5" />

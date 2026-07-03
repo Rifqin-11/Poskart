@@ -35,7 +35,7 @@ import {
 import { signOutAction } from "@/app/auth/actions";
 import { SubscriptionDialog } from "@/features/billing/subscription/subscription-dialog";
 import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { CommandSearch } from "@/components/ui/command";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -333,6 +333,11 @@ export function AdminShell({
   // auto-refresh when the Flutter kiosk app pushes changes (e.g. active theme)
   useRealtimeSync();
 
+  const { data: notifications = [] } = useAdminNotifications();
+  const markRead = useMarkAdminNotificationsRead();
+  const unreadNotifications = notifications.filter((n) => !n.readAt);
+  const hasUnread = unreadNotifications.length > 0;
+
   return (
     <div
       className={cn(
@@ -396,12 +401,14 @@ export function AdminShell({
                     title="Notifications"
                   >
                     <Bell className="size-4" />
-                    <span className="absolute right-2 top-2 size-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                    {hasUnread && (
+                      <span className="absolute right-2 top-2 size-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                    )}
                   </button>
                   {notificationMenuOpen ? (
                     <div
                       role="menu"
-                      className="absolute right-0 top-12 z-50 w-80 rounded-3xl border border-zinc-200/80 bg-white/95 p-3 shadow-2xl shadow-zinc-950/10 backdrop-blur-xl"
+                      className="absolute right-0 top-12 z-50 w-96 rounded-3xl border border-zinc-200/80 bg-white/95 p-3 shadow-2xl shadow-zinc-950/10 backdrop-blur-xl"
                     >
                       <div className="flex items-start justify-between gap-3 border-b border-zinc-100 px-2 pb-3">
                         <div>
@@ -412,21 +419,88 @@ export function AdminShell({
                             Ringkasan aktivitas POSKART terbaru.
                           </div>
                         </div>
-                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
-                          Active
-                        </span>
+                        {hasUnread ? (
+                          <button
+                            onClick={() => {
+                              markRead.mutate(unreadNotifications.map((n) => n.id));
+                            }}
+                            className="rounded-full bg-zinc-100 hover:bg-zinc-200 transition px-2.5 py-1 text-[11px] font-medium text-zinc-700 shrink-0"
+                          >
+                            Tandai semua dibaca
+                          </button>
+                        ) : (
+                          <span className="rounded-full bg-zinc-50 px-2.5 py-1 text-[11px] font-medium text-zinc-400 shrink-0">
+                            Dibaca semua
+                          </span>
+                        )}
                       </div>
-                      <div className="py-2">
-                        <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm">
-                          <div className="font-medium text-zinc-950">
-                            Tidak ada notifikasi penting
+                      <div className="py-2 max-h-[360px] overflow-y-auto space-y-2 [scrollbar-width:thin] pr-1">
+                        {notifications.length === 0 ? (
+                          <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm">
+                            <div className="font-medium text-zinc-950">
+                              Tidak ada notifikasi penting
+                            </div>
+                            <div className="mt-1 text-xs leading-5 text-zinc-500">
+                              Semua layanan dashboard berjalan normal. Notifikasi
+                              transaksi, device, dan print job akan tampil di
+                              sini.
+                            </div>
                           </div>
-                          <div className="mt-1 text-xs leading-5 text-zinc-500">
-                            Semua layanan dashboard berjalan normal. Notifikasi
-                            transaksi, device, dan print job akan tampil di
-                            sini.
-                          </div>
-                        </div>
+                        ) : (
+                          notifications.map((notif) => {
+                            const isUnread = !notif.readAt;
+                            return (
+                              <div
+                                key={notif.id}
+                                className={cn(
+                                  "relative flex flex-col gap-1 rounded-2xl p-3 text-sm transition border",
+                                  isUnread
+                                    ? "bg-emerald-50/50 border-emerald-100/70 hover:bg-emerald-50/80"
+                                    : "bg-white hover:bg-zinc-50 border-zinc-100"
+                                )}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <span className={cn("font-semibold text-zinc-950", isUnread && "text-emerald-950")}>
+                                    {notif.title}
+                                  </span>
+                                  <span className="text-[10px] text-zinc-400 shrink-0">
+                                    {formatNotificationTime(notif.createdAt)}
+                                  </span>
+                                </div>
+                                {notif.body && (
+                                  <p className="text-xs text-zinc-500 leading-relaxed mt-0.5">
+                                    {notif.body}
+                                  </p>
+                                )}
+                                {notif.href && (
+                                  <div className="mt-2 flex items-center justify-end">
+                                    <Link
+                                      href={notif.href}
+                                      onClick={() => {
+                                        if (isUnread) {
+                                          markRead.mutate([notif.id]);
+                                        }
+                                        setNotificationMenuOpen(false);
+                                      }}
+                                      className={cn(
+                                        buttonVariants({
+                                          variant: isUnread ? "default" : "outline",
+                                          size: "sm",
+                                        }),
+                                        "h-7 rounded-xl text-xs px-3 font-medium transition-colors",
+                                        isUnread
+                                          ? "bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+                                          : "text-zinc-600 hover:text-zinc-900"
+                                      )}
+                                    >
+                                      Buka Detail
+                                    </Link>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
                   ) : null}

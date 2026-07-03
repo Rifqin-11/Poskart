@@ -6,6 +6,7 @@ import { Boxes, Edit2, GripVertical, ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { usePermission } from "@/features/admin/hooks/use-permission";
 import type { Template } from "@/types/template";
 
 type SortableTemplateCardProps = {
@@ -23,6 +24,8 @@ export function SortableTemplateCard({
   onEdit,
   onTest,
 }: SortableTemplateCardProps) {
+  const { isReadOnly } = usePermission();
+  const readOnly = isReadOnly("templates");
   const {
     attributes,
     isDragging,
@@ -55,16 +58,18 @@ export function SortableTemplateCard({
             <span className="text-xs font-medium text-zinc-400">
               Urutan {template.displayOrder + 1}
             </span>
-            <button
-              type="button"
-              className="flex size-9 cursor-grab touch-none items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 active:cursor-grabbing"
-              title="Geser untuk mengubah urutan"
-              aria-label={`Ubah urutan ${template.name}`}
-              {...attributes}
-              {...listeners}
-            >
-              <GripVertical className="size-4" />
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                className="flex size-9 cursor-grab touch-none items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 active:cursor-grabbing"
+                title="Geser untuk mengubah urutan"
+                aria-label={`Ubah urutan ${template.name}`}
+                {...attributes}
+                {...listeners}
+              >
+                <GripVertical className="size-4" />
+              </button>
+            )}
           </div>
 
           <div
@@ -132,22 +137,26 @@ export function SortableTemplateCard({
             >
               <ImagePlus className="size-3.5" /> Test
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 justify-center px-2"
-              onClick={() => onEdit(template)}
-            >
-              <Edit2 className="size-3.5" /> Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="justify-center px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
-              onClick={() => onDelete(template)}
-            >
-              <Trash2 className="size-3.5" /> Delete
-            </Button>
+            {!readOnly && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 justify-center px-2"
+                  onClick={() => onEdit(template)}
+                >
+                  <Edit2 className="size-3.5" /> Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-center px-2 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => onDelete(template)}
+                >
+                  <Trash2 className="size-3.5" /> Delete
+                </Button>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>

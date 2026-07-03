@@ -35,6 +35,8 @@ export async function createOrganizationAction(formData: FormData) {
   );
 }
 
+import { cancelJoinRequestAction } from "@/server/admin/actions/join-request-actions";
+
 export async function joinOrganizationAction(formData: FormData) {
   const organizationCode = readField(formData, "organizationCode");
 
@@ -57,7 +59,30 @@ export async function joinOrganizationAction(formData: FormData) {
 
   return encodedRedirect(
     "success",
-    "/dashboard",
-    "Organization joined. You can now access your workspace.",
+    "/onboarding",
+    "Permintaan bergabung berhasil dikirim. Menunggu persetujuan pemilik atau admin.",
   );
+}
+
+export async function cancelMyPendingRequestAction(formData: FormData) {
+  const requestId = readField(formData, "requestId");
+  if (!requestId) {
+    return encodedRedirect(
+      "error",
+      "/onboarding",
+      "Request ID is required to cancel.",
+    );
+  }
+
+  try {
+    await cancelJoinRequestAction(requestId);
+    return encodedRedirect(
+      "success",
+      "/onboarding",
+      "Permintaan bergabung berhasil dibatalkan.",
+    );
+  } catch (error: any) {
+    const message = error instanceof Error ? error.message : "Terjadi kesalahan.";
+    return encodedRedirect("error", "/onboarding", message);
+  }
 }
