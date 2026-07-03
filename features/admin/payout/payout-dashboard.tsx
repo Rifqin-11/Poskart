@@ -448,13 +448,6 @@ function PayoutSettingsSummary({
               value={formatPayoutCurrency(summary.settings.minimumPayoutAmount)}
             />
           </div>
-          {!canRequest ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              {!hasAccount
-                ? "Lengkapi rekening payout sebelum request pencairan."
-                : "Saldo tersedia belum memenuhi minimum payout atau belum ada pembayaran eligible."}
-            </div>
-          ) : null}
         </div>
       </CardContent>
     </Card>
