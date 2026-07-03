@@ -128,7 +128,7 @@ const navItems: AdminNavItem[] = [
     href: "/settings",
     label: "Settings",
     icon: Settings,
-    requiresSubscription: true,
+    requiresSubscription: false,
   },
 ];
 
