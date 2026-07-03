@@ -160,6 +160,7 @@ export function SettingsPanel() {
         qris_provider_merchant_id: config.qris_provider_merchant_id ?? "",
         qris_webhook_secret: config.qris_webhook_secret ?? "",
         qris_auto_retry: config.qris_auto_retry ?? true,
+        payment_mode: "sharing" as "sharing" | "private",
         subscription_payment_gateway:
           config.subscription_payment_gateway ?? "duitku",
         gateway_fee_type: config.gateway_fee_type ?? "percentage",

@@ -12,7 +12,7 @@ export function usePermission() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then((res) => {
+    supabase.auth.getUser().then((res: Awaited<ReturnType<typeof supabase.auth.getUser>>) => {
       setUserEmail(res.data?.user?.email ?? null);
     });
   }, []);

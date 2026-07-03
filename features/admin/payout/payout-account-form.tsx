@@ -42,7 +42,7 @@ function PayoutAccountFields({
   onSaved?: () => void;
   isEditing?: boolean;
 }) {
-  const { isOwnerOrAdmin } = usePermission();
+  const { isOwnerOrAdmin, isReadOnly } = usePermission();
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState({
     bankName: account?.bankName ?? "",
