@@ -122,13 +122,13 @@ const navItems: AdminNavItem[] = [
     href: "/superadmin",
     label: "Super Admin",
     icon: Shield,
-    superAdminOnly: false,
+    superAdminOnly: true,
   },
   {
     href: "/settings",
     label: "Settings",
     icon: Settings,
-    requiresSubscription: false,
+    requiresSubscription: true,
   },
 ];
 
@@ -328,13 +328,6 @@ export function AdminShell({
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
   const builderFullView = useBuilderStore((s) => s.builderFullView);
-  const { data: notifications = [], isLoading: notificationsLoading } =
-    useAdminNotifications();
-  const markNotificationsRead = useMarkAdminNotificationsRead();
-  const unreadNotificationIds = notifications
-    .filter((notification) => !notification.readAt)
-    .map((notification) => notification.id);
-  const unreadCount = unreadNotificationIds.length;
 
   // Subscribe to Supabase Realtime so layout_schemas + devices queries
   // auto-refresh when the Flutter kiosk app pushes changes (e.g. active theme)
@@ -403,16 +396,12 @@ export function AdminShell({
                     title="Notifications"
                   >
                     <Bell className="size-4" />
-                    {unreadCount > 0 ? (
-                      <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white ring-2 ring-white">
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </span>
-                    ) : null}
+                    <span className="absolute right-2 top-2 size-2 rounded-full bg-emerald-500 ring-2 ring-white" />
                   </button>
                   {notificationMenuOpen ? (
                     <div
                       role="menu"
-                      className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] rounded-3xl border border-zinc-200/80 bg-white/95 p-3 shadow-2xl shadow-zinc-950/10 backdrop-blur-xl"
+                      className="absolute right-0 top-12 z-50 w-80 rounded-3xl border border-zinc-200/80 bg-white/95 p-3 shadow-2xl shadow-zinc-950/10 backdrop-blur-xl"
                     >
                       <div className="flex items-start justify-between gap-3 border-b border-zinc-100 px-2 pb-3">
                         <div>
@@ -423,101 +412,21 @@ export function AdminShell({
                             Ringkasan aktivitas POSKART terbaru.
                           </div>
                         </div>
-                        {unreadCount > 0 ? (
-                          <button
-                            type="button"
-                            className="rounded-full bg-zinc-950 px-2 py-1 text-[11px] font-medium text-white"
-                            onClick={() =>
-                              markNotificationsRead.mutate(unreadNotificationIds)
-                            }
-                          >
-                            Tandai dibaca
-                          </button>
-                        ) : (
-                          <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
-                            Aman
-                          </span>
-                        )}
+                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                          Active
+                        </span>
                       </div>
-                      <div className="max-h-96 space-y-2 overflow-y-auto py-2 pr-1">
-                        {notificationsLoading ? (
-                          <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm text-zinc-500">
-                            Memuat notifikasi...
+                      <div className="py-2">
+                        <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm">
+                          <div className="font-medium text-zinc-950">
+                            Tidak ada notifikasi penting
                           </div>
-                        ) : notifications.length === 0 ? (
-                          <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm">
-                            <div className="font-medium text-zinc-950">
-                              Tidak ada notifikasi penting
-                            </div>
-                            <div className="mt-1 text-xs leading-5 text-zinc-500">
-                              Request pencairan, refund, verifikasi, dan hasil
-                              review akan tampil di sini.
-                            </div>
+                          <div className="mt-1 text-xs leading-5 text-zinc-500">
+                            Semua layanan dashboard berjalan normal. Notifikasi
+                            transaksi, device, dan print job akan tampil di
+                            sini.
                           </div>
-                        ) : (
-                          notifications.map((notification) => {
-                            const content = (
-                              <div
-                                className={cn(
-                                  "rounded-2xl border px-3 py-3 text-left text-sm transition-colors hover:bg-zinc-50",
-                                  notification.readAt
-                                    ? "border-zinc-100 bg-white"
-                                    : "border-emerald-100 bg-emerald-50/70",
-                                )}
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0 font-medium text-zinc-950">
-                                    {notification.title}
-                                  </div>
-                                  <span className="shrink-0 text-[11px] text-zinc-400">
-                                    {formatNotificationTime(
-                                      notification.createdAt,
-                                    )}
-                                  </span>
-                                </div>
-                                {notification.body ? (
-                                  <div className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500">
-                                    {notification.body}
-                                  </div>
-                                ) : null}
-                              </div>
-                            );
-
-                            return notification.href ? (
-                              <Link
-                                key={notification.id}
-                                href={notification.href}
-                                role="menuitem"
-                                onClick={() => {
-                                  setNotificationMenuOpen(false);
-                                  if (!notification.readAt) {
-                                    markNotificationsRead.mutate([
-                                      notification.id,
-                                    ]);
-                                  }
-                                }}
-                              >
-                                {content}
-                              </Link>
-                            ) : (
-                              <button
-                                key={notification.id}
-                                type="button"
-                                role="menuitem"
-                                className="block w-full"
-                                onClick={() => {
-                                  if (!notification.readAt) {
-                                    markNotificationsRead.mutate([
-                                      notification.id,
-                                    ]);
-                                  }
-                                }}
-                              >
-                                {content}
-                              </button>
-                            );
-                          })
-                        )}
+                        </div>
                       </div>
                     </div>
                   ) : null}
