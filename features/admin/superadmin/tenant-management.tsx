@@ -144,7 +144,7 @@ export function TenantManagement() {
             <TabsTrigger value="users">Registered Users</TabsTrigger>
             <TabsTrigger value="saas-pricing">SaaS Pricing</TabsTrigger>
             <TabsTrigger value="payment-gateway">Payment Gateway</TabsTrigger>
-            <TabsTrigger value="payout-invoices">Payout Invoices</TabsTrigger>
+            <TabsTrigger value="payout-invoices">Payout / Withdraw</TabsTrigger>
             <TabsTrigger value="transaction-requests">
               Transaction Requests
             </TabsTrigger>

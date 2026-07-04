@@ -410,7 +410,7 @@ export function SettingsPanel() {
           variant={isEditingOrg ? "outline" : "default"}
           className="rounded-2xl"
         >
-          {isEditingOrg ? "Selesai Edit" : "Edit Organisasi"}
+          {isEditingOrg ? "Finish Editing" : "Edit Organization"}
         </Button>
       );
     }
@@ -439,7 +439,7 @@ export function SettingsPanel() {
     <div className="space-y-4">
       <PageHeader
         title="Settings"
-        description="Kelola profil akun, workspace, payment, media, dan default kiosk POSKART."
+        description="Manage account profile, workspace, payment, media, and POSKART kiosk defaults."
         action={getHeaderAction()}
       />
 

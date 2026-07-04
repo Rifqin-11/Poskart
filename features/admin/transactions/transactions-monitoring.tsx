@@ -33,6 +33,7 @@ import {
 import { useAppConfig } from "@/features/admin/settings/use-settings";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { AppConfigRow } from "@/types/app-config";
 import type { Transaction, TransactionActionType } from "@/types/transaction";
 
@@ -70,9 +71,9 @@ function renderPaymentMethod(
 }
 
 function getTransactionActionLabel(action: TransactionActionType) {
-  if (action === "verify") return "Verifikasi";
+  if (action === "verify") return "Verify";
   if (action === "refund") return "Refund";
-  return "Arsip";
+  return "Archive";
 }
 
 function getTransactionActionItems(
@@ -86,7 +87,7 @@ function getTransactionActionItems(
 
   if (transaction.status !== "paid" && transaction.status !== "refunded") {
     items.push({
-      label: "Verifikasi",
+      label: "Verify",
       onClick: () => onRequest(transaction, "verify"),
     });
   }
@@ -101,18 +102,18 @@ function getTransactionActionItems(
 
   if (transaction.isTesting) {
     items.push({
-      label: "Batalkan mode testing",
+      label: "Unmark test mode",
       onClick: () => onUnmarkTesting(transaction),
     });
   } else {
     items.push({
-      label: "Tandai sebagai testing",
+      label: "Mark as test mode",
       onClick: () => onMarkTesting(transaction),
     });
   }
 
   items.push({
-    label: "Arsip",
+    label: "Archive",
     destructive: true,
     onClick: () => onRequest(transaction, "archive"),
   });
@@ -128,11 +129,11 @@ function getTransactionDateKey(value: string) {
 
 function renderTestingBadge(transaction: Transaction) {
   if (!transaction.isTesting) return null;
-  return <Badge variant="warning">Mode testing</Badge>;
+  return <Badge variant="warning">Test mode</Badge>;
 }
 
 function renderTransactionStatusBadges(transaction: Transaction) {
-  if (transaction.isArchived) return <Badge variant="secondary">Arsip</Badge>;
+  if (transaction.isArchived) return <Badge variant="secondary">Archived</Badge>;
   return transaction.isTesting
     ? renderTestingBadge(transaction)
     : renderTransactionStatus(transaction.status);
@@ -145,11 +146,11 @@ function isArchiveableTransaction(transaction: Transaction) {
 type BulkAction = TransactionActionType | "mark-testing" | "unmark-testing";
 
 function getBulkActionLabel(action: BulkAction) {
-  if (action === "verify") return "Verifikasi";
+  if (action === "verify") return "Verify";
   if (action === "refund") return "Refund";
-  if (action === "mark-testing") return "Tandai mode testing";
-  if (action === "unmark-testing") return "Batalkan mode testing";
-  return "Arsip";
+  if (action === "mark-testing") return "Mark as test mode";
+  if (action === "unmark-testing") return "Unmark test mode";
+  return "Archive";
 }
 
 function canApplyBulkAction(transaction: Transaction, action: BulkAction) {
@@ -319,8 +320,8 @@ function AmountBreakdown({
 }) {
   return (
     <div className={`mt-1 space-y-0.5 text-xs text-zinc-500 ${className}`}>
-      <div>Bruto {formatCurrency(gross)}</div>
-      <div>potongan {feeLabel}</div>
+      <div>Gross {formatCurrency(gross)}</div>
+      <div>fee {feeLabel}</div>
     </div>
   );
 }
@@ -353,6 +354,7 @@ function TransactionSummaryMetric({
 }
 
 export function TransactionsMonitoring() {
+  const { t } = useI18n();
   const { data: config } = useAppConfig();
   const requestAction = useRequestTransactionAction();
   const markTesting = useMarkTransactionAsTesting();
@@ -518,11 +520,11 @@ export function TransactionsMonitoring() {
         action,
       });
       toast.success(
-        `${getTransactionActionLabel(action)} menunggu approval Super Admin.`,
+        `${getTransactionActionLabel(action)} is waiting for Super Admin approval.`,
       );
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Gagal membuat request",
+        error instanceof Error ? error.message : "Failed to create request",
       );
     }
   }
@@ -530,12 +532,12 @@ export function TransactionsMonitoring() {
   async function handleMarkTesting(transaction: Transaction) {
     try {
       await markTesting.mutateAsync(transaction.id);
-      toast.success("Transaksi ditandai sebagai testing.");
+      toast.success("Transaction marked as test mode.");
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Gagal menandai transaksi testing",
+          : "Failed to mark transaction as test mode",
       );
     }
   }
@@ -543,12 +545,12 @@ export function TransactionsMonitoring() {
   async function handleUnmarkTesting(transaction: Transaction) {
     try {
       await unmarkTesting.mutateAsync(transaction.id);
-      toast.success("Mode testing transaksi dibatalkan.");
+      toast.success("Transaction test mode was removed.");
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Gagal membatalkan mode testing",
+          : "Failed to remove transaction test mode",
       );
     }
   }
@@ -558,7 +560,7 @@ export function TransactionsMonitoring() {
       canApplyBulkAction(transaction, action),
     );
     if (eligibleTransactions.length === 0) {
-      toast.error(`Tidak ada transaksi yang valid untuk ${getBulkActionLabel(action)}.`);
+      toast.error(`No valid transactions for ${getBulkActionLabel(action)}.`);
       return;
     }
 
@@ -583,7 +585,7 @@ export function TransactionsMonitoring() {
         failedMessage =
           error instanceof Error
             ? error.message
-            : `Gagal menjalankan ${getBulkActionLabel(action)}`;
+            : `Failed to run ${getBulkActionLabel(action)}`;
       }
     }
 
@@ -597,15 +599,17 @@ export function TransactionsMonitoring() {
       });
       const approvalSuffix =
         action === "verify" || action === "refund" || action === "archive"
-          ? " dan menunggu approval Super Admin"
+          ? " and waiting for Super Admin approval"
           : "";
       toast.success(
-        `${successCount} transaksi berhasil diproses${approvalSuffix}.`,
+        `${successCount} transactions processed${approvalSuffix}.`,
       );
     }
     if (failedMessage) {
       toast.error(
-        failedCount > 1 ? `${failedCount} transaksi gagal. ${failedMessage}` : failedMessage,
+        failedCount > 1
+          ? `${failedCount} transactions failed. ${failedMessage}`
+          : failedMessage,
       );
     }
   }
@@ -621,29 +625,29 @@ export function TransactionsMonitoring() {
         <CardContent className="grid gap-4 p-5 md:grid-cols-3">
           <TransactionSummaryMetric
             icon={Banknote}
-            label="Jumlah pendapatan"
+            label="Total revenue"
             value={formatCurrency(summary.revenue)}
             description={
               <div className="space-y-0.5">
-                <div>Bruto {formatCurrency(summary.grossRevenue)}</div>
-                <div>potongan QRIS {getConfiguredFeeRuleLabel(config)}</div>
+                <div>Gross {formatCurrency(summary.grossRevenue)}</div>
+                <div>QRIS fee {getConfiguredFeeRuleLabel(config)}</div>
               </div>
             }
           />
           <TransactionSummaryMetric
             icon={Printer}
-            label="Jumlah print"
+            label="Total prints"
             value={`${summary.printCount} print`}
-            description="Dari transaksi paid"
+            description="From paid transactions"
           />
           <TransactionSummaryMetric
             icon={ReceiptText}
-            label="Jumlah transaksi"
-            value={`${summary.transactionCount} transaksi`}
+            label="Total transactions"
+            value={`${summary.transactionCount} transactions`}
             description={
               hasActiveFilters
-                ? `Hasil filter dari ${data.length} transaksi`
-                : "Semua transaksi"
+                ? `Filtered from ${data.length} transactions`
+                : "All transactions"
             }
           />
         </CardContent>
@@ -675,8 +679,8 @@ export function TransactionsMonitoring() {
                 <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
                 <option value="refunded">Refunded</option>
-                <option value="archive">Arsip</option>
-                <option value="testing">Mode testing</option>
+                <option value="archive">{t("transactions.status.archive")}</option>
+                <option value="testing">{t("transactions.status.testing")}</option>
               </Select>
               <Select
                 value={paymentMethodFilter}
@@ -766,7 +770,7 @@ export function TransactionsMonitoring() {
                     />
                   </TableHead>
                   <TableHead>ID</TableHead>
-                  <TableHead>Tanggal & Jam</TableHead>
+                  <TableHead>Date & Time</TableHead>
                   <TableHead>Device</TableHead>
                   <TableHead>Payment Method</TableHead>
                   <TableHead>Package</TableHead>
@@ -934,7 +938,7 @@ export function TransactionsMonitoring() {
                   </div>
                   <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
                     <div>
-                      <p className="text-xs text-zinc-500">Tanggal</p>
+                      <p className="text-xs text-zinc-500">Date</p>
                       <p className="mt-1 text-zinc-700">
                         {formatDateTime(transaction.createdAtRaw)}
                       </p>
@@ -965,7 +969,7 @@ export function TransactionsMonitoring() {
                   <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-zinc-100 pt-3">
                     {transaction.pendingAction ? (
                       <span className="text-xs text-zinc-500">
-                        Menunggu approval Super Admin
+                        Waiting for Super Admin approval
                       </span>
                     ) : !transaction.isArchived &&
                       !isReadOnly("transactions") ? (

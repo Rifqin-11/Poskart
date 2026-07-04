@@ -31,9 +31,9 @@ import type {
 } from "@/types/transaction";
 
 function actionLabel(action: TransactionActionType) {
-  if (action === "verify") return "Verifikasi";
+  if (action === "verify") return "Verify";
   if (action === "refund") return "Refund";
-  return "Arsip";
+  return "Archive";
 }
 
 function actionVariant(action: TransactionActionType) {
@@ -66,10 +66,10 @@ export function TransactionActionRequestManagement() {
             : `${actionLabel(request.action)} rejected`,
       });
       toast.success(
-        decision === "approved" ? "Request disetujui" : "Request ditolak",
+        decision === "approved" ? "Request approved" : "Request rejected",
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Review gagal");
+      toast.error(error instanceof Error ? error.message : "Review failed");
     }
   }
 
@@ -78,8 +78,7 @@ export function TransactionActionRequestManagement() {
       <CardHeader>
         <CardTitle>Transaction Requests</CardTitle>
         <CardDescription>
-          Review request Verifikasi, Refund, dan Arsip sebelum mengubah data
-          transaksi.
+          Review Verify, Refund, and Archive requests before transaction data is changed.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -141,8 +140,8 @@ export function TransactionActionRequestManagement() {
                     className="py-10 text-center text-sm text-zinc-400"
                   >
                     {isLoading
-                      ? "Memuat request transaksi..."
-                      : "Belum ada request transaksi."}
+                      ? "Loading transaction requests..."
+                      : "No transaction requests yet."}
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -199,8 +198,8 @@ export function TransactionActionRequestManagement() {
           {data.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500">
               {isLoading
-                ? "Memuat request transaksi..."
-                : "Belum ada request transaksi."}
+                ? "Loading transaction requests..."
+                : "No transaction requests yet."}
             </div>
           ) : null}
         </div>
@@ -238,7 +237,7 @@ function ReviewButtons({
         onClick={() => void onReview(request, "rejected")}
       >
         <XCircle className="size-4" />
-        Tolak
+        Reject
       </Button>
       <Button
         size="sm"
@@ -246,7 +245,7 @@ function ReviewButtons({
         onClick={() => void onReview(request, "approved")}
       >
         <CheckCircle2 className="size-4" />
-        Setujui
+        Approve
       </Button>
     </div>
   );

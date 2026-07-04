@@ -23,7 +23,7 @@ export function formatPayoutDate(value?: string | null) {
 
 export function getPayoutStatusLabel(status: PayoutStatus) {
   const labels: Record<PayoutStatus, string> = {
-    pending_approval: "Menunggu Persetujuan",
+    pending_approval: "Pending Approval",
     requested: "Requested",
     approved: "Approved",
     paid: "Paid",

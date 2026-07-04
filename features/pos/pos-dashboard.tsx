@@ -272,7 +272,7 @@ export function PosDashboard({
               aria-label="Tanggal dashboard"
             />
           ) : null}
-          <Button variant="outline" onClick={exportCsv}>
+          <Button variant="outline" onClick={exportCsv} className="rounded-full">
             <Download className="size-4" />
             Export CSV
           </Button>

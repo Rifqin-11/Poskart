@@ -620,7 +620,7 @@ export function MoneyDashboard({
           <div className="relative">
             <Button
               variant="outline"
-              className="w-full justify-center xl:w-auto"
+              className="w-full justify-center xl:w-auto rounded-full"
               onClick={() => setSettingsDropdownOpen(!settingsDropdownOpen)}
             >
               <Settings2 className="size-4" />
@@ -670,7 +670,7 @@ export function MoneyDashboard({
           <div className="relative">
             <Button
               variant="outline"
-              className="w-full justify-center xl:w-auto"
+              className="w-full justify-center xl:w-auto rounded-full"
               onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
             >
               <FileDown className="size-4" />
@@ -710,7 +710,7 @@ export function MoneyDashboard({
             ) : null}
           </div>
 
-          <Button className="justify-center sm:col-span-2 xl:col-span-1" onClick={openCreate}>
+          <Button className="justify-center sm:col-span-2 xl:col-span-1 rounded-full" onClick={openCreate}>
             <Plus className="size-4" />
             Tambah transaksi
           </Button>

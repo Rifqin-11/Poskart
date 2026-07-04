@@ -75,7 +75,7 @@ export function PayoutDashboard({
 
   const submitRequest = () => {
     if (!summary.payoutAccount) {
-      toast.error("Lengkapi rekening payout terlebih dahulu.");
+      toast.error("Complete the payout account first.");
       return;
     }
 
@@ -85,10 +85,10 @@ export function PayoutDashboard({
         accountId: summary.payoutAccount!.id,
       });
       if (!result.success) {
-        toast.error(result.error ?? "Gagal request pencairan");
+        toast.error(result.error ?? "Failed to request withdrawal");
         return;
       }
-      toast.success("Request pencairan terkirim");
+      toast.success("Withdrawal request sent");
       setRequestOpen(false);
       router.refresh();
     });
@@ -97,8 +97,8 @@ export function PayoutDashboard({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Invoice Pencairan"
-        description="Pantau saldo hasil QRIS photobooth dan ajukan pencairan dana organisasi."
+        title="Payout / Withdraw"
+        description="Monitor verified QRIS photobooth revenue and request organization withdrawals."
         action={
           <Button
             className="rounded-2xl"
@@ -111,22 +111,22 @@ export function PayoutDashboard({
             }}
           >
             <Download className="size-4" />
-            Request pencairan
+            Request withdrawal
           </Button>
         }
       />
 
       <div className="grid gap-4 lg:grid-cols-4">
         <StatCard
-          title="Saldo tersedia"
+          title="Available balance"
           value={formatPayoutCurrency(summary.availableNetAmount)}
-          description={`${summary.eligibleTransactionCount} pembayaran eligible`}
+          description={`${summary.eligibleTransactionCount} eligible payments`}
           icon={Wallet}
           tone="success"
           variant="spacious"
         />
         <StatCard
-          title="Gross tersedia"
+          title="Available gross"
           value={formatPayoutCurrency(summary.availableGrossAmount)}
           description={`Fee ${formatPayoutCurrency(summary.availableGatewayFeeAmount + summary.availablePlatformFeeAmount)}`}
           icon={BadgeDollarSign}
@@ -135,14 +135,14 @@ export function PayoutDashboard({
         <StatCard
           title="Pending payout"
           value={formatPayoutCurrency(summary.pendingNetAmount)}
-          description={`${summary.pendingInvoiceCount} invoice menunggu`}
+          description={`${summary.pendingInvoiceCount} pending requests`}
           icon={Clock3}
           variant="spacious"
         />
         <StatCard
-          title="Sudah dicairkan"
+          title="Withdrawn"
           value={formatPayoutCurrency(summary.paidNetAmount)}
-          description="Total invoice paid"
+          description="Total paid payout"
           icon={Landmark}
           tone="success"
           variant="spacious"
@@ -154,10 +154,10 @@ export function PayoutDashboard({
       <Card>
         <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <CardTitle>Rincian saldo tersedia</CardTitle>
+            <CardTitle>Available balance details</CardTitle>
             <CardDescription>
-              Daftar ledger pembayaran yang membentuk saldo tersedia saat ini.
-              Jika item masuk invoice, item akan hilang dari tabel ini.
+              Payment ledger entries that currently form the available balance.
+              Entries disappear from this table once they are locked into a payout request.
             </CardDescription>
           </div>
           <div className="grid min-w-64 grid-cols-3 gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs">
@@ -238,7 +238,7 @@ export function PayoutDashboard({
                     colSpan={7}
                     className="py-8 text-center text-sm text-zinc-500"
                   >
-                    Belum ada ledger pembayaran eligible.
+                    No eligible payment ledger entries yet.
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -249,17 +249,16 @@ export function PayoutDashboard({
 
       <Card>
         <CardHeader>
-          <CardTitle>Riwayat invoice pencairan</CardTitle>
+          <CardTitle>Payout / withdraw history</CardTitle>
           <CardDescription>
-            Setiap invoice mengunci daftar ledger sehingga tidak bisa dobel
-            dicairkan.
+            Each payout locks its ledger entries so the same revenue cannot be withdrawn twice.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Invoice</TableHead>
+                <TableHead>Payout</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Requested</TableHead>
                 <TableHead>Gross</TableHead>
@@ -300,7 +299,7 @@ export function PayoutDashboard({
                       size="sm"
                       onClick={() => setSelectedInvoice(invoice)}
                     >
-                      Detail
+                      Details
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -311,7 +310,7 @@ export function PayoutDashboard({
                     colSpan={8}
                     className="py-8 text-center text-sm text-zinc-500"
                   >
-                    Belum ada invoice pencairan.
+                    No payout requests yet.
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -323,25 +322,25 @@ export function PayoutDashboard({
       <Dialog
         open={requestOpen}
         onOpenChange={setRequestOpen}
-        title="Request pencairan"
+        title="Request withdrawal"
       >
         <div className="space-y-4">
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-6 text-zinc-600">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span>Saldo tersedia</span>
+              <span>Available balance</span>
               <span className="font-semibold text-zinc-950">
                 {formatPayoutCurrency(summary.availableNetAmount)}
               </span>
             </div>
             <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span>Minimal request</span>
+              <span>Minimum request</span>
               <span className="font-medium text-zinc-700">
                 {formatPayoutCurrency(summary.settings.minimumPayoutAmount)}
               </span>
             </div>
           </div>
           <label className="block text-xs font-medium text-zinc-600">
-            Nominal request
+            Request amount
             <Input
               className="mt-1.5"
               type="number"
@@ -362,40 +361,40 @@ export function PayoutDashboard({
               value={formatPayoutCurrency(requestEstimate.grossAmount)}
             />
             <EstimateStat
-              label="Potongan Duitku"
+              label="Duitku fee"
               value={formatPayoutCurrency(requestEstimate.gatewayFeeAmount)}
             />
             <EstimateStat
-              label="Potongan POSKART"
+              label="POSKART fee"
               value={formatPayoutCurrency(requestEstimate.platformFeeAmount)}
             />
             <EstimateStat
-              label="Didapat"
+              label="You receive"
               value={formatPayoutCurrency(requestEstimate.netAmount)}
               strong
             />
           </div>
           <div className="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-900">
-            Biaya terdiri dari gateway fee Duitku per transaksi QRIS dan biaya
-            penarikan POSKART satu kali untuk request pencairan ini.
+            Fees consist of the Duitku gateway fee per QRIS transaction and the
+            one-time POSKART withdrawal fee for this request.
           </div>
           {requestForm.amount < summary.settings.minimumPayoutAmount ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-              Nominal request masih di bawah minimal pencairan.
+              Request amount is still below the minimum withdrawal amount.
             </div>
           ) : null}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setRequestOpen(false)}>
-              Batal
+              Cancel
             </Button>
             <Button disabled={isPending} onClick={submitRequest}>
-              {isPending ? "Mengirim..." : "Kirim request"}
+              {isPending ? "Sending..." : "Send request"}
             </Button>
           </div>
         </div>
       </Dialog>
 
-      <InvoiceDetailDialog
+      <PayoutDetailDialog
         invoice={selectedInvoice}
         onClose={() => setSelectedInvoice(null)}
       />
@@ -416,28 +415,27 @@ function PayoutSettingsSummary({
       <CardContent className="grid gap-6 p-5 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
         <div className="space-y-4">
           <div>
-            <CardTitle>Rekening pencairan</CardTitle>
+            <CardTitle>Payout account</CardTitle>
             <CardDescription className="mt-1.5">
-              Dikelola dari Settings dan disnapshot saat request pencairan
-              dibuat.
+              Managed from Settings and snapshotted when a withdrawal request is created.
             </CardDescription>
           </div>
           {account ? (
             <div className="grid gap-2">
               <ReadonlyField label="Bank" value={account.bankName} />
               <ReadonlyField
-                label="Nomor rekening"
+                label="Account number"
                 value={account.accountNumber}
               />
               <ReadonlyField
-                label="Nama pemilik"
+                label="Account holder"
                 value={account.accountHolderName}
               />
             </div>
           ) : (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800">
-              Rekening payout belum lengkap. Buka Settings untuk mengatur
-              rekening pencairan organisasi.
+              Payout account is incomplete. Open Settings to configure the
+              organization payout account.
             </div>
           )}
           <Button
@@ -446,22 +444,22 @@ function PayoutSettingsSummary({
             className="w-full rounded-2xl"
             onClick={() => router.push("/settings")}
           >
-            Buka Settings
+            Open Settings
           </Button>
         </div>
 
         <div className="space-y-4 border-t border-zinc-100 pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
           <div>
-            <CardTitle>Ringkasan aturan payout</CardTitle>
+            <CardTitle>Payout rules summary</CardTitle>
             <CardDescription className="mt-1.5">
-              Pembayaran eligible adalah QRIS paid dari Duitku yang sudah
-              diverifikasi dan masuk melalui payment gateway POSKART.
+              Eligible payments are verified Duitku QRIS payments collected
+              through the POSKART payment gateway.
             </CardDescription>
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm leading-6 text-zinc-600">
-            Gateway fee adalah potongan Duitku dari setiap transaksi QRIS.
-            Platform fee adalah biaya penarikan POSKART yang dikenakan satu kali
-            saat invoice pencairan dibuat.
+            Gateway fee is the Duitku deduction for each QRIS transaction.
+            Platform fee is the one-time POSKART withdrawal fee applied when a
+            payout request is created.
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <PayoutRuleStat
@@ -473,7 +471,7 @@ function PayoutSettingsSummary({
               )}
             />
             <PayoutRuleStat
-              label="Platform fee per pencairan"
+              label="Platform fee per withdrawal"
               value={formatFeeSetting(
                 summary.settings.platformFeeType,
                 summary.settings.platformFeePercentage,
@@ -481,7 +479,7 @@ function PayoutSettingsSummary({
               )}
             />
             <PayoutRuleStat
-              label="Minimal request"
+              label="Minimum request"
               value={formatPayoutCurrency(summary.settings.minimumPayoutAmount)}
             />
           </div>
@@ -587,7 +585,7 @@ function PayoutRuleStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function InvoiceAmountMetric({
+function PayoutAmountMetric({
   label,
   value,
   strong = false,
@@ -616,7 +614,7 @@ function shortCode(value: string) {
   return `${value.slice(0, 8)}...${value.slice(-6)}`;
 }
 
-function InvoiceDetailDialog({
+function PayoutDetailDialog({
   invoice,
   onClose,
 }: {
@@ -634,10 +632,10 @@ function InvoiceDetailDialog({
     startTransition(async () => {
       const result = await approveInternalPayoutRequest(invoice.id);
       if (result.success) {
-        toast.success("Draf pencairan berhasil disetujui");
+        toast.success("Withdrawal draft approved");
         onClose();
       } else {
-        toast.error(result.error ?? "Gagal menyetujui draf pencairan");
+        toast.error(result.error ?? "Failed to approve withdrawal draft");
       }
     });
   };
@@ -650,17 +648,17 @@ function InvoiceDetailDialog({
   const submitReject = () => {
     if (!invoice) return;
     if (!rejectReason.trim()) {
-      toast.error("Alasan penolakan wajib diisi");
+      toast.error("Rejection reason is required");
       return;
     }
     startTransition(async () => {
       const result = await rejectInternalPayoutRequest(invoice.id, rejectReason);
       if (result.success) {
-        toast.success("Draf pencairan ditolak");
+        toast.success("Withdrawal draft rejected");
         setIsRejectOpen(false);
         onClose();
       } else {
-        toast.error(result.error ?? "Gagal menolak draf pencairan");
+        toast.error(result.error ?? "Failed to reject withdrawal draft");
       }
     });
   };
@@ -668,19 +666,20 @@ function InvoiceDetailDialog({
   const handleCancel = () => {
     if (!invoice) return;
     confirm({
-      title: "Batalkan Draf Pencairan?",
-      description: "Yakin ingin membatalkan draf pencairan ini? Ledger yang terkunci akan dilepas kembali.",
-      confirmLabel: "Batalkan Draf",
-      cancelLabel: "Tutup",
+        title: "Cancel withdrawal draft?",
+              description:
+                "Are you sure you want to cancel this withdrawal draft? Locked ledger entries will be released.",
+              confirmLabel: "Cancel draft",
+      cancelLabel: "Close",
       destructive: true,
       onConfirm: () => {
         startTransition(async () => {
           const result = await cancelInternalPayoutRequest(invoice.id);
           if (result.success) {
-            toast.success("Draf pencairan berhasil dibatalkan");
+            toast.success("Withdrawal draft canceled");
             onClose();
           } else {
-            toast.error(result.error ?? "Gagal membatalkan draf pencairan");
+            toast.error(result.error ?? "Failed to cancel withdrawal draft");
           }
         });
       },
@@ -693,14 +692,14 @@ function InvoiceDetailDialog({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={invoice ? invoice.invoiceNumber : "Detail invoice"}
+      title={invoice ? invoice.invoiceNumber : "Payout detail"}
       className="max-w-4xl"
     >
       {invoice ? (
         <div className="space-y-5">
           <div className="grid gap-3 md:grid-cols-3">
             <div className="rounded-2xl border border-zinc-200 p-4">
-              <div className="text-xs text-zinc-500">Rekening</div>
+              <div className="text-xs text-zinc-500">Account</div>
               <div className="mt-2 text-sm font-semibold">
                 {invoice.accountSnapshot.bankName ?? "-"}
               </div>
@@ -723,33 +722,33 @@ function InvoiceDetailDialog({
             </div>
           </div>
           <div className="grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm md:grid-cols-4">
-            <InvoiceAmountMetric
+            <PayoutAmountMetric
               label="Gross"
               value={formatPayoutCurrency(invoice.grossAmount)}
             />
-            <InvoiceAmountMetric
-              label="Fee Duitku"
+            <PayoutAmountMetric
+              label="Duitku fee"
               value={formatPayoutCurrency(invoice.gatewayFeeAmount)}
             />
-            <InvoiceAmountMetric
-              label="Biaya penarikan"
+            <PayoutAmountMetric
+              label="Withdrawal fee"
               value={formatPayoutCurrency(invoice.platformFeeAmount)}
             />
-            <InvoiceAmountMetric
-              label="Didapat"
+            <PayoutAmountMetric
+              label="You receive"
               value={formatPayoutCurrency(invoice.netAmount)}
               strong
             />
           </div>
           <div className="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-900">
-            Fee Duitku berasal dari setiap transaksi QRIS. Biaya penarikan
-            POSKART dikenakan satu kali pada invoice pencairan ini.
+            Duitku fee comes from each QRIS transaction. The POSKART withdrawal
+            fee is charged once for this payout request.
           </div>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Transaksi</TableHead>
-                <TableHead>Waktu</TableHead>
+                <TableHead>Transaction</TableHead>
+                <TableHead>Time</TableHead>
                 <TableHead>Booth</TableHead>
                 <TableHead>Package</TableHead>
                 <TableHead>Gross</TableHead>
@@ -787,13 +786,13 @@ function InvoiceDetailDialog({
                     disabled={isPendingAction}
                     onClick={handleReject}
                   >
-                    Tolak Draf
+                    Reject draft
                   </Button>
                   <Button
                     disabled={isPendingAction}
                     onClick={handleApprove}
                   >
-                    Setujui Pencairan
+                    Approve withdrawal
                   </Button>
                 </>
               ) : role === "akuntan" ? (
@@ -802,7 +801,7 @@ function InvoiceDetailDialog({
                   disabled={isPendingAction}
                   onClick={handleCancel}
                 >
-                  Batalkan Draf
+                  Cancel draft
                 </Button>
               ) : null}
             </div>
@@ -810,13 +809,17 @@ function InvoiceDetailDialog({
         </div>
       ) : null}
 
-      <Dialog open={isRejectOpen} onOpenChange={setIsRejectOpen} title="Tolak Draf Pencairan">
+      <Dialog
+        open={isRejectOpen}
+        onOpenChange={setIsRejectOpen}
+        title="Reject withdrawal draft"
+      >
         <div className="space-y-4">
           <p className="text-sm leading-6 text-zinc-500">
-            Berikan alasan penolakan agar Akuntan mengetahui mengapa draf ini ditolak.
+            Provide a rejection reason so the accountant understands why this draft was rejected.
           </p>
           <Textarea
-            placeholder="Alasan penolakan..."
+            placeholder="Rejection reason..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             disabled={isPendingAction}
@@ -827,14 +830,14 @@ function InvoiceDetailDialog({
               disabled={isPendingAction}
               onClick={() => setIsRejectOpen(false)}
             >
-              Batal
+              Cancel
             </Button>
             <Button
               variant="destructive"
               disabled={isPendingAction}
               onClick={submitReject}
             >
-              {isPendingAction ? "Memproses..." : "Tolak Draf"}
+              {isPendingAction ? "Processing..." : "Reject draft"}
             </Button>
           </div>
         </div>

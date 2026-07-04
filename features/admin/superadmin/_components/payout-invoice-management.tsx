@@ -79,7 +79,7 @@ export function PayoutInvoiceManagement({
       });
       setInvoices(data);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal memuat payout");
+      toast.error(error instanceof Error ? error.message : "Failed to load payouts");
     } finally {
       setLoading(false);
     }
@@ -92,7 +92,7 @@ export function PayoutInvoiceManagement({
         .then(setSettings)
         .catch((error) =>
           toast.error(
-            error instanceof Error ? error.message : "Gagal memuat payout setting",
+            error instanceof Error ? error.message : "Failed to load payout settings",
           ),
         );
     }, 0);
@@ -120,10 +120,9 @@ export function PayoutInvoiceManagement({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Payout Invoices</CardTitle>
+        <CardTitle>Payout / Withdraw</CardTitle>
         <CardDescription>
-          Review request pencairan organisasi dan tandai transfer manual sebagai
-          paid.
+          Review organization withdrawal requests and mark manual transfers as paid.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -144,7 +143,7 @@ export function PayoutInvoiceManagement({
               }))
             }
           >
-            <option value="">Semua organisasi</option>
+            <option value="">All organizations</option>
             {organizations.map((organization) => (
               <option key={organization.id} value={organization.id}>
                 {organization.name}
@@ -160,7 +159,7 @@ export function PayoutInvoiceManagement({
               }))
             }
           >
-            <option value="all">Semua status</option>
+            <option value="all">All statuses</option>
             <option value="requested">Requested</option>
             <option value="approved">Approved</option>
             <option value="paid">Paid</option>
@@ -176,7 +175,7 @@ export function PayoutInvoiceManagement({
               }))
             }
           >
-            <option value="">Semua gateway</option>
+            <option value="">All gateways</option>
             <option value="duitku">Duitku</option>
           </Select>
           <Input
@@ -213,7 +212,7 @@ export function PayoutInvoiceManagement({
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
-          <Metric label="Invoice" value={String(invoices.length)} />
+          <Metric label="Payouts" value={String(invoices.length)} />
           <Metric label="Pending payout" value={formatPayoutCurrency(totals.pending)} />
           <Metric label="Net total" value={formatPayoutCurrency(totals.net)} />
         </div>
@@ -222,7 +221,7 @@ export function PayoutInvoiceManagement({
           <Table className="min-w-[980px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Invoice</TableHead>
+                <TableHead>Payout</TableHead>
                 <TableHead>Organization</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Requested</TableHead>
@@ -257,7 +256,7 @@ export function PayoutInvoiceManagement({
                       onClick={() => setSelectedInvoice(invoice)}
                     >
                       <Eye className="size-4" />
-                      Detail
+                      Details
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -269,8 +268,8 @@ export function PayoutInvoiceManagement({
                     className="py-8 text-center text-sm text-zinc-500"
                   >
                     {loading
-                      ? "Memuat payout invoice..."
-                      : "Belum ada payout invoice."}
+                      ? "Loading payouts..."
+                      : "No payouts yet."}
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -313,14 +312,14 @@ export function PayoutInvoiceManagement({
                   onClick={() => setSelectedInvoice(invoice)}
                 >
                   <Eye className="size-4" />
-                  Detail
+                  Details
                 </Button>
               </div>
             </div>
           ))}
           {invoices.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500">
-              {loading ? "Memuat payout invoice..." : "Belum ada payout invoice."}
+              {loading ? "Loading payouts..." : "No payouts yet."}
             </div>
           ) : null}
         </div>
@@ -391,11 +390,11 @@ function PayoutGlobalSettingsFields({
       };
       const result = await savePayoutSettingsForSuperadmin(nextSettings);
       if (!result.success) {
-        toast.error(result.error ?? "Gagal menyimpan payout setting");
+        toast.error(result.error ?? "Failed to save payout settings");
         return;
       }
       onSaved(nextSettings);
-      toast.success("Payout setting tersimpan");
+      toast.success("Payout settings saved");
     });
   };
 
@@ -407,9 +406,9 @@ function PayoutGlobalSettingsFields({
             Global payout settings
           </div>
           <div className="mt-1 text-xs leading-5 text-zinc-500">
-            Dipakai untuk menghitung saldo tersedia dan disnapshot saat invoice
-            payout dibuat. Gateway fee dihitung per transaksi QRIS; platform
-            fee dihitung satu kali per pencairan.
+            Used to calculate available balances and snapshotted when a payout is
+            created. Gateway fee is calculated per QRIS transaction; platform fee
+            is calculated once per withdrawal.
           </div>
         </div>
         <FeeSettingField
@@ -455,7 +454,7 @@ function PayoutGlobalSettingsFields({
           }
         />
         <label className="block min-w-0 text-xs font-medium text-zinc-600">
-          Minimal request
+          Minimum request
           <Input
             className="mt-1.5 min-w-0 bg-white"
             type="number"
@@ -554,7 +553,7 @@ function CopyInfoRow({ label, value }: { label: string; value: string }) {
         onClick={() => {
           if (!canCopy) return;
           void navigator.clipboard.writeText(value);
-          toast.success(`${label} disalin`);
+          toast.success(`${label} copied`);
         }}
         title={`Copy ${label}`}
       >
@@ -634,7 +633,7 @@ function PayoutReviewContent({
     startTransition(async () => {
       const result = await action();
       if (!result.success) {
-        toast.error(result.error ?? "Action gagal");
+        toast.error(result.error ?? "Action failed");
         return;
       }
       toast.success(successMessage);
@@ -645,11 +644,11 @@ function PayoutReviewContent({
 
   async function uploadProof(file: File) {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast.error("Bukti transfer harus JPG, PNG, atau WebP.");
+      toast.error("Transfer proof must be JPG, PNG, or WebP.");
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
-      toast.error("Ukuran bukti transfer maksimal 8 MB.");
+      toast.error("Transfer proof must be 8 MB or smaller.");
       return;
     }
 
@@ -668,17 +667,17 @@ function PayoutReviewContent({
         message?: string;
       } | null;
       if (!response.ok || !payload?.url || !payload?.key) {
-        throw new Error(payload?.message ?? "Upload bukti transfer gagal.");
+        throw new Error(payload?.message ?? "Failed to upload transfer proof.");
       }
       setReview((current) => ({
         ...current,
         paymentProofUrl: payload.url ?? "",
         paymentProofKey: payload.key ?? "",
       }));
-      toast.success("Bukti transfer diupload dan dikompres.");
+      toast.success("Transfer proof uploaded and compressed.");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Upload bukti transfer gagal.",
+        error instanceof Error ? error.message : "Failed to upload transfer proof.",
       );
     } finally {
       setUploadingProof(false);
@@ -707,15 +706,14 @@ function PayoutReviewContent({
         />
       </div>
       <div className="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-900">
-        Gateway fee adalah potongan Duitku dari transaksi QRIS. Platform fee
-        adalah biaya penarikan POSKART yang dikenakan satu kali pada invoice
-        pencairan.
+        Gateway fee is the Duitku deduction from QRIS transactions. Platform fee
+        is the POSKART withdrawal fee charged once for this payout.
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <div className="rounded-3xl border border-zinc-200 bg-white p-4">
           <div className="text-sm font-semibold text-zinc-950">
-            Rekening tujuan
+            Destination account
           </div>
           <div className="mt-3 space-y-2">
             <CopyInfoRow
@@ -723,11 +721,11 @@ function PayoutReviewContent({
               value={invoice.accountSnapshot.bankName ?? "-"}
             />
             <CopyInfoRow
-              label="Nomor rekening"
+              label="Account number"
               value={invoice.accountSnapshot.accountNumber ?? "-"}
             />
             <CopyInfoRow
-              label="Nama pemilik"
+              label="Account holder"
               value={invoice.accountSnapshot.accountHolderName ?? "-"}
             />
           </div>
@@ -737,10 +735,10 @@ function PayoutReviewContent({
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-zinc-950">
-                Bukti transfer
+                Transfer proof
               </div>
               <div className="mt-1 text-xs text-zinc-500">
-                JPG, PNG, atau WebP. Maksimal 8 MB, otomatis dikompres ke WebP.
+                JPG, PNG, or WebP. Maximum 8 MB, automatically compressed to WebP.
               </div>
             </div>
             <ImageIcon className="size-5 text-zinc-400" />
@@ -750,22 +748,22 @@ function PayoutReviewContent({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={review.paymentProofUrl}
-                alt="Bukti transfer"
+                alt="Transfer proof"
                 className="max-h-52 w-full object-contain"
               />
             </div>
           ) : (
             <div className="mt-3 grid min-h-32 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 text-center text-sm text-zinc-500">
-              Belum ada bukti transfer.
+              No transfer proof uploaded yet.
             </div>
           )}
           <label className="mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50">
             <Upload className="size-4" />
             {uploadingProof
-              ? "Mengupload..."
+              ? "Uploading..."
               : review.paymentProofUrl
-                ? "Ganti bukti"
-                : "Upload bukti"}
+                ? "Replace proof"
+                : "Upload proof"}
             <input
               className="hidden"
               type="file"
@@ -783,7 +781,7 @@ function PayoutReviewContent({
 
       <div className="grid gap-3 rounded-3xl border border-zinc-200 bg-zinc-50 p-4 lg:grid-cols-[180px_minmax(0,1fr)_minmax(0,1fr)]">
         <label className="block text-xs font-medium text-zinc-600">
-          Tanggal transfer
+          Transfer date
           <Input
             className="mt-1.5 bg-white"
             type="datetime-local"
@@ -797,10 +795,10 @@ function PayoutReviewContent({
           />
         </label>
         <label className="block text-xs font-medium text-zinc-600">
-          Referensi transfer
+          Transfer reference
           <Input
             className="mt-1.5 bg-white"
-            placeholder="Nomor referensi / mutasi bank"
+            placeholder="Reference number / bank statement"
             value={review.paymentReference}
             onChange={(event) =>
               setReview((current) => ({
@@ -811,7 +809,7 @@ function PayoutReviewContent({
           />
         </label>
         <label className="block text-xs font-medium text-zinc-600">
-          Catatan review
+          Review notes
           <Textarea
             className="mt-1.5 min-h-11 bg-white"
             value={review.reviewNotes}
@@ -829,8 +827,8 @@ function PayoutReviewContent({
         <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Transaksi</TableHead>
-              <TableHead>Waktu</TableHead>
+              <TableHead>Transaction</TableHead>
+              <TableHead>Time</TableHead>
               <TableHead>Booth</TableHead>
               <TableHead>Gross</TableHead>
               <TableHead>Fee</TableHead>
@@ -860,7 +858,7 @@ function PayoutReviewContent({
 
       <div className="grid gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 md:grid-cols-[minmax(0,1fr)_auto]">
         <Input
-          placeholder="Alasan reject"
+          placeholder="Rejection reason"
           value={review.rejectionReason}
           onChange={(event) =>
             setReview((current) => ({
@@ -875,7 +873,7 @@ function PayoutReviewContent({
           onClick={() =>
             runAction(
               () => rejectPayoutInvoice(invoice.id, review.rejectionReason),
-              "Invoice rejected",
+              "Payout rejected",
             )
           }
         >
@@ -887,11 +885,11 @@ function PayoutReviewContent({
       <div className="grid gap-2 border-t border-zinc-100 pt-4 sm:flex sm:flex-wrap sm:justify-end">
         {!canMarkPaid && invoice.status !== "paid" ? (
           <div className="self-center text-xs text-zinc-500 sm:mr-auto">
-            Isi referensi transfer dan upload bukti sebelum menandai invoice paid.
+            Add a transfer reference and upload proof before marking this payout as paid.
           </div>
         ) : null}
         <Button variant="outline" onClick={onClose}>
-          Tutup
+          Close
         </Button>
         <Button
           variant="outline"
@@ -902,7 +900,7 @@ function PayoutReviewContent({
                 approvePayoutInvoice(invoice.id, {
                   reviewNotes: review.reviewNotes,
                 }),
-              "Invoice approved",
+              "Payout approved",
             )
           }
         >
@@ -928,7 +926,7 @@ function PayoutReviewContent({
                     key: review.paymentProofKey,
                   },
                 ),
-              "Invoice marked as paid",
+              "Payout marked as paid",
             )
           }
         >

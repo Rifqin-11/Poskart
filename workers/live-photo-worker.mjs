@@ -319,10 +319,14 @@ async function renderNodeOverlay({ node, frameIndex, sourceFrames, scale, imageC
     const src = readImageSource(node);
     if (src) {
       const source = await loadImageBuffer(src, imageCache);
-      const input = await sharp(source)
-        .resize(width, height, { fit: "cover", position: "center" })
-        .png()
-        .toBuffer();
+      const colorKey = normalizeColorKey(readProp(node, "colorKey", null));
+      const image = sharp(source).resize(width, height, {
+        fit: "cover",
+        position: "center",
+      });
+      const input = colorKey.enabled
+        ? await renderColorKeyImage(image, colorKey)
+        : await image.png().toBuffer();
       return { input, left, top, opacity };
     }
 
@@ -419,6 +423,176 @@ function readColor(value, fallback) {
     return `rgba(${red}, ${green}, ${blue}, ${alpha.toFixed(3)})`;
   }
   return fallback;
+}
+
+async function renderColorKeyImage(image, colorKey) {
+  const { data, info } = await image
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  applyColorKeyToRawImage(data, info.width, info.height, colorKey);
+  return sharp(data, {
+    raw: {
+      width: info.width,
+      height: info.height,
+      channels: info.channels,
+    },
+  })
+    .png()
+    .toBuffer();
+}
+
+function normalizeColorKey(value) {
+  const source = value && typeof value === "object" ? value : {};
+  return {
+    enabled: Boolean(source.enabled),
+    color: normalizeHexColor(source.color),
+    tolerance: clampNumber(source.tolerance, 0, 255, 32),
+    softness: clampNumber(source.softness, 0, 100, 12),
+    smoothness: clampNumber(source.smoothness, 0, 20, 2),
+  };
+}
+
+function normalizeHexColor(value, fallback = "#00ff00") {
+  if (typeof value !== "string") return fallback;
+  const hex = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(hex)) return hex.toUpperCase();
+  if (/^#[0-9a-f]{3}$/i.test(hex)) {
+    return `#${hex
+      .slice(1)
+      .split("")
+      .map((part) => part + part)
+      .join("")}`.toUpperCase();
+  }
+  return fallback;
+}
+
+function clampNumber(value, min, max, fallback) {
+  const number = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(number)));
+}
+
+function parseHexColor(value) {
+  const hex = normalizeHexColor(value).slice(1);
+  const int = Number.parseInt(hex, 16);
+  if (Number.isNaN(int)) return null;
+  return {
+    r: (int >> 16) & 255,
+    g: (int >> 8) & 255,
+    b: int & 255,
+  };
+}
+
+function applyColorKeyToRawImage(data, width, height, settings) {
+  if (!settings.enabled) return;
+  const key = parseHexColor(settings.color);
+  if (!key) return;
+
+  const tolerance = clampNumber(settings.tolerance, 0, 255, 32);
+  const softness = clampNumber(settings.softness, 0, 100, 12);
+  const smoothness = clampNumber(settings.smoothness, 0, 20, 2);
+  const keyHsv = rgbToHsv(key.r, key.g, key.b);
+  const featherStart = Math.max(0, tolerance - softness);
+  const featherRange = Math.max(1, tolerance - featherStart);
+
+  for (let index = 0; index < data.length; index += 4) {
+    const red = data[index] ?? 0;
+    const green = data[index + 1] ?? 0;
+    const blue = data[index + 2] ?? 0;
+    const alpha = data[index + 3] ?? 255;
+    const distance = Math.sqrt(
+      (red - key.r) ** 2 + (green - key.g) ** 2 + (blue - key.b) ** 2,
+    );
+
+    if (!isLikelyColorKeyPixel(red, green, blue, keyHsv, tolerance, softness)) {
+      continue;
+    }
+
+    if (distance <= featherStart) {
+      data[index + 3] = 0;
+    } else if (distance <= tolerance) {
+      data[index + 3] = Math.round(alpha * ((distance - featherStart) / featherRange));
+    }
+  }
+
+  if (smoothness > 0) {
+    smoothAlphaChannel(data, width, height, smoothness);
+  }
+}
+
+function isLikelyColorKeyPixel(red, green, blue, keyHsv, tolerance, softness) {
+  if (keyHsv.s < 0.12) return true;
+
+  const pixelHsv = rgbToHsv(red, green, blue);
+  if (pixelHsv.s < Math.max(0.06, keyHsv.s * 0.2)) return false;
+
+  const hueDelta = Math.min(
+    Math.abs(pixelHsv.h - keyHsv.h),
+    360 - Math.abs(pixelHsv.h - keyHsv.h),
+  );
+  const hueLimit = Math.min(72, Math.max(8, tolerance * 0.35 + softness * 0.1));
+  return hueDelta <= hueLimit;
+}
+
+function rgbToHsv(red, green, blue) {
+  const r = red / 255;
+  const g = green / 255;
+  const b = blue / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+
+  let h = 0;
+  if (delta !== 0) {
+    if (max === r) h = 60 * (((g - b) / delta) % 6);
+    else if (max === g) h = 60 * ((b - r) / delta + 2);
+    else h = 60 * ((r - g) / delta + 4);
+  }
+  if (h < 0) h += 360;
+
+  return {
+    h,
+    s: max === 0 ? 0 : delta / max,
+    v: max,
+  };
+}
+
+function smoothAlphaChannel(data, width, height, radius) {
+  const sourceAlpha = new Uint8ClampedArray(width * height);
+  const horizontal = new Uint8ClampedArray(width * height);
+
+  for (let index = 0; index < sourceAlpha.length; index += 1) {
+    sourceAlpha[index] = data[index * 4 + 3] ?? 255;
+  }
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let sum = 0;
+      let count = 0;
+      for (let offset = -radius; offset <= radius; offset += 1) {
+        const sampleX = x + offset;
+        if (sampleX < 0 || sampleX >= width) continue;
+        sum += sourceAlpha[y * width + sampleX] ?? 0;
+        count += 1;
+      }
+      horizontal[y * width + x] = Math.round(sum / count);
+    }
+  }
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let sum = 0;
+      let count = 0;
+      for (let offset = -radius; offset <= radius; offset += 1) {
+        const sampleY = y + offset;
+        if (sampleY < 0 || sampleY >= height) continue;
+        sum += horizontal[sampleY * width + x] ?? 0;
+        count += 1;
+      }
+      data[(y * width + x) * 4 + 3] = Math.round(sum / count);
+    }
+  }
 }
 
 async function encodeMp4(framePaths, outputPath) {

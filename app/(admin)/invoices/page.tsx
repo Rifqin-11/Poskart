@@ -1,22 +1,5 @@
-import { PayoutDashboard } from "@/features/admin/payout/payout-dashboard";
-import {
-  getMyAvailablePayoutLedgerEntries,
-  getMyPayoutInvoices,
-  getMyPayoutSummary,
-} from "@/server/admin/actions/payout-actions";
+import { redirect } from "next/navigation";
 
-export default async function InvoicesPage() {
-  const [summary, invoices, availableLedgerEntries] = await Promise.all([
-    getMyPayoutSummary(),
-    getMyPayoutInvoices(),
-    getMyAvailablePayoutLedgerEntries(),
-  ]);
-
-  return (
-    <PayoutDashboard
-      summary={summary}
-      invoices={invoices}
-      availableLedgerEntries={availableLedgerEntries}
-    />
-  );
+export default function InvoicesRedirectPage() {
+  redirect("/withdraw");
 }

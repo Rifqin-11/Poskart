@@ -177,8 +177,8 @@ export function PaymentGatewayManagement() {
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm leading-6 text-zinc-600">
-          Fee payout, metode potongan, dan minimum request pencairan dikelola
-          dari tab <span className="font-medium text-zinc-950">Payout Invoices</span>.
+          Payout fees, deduction methods, and minimum withdrawal requests are managed
+          from the <span className="font-medium text-zinc-950">Payout / Withdraw</span> tab.
         </div>
 
         <Button onClick={() => void saveGateway()} disabled={loading || saving}>

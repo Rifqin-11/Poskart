@@ -37,25 +37,25 @@ export async function POST(request: NextRequest) {
 
     if (!(file instanceof File)) {
       return NextResponse.json(
-        { message: "File bukti transfer wajib diupload." },
+        { message: "Transfer proof file is required." },
         { status: 400 },
       );
     }
     if (!invoiceId) {
       return NextResponse.json(
-        { message: "Invoice ID wajib dikirim." },
+        { message: "Payout ID is required." },
         { status: 400 },
       );
     }
     if (!ALLOWED_PROOF_TYPES.has(file.type)) {
       return NextResponse.json(
-        { message: "Format bukti transfer harus JPG, PNG, atau WebP." },
+        { message: "Transfer proof must be JPG, PNG, or WebP." },
         { status: 400 },
       );
     }
     if (file.size > MAX_PROOF_SIZE) {
       return NextResponse.json(
-        { message: "Ukuran bukti transfer maksimal 8 MB." },
+        { message: "Transfer proof must be 8 MB or smaller." },
         { status: 400 },
       );
     }
@@ -74,13 +74,13 @@ export async function POST(request: NextRequest) {
     }
     if (!invoice) {
       return NextResponse.json(
-        { message: "Invoice payout tidak ditemukan." },
+        { message: "Payout not found." },
         { status: 404 },
       );
     }
     if (invoice.status === "paid") {
       return NextResponse.json(
-        { message: "Invoice paid tidak bisa mengganti bukti transfer." },
+        { message: "Paid payouts cannot replace transfer proof." },
         { status: 400 },
       );
     }
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         message:
           error instanceof Error
             ? error.message
-            : "Gagal upload bukti transfer.",
+            : "Failed to upload transfer proof.",
       },
       { status: 500 },
     );

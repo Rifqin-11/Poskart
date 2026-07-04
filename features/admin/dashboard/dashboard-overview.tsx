@@ -52,7 +52,7 @@ const dashboardInnerCardClass =
 const dashboardSoftItemClass =
   "rounded-2xl border border-zinc-100 bg-white/85 shadow-sm shadow-zinc-100/70 backdrop-blur";
 
-const dashboardMonthFormatter = new Intl.DateTimeFormat("id-ID", {
+const dashboardMonthFormatter = new Intl.DateTimeFormat("en-US", {
   month: "long",
   year: "numeric",
 });
@@ -80,7 +80,7 @@ function buildMonthEventPeriod(
   transactions: Transaction[],
 ): EventPeriodStatistics {
   const label =
-    monthKey === "all" ? "Bulanan" : formatDashboardMonthLabel(monthKey);
+    monthKey === "all" ? "Monthly" : formatDashboardMonthLabel(monthKey);
   const paidRows = transactions.filter(
     (transaction) => transaction.status === "paid",
   );
@@ -96,7 +96,7 @@ function buildMonthEventPeriod(
   );
   const topFrames = buildTransactionBreakdown(
     paidRows,
-    (transaction) => transaction.packageName || "Tanpa paket",
+    (transaction) => transaction.packageName || "No package",
   ).slice(0, 5);
   const revenueSeries = buildMonthRevenueSeries(monthKey, paidRows);
 
@@ -255,23 +255,23 @@ export function DashboardOverview() {
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">
-            Statistik {eventPeriod.label}
+            {eventPeriod.label} Statistics
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
             {selectedMonth === "all"
-              ? "Semua angka di bawah mengikuti tab periode yang dipilih."
-              : "Semua angka di bawah difilter berdasarkan bulan yang dipilih."}
+              ? "All numbers below follow the selected period tab."
+              : "All numbers below are filtered by the selected month."}
           </p>
         </div>
         <div className="flex flex-col gap-2 rounded-3xl border border-zinc-200 bg-white/80 p-1.5 shadow-sm backdrop-blur sm:flex-row sm:items-center">
           <label className="min-w-[220px]">
-            <span className="sr-only">Bulan</span>
+            <span className="sr-only">Month</span>
             <Select
               value={selectedMonth}
               onChange={(event) => setSelectedMonth(event.target.value)}
               className="h-11 w-full rounded-2xl border-zinc-100 bg-white px-4 text-sm font-medium text-zinc-900 shadow-none"
             >
-              <option value="all">Semua periode</option>
+              <option value="all">All periods</option>
               {monthOptions.map((month) => (
                 <option key={month} value={month}>
                   {formatDashboardMonthLabel(month)}
@@ -356,23 +356,23 @@ export function DashboardOverview() {
           accent="bg-zinc-100"
         />
         <SummaryCard
-          label="Total keuntungan"
+          label="Total revenue"
           value={formatCurrency(eventPeriod.totalRevenue)}
-          helper="Nominal transaksi paid"
+          helper="Paid transaction amount"
           icon={CircleDollarSign}
           accent="bg-yellow-300"
         />
         <SummaryCard
-          label="Total sesi"
+          label="Total sessions"
           value={eventPeriod.totalSessions.toLocaleString("id-ID")}
-          helper="Sesi booth berhasil dibayar"
+          helper="Paid booth sessions"
           icon={Activity}
           accent="bg-violet-300"
         />
         <SummaryCard
-          label="Total print"
+          label="Total prints"
           value={eventPeriod.totalPrints.toLocaleString("id-ID")}
-          helper="Akumulasi print dari paket"
+          helper="Accumulated prints from packages"
           icon={Printer}
           accent="bg-emerald-300"
         />
@@ -497,16 +497,16 @@ function EventAnalyticsSection({
       : 0;
   const printsPerSession =
     period.totalSessions > 0 ? period.totalPrints / period.totalSessions : 0;
-  const topPaymentMethod = period.paymentMethods[0]?.label ?? "Belum ada";
+  const topPaymentMethod = period.paymentMethods[0]?.label ?? "None yet";
 
   return (
     <div className="space-y-4">
       <div className="grid items-start gap-4 xl:grid-cols-[1.25fr_0.75fr]">
         <Card className={cn(dashboardInnerCardClass, "self-start")}>
           <CardHeader>
-            <CardTitle>Tren pendapatan</CardTitle>
+            <CardTitle>Revenue trend</CardTitle>
             <CardDescription>
-              Pendapatan, sesi, dan print selama periode {period.label.toLowerCase()}.
+              Revenue, sessions, and prints during the {period.label.toLowerCase()} period.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -529,7 +529,7 @@ function EventAnalyticsSection({
                     <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
                     <XAxis dataKey="label" tickLine={false} axisLine={false} />
                     <YAxis
-                      tickFormatter={(value) => `${Number(value) / 1000}rb`}
+	                      tickFormatter={(value) => `${Number(value) / 1000}k`}
                       tickLine={false}
                       axisLine={false}
                     />
@@ -539,9 +539,9 @@ function EventAnalyticsSection({
                           ? formatCurrency(Number(value))
                           : Number(value).toLocaleString("id-ID"),
                         name === "revenue"
-                          ? "Pendapatan"
+                          ? "Revenue"
                           : name === "sessions"
-                            ? "Sesi"
+                            ? "Sessions"
                             : "Print",
                       ]}
                     />
@@ -558,8 +558,8 @@ function EventAnalyticsSection({
                 <Skeleton className="h-full" />
               ) : (
                 <EmptyChartState
-                  title="Belum ada tren event"
-                  description="Grafik muncul setelah booth mencatat transaksi paid."
+                  title="No event trend yet"
+                  description="Charts appear after the booth records paid transactions."
                 />
               )}
             </div>
@@ -568,8 +568,8 @@ function EventAnalyticsSection({
 
         <EventPieCard
           chartsMounted={chartsMounted}
-          title="Metode pembayaran"
-          description="Distribusi pendapatan"
+          title="Payment methods"
+          description="Revenue distribution"
           items={period.paymentMethods}
           valueKey="revenue"
           valueFormatter={(value) => formatCurrency(value)}
@@ -578,23 +578,23 @@ function EventAnalyticsSection({
 
       <div className="grid gap-3 md:grid-cols-3">
         <StatCard
-          title="Rata-rata sesi"
+          title="Average session"
           value={formatCurrency(averageRevenuePerSession)}
-          description="Revenue per sesi"
+          description="Revenue per session"
           icon={CircleDollarSign}
           className={dashboardSoftItemClass}
         />
         <StatCard
-          title="Print per sesi"
+          title="Prints per session"
           value={printsPerSession.toFixed(1)}
-          description="Efisiensi paket print"
+          description="Print package efficiency"
           icon={Printer}
           className={dashboardSoftItemClass}
         />
         <StatCard
-          title="Metode utama"
+          title="Top method"
           value={topPaymentMethod}
-          description="Pembayaran terbanyak"
+          description="Most-used payment method"
           icon={Activity}
           className={dashboardSoftItemClass}
         />
@@ -602,11 +602,11 @@ function EventAnalyticsSection({
 
       <EventPieCard
         chartsMounted={chartsMounted}
-        title="Frame terpakai"
-        description="Top 5 berdasarkan sesi"
+        title="Used frames"
+        description="Top 5 by session"
         items={period.topFrames}
         valueKey="sessions"
-        valueFormatter={(value) => `${value.toLocaleString("id-ID")} sesi`}
+        valueFormatter={(value) => `${value.toLocaleString("id-ID")} sessions`}
       />
     </div>
   );
@@ -765,7 +765,7 @@ function EventPieCard({
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-5 text-sm text-zinc-500">
-            Belum ada data pada periode ini.
+            No data for this period yet.
           </div>
         )}
       </CardContent>

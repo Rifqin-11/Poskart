@@ -124,12 +124,13 @@ export function TemplateManagement() {
         description="Frame templates for the Flutter photobooth picker screen."
         action={
           <div className="flex items-center gap-2">
-            <div className="flex rounded-md border border-zinc-200 bg-white p-1">
+            <div className="flex rounded-full border border-zinc-200 bg-white p-1">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
                 size="icon"
                 title="Grid view"
                 aria-label="Grid view"
+                className="rounded-full"
                 onClick={() => setViewMode("grid")}
               >
                 <Grid2X2 className="size-4" />
@@ -139,14 +140,15 @@ export function TemplateManagement() {
                 size="icon"
                 title="List view"
                 aria-label="List view"
+                className="rounded-full"
                 onClick={() => setViewMode("list")}
               >
                 <List className="size-4" />
               </Button>
             </div>
             {!isReadOnly("templates") && (
-              <Button onClick={openAdd}>
-                <CloudUpload className="size-4" /> Add template
+              <Button onClick={openAdd} className="rounded-full">
+                <CloudUpload className="size-4 " /> Add template
               </Button>
             )}
           </div>

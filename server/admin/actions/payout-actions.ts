@@ -198,7 +198,7 @@ async function getOrganizationContext(options?: { requireManager?: boolean }) {
     .limit(1)
     .maybeSingle();
 
-  if (error) throw new Error(`Gagal memuat organisasi: ${error.message}`);
+  if (error) throw new Error(`Failed to load organization: ${error.message}`);
   if (!data?.organization_id) throw new Error("Organisasi tidak ditemukan.");
 
   const role = data.role as MembershipRole;
@@ -228,7 +228,7 @@ async function getPayoutSettings(
     if (error.code === "42703" || error.code === "42P01") {
       return DEFAULT_PAYOUT_SETTINGS;
     }
-    throw new Error(`Gagal memuat setting payout: ${error.message}`);
+    throw new Error(`Failed to load payout settings: ${error.message}`);
   }
 
   return {
@@ -407,7 +407,7 @@ async function getDefaultPayoutAccount(
 
   if (error) {
     if (error.code === "42P01" || error.code === "42703") return null;
-    throw new Error(`Gagal memuat rekening payout: ${error.message}`);
+    throw new Error(`Failed to load payout account: ${error.message}`);
   }
   return data ? mapPayoutAccount(data as PayoutAccountRow) : null;
 }
@@ -438,7 +438,7 @@ async function loadEligibleLedgerEntries(
 
     if (error) {
       if (error.code === "42P01" || error.code === "42703") return [];
-      throw new Error(`Gagal memuat ledger eligible: ${error.message}`);
+      throw new Error(`Failed to load eligible ledger entries: ${error.message}`);
     }
 
     rows.push(
@@ -481,7 +481,7 @@ async function loadInvoices(
   const { data, error } = await query.limit(500);
   if (error) {
     if (error.code === "42P01" || error.code === "42703") return [];
-    throw new Error(`Gagal memuat payout invoice: ${error.message}`);
+    throw new Error(`Failed to load payouts: ${error.message}`);
   }
 
   let rows = (data ?? []) as PayoutInvoiceRow[];
@@ -503,7 +503,7 @@ async function loadInvoices(
 
     const { data: itemRows, error: itemError } = await itemQuery;
     if (itemError) {
-      throw new Error(`Gagal memuat item payout: ${itemError.message}`);
+      throw new Error(`Failed to load payout items: ${itemError.message}`);
     }
 
     const matchingInvoiceIds = new Set<string>();
@@ -579,7 +579,7 @@ export async function saveMyPayoutAccount(
     });
     
     if (role === "akuntan") {
-      return { success: false, error: "Hanya owner atau admin yang dapat mengubah rekening pencairan." };
+      return { success: false, error: "Only owners or admins can update the payout account." };
     }
 
     const bankName = values.bankName.trim();
@@ -587,7 +587,7 @@ export async function saveMyPayoutAccount(
     const accountHolderName = values.accountHolderName.trim();
 
     if (!bankName || !accountNumber || !accountHolderName) {
-      return { success: false, error: "Data rekening payout wajib lengkap." };
+      return { success: false, error: "Payout account details are required." };
     }
 
     await supabase
@@ -614,16 +614,16 @@ export async function saveMyPayoutAccount(
       : await supabase.from("organization_payout_accounts").insert(payload);
 
     if (error) {
-      return { success: false, error: `Gagal menyimpan rekening: ${error.message}` };
+      return { success: false, error: `Failed to save payout account: ${error.message}` };
     }
 
-    revalidatePath("/invoices");
+    revalidatePath("/withdraw");
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Gagal menyimpan rekening.",
+      error: error instanceof Error ? error.message : "Failed to save payout account.",
     };
   }
 }
@@ -640,7 +640,7 @@ export async function requestPayout(
     const ledgerClient = createSupabaseAdminClient();
     const requestedAmount = Math.round(Number(values.amount));
     if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
-      return { success: false, error: "Nominal pencairan tidak valid." };
+      return { success: false, error: "Invalid withdrawal amount." };
     }
 
     const [settings, account, eligibleRows] = await Promise.all([
@@ -650,7 +650,7 @@ export async function requestPayout(
     ]);
 
     if (!account || account.id !== values.accountId) {
-      return { success: false, error: "Rekening payout tidak valid." };
+      return { success: false, error: "Invalid payout account." };
     }
     if (
       settings.minimumPayoutAmount > 0 &&
@@ -658,7 +658,7 @@ export async function requestPayout(
     ) {
       return {
         success: false,
-        error: `Minimum pencairan adalah Rp ${settings.minimumPayoutAmount.toLocaleString("id-ID")}.`,
+        error: `Minimum withdrawal amount is Rp ${settings.minimumPayoutAmount.toLocaleString("id-ID")}.`,
       };
     }
 
@@ -688,7 +688,7 @@ export async function requestPayout(
       return {
         success: false,
         error:
-          "Tidak ada transaksi eligible yang cocok dengan nominal pencairan.",
+          "No eligible payments match the requested withdrawal amount.",
       };
     }
 
@@ -742,7 +742,7 @@ export async function requestPayout(
     if (invoiceError || !invoice?.id) {
       return {
         success: false,
-        error: `Gagal membuat invoice payout: ${invoiceError?.message ?? "invoice kosong"}`,
+        error: `Failed to create payout: ${invoiceError?.message ?? "empty payout"}`,
       };
     }
 
@@ -777,7 +777,7 @@ export async function requestPayout(
         .from("payout_invoices")
         .update({
           status: "canceled",
-          rejection_reason: "Transaksi berubah saat request payout dibuat.",
+          rejection_reason: "Payment data changed while the payout request was being created.",
           updated_at: new Date().toISOString(),
         })
         .eq("id", invoice.id);
@@ -786,7 +786,7 @@ export async function requestPayout(
         success: false,
         error:
           lockError?.message ??
-          "Sebagian ledger pembayaran sudah masuk invoice lain. Coba refresh halaman.",
+          "Some payment ledger entries are already locked in another payout. Refresh the page and try again.",
       };
     }
 
@@ -840,26 +840,26 @@ export async function requestPayout(
         .from("payout_invoices")
         .update({
           status: "canceled",
-          rejection_reason: "Item invoice gagal dibuat.",
+          rejection_reason: "Payout items failed to be created.",
           updated_at: new Date().toISOString(),
         })
         .eq("id", invoice.id);
 
       return {
         success: false,
-        error: `Gagal membuat item invoice: ${itemError.message}`,
+        error: `Failed to create payout items: ${itemError.message}`,
       };
     }
 
-    revalidatePath("/invoices");
+    revalidatePath("/withdraw");
     revalidatePath("/superadmin");
     if (isAccountant) {
       await notifySafely(ledgerClient, {
         audience: "organization",
         type: "payout.needs_approval",
-        title: "Persetujuan Pencairan",
-        body: `Akuntan mengajukan draf pencairan sebesar Rp ${invoiceNetAmount.toLocaleString("id-ID")}. Mohon ditinjau.`,
-        href: "/invoices",
+        title: "Withdrawal approval needed",
+        body: `An accountant submitted a withdrawal draft for Rp ${invoiceNetAmount.toLocaleString("id-ID")}. Please review it.`,
+        href: "/withdraw",
         organizationId,
         metadata: {
           invoiceId: invoice.id,
@@ -870,8 +870,8 @@ export async function requestPayout(
       await notifySafely(ledgerClient, {
         audience: "superadmin",
         type: "payout.requested",
-        title: "Request pencairan baru",
-        body: `${invoiceNumber} menunggu review Super Admin.`,
+        title: "New withdrawal request",
+        body: `${invoiceNumber} is waiting for Super Admin review.`,
         href: "/superadmin",
         organizationId,
         metadata: {
@@ -885,7 +885,7 @@ export async function requestPayout(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Gagal request payout.",
+      error: error instanceof Error ? error.message : "Failed to request payout.",
     };
   }
 }
@@ -941,13 +941,13 @@ export async function savePayoutSettingsForSuperadmin(
 
     if (error) return { success: false, error: error.message };
     revalidatePath("/superadmin");
-    revalidatePath("/invoices");
+    revalidatePath("/withdraw");
     return { success: true };
   } catch (error) {
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : "Gagal menyimpan payout setting.",
+        error instanceof Error ? error.message : "Failed to save payout settings.",
     };
   }
 }
@@ -983,9 +983,9 @@ export async function approvePayoutInvoice(
       .maybeSingle();
 
     if (invoiceError) throw invoiceError;
-    if (!invoice) return { success: false, error: "Invoice tidak ditemukan." };
+    if (!invoice) return { success: false, error: "Payout not found." };
     if (!["requested", "approved"].includes(invoice.status as string)) {
-      return { success: false, error: "Invoice tidak bisa di-approve." };
+      return { success: false, error: "This payout cannot be approved." };
     }
 
     const now = new Date().toISOString();
@@ -1013,15 +1013,15 @@ export async function approvePayoutInvoice(
       .update({ payout_status: "approved", updated_at: now })
       .eq("payout_invoice_id", id);
 
-    revalidatePath("/invoices");
+    revalidatePath("/withdraw");
     revalidatePath("/superadmin");
     await notifySafely(ledgerClient, {
       audience: "organization",
       organizationId: invoice.organization_id as string,
       type: "payout.approved",
-      title: "Pencairan disetujui",
-      body: `${invoice.invoice_number} sudah disetujui dan menunggu transfer.`,
-      href: "/invoices",
+      title: "Withdrawal approved",
+      body: `${invoice.invoice_number} has been approved and is waiting for transfer.`,
+      href: "/withdraw",
       metadata: {
         invoiceId: invoice.id,
         invoiceNumber: invoice.invoice_number,
@@ -1032,7 +1032,7 @@ export async function approvePayoutInvoice(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Gagal approve invoice.",
+      error: error instanceof Error ? error.message : "Failed to approve payout.",
     };
   }
 }
@@ -1052,7 +1052,7 @@ export async function rejectPayoutInvoice(
       .maybeSingle();
 
     if (invoiceError) throw invoiceError;
-    if (!invoice) return { success: false, error: "Invoice tidak ditemukan." };
+    if (!invoice) return { success: false, error: "Payout not found." };
 
     const { error } = await supabase
       .from("payout_invoices")
@@ -1086,15 +1086,15 @@ export async function rejectPayoutInvoice(
       })
       .eq("payout_invoice_id", id);
 
-    revalidatePath("/invoices");
+    revalidatePath("/withdraw");
     revalidatePath("/superadmin");
     await notifySafely(ledgerClient, {
       audience: "organization",
       organizationId: invoice.organization_id as string,
       type: "payout.rejected",
-      title: "Pencairan ditolak",
-      body: `${invoice.invoice_number} ditolak. Saldo dikembalikan ke eligible payout.`,
-      href: "/invoices",
+      title: "Withdrawal rejected",
+      body: `${invoice.invoice_number} was rejected. The balance has been returned to eligible payouts.`,
+      href: "/withdraw",
       metadata: {
         invoiceId: invoice.id,
         invoiceNumber: invoice.invoice_number,
@@ -1105,7 +1105,7 @@ export async function rejectPayoutInvoice(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Gagal reject invoice.",
+      error: error instanceof Error ? error.message : "Failed to reject payout.",
     };
   }
 }
@@ -1125,15 +1125,15 @@ export async function markPayoutInvoicePaid(
     const proofKey = proof?.key?.trim() ?? "";
 
     if (!paymentReferenceValue) {
-      return { success: false, error: "Referensi transfer wajib diisi." };
+      return { success: false, error: "Transfer reference is required." };
     }
     if (!proofUrl || !proofKey) {
-      return { success: false, error: "Bukti transfer wajib diupload." };
+      return { success: false, error: "Transfer proof is required." };
     }
 
     const parsedPaidAt = paidAt ? new Date(paidAt) : null;
     if (paidAt && Number.isNaN(parsedPaidAt?.getTime())) {
-      return { success: false, error: "Tanggal transfer tidak valid." };
+      return { success: false, error: "Invalid transfer date." };
     }
     const paidAtValue = parsedPaidAt ? parsedPaidAt.toISOString() : now;
 
@@ -1144,7 +1144,7 @@ export async function markPayoutInvoicePaid(
       .maybeSingle();
 
     if (invoiceError) throw invoiceError;
-    if (!invoice) return { success: false, error: "Invoice tidak ditemukan." };
+    if (!invoice) return { success: false, error: "Payout not found." };
 
     const { data: updatedInvoice, error } = await supabase
       .from("payout_invoices")
@@ -1169,7 +1169,7 @@ export async function markPayoutInvoicePaid(
     if (!updatedInvoice) {
       return {
         success: false,
-        error: "Invoice tidak dalam status yang bisa ditandai paid.",
+        error: "This payout is not in a status that can be marked as paid.",
       };
     }
 
@@ -1183,15 +1183,15 @@ export async function markPayoutInvoicePaid(
       .update({ payout_status: "paid", updated_at: now })
       .eq("payout_invoice_id", id);
 
-    revalidatePath("/invoices");
+    revalidatePath("/withdraw");
     revalidatePath("/superadmin");
     await notifySafely(ledgerClient, {
       audience: "organization",
       organizationId: invoice.organization_id as string,
       type: "payout.paid",
-      title: "Pencairan sudah ditransfer",
-      body: `${invoice.invoice_number} sudah ditandai cair.`,
-      href: "/invoices",
+      title: "Withdrawal transferred",
+      body: `${invoice.invoice_number} has been marked as paid.`,
+      href: "/withdraw",
       metadata: {
         invoiceId: invoice.id,
         invoiceNumber: invoice.invoice_number,
@@ -1202,7 +1202,7 @@ export async function markPayoutInvoicePaid(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Gagal mark paid.",
+      error: error instanceof Error ? error.message : "Failed to mark payout as paid.",
     };
   }
 }
@@ -1216,7 +1216,7 @@ export async function approveInternalPayoutRequest(
     });
     
     if (role === "akuntan") {
-      return { success: false, error: "Hanya owner atau admin yang dapat menyetujui pencairan." };
+      return { success: false, error: "Only owners or admins can approve withdrawals." };
     }
 
     const ledgerClient = createSupabaseAdminClient();
@@ -1230,11 +1230,11 @@ export async function approveInternalPayoutRequest(
       .single();
 
     if (fetchError || !invoice) {
-      return { success: false, error: "Invoice tidak ditemukan." };
+      return { success: false, error: "Payout not found." };
     }
 
     if (invoice.status !== "pending_approval") {
-      return { success: false, error: "Invoice tidak dalam status pending_approval." };
+      return { success: false, error: "This payout is not pending approval." };
     }
 
     // Update the invoice status
@@ -1249,7 +1249,7 @@ export async function approveInternalPayoutRequest(
       .eq("id", invoiceId);
 
     if (updateError) {
-      return { success: false, error: "Gagal menyetujui invoice." };
+      return { success: false, error: "Failed to approve payout." };
     }
 
     // Update related transactions and payment_ledger_entries status
@@ -1263,15 +1263,15 @@ export async function approveInternalPayoutRequest(
       .update({ settlement_status: "requested", updated_at: now })
       .eq("payout_invoice_id", invoiceId);
 
-    revalidatePath("/invoices");
+    revalidatePath("/withdraw");
     revalidatePath("/superadmin");
     
     // Notify superadmin
     await notifySafely(ledgerClient, {
       audience: "superadmin",
       type: "payout.requested",
-      title: "Request pencairan disetujui internal",
-      body: `${invoice.invoice_number} disetujui owner/admin dan menunggu review Super Admin.`,
+      title: "Withdrawal request internally approved",
+      body: `${invoice.invoice_number} was approved by the owner/admin and is waiting for Super Admin review.`,
       href: "/superadmin",
       organizationId,
       metadata: {
@@ -1288,9 +1288,9 @@ export async function approveInternalPayoutRequest(
          recipientProfileId: invoice.requested_by,
          organizationId,
          type: "payout.approved_internal",
-         title: "Draf Pencairan Disetujui",
-         body: `Draf pencairan ${invoice.invoice_number} telah disetujui dan diteruskan ke Platform.`,
-         href: "/invoices",
+         title: "Withdrawal draft approved",
+         body: `Withdrawal draft ${invoice.invoice_number} has been approved and forwarded to the platform.`,
+         href: "/withdraw",
        });
     }
 
@@ -1298,7 +1298,7 @@ export async function approveInternalPayoutRequest(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Gagal menyetujui payout.",
+      error: error instanceof Error ? error.message : "Failed to approve payout.",
     };
   }
 }
@@ -1313,7 +1313,7 @@ export async function rejectInternalPayoutRequest(
     });
     
     if (role === "akuntan") {
-      return { success: false, error: "Hanya owner atau admin yang dapat menolak pencairan." };
+      return { success: false, error: "Only owners or admins can reject withdrawals." };
     }
 
     const ledgerClient = createSupabaseAdminClient();
@@ -1327,11 +1327,11 @@ export async function rejectInternalPayoutRequest(
       .single();
 
     if (fetchError || !invoice) {
-      return { success: false, error: "Invoice tidak ditemukan." };
+      return { success: false, error: "Payout not found." };
     }
 
     if (invoice.status !== "pending_approval") {
-      return { success: false, error: "Invoice tidak dalam status pending_approval." };
+      return { success: false, error: "This payout is not pending approval." };
     }
 
     // Unlink items
@@ -1360,16 +1360,16 @@ export async function rejectInternalPayoutRequest(
         status: "rejected",
         reviewed_by: user.id,
         reviewed_at: now,
-        rejection_reason: reason.trim() || "Ditolak oleh admin/owner organisasi.",
+        rejection_reason: reason.trim() || "Rejected by the organization admin/owner.",
         updated_at: now,
       })
       .eq("id", invoiceId);
 
     if (updateError) {
-      return { success: false, error: "Gagal menolak invoice." };
+      return { success: false, error: "Failed to reject payout." };
     }
 
-    revalidatePath("/invoices");
+    revalidatePath("/withdraw");
 
     if (invoice.requested_by) {
       await notifySafely(ledgerClient, {
@@ -1377,9 +1377,9 @@ export async function rejectInternalPayoutRequest(
         recipientProfileId: invoice.requested_by,
         organizationId,
         type: "payout.rejected_internal",
-        title: "Draf Pencairan Ditolak",
-        body: `Draf pencairan ${invoice.invoice_number} ditolak. Alasan: ${reason}`,
-        href: "/invoices",
+        title: "Withdrawal draft rejected",
+        body: `Withdrawal draft ${invoice.invoice_number} was rejected. Reason: ${reason}`,
+        href: "/withdraw",
       });
     }
 
@@ -1387,7 +1387,7 @@ export async function rejectInternalPayoutRequest(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Gagal menolak payout.",
+      error: error instanceof Error ? error.message : "Failed to reject payout.",
     };
   }
 }
@@ -1411,15 +1411,15 @@ export async function cancelInternalPayoutRequest(
       .single();
 
     if (fetchError || !invoice) {
-      return { success: false, error: "Invoice tidak ditemukan." };
+      return { success: false, error: "Payout not found." };
     }
 
     if (invoice.status !== "pending_approval") {
-      return { success: false, error: "Invoice tidak dalam status pending_approval atau sudah tidak bisa dibatalkan." };
+      return { success: false, error: "This payout is not pending approval or can no longer be canceled." };
     }
 
     if (invoice.requested_by !== user.id) {
-      return { success: false, error: "Hanya pembuat yang dapat membatalkan draf ini." };
+      return { success: false, error: "Only the creator can cancel this draft." };
     }
 
     // Unlink items
@@ -1451,15 +1451,15 @@ export async function cancelInternalPayoutRequest(
       .eq("id", invoiceId);
 
     if (updateError) {
-      return { success: false, error: "Gagal membatalkan draf invoice." };
+      return { success: false, error: "Failed to cancel payout draft." };
     }
 
-    revalidatePath("/invoices");
+    revalidatePath("/withdraw");
     return { success: true };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Gagal membatalkan draf payout.",
+      error: error instanceof Error ? error.message : "Failed to cancel payout draft.",
     };
   }
 }

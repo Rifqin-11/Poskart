@@ -8,8 +8,8 @@ export const DEFAULT_ORGANIZATION_FEATURES: OrganizationFeatureAccess = {
 };
 
 export const ORGANIZATION_FEATURE_LABELS: Record<OrganizationFeatureKey, string> = {
-  posKasir: "POS Kasir",
-  money: "Keuangan",
+  posKasir: "POS Cashier",
+  money: "Finance",
 };
 
 export function normalizeOrganizationFeatures(

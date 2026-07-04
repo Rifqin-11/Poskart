@@ -54,10 +54,10 @@ function PayoutAccountFields({
     startTransition(async () => {
       const result = await saveMyPayoutAccount(form);
       if (!result.success) {
-        toast.error(result.error ?? "Gagal menyimpan rekening payout");
+        toast.error(result.error ?? "Failed to save payout account");
         return;
       }
-      toast.success("Rekening payout tersimpan");
+      toast.success("Payout account saved");
       onSaved?.();
     });
   };
@@ -79,11 +79,10 @@ function PayoutAccountFields({
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-zinc-950">
-                  Rekening pencairan
+                  Payout account
                 </h2>
                 <p className="mt-1 text-xs leading-5 text-zinc-500">
-                  Rekening ini akan disnapshot ke invoice saat request pencairan
-                  dibuat.
+                  This account is snapshotted when a withdrawal request is created.
                 </p>
               </div>
             </div>
@@ -98,13 +97,13 @@ function PayoutAccountFields({
             </div>
           </div>
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4">
-            <div className="text-xs font-medium text-zinc-500">Nomor rekening</div>
+            <div className="text-xs font-medium text-zinc-500">Account number</div>
             <div className="mt-1.5 text-sm font-semibold text-zinc-950">
               {account?.accountNumber || "-"}
             </div>
           </div>
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4">
-            <div className="text-xs font-medium text-zinc-500">Nama pemilik</div>
+            <div className="text-xs font-medium text-zinc-500">Account holder</div>
             <div className="mt-1.5 text-sm font-semibold text-zinc-950">
               {account?.accountHolderName || "-"}
             </div>
@@ -129,11 +128,10 @@ function PayoutAccountFields({
           </div>
           <div>
             <h2 className="text-sm font-semibold text-zinc-950">
-              Rekening pencairan
+              Payout account
             </h2>
             <p className="mt-1 text-xs leading-5 text-zinc-500">
-              Rekening ini akan disnapshot ke invoice saat request pencairan
-              dibuat.
+              This account is snapshotted when a withdrawal request is created.
             </p>
           </div>
         </div>
@@ -155,7 +153,7 @@ function PayoutAccountFields({
           />
         </label>
         <label className="block text-xs font-medium text-zinc-600">
-          Nomor rekening
+          Account number
           <Input
             className="mt-1.5"
             value={form.accountNumber}
@@ -169,11 +167,11 @@ function PayoutAccountFields({
           />
         </label>
         <label className="block text-xs font-medium text-zinc-600">
-          Nama pemilik
+          Account holder
           <Input
             className="mt-1.5"
             value={form.accountHolderName}
-            placeholder="PT / nama pemilik rekening"
+            placeholder="Company / account holder name"
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
@@ -192,7 +190,7 @@ function PayoutAccountFields({
           disabled={isPending || isReadOnly("invoices")}
         >
           <Save className="size-4" />
-          {isPending ? "Menyimpan..." : "Simpan rekening"}
+          {isPending ? "Saving..." : "Save account"}
         </Button>
       </div>
     </div>

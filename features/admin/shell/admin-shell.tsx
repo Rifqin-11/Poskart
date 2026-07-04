@@ -47,10 +47,12 @@ import {
   normalizeOrganizationFeatures,
   type OrganizationFeatureKey,
 } from "@/lib/organization-features";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { DictionaryKey } from "@/lib/i18n/dictionaries";
 
 type AdminNavItem = {
   href: string;
-  label: string;
+  labelKey: DictionaryKey;
   icon: React.ComponentType<{ className?: string }>;
   requiresSubscription?: boolean;
   superAdminOnly?: boolean;
@@ -58,78 +60,78 @@ type AdminNavItem = {
 };
 
 const navItems: AdminNavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: Gauge },
+  { href: "/dashboard", labelKey: "nav.dashboard", icon: Gauge },
   {
     href: "/pos",
-    label: "POS Kasir",
+    labelKey: "nav.pos",
     icon: PanelsTopLeft,
     requiresSubscription: true,
     organizationFeature: "posKasir",
   },
   {
     href: "/money",
-    label: "Keuangan",
+    labelKey: "nav.money",
     icon: WalletCards,
     requiresSubscription: true,
     organizationFeature: "money",
   },
   {
     href: "/transactions",
-    label: "Transactions",
+    labelKey: "nav.transactions",
     icon: Store,
     requiresSubscription: true,
   },
   {
-    href: "/invoices",
-    label: "Invoices",
+    href: "/withdraw",
+    labelKey: "nav.withdraw",
     icon: ReceiptText,
     requiresSubscription: true,
   },
   {
     href: "/pricing",
-    label: "Pricing",
+    labelKey: "nav.pricing",
     icon: CreditCard,
     requiresSubscription: true,
   },
   {
     href: "/devices",
-    label: "Devices",
+    labelKey: "nav.devices",
     icon: MonitorSmartphone,
     requiresSubscription: true,
   },
   {
     href: "/themes",
-    label: "Themes",
+    labelKey: "nav.themes",
     icon: Palette,
     requiresSubscription: true,
   },
   {
     href: "/templates",
-    label: "Templates",
+    labelKey: "nav.templates",
     icon: LayoutTemplate,
     requiresSubscription: true,
   },
   {
     href: "/gallery",
-    label: "Gallery",
+    labelKey: "nav.gallery",
     icon: Images,
     requiresSubscription: true,
   },
   {
     href: "/vouchers",
-    label: "Vouchers",
+    labelKey: "nav.vouchers",
     icon: Ticket,
     requiresSubscription: true,
   },
   {
     href: "/superadmin",
-    label: "Super Admin",
+    labelKey: "nav.superAdmin",
     icon: Shield,
     superAdminOnly: true,
   },
   {
     href: "/settings",
-    label: "Settings",
+    labelKey: "nav.settings",
     icon: Settings,
     requiresSubscription: true,
   },
@@ -154,12 +156,12 @@ function formatNotificationTime(value: string) {
 
   const diff = Date.now() - date.getTime();
   const minutes = Math.max(0, Math.round(diff / 60_000));
-  if (minutes < 1) return "Baru saja";
+  if (minutes < 1) return "Just now";
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}j`;
+  if (hours < 24) return `${hours}h`;
   const days = Math.round(hours / 24);
-  return `${days}h`;
+  return `${days}d`;
 }
 
 function formatAccountRole(role?: string | null, isSuperAdmin = false) {
@@ -184,6 +186,7 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const { t } = useI18n();
 
   const { data: sub, isLoading } = useSubscriptionStatus();
   const { data: organization, isLoading: isOrganizationLoading } =
@@ -249,7 +252,7 @@ function SidebarContent({
                 title="Requires an active POSKART subscription"
               >
                 <Icon className="size-4" />
-                <span className="flex-1">{item.label}</span>
+                <span className="flex-1">{t(item.labelKey)}</span>
                 <LockKeyhole className="size-3.5" />
               </Link>
             );
@@ -267,7 +270,7 @@ function SidebarContent({
               )}
             >
               <Icon className="size-4" />
-              {item.label}
+              {t(item.labelKey)}
             </Link>
           );
         })}
@@ -297,7 +300,7 @@ function SidebarContent({
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
-              Organization
+              {t("common.organization")}
             </div>
             {isLoading || isOrganizationLoading ? (
               <div className="mt-2 h-4 w-28 animate-pulse rounded bg-zinc-100" />
@@ -315,10 +318,10 @@ function SidebarContent({
                         : "text-amber-700",
                     )}
                   >
-                    {hasActiveSubscription ? "Active" : "Locked"}
+                    {hasActiveSubscription ? t("common.active") : t("common.locked")}
                   </span>
                   <span className="mx-1.5 text-zinc-300">•</span>
-                  <span>Exp {expiry}</span>
+                  <span>{t("common.exp")} {expiry}</span>
                 </div>
               </>
             )}
@@ -344,6 +347,7 @@ export function AdminShell({
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
+  const { locale, setLocale, t } = useI18n();
   const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
   const builderFullView = useBuilderStore((s) => s.builderFullView);
   const { data: members = [] } = useTenantMembers();
@@ -404,7 +408,9 @@ export function AdminShell({
               </div>
               <div className="ml-auto flex items-center gap-3">
                 <div className="hidden text-right md:block">
-                  <div className="text-xs text-zinc-500">Signed in as</div>
+                  <div className="text-xs text-zinc-500">
+                    {t("topbar.signedInAs")}
+                  </div>
                   <div className="max-w-48 truncate text-sm font-medium">
                     {userEmail ?? "POSKART Photobooth"}
                   </div>
@@ -435,10 +441,10 @@ export function AdminShell({
                       <div className="flex items-start justify-between gap-3 border-b border-zinc-100 px-2 pb-3">
                         <div>
                           <div className="text-sm font-semibold text-zinc-950">
-                            Notifications
+                            {t("notifications.title")}
                           </div>
                           <div className="mt-0.5 text-xs text-zinc-500">
-                            Ringkasan aktivitas 1 jam terakhir.
+                            {t("notifications.description")}
                           </div>
                         </div>
                         {hasUnread ? (
@@ -448,11 +454,11 @@ export function AdminShell({
                             }}
                             className="rounded-full bg-zinc-100 hover:bg-zinc-200 transition px-2.5 py-1 text-[11px] font-medium text-zinc-700 shrink-0"
                           >
-                            Tandai semua dibaca
+                            {t("notifications.markAllRead")}
                           </button>
                         ) : (
                           <span className="rounded-full bg-zinc-50 px-2.5 py-1 text-[11px] font-medium text-zinc-400 shrink-0">
-                            Dibaca semua
+                            {t("notifications.allRead")}
                           </span>
                         )}
                       </div>
@@ -460,12 +466,10 @@ export function AdminShell({
                         {notifications.length === 0 ? (
                           <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm">
                             <div className="font-medium text-zinc-950">
-                              Tidak ada notifikasi penting
+                              {t("notifications.emptyTitle")}
                             </div>
                             <div className="mt-1 text-xs leading-5 text-zinc-500">
-                              Semua layanan dashboard berjalan normal. Notifikasi
-                              transaksi, device, dan print job akan tampil di
-                              sini.
+                              {t("notifications.emptyBody")}
                             </div>
                           </div>
                         ) : (
@@ -515,7 +519,7 @@ export function AdminShell({
                                           : "text-zinc-600 hover:text-zinc-900"
                                       )}
                                     >
-                                      Buka Detail
+                                      {t("notifications.openDetail")}
                                     </Link>
                                   </div>
                                 )}
@@ -556,6 +560,33 @@ export function AdminShell({
                         </div>
                       </div>
                       <div className="py-1">
+                        <div className="px-3 py-2">
+                          <div className="mb-2 text-[11px] font-medium text-zinc-500">
+                            {t("common.language")}
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 rounded-2xl bg-zinc-100 p-1">
+                            <button
+                              type="button"
+                              className={cn(
+                                "rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition-colors",
+                                locale === "en" && "bg-white text-zinc-950 shadow-sm",
+                              )}
+                              onClick={() => setLocale("en")}
+                            >
+                              {t("common.english")}
+                            </button>
+                            <button
+                              type="button"
+                              className={cn(
+                                "rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition-colors",
+                                locale === "id" && "bg-white text-zinc-950 shadow-sm",
+                              )}
+                              onClick={() => setLocale("id")}
+                            >
+                              {t("common.indonesian")}
+                            </button>
+                          </div>
+                        </div>
                         <Link
                           href="/settings?tab=organization"
                           role="menuitem"
@@ -563,7 +594,7 @@ export function AdminShell({
                           onClick={() => setAccountMenuOpen(false)}
                         >
                           <UserRound className="size-4" />
-                          Account preference
+                          {t("account.preference")}
                         </Link>
                         <button
                           type="button"
@@ -575,7 +606,7 @@ export function AdminShell({
                           }}
                         >
                           <ReceiptText className="size-4" />
-                          Change subscription
+                          {t("account.changeSubscription")}
                         </button>
                       </div>
                       <div className="border-t border-zinc-100 pt-1">
@@ -586,7 +617,7 @@ export function AdminShell({
                             className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                           >
                             <LogOut className="size-4" />
-                            Logout
+                            {t("account.logout")}
                           </button>
                         </form>
                       </div>

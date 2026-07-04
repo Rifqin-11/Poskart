@@ -74,9 +74,9 @@ export const emptyDashboardData: DashboardData = {
   eventStats: {
     generatedAt: new Date(0).toISOString(),
     periods: {
-      daily: emptyEventPeriod("daily", "Harian"),
-      weekly: emptyEventPeriod("weekly", "Mingguan"),
-      monthly: emptyEventPeriod("monthly", "Bulanan"),
+      daily: emptyEventPeriod("daily", "Daily"),
+      weekly: emptyEventPeriod("weekly", "Weekly"),
+      monthly: emptyEventPeriod("monthly", "Monthly"),
     },
   },
 };
