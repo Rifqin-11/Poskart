@@ -48,6 +48,7 @@ import { VisualPageTabs } from "@/features/builder/components/visual-page-tabs";
 import { VisualPropertiesSidebar } from "@/features/builder/components/visual-properties-sidebar";
 import { VisualLoadDialog } from "@/features/builder/components/visual-load-dialog";
 import { VisualSaveDialog } from "@/features/builder/components/visual-save-dialog";
+import { bakeLayoutSchemaColorKeyAssets } from "@/features/builder/utils/bake-color-key-assets";
 import type {
   BuilderNode,
 } from "@/types/builder";
@@ -195,17 +196,21 @@ export function VisualBuilder() {
 
   /** Save: update existing DB theme if currentThemeId set, else open New dialog */
   async function handleSave() {
-    autoSaveSchema(schema());
+    const currentSchema = schema();
+    autoSaveSchema(currentSchema);
     setLastAutoSave(new Date().toISOString());
     if (currentThemeId && currentThemeName) {
       setIsSaving(true);
       try {
+        const bakedSchema = await bakeLayoutSchemaColorKeyAssets(currentSchema);
         await saveLayoutMutation.mutateAsync({
           name: currentThemeName,
-          schema: schema(),
+          schema: bakedSchema,
           existingId: currentThemeId,
         });
-        lastCommittedSchemaRef.current = JSON.stringify(schema());
+        setSchema(bakedSchema);
+        autoSaveSchema(bakedSchema);
+        lastCommittedSchemaRef.current = JSON.stringify(bakedSchema);
         toast.success(`“${currentThemeName}” saved!`);
         return true;
       } catch (err) {
@@ -1055,19 +1060,22 @@ export function VisualBuilder() {
     const name = themeName.trim();
     setIsSaving(true);
     try {
+      const currentSchema = schema();
+      const bakedSchema = await bakeLayoutSchemaColorKeyAssets(currentSchema);
       // Auto-save to localStorage
-      autoSaveSchema(schema());
+      autoSaveSchema(bakedSchema);
       setLastAutoSave(new Date().toISOString());
 
       // Push to database (always creates new — "New theme" flow)
       const newId = await saveLayoutMutation.mutateAsync({
         name,
-        schema: schema(),
+        schema: bakedSchema,
       });
+      setSchema(bakedSchema);
       // Track as current theme so future Saves update in-place
       setCurrentThemeId(newId);
       setCurrentThemeName(name);
-      lastCommittedSchemaRef.current = JSON.stringify(schema());
+      lastCommittedSchemaRef.current = JSON.stringify(bakedSchema);
       setShowSaveDialog(false);
       setThemeName("");
       toast.success(

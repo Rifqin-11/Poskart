@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FrameTemplateBuilder } from "@/features/admin/templates/frame-template-builder";
+import { bakeFrameLayoutColorKeyAssets } from "@/features/builder/utils/bake-color-key-assets";
 import {
   useCreateTemplate,
   useTemplates,
@@ -52,6 +53,14 @@ const DEFAULT_FORM: TemplateFormValues = {
 
 function countPhotoSlots(layout: FrameLayout) {
   return layout.nodes.filter((node) => node.type === "photo-slot").length;
+}
+
+function getFrameBackgroundImageUrl(layout: FrameLayout) {
+  const background =
+    layout.nodes.find((node) => node.id === "frame-background") ??
+    layout.nodes.find((node) => node.type === "background");
+  const value = background?.props.src ?? background?.props.url;
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
 function readImageDimensions(file: File): Promise<ImageDimensions> {
@@ -192,11 +201,13 @@ export function TemplateBuilderWorkspace({
   };
 
   const handleSave = async (layout: FrameLayout) => {
+    const bakedLayout = await bakeFrameLayoutColorKeyAssets(layout);
     const payload = {
       ...form,
       status: "published" as const, // Always publish when saving from builder
-      photoCount: countPhotoSlots(layout),
-      frameLayout: layout,
+      photoCount: countPhotoSlots(bakedLayout),
+      frameImageUrl: getFrameBackgroundImageUrl(bakedLayout) ?? form.frameImageUrl,
+      frameLayout: bakedLayout,
     };
 
     if (!payload.name.trim()) {

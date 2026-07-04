@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { normalizeColorKey } from "@/lib/color-key";
 import type { ColorKeySettings } from "@/types/color-key";
 
@@ -25,9 +24,10 @@ export function ColorKeyControls({
   onChange: (next: ColorKeySettings) => void;
 }) {
   const settings = normalizeColorKey(value);
+  const cleanup = cleanupFromSettings(settings);
 
   const patch = (partial: Partial<ColorKeySettings>) => {
-    onChange(normalizeColorKey({ ...settings, ...partial }));
+    onChange(normalizeColorKey({ ...settings, enabled: true, ...partial }));
   };
 
   const pickColor = async () => {
@@ -52,83 +52,63 @@ export function ColorKeyControls({
           <Scissors className="size-3.5 text-zinc-500" />
           Remove background
         </div>
-        <Switch
-          checked={settings.enabled}
-          onCheckedChange={(enabled) => patch({ enabled })}
-          aria-label="Toggle remove background"
-        />
+        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
+          baked on save
+        </span>
       </div>
 
-      {settings.enabled ? (
-        <>
-          <div className="grid grid-cols-[34px_1fr_34px] gap-2">
-            <Input
-              className="h-8 p-1"
-              type="color"
-              value={settings.color}
-              onChange={(event) => patch({ color: event.target.value })}
-              aria-label="Color key"
-            />
-            <Input
-              className="h-8 font-mono text-[11px]"
-              value={settings.color}
-              onChange={(event) => patch({ color: event.target.value })}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={pickColor}
-              title="Pick color from screen"
-            >
-              <Pipette className="size-3.5" />
-            </Button>
-          </div>
+      <div className="grid grid-cols-[34px_1fr_34px] gap-2">
+        <Input
+          className="h-8 p-1"
+          type="color"
+          value={settings.color}
+          onChange={(event) => patch({ color: event.target.value })}
+          aria-label="Color key"
+        />
+        <Input
+          className="h-8 font-mono text-[11px]"
+          value={settings.color}
+          onChange={(event) => patch({ color: event.target.value })}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={pickColor}
+          title="Pick color from screen"
+        >
+          <Pipette className="size-3.5" />
+        </Button>
+      </div>
 
-          <label className="block text-[11px] font-medium text-zinc-500">
-            Tolerance: {settings.tolerance}
-            <Slider
-              className="mt-1"
-              min={0}
-              max={255}
-              step={1}
-              value={settings.tolerance}
-              onChange={(event) =>
-                patch({ tolerance: Number(event.target.value) })
-              }
-            />
-          </label>
-
-          <label className="block text-[11px] font-medium text-zinc-500">
-            Softness: {settings.softness}
-            <Slider
-              className="mt-1"
-              min={0}
-              max={100}
-              step={1}
-              value={settings.softness}
-              onChange={(event) =>
-                patch({ softness: Number(event.target.value) })
-              }
-            />
-          </label>
-
-          <label className="block text-[11px] font-medium text-zinc-500">
-            Smoothness: {settings.smoothness ?? 2}
-            <Slider
-              className="mt-1"
-              min={0}
-              max={20}
-              step={1}
-              value={settings.smoothness ?? 2}
-              onChange={(event) =>
-                patch({ smoothness: Number(event.target.value) })
-              }
-            />
-          </label>
-        </>
-      ) : null}
+      <label className="block text-[11px] font-medium text-zinc-500">
+        Cleanup: {cleanup}
+        <Slider
+          className="mt-1"
+          min={0}
+          max={100}
+          step={1}
+          value={cleanup}
+          onChange={(event) => patch(settingsFromCleanup(Number(event.target.value)))}
+        />
+      </label>
     </div>
   );
+}
+
+function cleanupFromSettings(settings: ColorKeySettings) {
+  return Math.min(
+    100,
+    Math.max(0, Math.round(((settings.tolerance - 32) / (255 - 32)) * 100)),
+  );
+}
+
+function settingsFromCleanup(value: number): Partial<ColorKeySettings> {
+  const cleanup = Math.min(100, Math.max(0, Math.round(value)));
+  return {
+    tolerance: Math.round(32 + (cleanup / 100) * 223),
+    softness: Math.round(10 - (cleanup / 100) * 10),
+    smoothness: Math.round((cleanup / 100) * 1),
+  };
 }

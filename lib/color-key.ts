@@ -86,9 +86,11 @@ export function applyColorKeyToImageData(
   const tolerance = clampNumber(settings.tolerance, 0, 255, 32);
   const softness = clampNumber(settings.softness, 0, 100, 12);
   const smoothness = clampNumber(settings.smoothness, 0, 20, 2);
+  const cleanupStrength = Math.min(1, Math.max(0, (tolerance - 32) / 223));
+  const effectiveTolerance = tolerance + cleanupStrength * 130;
   const keyHsv = rgbToHsv(key.r, key.g, key.b);
-  const featherStart = Math.max(0, tolerance - softness);
-  const featherRange = Math.max(1, tolerance - featherStart);
+  const featherStart = Math.max(0, effectiveTolerance - softness);
+  const featherRange = Math.max(1, effectiveTolerance - featherStart);
 
   for (let index = 0; index < data.length; index += 4) {
     const red = data[index] ?? 0;
@@ -99,13 +101,23 @@ export function applyColorKeyToImageData(
       (red - key.r) ** 2 + (green - key.g) ** 2 + (blue - key.b) ** 2,
     );
 
-    if (!isLikelyColorKeyPixel(red, green, blue, keyHsv, tolerance, softness)) {
+    if (
+      !isLikelyColorKeyPixel(
+        red,
+        green,
+        blue,
+        keyHsv,
+        tolerance,
+        softness,
+        cleanupStrength,
+      )
+    ) {
       continue;
     }
 
     if (distance <= featherStart) {
       data[index + 3] = 0;
-    } else if (distance <= tolerance) {
+    } else if (distance <= effectiveTolerance) {
       data[index + 3] = Math.round(alpha * ((distance - featherStart) / featherRange));
     }
   }
@@ -124,18 +136,34 @@ function isLikelyColorKeyPixel(
   keyHsv: HsvColor,
   tolerance: number,
   softness: number,
+  cleanupStrength = 0,
 ) {
   if (keyHsv.s < 0.12) return true;
 
   const pixelHsv = rgbToHsv(red, green, blue);
-  if (pixelHsv.s < Math.max(0.06, keyHsv.s * 0.2)) return false;
+  const saturationFloor = Math.max(
+    0.015,
+    keyHsv.s * (0.2 - cleanupStrength * 0.18),
+  );
 
   const hueDelta = Math.min(
     Math.abs(pixelHsv.h - keyHsv.h),
     360 - Math.abs(pixelHsv.h - keyHsv.h),
   );
-  const hueLimit = Math.min(72, Math.max(8, tolerance * 0.35 + softness * 0.1));
-  return hueDelta <= hueLimit;
+  const hueLimit =
+    Math.min(92, Math.max(8, tolerance * 0.35 + softness * 0.1)) +
+    cleanupStrength * 18;
+  const greenDominance = green - Math.max(red, blue);
+  const allowsSoftSpill =
+    cleanupStrength > 0.35 &&
+    keyHsv.h >= 70 &&
+    keyHsv.h <= 180 &&
+    greenDominance > -18 * cleanupStrength &&
+    pixelHsv.h >= 70 &&
+    pixelHsv.h <= 185;
+
+  if (pixelHsv.s < saturationFloor && !allowsSoftSpill) return false;
+  return hueDelta <= hueLimit || allowsSoftSpill;
 }
 
 type HsvColor = {
