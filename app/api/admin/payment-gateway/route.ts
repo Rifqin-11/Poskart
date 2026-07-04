@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { isSuperAdminEmail } from "@/lib/auth/admin";
+import { isSuperAdminProfile } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const CONFIG_ID = "default";
@@ -14,7 +14,7 @@ export async function GET() {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
 
-  if (!isSuperAdminEmail(authData.user?.email)) {
+  if (!(await isSuperAdminProfile(supabase, authData.user?.id))) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
@@ -47,7 +47,7 @@ export async function PATCH(request: NextRequest) {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
 
-  if (!isSuperAdminEmail(authData.user?.email)) {
+  if (!(await isSuperAdminProfile(supabase, authData.user?.id))) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 

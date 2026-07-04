@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { isSuperAdminProfile } from "@/lib/auth/admin";
 
 export async function getAdminContext() {
   const supabase = await createClient();
@@ -42,3 +43,13 @@ export async function verifyRole(allowedRoles: ("owner" | "admin" | "designer" |
   };
 }
 
+export async function requireSuperAdmin() {
+  const context = await getAdminContext();
+  const allowed = await isSuperAdminProfile(context.supabase, context.user.id);
+
+  if (!allowed) {
+    throw new Error("Unauthorized: Super admin access required");
+  }
+
+  return context;
+}

@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isSuperAdminEmail } from "@/lib/auth/admin";
+import { isSuperAdminProfile } from "@/lib/auth/admin";
 import { normalizeOrganizationFeatures } from "@/lib/organization-features";
+import { isSubscriptionActive } from "@/lib/subscription-policy";
 
 export async function updateSession(request: NextRequest) {
   if (request.nextUrl.pathname === "/" && request.nextUrl.searchParams.has("code")) {
@@ -125,8 +126,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && isSubscriptionRoute && !isOrganizationSettingsRoute) {
-    const email = typeof user.email === "string" ? user.email.toLowerCase() : "";
-    const isSuperAdmin = isSuperAdminEmail(email);
+    const isSuperAdmin = await isSuperAdminProfile(supabase, user.sub);
 
     if (!isSuperAdmin) {
       const { data: member } = await supabase
@@ -144,12 +144,7 @@ export async function updateSession(request: NextRequest) {
             .maybeSingle()
         : { data: null };
 
-      const expiryTime = subscription?.current_period_end
-        ? new Date(subscription.current_period_end).getTime()
-        : 0;
-      const hasActiveSubscription =
-        ["active", "trialing"].includes(subscription?.status ?? "") &&
-        expiryTime > Date.now();
+      const hasActiveSubscription = isSubscriptionActive(subscription);
 
       if (!hasActiveSubscription) {
         const url = request.nextUrl.clone();
@@ -164,8 +159,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && featureRoute) {
-    const email = typeof user.email === "string" ? user.email.toLowerCase() : "";
-    const isSuperAdmin = isSuperAdminEmail(email);
+    const isSuperAdmin = await isSuperAdminProfile(supabase, user.sub);
 
     if (!isSuperAdmin) {
       const { data: member } = await supabase

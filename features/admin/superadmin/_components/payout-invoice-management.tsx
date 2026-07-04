@@ -621,6 +621,11 @@ function PayoutReviewContent({
     paymentProofKey: invoice.paymentProofKey ?? "",
   });
   const [uploadingProof, setUploadingProof] = useState(false);
+  const canMarkPaid =
+    invoice.status !== "paid" &&
+    Boolean(review.paymentReference.trim()) &&
+    Boolean(review.paymentProofUrl) &&
+    Boolean(review.paymentProofKey);
 
   const runAction = (
     action: () => Promise<{ success: boolean; error?: string }>,
@@ -880,9 +885,9 @@ function PayoutReviewContent({
       </div>
 
       <div className="grid gap-2 border-t border-zinc-100 pt-4 sm:flex sm:flex-wrap sm:justify-end">
-        {!review.paymentProofUrl && invoice.status !== "paid" ? (
+        {!canMarkPaid && invoice.status !== "paid" ? (
           <div className="self-center text-xs text-zinc-500 sm:mr-auto">
-            Upload bukti transfer sebelum menandai invoice paid.
+            Isi referensi transfer dan upload bukti sebelum menandai invoice paid.
           </div>
         ) : null}
         <Button variant="outline" onClick={onClose}>
@@ -909,7 +914,7 @@ function PayoutReviewContent({
             isPending ||
             uploadingProof ||
             invoice.status === "paid" ||
-            !review.paymentProofUrl
+            !canMarkPaid
           }
           onClick={() =>
             runAction(

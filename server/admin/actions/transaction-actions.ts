@@ -1,7 +1,7 @@
 "use server";
 
-import { getAdminContext } from "@/server/admin/context";
-import { isSuperAdminEmail } from "@/lib/auth/admin";
+import { getAdminContext, verifyRole } from "@/server/admin/context";
+import { isSuperAdminProfile } from "@/lib/auth/admin";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAdminNotification } from "@/server/admin/notifications";
 import {
@@ -68,6 +68,9 @@ type TransactionForActionRow = {
   created_at: string | null;
   paid_at?: string | null;
   archived_at?: string | null;
+  archive_reason?: string | null;
+  payout_status?: string | null;
+  payout_invoice_id?: string | null;
 };
 
 function actionLabel(action: TransactionActionType) {
@@ -132,13 +135,24 @@ function mapTransactionActionRequest(
   };
 }
 
-export async function getTransactions(): Promise<Transaction[]> {
+export async function getTransactions({
+  includeArchived = false,
+}: {
+  includeArchived?: boolean;
+} = {}): Promise<Transaction[]> {
   const { supabase } = await getAdminContext();
-  const { data, error } = await supabase
+  let query = supabase
     .from("transactions")
     .select(TRANSACTION_COLUMNS)
-    .is("archived_at", null)
     .order("created_at", { ascending: false });
+
+  if (!includeArchived) {
+    query = query
+      .is("archived_at", null)
+      .or("archive_reason.is.null,archive_reason.neq.testing");
+  }
+
+  const { data, error } = await query;
 
   const rows = assertSupabaseResult(
     data as TransactionRow[] | null,
@@ -194,6 +208,7 @@ export async function getFailedPrintsByBooth(
     .from("transactions")
     .select(TRANSACTION_COLUMNS)
     .is("archived_at", null)
+    .or("archive_reason.is.null,archive_reason.neq.testing")
     .eq("booth", boothName)
     .in("print_status", ["failed", "pending"])
     .order("created_at", { ascending: false })
@@ -327,7 +342,7 @@ export async function requestTransactionAction({
   if (membershipError) {
     throw new Error(`Gagal memeriksa akses organisasi: ${membershipError.message}`);
   }
-  if (!membership && !isSuperAdminEmail(user.email)) {
+  if (!membership && !(await isSuperAdminProfile(supabase, user.id))) {
     throw new Error("Anda tidak punya akses ke transaksi ini.");
   }
 
@@ -376,9 +391,143 @@ export async function requestTransactionAction({
   });
 }
 
+export async function markTransactionAsTesting(
+  transactionId: string,
+): Promise<void> {
+  const { supabase, user, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "akuntan",
+  ]);
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      "id,organization_id,archived_at,archive_reason,payout_status,payout_invoice_id",
+    )
+    .eq("id", transactionId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) throw new Error(`Gagal memuat transaksi: ${error.message}`);
+  const transaction = data as TransactionForActionRow | null;
+  if (!transaction) throw new Error("Transaksi tidak ditemukan.");
+  if (transaction.archived_at && transaction.archive_reason !== "testing") {
+    throw new Error("Transaksi sudah diarsipkan.");
+  }
+  if (transaction.archive_reason === "testing" || transaction.payout_status === "testing") {
+    throw new Error("Transaksi sudah ditandai sebagai mode testing.");
+  }
+  if (transaction.payout_status || transaction.payout_invoice_id) {
+    throw new Error(
+      "Transaksi sudah masuk proses payout sehingga tidak bisa ditandai testing.",
+    );
+  }
+
+  const now = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({
+      archived_by: user.id,
+      archive_reason: "testing",
+      payout_status: "testing",
+      updated_at: now,
+    })
+    .eq("id", transaction.id)
+    .eq("organization_id", organizationId)
+    .is("payout_status", null)
+    .is("payout_invoice_id", null);
+
+  if (updateError) {
+    throw new Error(`Gagal menandai transaksi testing: ${updateError.message}`);
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const { error: ledgerError } = await adminClient
+    .from("payment_ledger_entries")
+    .update({
+      settlement_status: "testing",
+      updated_at: now,
+    })
+    .eq("transaction_id", transaction.id)
+    .eq("organization_id", organizationId)
+    .is("settlement_status", null)
+    .is("payout_invoice_id", null);
+
+  if (ledgerError && ledgerError.code !== "42P01" && ledgerError.code !== "42703") {
+    throw new Error(`Gagal mengunci ledger testing: ${ledgerError.message}`);
+  }
+}
+
+export async function unmarkTransactionAsTesting(
+  transactionId: string,
+): Promise<void> {
+  const { supabase, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "akuntan",
+  ]);
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      "id,organization_id,archive_reason,payout_status,payout_invoice_id",
+    )
+    .eq("id", transactionId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) throw new Error(`Gagal memuat transaksi: ${error.message}`);
+  const transaction = data as TransactionForActionRow | null;
+  if (!transaction) throw new Error("Transaksi tidak ditemukan.");
+  if (transaction.archive_reason !== "testing" && transaction.payout_status !== "testing") {
+    throw new Error("Transaksi ini tidak sedang dalam mode testing.");
+  }
+  if (transaction.payout_invoice_id) {
+    throw new Error(
+      "Transaksi sudah masuk invoice payout sehingga mode testing tidak bisa dibatalkan.",
+    );
+  }
+
+  const now = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({
+      archived_at: null,
+      archived_by: null,
+      archive_reason: null,
+      payout_status: null,
+      updated_at: now,
+    })
+    .eq("id", transaction.id)
+    .eq("organization_id", organizationId)
+    .or("archive_reason.eq.testing,payout_status.eq.testing")
+    .is("payout_invoice_id", null);
+
+  if (updateError) {
+    throw new Error(`Gagal membatalkan mode testing: ${updateError.message}`);
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const { error: ledgerError } = await adminClient
+    .from("payment_ledger_entries")
+    .update({
+      settlement_status: null,
+      updated_at: now,
+    })
+    .eq("transaction_id", transaction.id)
+    .eq("organization_id", organizationId)
+    .eq("settlement_status", "testing")
+    .is("payout_invoice_id", null);
+
+  if (ledgerError && ledgerError.code !== "42P01" && ledgerError.code !== "42703") {
+    throw new Error(`Gagal membuka ledger testing: ${ledgerError.message}`);
+  }
+}
+
 async function requireSuperAdmin() {
   const context = await getAdminContext();
-  if (!isSuperAdminEmail(context.user.email)) {
+  if (!(await isSuperAdminProfile(context.supabase, context.user.id))) {
     throw new Error("Hanya superadmin yang bisa review request transaksi.");
   }
   return context;

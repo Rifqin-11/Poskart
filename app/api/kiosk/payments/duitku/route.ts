@@ -7,6 +7,7 @@ import {
 } from "@/lib/kiosk/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { recordDuitkuPaymentLedgerEntry } from "@/server/payments/payment-ledger";
+import { resolveDuitkuRuntimeConfigForOrganization } from "@/server/payments/organization-gateway";
 import {
   checkDuitkuTransactionStatus,
   createDuitkuDirectPayment,
@@ -104,22 +105,34 @@ export async function POST(request: Request) {
       });
     }
 
+    const collectionMode = await resolveOrganizationCollectionMode(context);
+    const adminClient = createSupabaseAdminClient();
+    const duitkuConfig = await resolveDuitkuRuntimeConfigForOrganization(
+      adminClient,
+      {
+        organizationId: context.organizationId,
+        collectionMode,
+      },
+    );
+
     const siteUrl = getSiteUrl(request);
     const merchantOrderId = createMerchantOrderId();
-    const payment = await createDuitkuDirectPayment({
-      merchantOrderId,
-      amount: product.amount,
-      productDetails: `POSKART ${product.name}`,
-      customerName: body.customerName?.trim() || "POSKART Customer",
-      email: context.user.email ?? "kiosk@poskart.my.id",
-      callbackUrl: `${siteUrl}/api/payments/duitku/callback`,
-      returnUrl: `${siteUrl}/api/kiosk/payments/duitku/return`,
-      expiryPeriodMinutes: 10,
-    });
+    const payment = await createDuitkuDirectPayment(
+      {
+        merchantOrderId,
+        amount: product.amount,
+        productDetails: `POSKART ${product.name}`,
+        customerName: body.customerName?.trim() || "POSKART Customer",
+        email: context.user.email ?? "kiosk@poskart.my.id",
+        callbackUrl: `${siteUrl}/api/payments/duitku/callback`,
+        returnUrl: `${siteUrl}/api/kiosk/payments/duitku/return`,
+        expiryPeriodMinutes: 10,
+      },
+      duitkuConfig,
+    );
 
     const now = new Date().toISOString();
     const templateId = body.templateId?.trim() || null;
-    const collectionMode = await resolveOrganizationCollectionMode(context);
     const { error } = await context.client.from("transactions").upsert({
       id: sessionId,
       organization_id: context.organizationId,
@@ -241,8 +254,17 @@ async function refreshTransactionStatus(
 ) {
   if (!transaction.merchant_order_id) return formatStatus(transaction);
 
+  const adminClient = createSupabaseAdminClient();
+  const duitkuConfig = await resolveDuitkuRuntimeConfigForOrganization(
+    adminClient,
+    {
+      organizationId: transaction.organization_id,
+      collectionMode: transaction.collection_mode,
+    },
+  );
   const status = await checkDuitkuTransactionStatus(
     transaction.merchant_order_id,
+    duitkuConfig,
   );
   const mappedStatus = mapDuitkuTransactionStatusCode(status.statusCode);
   const now = new Date().toISOString();
@@ -267,7 +289,7 @@ async function refreshTransactionStatus(
 
   if (error) throw error;
   if (mappedStatus === "paid") {
-    await recordDuitkuPaymentLedgerEntry(createSupabaseAdminClient(), {
+    await recordDuitkuPaymentLedgerEntry(adminClient, {
       transaction: data as TransactionRow,
       verifiedStatus: status,
     });

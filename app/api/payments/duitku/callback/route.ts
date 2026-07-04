@@ -2,8 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { recordDuitkuPaymentLedgerEntry } from "@/server/payments/payment-ledger";
+import { resolveDuitkuRuntimeConfigForOrganization } from "@/server/payments/organization-gateway";
 import {
   checkDuitkuTransactionStatus,
+  getDuitkuConfig,
   mapDuitkuResultCode,
   mapDuitkuTransactionStatusCode,
   type DuitkuCallbackPayload,
@@ -21,16 +23,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!verifyDuitkuCallbackSignature(payload)) {
-    return NextResponse.json(
-      { message: "Invalid Duitku callback signature." },
-      { status: 401 },
-    );
-  }
-
   const supabase = createSupabaseAdminClient();
 
-  const status = mapDuitkuResultCode(payload.resultCode);
   const { data: order, error: orderError } = await supabase
     .from("subscription_orders")
     .select(
@@ -44,6 +38,14 @@ export async function POST(request: NextRequest) {
   }
 
   if (order) {
+    if (!verifyDuitkuCallbackSignature(payload, getDuitkuConfig())) {
+      return NextResponse.json(
+        { message: "Invalid Duitku callback signature." },
+        { status: 401 },
+      );
+    }
+
+    const status = mapDuitkuResultCode(payload.resultCode);
     const { error } = await supabase
       .from("subscription_orders")
       .update({
@@ -86,8 +88,34 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!transaction) {
+    if (!verifyDuitkuCallbackSignature(payload, getDuitkuConfig())) {
+      return NextResponse.json(
+        { message: "Invalid Duitku callback signature." },
+        { status: 401 },
+      );
+    }
+    return NextResponse.json({ message: "OK" });
+  }
+
+  const duitkuConfig = await resolveDuitkuRuntimeConfigForOrganization(
+    supabase,
+    {
+      organizationId: transaction.organization_id,
+      collectionMode: transaction.collection_mode,
+    },
+  );
+
+  if (!verifyDuitkuCallbackSignature(payload, duitkuConfig)) {
+    return NextResponse.json(
+      { message: "Invalid Duitku callback signature." },
+      { status: 401 },
+    );
+  }
+
   const verifiedStatus = await checkDuitkuTransactionStatus(
     payload.merchantOrderId,
+    duitkuConfig,
   );
   const verifiedMappedStatus = mapDuitkuTransactionStatusCode(
     verifiedStatus.statusCode,
@@ -118,7 +146,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (transaction && verifiedMappedStatus === "paid") {
+  if (verifiedMappedStatus === "paid") {
     await recordDuitkuPaymentLedgerEntry(supabase, {
       transaction: {
         ...transaction,

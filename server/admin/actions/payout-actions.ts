@@ -2,8 +2,10 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { getAdminContext } from "@/server/admin/context";
-import { isSuperAdminEmail } from "@/lib/auth/admin";
+import {
+  getAdminContext,
+  requireSuperAdmin as requireSuperAdminContext,
+} from "@/server/admin/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAdminNotification } from "@/server/admin/notifications";
 import type {
@@ -208,11 +210,7 @@ async function getOrganizationContext(options?: { requireManager?: boolean }) {
 }
 
 async function requireSuperAdmin() {
-  const context = await getAdminContext();
-  if (!isSuperAdminEmail(context.user.email)) {
-    throw new Error("Hanya superadmin yang bisa mengelola payout invoices.");
-  }
-  return context;
+  return requireSuperAdminContext();
 }
 
 async function getPayoutSettings(
@@ -1122,7 +1120,23 @@ export async function markPayoutInvoicePaid(
     const { supabase, user } = await requireSuperAdmin();
     const ledgerClient = createSupabaseAdminClient();
     const now = new Date().toISOString();
-    const paidAtValue = paidAt ? new Date(paidAt).toISOString() : now;
+    const paymentReferenceValue = paymentReference.trim();
+    const proofUrl = proof?.url?.trim() ?? "";
+    const proofKey = proof?.key?.trim() ?? "";
+
+    if (!paymentReferenceValue) {
+      return { success: false, error: "Referensi transfer wajib diisi." };
+    }
+    if (!proofUrl || !proofKey) {
+      return { success: false, error: "Bukti transfer wajib diupload." };
+    }
+
+    const parsedPaidAt = paidAt ? new Date(paidAt) : null;
+    if (paidAt && Number.isNaN(parsedPaidAt?.getTime())) {
+      return { success: false, error: "Tanggal transfer tidak valid." };
+    }
+    const paidAtValue = parsedPaidAt ? parsedPaidAt.toISOString() : now;
+
     const { data: invoice, error: invoiceError } = await supabase
       .from("payout_invoices")
       .select("id,invoice_number,organization_id,net_amount")
@@ -1132,24 +1146,32 @@ export async function markPayoutInvoicePaid(
     if (invoiceError) throw invoiceError;
     if (!invoice) return { success: false, error: "Invoice tidak ditemukan." };
 
-    const { error } = await supabase
+    const { data: updatedInvoice, error } = await supabase
       .from("payout_invoices")
       .update({
         status: "paid",
         paid_by: user.id,
         paid_at: paidAtValue,
-        payment_reference: paymentReference.trim() || null,
-        payment_proof_url: proof?.url || null,
-        payment_proof_key: proof?.key || null,
-        payment_proof_uploaded_at: proof?.url ? now : null,
+        payment_reference: paymentReferenceValue,
+        payment_proof_url: proofUrl,
+        payment_proof_key: proofKey,
+        payment_proof_uploaded_at: now,
         reviewed_at: now,
         reviewed_by: user.id,
         updated_at: now,
       })
       .eq("id", id)
-      .in("status", ["requested", "approved"]);
+      .in("status", ["requested", "approved"])
+      .select("id")
+      .maybeSingle();
 
     if (error) return { success: false, error: error.message };
+    if (!updatedInvoice) {
+      return {
+        success: false,
+        error: "Invoice tidak dalam status yang bisa ditandai paid.",
+      };
+    }
 
     await ledgerClient
       .from("payment_ledger_entries")

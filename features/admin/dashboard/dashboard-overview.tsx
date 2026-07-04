@@ -244,7 +244,7 @@ export function DashboardOverview() {
   const hasPosSales = dashboardData.posSummary.totalTransactions > 0;
   const isEmptyWorkspace =
     !hasDevices && !hasTransactions && !hasPosSales && !hasWeeklyChart && !hasMonthlyChart;
-  const canUseOperatingTools = subscription?.tier === "Pro";
+  const canUseOperatingTools = Boolean(subscription?.isActive);
 
   if (isLoading) {
     return <LoadingState />;

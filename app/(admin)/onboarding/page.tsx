@@ -54,7 +54,14 @@ export default async function OnboardingPage({
     .maybeSingle();
 
   if (pendingRequest) {
-    const orgName = (pendingRequest.organization as any)?.name ?? "organisasi";
+    const pendingOrganization = pendingRequest.organization as
+      | { name?: string | null }
+      | { name?: string | null }[]
+      | null;
+    const organization = Array.isArray(pendingOrganization)
+      ? pendingOrganization[0]
+      : pendingOrganization;
+    const orgName = organization?.name ?? "organisasi";
     return (
       <div className="flex min-h-[70vh] items-center justify-center p-4">
         <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

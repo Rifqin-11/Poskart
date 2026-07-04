@@ -1,6 +1,10 @@
 export const adminQueryKeys = {
   dashboard: ["dashboard"] as const,
-  transactions: ["transactions"] as const,
+  transactionsRoot: ["transactions"] as const,
+  transactions: (includeArchived = false) =>
+    ["transactions", { includeArchived }] as const,
+  payoutSummary: ["payout-summary"] as const,
+  payoutInvoices: ["payout-invoices"] as const,
   transactionActionRequests: ["transaction-action-requests"] as const,
   adminNotifications: ["admin-notifications"] as const,
   failedPrints: (boothName?: string | null) => ["failed-prints", boothName ?? null] as const,
@@ -20,6 +24,7 @@ export const adminQueryKeys = {
   subscriptionOrders: ["subscription-orders"] as const,
   profiles: ["profiles"] as const,
   organizationDetails: ["organization-details"] as const,
+  organizationPaymentGateway: ["organization-payment-gateway"] as const,
   organizationMembers: ["organization-members"] as const,
   organizationInvitations: ["organization-invitations"] as const,
   organizationJoinRequests: ["organization-join-requests"] as const,

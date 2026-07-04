@@ -1,7 +1,7 @@
 "use server";
 
 import { getAdminContext } from "@/server/admin/context";
-import { isSuperAdminEmail } from "@/lib/auth/admin";
+import { isSuperAdminProfile } from "@/lib/auth/admin";
 import { getServiceRoleClient } from "@/lib/supabase/server";
 import type {
   AdminNotification,
@@ -26,6 +26,7 @@ type AdminNotificationRow = {
 
 const NOTIFICATION_COLUMNS =
   "id,audience,recipient_profile_id,organization_id,type,title,body,href,metadata,read_at,created_at";
+const NOTIFICATION_VISIBLE_MS = 60 * 60 * 1000;
 
 function mapNotification(row: AdminNotificationRow): AdminNotification {
   return {
@@ -128,14 +129,16 @@ export async function createAdminNotification(
 
 export async function getMyAdminNotifications(): Promise<AdminNotification[]> {
   const { supabase, user } = await getAdminContext();
+  const visibleSince = new Date(Date.now() - NOTIFICATION_VISIBLE_MS).toISOString();
 
   let query = supabase
     .from("admin_notifications")
     .select(NOTIFICATION_COLUMNS)
+    .gte("created_at", visibleSince)
     .order("created_at", { ascending: false })
     .limit(30);
 
-  if (isSuperAdminEmail(user.email)) {
+  if (await isSuperAdminProfile(supabase, user.id)) {
     query = query.or(
       `recipient_profile_id.eq.${user.id},audience.eq.superadmin`,
     );

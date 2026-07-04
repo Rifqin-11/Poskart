@@ -88,12 +88,26 @@ type CreateDuitkuDirectPaymentInput = {
   paymentMethod?: string;
 };
 
-export function getDuitkuConfig() {
-  const merchantCode = process.env.DUITKU_MERCHANT_CODE?.trim();
-  const apiKey = process.env.DUITKU_API_KEY?.trim();
-  const sandbox = process.env.DUITKU_SANDBOX !== "false";
-  const paymentMethod = process.env.DUITKU_PAYMENT_METHOD?.trim() || "SQ";
+export type DuitkuRuntimeConfig = {
+  merchantCode: string;
+  apiKey: string;
+  paymentMethod: string;
+  createInvoiceUrl: string;
+  directInquiryUrl: string;
+  transactionStatusUrl: string;
+  popScriptUrl: string;
+};
 
+export function buildDuitkuConfig(input: {
+  merchantCode: string;
+  apiKey: string;
+  sandbox?: boolean;
+  paymentMethod?: string;
+}): DuitkuRuntimeConfig | null {
+  const merchantCode = input.merchantCode.trim();
+  const apiKey = input.apiKey.trim();
+  const sandbox = input.sandbox ?? true;
+  const paymentMethod = input.paymentMethod?.trim() || "SQ";
   if (!merchantCode || !apiKey) {
     return null;
   }
@@ -115,6 +129,15 @@ export function getDuitkuConfig() {
   };
 }
 
+export function getDuitkuConfig() {
+  return buildDuitkuConfig({
+    merchantCode: process.env.DUITKU_MERCHANT_CODE?.trim() ?? "",
+    apiKey: process.env.DUITKU_API_KEY?.trim() ?? "",
+    sandbox: process.env.DUITKU_SANDBOX !== "false",
+    paymentMethod: process.env.DUITKU_PAYMENT_METHOD?.trim() || "SQ",
+  });
+}
+
 export function getDuitkuQrisPaymentMethod() {
   return (
     process.env.DUITKU_KIOSK_PAYMENT_METHOD?.trim() ||
@@ -129,8 +152,9 @@ export function createMerchantOrderId() {
 
 export async function createDuitkuPayment(
   input: CreateDuitkuPaymentInput,
+  configOverride?: DuitkuRuntimeConfig | null,
 ): Promise<DuitkuInquiryResult> {
-  const config = getDuitkuConfig();
+  const config = configOverride ?? getDuitkuConfig();
 
   if (!config) {
     throw new Error(
@@ -219,8 +243,9 @@ export async function createDuitkuPayment(
 
 export async function createDuitkuDirectPayment(
   input: CreateDuitkuDirectPaymentInput,
+  configOverride?: DuitkuRuntimeConfig | null,
 ): Promise<DuitkuDirectPaymentResult> {
-  const config = getDuitkuConfig();
+  const config = configOverride ?? getDuitkuConfig();
 
   if (!config) {
     throw new Error(
@@ -325,8 +350,9 @@ export async function createDuitkuDirectPayment(
 
 export async function checkDuitkuTransactionStatus(
   merchantOrderId: string,
+  configOverride?: DuitkuRuntimeConfig | null,
 ): Promise<DuitkuTransactionStatusResult> {
-  const config = getDuitkuConfig();
+  const config = configOverride ?? getDuitkuConfig();
 
   if (!config) {
     throw new Error(
@@ -374,8 +400,11 @@ export async function checkDuitkuTransactionStatus(
   };
 }
 
-export function verifyDuitkuCallbackSignature(payload: DuitkuCallbackPayload) {
-  const config = getDuitkuConfig();
+export function verifyDuitkuCallbackSignature(
+  payload: DuitkuCallbackPayload,
+  configOverride?: DuitkuRuntimeConfig | null,
+) {
+  const config = configOverride ?? getDuitkuConfig();
   const merchantCode = payload.merchantCode;
   const amount = payload.amount;
   const merchantOrderId = payload.merchantOrderId;

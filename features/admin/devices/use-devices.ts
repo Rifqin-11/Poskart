@@ -70,7 +70,7 @@ export function useRetryPrint() {
   return useMutation({
     mutationFn: devicesApi.retryPrint,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactionsRoot });
       queryClient.invalidateQueries({ queryKey: ["failed-prints"] });
     },
   });

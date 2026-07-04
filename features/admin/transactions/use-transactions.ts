@@ -4,10 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { transactionsApi } from "@/features/admin/transactions/api";
 
-export function useTransactions() {
+export function useTransactions(includeArchived = false) {
   return useQuery<Awaited<ReturnType<typeof transactionsApi.getTransactions>>, Error>({
-    queryKey: adminQueryKeys.transactions,
-    queryFn: transactionsApi.getTransactions,
+    queryKey: adminQueryKeys.transactions(includeArchived),
+    queryFn: () => transactionsApi.getTransactions({ includeArchived }),
   });
 }
 
@@ -25,7 +25,7 @@ export function useRetryPrint() {
   return useMutation({
     mutationFn: transactionsApi.retryPrint,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactionsRoot });
       queryClient.invalidateQueries({ queryKey: ["failed-prints"] });
       queryClient.invalidateQueries({ queryKey: ["active-device-print-jobs"] });
     },
@@ -37,13 +37,39 @@ export function useRequestTransactionAction() {
   return useMutation({
     mutationFn: transactionsApi.requestTransactionAction,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactionsRoot });
       queryClient.invalidateQueries({
         queryKey: adminQueryKeys.transactionActionRequests,
       });
       queryClient.invalidateQueries({
         queryKey: adminQueryKeys.adminNotifications,
       });
+    },
+  });
+}
+
+export function useMarkTransactionAsTesting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: transactionsApi.markTransactionAsTesting,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactionsRoot });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.payoutSummary });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.payoutInvoices });
+    },
+  });
+}
+
+export function useUnmarkTransactionAsTesting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: transactionsApi.unmarkTransactionAsTesting,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactionsRoot });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.payoutSummary });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.payoutInvoices });
     },
   });
 }
@@ -63,7 +89,7 @@ export function useReviewTransactionActionRequest() {
   return useMutation({
     mutationFn: transactionsApi.reviewTransactionActionRequest,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactions });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactionsRoot });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
       queryClient.invalidateQueries({
         queryKey: adminQueryKeys.transactionActionRequests,

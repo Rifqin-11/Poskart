@@ -26,7 +26,10 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
-import { useTenantDetails } from "@/features/admin/organization/use-organization";
+import {
+  useTenantDetails,
+  useTenantMembers,
+} from "@/features/admin/organization/use-organization";
 import { useRealtimeSync } from "@/features/admin/hooks/use-realtime-sync";
 import {
   useAdminNotifications,
@@ -159,6 +162,20 @@ function formatNotificationTime(value: string) {
   return `${days}h`;
 }
 
+function formatAccountRole(role?: string | null, isSuperAdmin = false) {
+  if (isSuperAdmin) return "Super Admin";
+  if (!role) return "Member";
+
+  const labels: Record<string, string> = {
+    owner: "Owner",
+    admin: "Admin",
+    partner: "Partner",
+    member: "Member",
+  };
+
+  return labels[role] ?? role;
+}
+
 function SidebarContent({
   isSuperAdmin = false,
   onNavigate,
@@ -171,7 +188,6 @@ function SidebarContent({
   const { data: sub, isLoading } = useSubscriptionStatus();
   const { data: organization, isLoading: isOrganizationLoading } =
     useTenantDetails();
-  const tier = sub?.tier ?? "Free";
   const organizationName = organization?.name ?? "Organization";
   const expiry =
     formatShortExpiry(organization?.subscription_expires_at) ??
@@ -179,7 +195,7 @@ function SidebarContent({
     "No expiry";
 
   const adminMode = isSuperAdmin;
-  const hasActiveSubscription = adminMode || tier === "Pro";
+  const hasActiveSubscription = adminMode || Boolean(sub?.isActive);
   const organizationFeatures = normalizeOrganizationFeatures(
     organization?.features,
   );
@@ -316,10 +332,12 @@ function SidebarContent({
 export function AdminShell({
   children,
   userEmail,
+  userName,
   isSuperAdmin = false,
 }: {
   children: React.ReactNode;
   userEmail?: string;
+  userName?: string;
   isSuperAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -328,6 +346,10 @@ export function AdminShell({
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
   const builderFullView = useBuilderStore((s) => s.builderFullView);
+  const { data: members = [] } = useTenantMembers();
+  const currentMember = members.find((member) => member.email === userEmail);
+  const accountName = userName || userEmail || "POSKART User";
+  const accountRole = formatAccountRole(currentMember?.role, isSuperAdmin);
 
   // Subscribe to Supabase Realtime so layout_schemas + devices queries
   // auto-refresh when the Flutter kiosk app pushes changes (e.g. active theme)
@@ -408,7 +430,7 @@ export function AdminShell({
                   {notificationMenuOpen ? (
                     <div
                       role="menu"
-                      className="absolute right-0 top-12 z-50 w-96 rounded-3xl border border-zinc-200/80 bg-white/95 p-3 shadow-2xl shadow-zinc-950/10 backdrop-blur-xl"
+                      className="fixed inset-x-3 top-24 z-50 max-h-[70vh] overflow-hidden rounded-3xl border border-zinc-200/80 bg-white/95 p-3 shadow-2xl shadow-zinc-950/10 backdrop-blur-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-96"
                     >
                       <div className="flex items-start justify-between gap-3 border-b border-zinc-100 px-2 pb-3">
                         <div>
@@ -416,7 +438,7 @@ export function AdminShell({
                             Notifications
                           </div>
                           <div className="mt-0.5 text-xs text-zinc-500">
-                            Ringkasan aktivitas POSKART terbaru.
+                            Ringkasan aktivitas 1 jam terakhir.
                           </div>
                         </div>
                         {hasUnread ? (
@@ -434,7 +456,7 @@ export function AdminShell({
                           </span>
                         )}
                       </div>
-                      <div className="py-2 max-h-[360px] overflow-y-auto space-y-2 [scrollbar-width:thin] pr-1">
+                      <div className="max-h-[calc(70vh-5.75rem)] space-y-2 overflow-y-auto py-2 pr-1 [scrollbar-width:thin] sm:max-h-[360px]">
                         {notifications.length === 0 ? (
                           <div className="rounded-2xl bg-zinc-50 px-3 py-3 text-sm">
                             <div className="font-medium text-zinc-950">
@@ -526,11 +548,11 @@ export function AdminShell({
                       className="absolute right-0 top-12 z-50 w-64 rounded-3xl border border-zinc-200/80 bg-white/95 p-2 shadow-2xl shadow-zinc-950/10 backdrop-blur-xl"
                     >
                       <div className="border-b border-zinc-100 px-3 py-2.5">
-                        <div className="text-xs text-zinc-500">
-                          Signed in as
-                        </div>
                         <div className="truncate text-sm font-medium text-zinc-950">
-                          {userEmail ?? "POSKART Photobooth"}
+                          {accountName}
+                        </div>
+                        <div className="mt-0.5 text-xs text-zinc-500">
+                          {accountRole}
                         </div>
                       </div>
                       <div className="py-1">

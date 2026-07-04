@@ -83,7 +83,9 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
       .from("transactions")
       .select(
         "id,amount,status,provider,created_at,paid_at,duitku_status_code,gateway_response",
-      );
+      )
+      .is("archived_at", null)
+      .or("archive_reason.is.null,archive_reason.neq.testing");
     if (organizationId) query = query.eq("organization_id", organizationId);
 
     const { data: allTx } = await query;
@@ -217,6 +219,8 @@ async function getChartPoints(
         .select(
           "amount,status,provider,created_at,paid_at,duitku_status_code,gateway_response",
         )
+        .is("archived_at", null)
+        .or("archive_reason.is.null,archive_reason.neq.testing")
         .gte("created_at", cutoff.toISOString());
       if (organizationId) query = query.eq("organization_id", organizationId);
 
@@ -282,6 +286,8 @@ async function getChartPoints(
         .select(
           "amount,status,provider,created_at,paid_at,duitku_status_code,gateway_response",
         )
+        .is("archived_at", null)
+        .or("archive_reason.is.null,archive_reason.neq.testing")
         .gte("created_at", cutoff.toISOString());
       if (organizationId) query = query.eq("organization_id", organizationId);
 
@@ -556,7 +562,9 @@ export async function getDashboard(): Promise<DashboardData> {
     monthlyChart:
       monthlyResult.status === "fulfilled" ? monthlyResult.value : [],
     transactions:
-      transactionsResult.status === "fulfilled" ? transactionsResult.value : [],
+      transactionsResult.status === "fulfilled"
+        ? transactionsResult.value.filter((transaction) => !transaction.isTesting)
+        : [],
     devices: devicesResult.status === "fulfilled" ? devicesResult.value : [],
     posSummary:
       posSummaryResult.status === "fulfilled"
@@ -572,6 +580,9 @@ export async function getDashboard(): Promise<DashboardData> {
 export async function getSubscriptionStatus(): Promise<{
   tier: "Free" | "Pro";
   expiry: string | null;
+  isActive: boolean;
+  status: string | null;
+  currentPeriodEnd: string | null;
   planId: string | null;
   planName: string;
   deviceLimit: number;
@@ -582,6 +593,9 @@ export async function getSubscriptionStatus(): Promise<{
     return {
       tier: "Free",
       expiry: null,
+      isActive: false,
+      status: null,
+      currentPeriodEnd: null,
       planId: null,
       planName: "Free",
       deviceLimit: 1,
@@ -599,6 +613,9 @@ export async function getSubscriptionStatus(): Promise<{
     return {
       tier: "Free",
       expiry: null,
+      isActive: false,
+      status: null,
+      currentPeriodEnd: null,
       planId: null,
       planName: "Free",
       deviceLimit: 1,
@@ -625,8 +642,9 @@ export async function getSubscriptionStatus(): Promise<{
   const planMeta = subscriptionPlanMeta(sub);
   const planName = subscriptionDisplayName(sub);
   const deviceLimit = sub?.device_limit ?? planMeta?.included_devices ?? 1;
+  const active = isSubscriptionActive(sub);
 
-  if (isSubscriptionActive(sub)) {
+  if (active) {
     const expiryTime = subscriptionExpiryTime(sub);
     return {
       tier: "Pro",
@@ -635,6 +653,9 @@ export async function getSubscriptionStatus(): Promise<{
         month: "long",
         day: "numeric",
       }),
+      isActive: true,
+      status: sub?.status ?? null,
+      currentPeriodEnd: sub?.current_period_end ?? null,
       planId: sub?.plan_id ?? null,
       planName,
       deviceLimit,
@@ -644,6 +665,9 @@ export async function getSubscriptionStatus(): Promise<{
   return {
     tier: "Free",
     expiry: null,
+    isActive: false,
+    status: sub?.status ?? null,
+    currentPeriodEnd: sub?.current_period_end ?? null,
     planId: sub?.plan_id ?? null,
     planName,
     deviceLimit,

@@ -4,6 +4,8 @@ export const transactionsApi = {
   getTransactions: transactionService.getTransactions,
   getFailedPrintsByBooth: transactionService.getFailedPrintsByBooth,
   retryPrint: transactionService.retryPrint,
+  markTransactionAsTesting: transactionService.markTransactionAsTesting,
+  unmarkTransactionAsTesting: transactionService.unmarkTransactionAsTesting,
   requestTransactionAction: transactionService.requestTransactionAction,
   getTransactionActionRequestsForSuperadmin:
     transactionService.getTransactionActionRequestsForSuperadmin,

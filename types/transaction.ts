@@ -29,6 +29,10 @@ export type Transaction = {
   printStatus: PrintStatus;
   printAttempts: number;
   printLastError?: string | null;
+  archivedAt?: string | null;
+  archiveReason?: string | null;
+  isArchived?: boolean;
+  isTesting?: boolean;
   pendingAction?: TransactionPendingAction | null;
 };
 

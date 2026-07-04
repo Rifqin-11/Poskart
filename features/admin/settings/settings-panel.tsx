@@ -10,11 +10,15 @@ import {
   useSaveAppConfig,
 } from "@/features/admin/settings/use-settings";
 import {
+  usePaymentGatewaySettings,
+  useSavePaymentGatewaySettings,
   useTenantDetails,
   useTenantMembers,
+  useUpdatePaymentCollectionMode,
 } from "@/features/admin/organization/use-organization";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import type { AppConfigRow } from "@/types/app-config";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import { ProfileCard } from "./_components/profile-card";
 import { EditProfileDialog } from "./_components/edit-profile-dialog";
@@ -112,6 +116,9 @@ export function SettingsPanel() {
   const saveConfig = useSaveAppConfig();
   const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
   const { data: members = [] } = useTenantMembers();
+  const { data: privateGateway } = usePaymentGatewaySettings();
+  const updatePaymentMode = useUpdatePaymentCollectionMode();
+  const savePrivateGateway = useSavePaymentGatewaySettings();
 
   const [isEditingOrg, setIsEditingOrg] = useState(false);
   const [form, setForm] = useState<SettingsForm>(DEFAULT_SETTINGS_FORM);
@@ -137,6 +144,12 @@ export function SettingsPanel() {
     timezone: "Asia/Jakarta",
     memberRole: "",
   });
+  const [privateGatewayDraft, setPrivateGatewayDraft] = useState({
+    merchantCode: "",
+    apiKey: "",
+    sandbox: false,
+    paymentMethod: "SQ",
+  });
   const [activeTab, setActiveTab] = useState<SettingsTab>(() =>
     readSettingsTab(searchParams.get("tab")) ?? "details",
   );
@@ -160,7 +173,10 @@ export function SettingsPanel() {
         qris_provider_merchant_id: config.qris_provider_merchant_id ?? "",
         qris_webhook_secret: config.qris_webhook_secret ?? "",
         qris_auto_retry: config.qris_auto_retry ?? true,
-        payment_mode: "sharing" as "sharing" | "private",
+        payment_mode:
+          tenant?.payment_collection_mode === "custom"
+            ? "private"
+            : "sharing",
         subscription_payment_gateway:
           config.subscription_payment_gateway ?? "duitku",
         gateway_fee_type: config.gateway_fee_type ?? "percentage",
@@ -183,7 +199,7 @@ export function SettingsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [config]);
+  }, [config, tenant?.payment_collection_mode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -232,14 +248,97 @@ export function SettingsPanel() {
     };
   }, []);
 
-  const handleSave = () => {
-    saveConfig.mutate(form, {
-      onSuccess: () => toast.success("Settings saved successfully"),
-      onError: (err) =>
-        toast.error(
-          err instanceof Error ? err.message : "Failed to save settings",
-        ),
+  useEffect(() => {
+    if (!privateGateway) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setPrivateGatewayDraft((draft) => ({
+        ...draft,
+        merchantCode: privateGateway.merchantCode,
+        apiKey: "",
+        sandbox: false,
+        paymentMethod: privateGateway.paymentMethod || "SQ",
+      }));
     });
+    return () => {
+      cancelled = true;
+    };
+  }, [privateGateway]);
+
+  const handleSave = async (scope: SettingsTab) => {
+    if (!config) {
+      toast.error("Konfigurasi belum siap dimuat.");
+      return;
+    }
+
+    const appConfigPatch: Omit<AppConfigRow, "id" | "updated_at"> = {
+      merchant_name: form.merchant_name,
+      qris_payload_prefix: form.qris_payload_prefix,
+      share_base_url: form.share_base_url,
+      countdown_duration_seconds: form.countdown_duration_seconds,
+      flash_duration_ms: form.flash_duration_ms,
+      auto_return_duration_seconds: form.auto_return_duration_seconds,
+      default_template_id: form.default_template_id || null,
+      qris_provider_merchant_id: config.qris_provider_merchant_id ?? "",
+      qris_webhook_secret: config.qris_webhook_secret ?? "",
+      qris_auto_retry: form.qris_auto_retry,
+      subscription_payment_gateway:
+        config.subscription_payment_gateway ?? "duitku",
+      gateway_fee_type: config.gateway_fee_type ?? "percentage",
+      gateway_fee_percentage: config.gateway_fee_percentage ?? 0,
+      gateway_fee_fixed_amount: config.gateway_fee_fixed_amount ?? 0,
+      platform_fee_type: config.platform_fee_type ?? "percentage",
+      platform_fee_percentage: config.platform_fee_percentage ?? 0,
+      platform_fee_fixed_amount: config.platform_fee_fixed_amount ?? 0,
+      payout_adjustment_amount: config.payout_adjustment_amount ?? 0,
+      minimum_payout_amount: config.minimum_payout_amount ?? 0,
+      printer_name: form.printer_name,
+      booth_timeout_seconds: form.booth_timeout_seconds,
+      download_expiry_hours: form.download_expiry_hours,
+      gallery_retention_days: form.gallery_retention_days,
+      storage_provider: form.storage_provider,
+      watermark_enabled: form.watermark_enabled,
+      maintenance_mode: form.maintenance_mode,
+    };
+
+    const mutations: Array<Promise<unknown>> = [
+      saveConfig.mutateAsync(appConfigPatch),
+    ];
+
+    if (scope === "payment") {
+      const paymentMode =
+        form.payment_mode === "private" ? "custom" : "platform";
+      if (paymentMode === "custom") {
+        if (!privateGatewayDraft.merchantCode.trim()) {
+          toast.error("Merchant code Duitku wajib diisi untuk Payment Private.");
+          return;
+        }
+        if (!privateGateway?.hasApiKey && !privateGatewayDraft.apiKey.trim()) {
+          toast.error("API key Duitku wajib diisi untuk Payment Private.");
+          return;
+        }
+        mutations.push(
+          savePrivateGateway.mutateAsync({
+            merchantCode: privateGatewayDraft.merchantCode,
+            apiKey: privateGatewayDraft.apiKey,
+            sandbox: false,
+            paymentMethod: privateGatewayDraft.paymentMethod,
+          }),
+        );
+      }
+
+      mutations.push(updatePaymentMode.mutateAsync(paymentMode));
+    }
+
+    try {
+      await Promise.all(mutations);
+      toast.success("Settings saved successfully");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save settings",
+      );
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -294,6 +393,10 @@ export function SettingsPanel() {
     searchParams.get("subscription") === "required";
   const organizationOnly =
     !isLoadingTenant && !subscriptionActive;
+  const isSavingSettings =
+    saveConfig.isPending ||
+    updatePaymentMode.isPending ||
+    savePrivateGateway.isPending;
   const visibleActiveTab: SettingsTab = organizationOnly
     ? "organization"
     : (visibleTabs.some((t) => t.id === activeTab) ? activeTab : "details");
@@ -319,12 +422,12 @@ export function SettingsPanel() {
     ) {
       return (
         <Button
-          onClick={() => void handleSave()}
-          disabled={saveConfig.isPending}
+          onClick={() => void handleSave(visibleActiveTab)}
+          disabled={isSavingSettings}
           className="rounded-2xl"
         >
           <Save className="size-4" />
-          {saveConfig.isPending ? "Saving..." : "Save app settings"}
+          {isSavingSettings ? "Saving..." : "Save app settings"}
         </Button>
       );
     }
@@ -342,7 +445,7 @@ export function SettingsPanel() {
 
       <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm shadow-zinc-200/70">
         <div className="border-b border-zinc-100 p-3">
-          <div className="flex gap-1.5 overflow-x-auto rounded-[1.35rem] bg-zinc-50 p-1.5">
+          <div className="grid grid-cols-2 gap-1.5 rounded-[1.35rem] bg-zinc-50 p-1.5 sm:flex sm:overflow-x-auto">
             {visibleTabs.map((tab) => {
               const active = visibleActiveTab === tab.id;
               const disabled =
@@ -356,7 +459,7 @@ export function SettingsPanel() {
                   }}
                   disabled={disabled}
                   className={cn(
-                    "h-10 shrink-0 rounded-2xl px-4 text-sm font-medium transition-colors",
+                    "min-h-10 rounded-2xl px-3 py-2 text-sm font-medium leading-tight transition-colors sm:h-10 sm:shrink-0 sm:px-4 sm:py-0",
                     active
                       ? "bg-white text-zinc-950 shadow-sm"
                       : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",
@@ -397,7 +500,17 @@ export function SettingsPanel() {
           ) : null}
 
           {visibleActiveTab === "payment" ? (
-            <PaymentSettingsCard form={form} setForm={setForm} />
+            <PaymentSettingsCard
+              form={form}
+              setForm={setForm}
+              superadminGateway={
+                config?.subscription_payment_gateway ??
+                form.subscription_payment_gateway
+              }
+              privateGateway={privateGateway}
+              privateGatewayDraft={privateGatewayDraft}
+              setPrivateGatewayDraft={setPrivateGatewayDraft}
+            />
           ) : null}
 
           {visibleActiveTab === "media" ? (

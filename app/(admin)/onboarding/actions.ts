@@ -81,7 +81,7 @@ export async function cancelMyPendingRequestAction(formData: FormData) {
       "/onboarding",
       "Permintaan bergabung berhasil dibatalkan.",
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan.";
     return encodedRedirect("error", "/onboarding", message);
   }

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { isSuperAdminEmail } from "@/lib/auth/admin";
+import { isSuperAdminProfile } from "@/lib/auth/admin";
 import {
   normalizeOrganizationFeatures,
   type OrganizationFeatureKey,
@@ -11,7 +11,7 @@ export async function hasOrganizationFeatureAccess(
 ) {
   const { supabase, user } = await getAdminContext();
 
-  if (isSuperAdminEmail(user.email)) {
+  if (await isSuperAdminProfile(supabase, user.id)) {
     return true;
   }
 

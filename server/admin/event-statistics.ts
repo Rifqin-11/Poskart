@@ -53,6 +53,8 @@ export async function getEventStatisticsForOrganization(
       "id,amount,status,provider,created_at,print_count,template_id,paid_at,duitku_status_code,gateway_response,templates(name)",
     )
     .eq("organization_id", organizationId)
+    .is("archived_at", null)
+    .or("archive_reason.is.null,archive_reason.neq.testing")
     .gte("created_at", earliestStart.toISOString())
     .order("created_at", { ascending: true });
 

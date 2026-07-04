@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import sharp from "sharp";
 
-import { isSuperAdminEmail } from "@/lib/auth/admin";
+import { isSuperAdminProfile } from "@/lib/auth/admin";
 import { uploadR2Object } from "@/lib/r2/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: authData } = await supabase.auth.getUser();
 
-    if (!isSuperAdminEmail(authData.user?.email)) {
+    if (!(await isSuperAdminProfile(supabase, authData.user?.id))) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
@@ -56,6 +56,31 @@ export async function POST(request: NextRequest) {
     if (file.size > MAX_PROOF_SIZE) {
       return NextResponse.json(
         { message: "Ukuran bukti transfer maksimal 8 MB." },
+        { status: 400 },
+      );
+    }
+
+    const { data: invoice, error: invoiceError } = await supabase
+      .from("payout_invoices")
+      .select("id,status")
+      .eq("id", invoiceId)
+      .maybeSingle();
+
+    if (invoiceError) {
+      return NextResponse.json(
+        { message: invoiceError.message },
+        { status: 500 },
+      );
+    }
+    if (!invoice) {
+      return NextResponse.json(
+        { message: "Invoice payout tidak ditemukan." },
+        { status: 404 },
+      );
+    }
+    if (invoice.status === "paid") {
+      return NextResponse.json(
+        { message: "Invoice paid tidak bisa mengganti bukti transfer." },
         { status: 400 },
       );
     }

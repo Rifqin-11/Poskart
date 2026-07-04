@@ -1,7 +1,12 @@
 "use client";
 
-import { type ComponentType, type ReactNode, useMemo, useState } from "react";
-import { Banknote, Printer, ReceiptText } from "lucide-react";
+import {
+  type ComponentType,
+  type ReactNode,
+  useMemo,
+  useState,
+} from "react";
+import { Banknote, ChevronDown, Printer, ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,12 +25,14 @@ import {
 import { TablePagination } from "@/components/ui/table-pagination";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import {
+  useMarkTransactionAsTesting,
   useRequestTransactionAction,
   useTransactions,
+  useUnmarkTransactionAsTesting,
 } from "@/features/admin/transactions/use-transactions";
 import { useAppConfig } from "@/features/admin/settings/use-settings";
 import { usePermission } from "@/features/admin/hooks/use-permission";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import type { AppConfigRow } from "@/types/app-config";
 import type { Transaction, TransactionActionType } from "@/types/transaction";
 
@@ -71,6 +78,8 @@ function getTransactionActionLabel(action: TransactionActionType) {
 function getTransactionActionItems(
   transaction: Transaction,
   onRequest: (transaction: Transaction, action: TransactionActionType) => void,
+  onMarkTesting: (transaction: Transaction) => void,
+  onUnmarkTesting: (transaction: Transaction) => void,
 ) {
   const items: { label: string; onClick: () => void; destructive?: boolean }[] =
     [];
@@ -90,6 +99,18 @@ function getTransactionActionItems(
     });
   }
 
+  if (transaction.isTesting) {
+    items.push({
+      label: "Batalkan mode testing",
+      onClick: () => onUnmarkTesting(transaction),
+    });
+  } else {
+    items.push({
+      label: "Tandai sebagai testing",
+      onClick: () => onMarkTesting(transaction),
+    });
+  }
+
   items.push({
     label: "Arsip",
     destructive: true,
@@ -103,6 +124,128 @@ function getTransactionDateKey(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function renderTestingBadge(transaction: Transaction) {
+  if (!transaction.isTesting) return null;
+  return <Badge variant="warning">Mode testing</Badge>;
+}
+
+function renderTransactionStatusBadges(transaction: Transaction) {
+  if (transaction.isArchived) return <Badge variant="secondary">Arsip</Badge>;
+  return transaction.isTesting
+    ? renderTestingBadge(transaction)
+    : renderTransactionStatus(transaction.status);
+}
+
+function isArchiveableTransaction(transaction: Transaction) {
+  return !transaction.isArchived && !transaction.pendingAction;
+}
+
+type BulkAction = TransactionActionType | "mark-testing" | "unmark-testing";
+
+function getBulkActionLabel(action: BulkAction) {
+  if (action === "verify") return "Verifikasi";
+  if (action === "refund") return "Refund";
+  if (action === "mark-testing") return "Tandai mode testing";
+  if (action === "unmark-testing") return "Batalkan mode testing";
+  return "Arsip";
+}
+
+function canApplyBulkAction(transaction: Transaction, action: BulkAction) {
+  if (transaction.isArchived || transaction.pendingAction) return false;
+
+  if (action === "verify") {
+    return transaction.status !== "paid" && transaction.status !== "refunded";
+  }
+  if (action === "refund") {
+    return transaction.status === "paid";
+  }
+  if (action === "mark-testing") {
+    return !transaction.isTesting;
+  }
+  if (action === "unmark-testing") {
+    return Boolean(transaction.isTesting);
+  }
+  return true;
+}
+
+function SelectionCheckbox({
+  checked,
+  disabled,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <input
+      type="checkbox"
+      aria-label={label}
+      checked={checked}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.checked)}
+      className="size-4 rounded border-zinc-300 text-zinc-950 accent-zinc-950 disabled:cursor-not-allowed disabled:opacity-40"
+    />
+  );
+}
+
+function BulkActionMenu({
+  disabled,
+  selectedCount,
+  items,
+}: {
+  disabled?: boolean;
+  selectedCount: number;
+  items: {
+    action: BulkAction;
+    count: number;
+    destructive?: boolean;
+    onClick: () => void;
+  }[];
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={disabled || selectedCount === 0}
+        onClick={() => setOpen((value) => !value)}
+      >
+        Action selected
+        {selectedCount > 0 ? ` (${selectedCount})` : ""}
+        <ChevronDown className="size-4" />
+      </Button>
+      {open ? (
+        <div className="absolute right-0 top-10 z-40 w-56 rounded-lg border border-zinc-200 bg-white p-1 shadow-xl">
+          {items.map((item) => (
+            <button
+              key={item.action}
+              type="button"
+              disabled={item.count === 0}
+              className={cn(
+                "flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40",
+                item.destructive && "text-red-600",
+              )}
+              onClick={() => {
+                item.onClick();
+                setOpen(false);
+              }}
+            >
+              <span>{getBulkActionLabel(item.action)}</span>
+              <span className="text-xs text-zinc-400">{item.count}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function calculateConfiguredFee(
@@ -210,18 +353,24 @@ function TransactionSummaryMetric({
 }
 
 export function TransactionsMonitoring() {
-  const { data = [] } = useTransactions();
   const { data: config } = useAppConfig();
   const requestAction = useRequestTransactionAction();
+  const markTesting = useMarkTransactionAsTesting();
+  const unmarkTesting = useUnmarkTransactionAsTesting();
   const { isReadOnly } = usePermission();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const includeSpecialStatusTransactions =
+    statusFilter === "archive" || statusFilter === "testing";
+  const { data = [] } = useTransactions(includeSpecialStatusTransactions);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [packageFilter, setPackageFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
   const paymentMethodOptions = useMemo(
     () =>
       Array.from(new Set(data.map(getTransactionPaymentMethod))).sort((a, b) =>
@@ -245,7 +394,14 @@ export function TransactionsMonitoring() {
       t.device.toLowerCase().includes(search.toLowerCase()) ||
       t.customer.toLowerCase().includes(search.toLowerCase()) ||
       t.packageName.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || t.status === statusFilter;
+    const matchStatus =
+      statusFilter === "all"
+        ? !t.isArchived && !t.isTesting
+        : statusFilter === "archive"
+          ? Boolean(t.isArchived)
+          : statusFilter === "testing"
+            ? Boolean(t.isTesting)
+            : !t.isArchived && !t.isTesting && t.status === statusFilter;
     const matchPaymentMethod =
       paymentMethodFilter === "all" || paymentMethod === paymentMethodFilter;
     const matchPackage =
@@ -262,14 +418,17 @@ export function TransactionsMonitoring() {
   });
   const summary = filtered.reduce(
     (acc, transaction) => {
-      const isPaid = transaction.status === "paid";
+      const isActivePaid =
+        transaction.status === "paid" &&
+        !transaction.isTesting &&
+        !transaction.isArchived;
       const netAmount = getTransactionNetAmount(transaction, config);
       return {
-        revenue: acc.revenue + (isPaid ? netAmount : 0),
-        printCount: acc.printCount + (isPaid ? transaction.printCount : 0),
+        revenue: acc.revenue + (isActivePaid ? netAmount : 0),
+        printCount: acc.printCount + (isActivePaid ? transaction.printCount : 0),
         transactionCount: acc.transactionCount + 1,
-        paidCount: acc.paidCount + (isPaid ? 1 : 0),
-        grossRevenue: acc.grossRevenue + (isPaid ? transaction.amount : 0),
+        paidCount: acc.paidCount + (isActivePaid ? 1 : 0),
+        grossRevenue: acc.grossRevenue + (isActivePaid ? transaction.amount : 0),
       };
     },
     {
@@ -294,6 +453,60 @@ export function TransactionsMonitoring() {
     (activePage - 1) * pageSize,
     activePage * pageSize,
   );
+  const selectablePageTransactions = paginatedTransactions.filter(
+    isArchiveableTransaction,
+  );
+  const selectedTransactions = data.filter(
+    (transaction) =>
+      selectedIds.has(transaction.id) && isArchiveableTransaction(transaction),
+  );
+  const allPageSelected =
+    selectablePageTransactions.length > 0 &&
+    selectablePageTransactions.every((transaction) =>
+      selectedIds.has(transaction.id),
+    );
+  const selectedCount = selectedTransactions.length;
+  const bulkActions: BulkAction[] = [
+    "verify",
+    "refund",
+    "mark-testing",
+    "unmark-testing",
+    "archive",
+  ];
+  const bulkActionItems = bulkActions.map((action) => ({
+    action,
+    count: selectedTransactions.filter((transaction) =>
+      canApplyBulkAction(transaction, action),
+    ).length,
+    destructive: action === "refund" || action === "archive",
+    onClick: () => void handleBulkAction(action),
+  }));
+
+  function setTransactionSelected(transactionId: string, checked: boolean) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) {
+        next.add(transactionId);
+      } else {
+        next.delete(transactionId);
+      }
+      return next;
+    });
+  }
+
+  function setPageSelected(checked: boolean) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      for (const transaction of selectablePageTransactions) {
+        if (checked) {
+          next.add(transaction.id);
+        } else {
+          next.delete(transaction.id);
+        }
+      }
+      return next;
+    });
+  }
 
   async function handleRequestAction(
     transaction: Transaction,
@@ -310,6 +523,89 @@ export function TransactionsMonitoring() {
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Gagal membuat request",
+      );
+    }
+  }
+
+  async function handleMarkTesting(transaction: Transaction) {
+    try {
+      await markTesting.mutateAsync(transaction.id);
+      toast.success("Transaksi ditandai sebagai testing.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal menandai transaksi testing",
+      );
+    }
+  }
+
+  async function handleUnmarkTesting(transaction: Transaction) {
+    try {
+      await unmarkTesting.mutateAsync(transaction.id);
+      toast.success("Mode testing transaksi dibatalkan.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal membatalkan mode testing",
+      );
+    }
+  }
+
+  async function handleBulkAction(action: BulkAction) {
+    const eligibleTransactions = selectedTransactions.filter((transaction) =>
+      canApplyBulkAction(transaction, action),
+    );
+    if (eligibleTransactions.length === 0) {
+      toast.error(`Tidak ada transaksi yang valid untuk ${getBulkActionLabel(action)}.`);
+      return;
+    }
+
+    let successCount = 0;
+    let failedCount = 0;
+    let failedMessage = "";
+    for (const transaction of eligibleTransactions) {
+      try {
+        if (action === "mark-testing") {
+          await markTesting.mutateAsync(transaction.id);
+        } else if (action === "unmark-testing") {
+          await unmarkTesting.mutateAsync(transaction.id);
+        } else {
+          await requestAction.mutateAsync({
+            transactionId: transaction.id,
+            action,
+          });
+        }
+        successCount += 1;
+      } catch (error) {
+        failedCount += 1;
+        failedMessage =
+          error instanceof Error
+            ? error.message
+            : `Gagal menjalankan ${getBulkActionLabel(action)}`;
+      }
+    }
+
+    if (successCount > 0) {
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        for (const transaction of eligibleTransactions) {
+          next.delete(transaction.id);
+        }
+        return next;
+      });
+      const approvalSuffix =
+        action === "verify" || action === "refund" || action === "archive"
+          ? " dan menunggu approval Super Admin"
+          : "";
+      toast.success(
+        `${successCount} transaksi berhasil diproses${approvalSuffix}.`,
+      );
+    }
+    if (failedMessage) {
+      toast.error(
+        failedCount > 1 ? `${failedCount} transaksi gagal. ${failedMessage}` : failedMessage,
       );
     }
   }
@@ -362,6 +658,7 @@ export function TransactionsMonitoring() {
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
+                  setSelectedIds(new Set());
                   setPage(1);
                 }}
               />
@@ -369,6 +666,7 @@ export function TransactionsMonitoring() {
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
+                  setSelectedIds(new Set());
                   setPage(1);
                 }}
               >
@@ -377,11 +675,14 @@ export function TransactionsMonitoring() {
                 <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
                 <option value="refunded">Refunded</option>
+                <option value="archive">Arsip</option>
+                <option value="testing">Mode testing</option>
               </Select>
               <Select
                 value={paymentMethodFilter}
                 onChange={(e) => {
                   setPaymentMethodFilter(e.target.value);
+                  setSelectedIds(new Set());
                   setPage(1);
                 }}
               >
@@ -396,6 +697,7 @@ export function TransactionsMonitoring() {
                 value={packageFilter}
                 onChange={(e) => {
                   setPackageFilter(e.target.value);
+                  setSelectedIds(new Set());
                   setPage(1);
                 }}
               >
@@ -411,6 +713,7 @@ export function TransactionsMonitoring() {
                 value={dateFilter}
                 onChange={(e) => {
                   setDateFilter(e.target.value);
+                  setSelectedIds(new Set());
                   setPage(1);
                 }}
                 aria-label="Filter transaction date"
@@ -424,16 +727,28 @@ export function TransactionsMonitoring() {
                   setPaymentMethodFilter("all");
                   setPackageFilter("all");
                   setDateFilter("");
+                  setSelectedIds(new Set());
                   setPage(1);
                 }}
               >
                 Reset
               </Button>
             </div>
-            <div className="text-xs text-zinc-500 flex items-center gap-4">
-              <span>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+              <span className="whitespace-nowrap">
                 {filtered.length} of {data.length} transactions
               </span>
+              {!isReadOnly("transactions") ? (
+                <BulkActionMenu
+                  selectedCount={selectedCount}
+                  disabled={
+                    requestAction.isPending ||
+                    markTesting.isPending ||
+                    unmarkTesting.isPending
+                  }
+                  items={bulkActionItems}
+                />
+              ) : null}
             </div>
           </div>
         </CardHeader>
@@ -442,6 +757,14 @@ export function TransactionsMonitoring() {
             <Table className="min-w-180">
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <SelectionCheckbox
+                      label="Select all transactions on this page"
+                      checked={allPageSelected}
+                      disabled={selectablePageTransactions.length === 0}
+                      onChange={setPageSelected}
+                    />
+                  </TableHead>
                   <TableHead>ID</TableHead>
                   <TableHead>Tanggal & Jam</TableHead>
                   <TableHead>Device</TableHead>
@@ -465,7 +788,22 @@ export function TransactionsMonitoring() {
                   );
 
                   return (
-                    <TableRow key={transaction.id}>
+                    <TableRow
+                      key={transaction.id}
+                      className={cn(
+                        transaction.isArchived && "bg-zinc-50 text-zinc-500",
+                      )}
+                    >
+                      <TableCell>
+                        <SelectionCheckbox
+                          label={`Select transaction ${transaction.id}`}
+                          checked={selectedIds.has(transaction.id)}
+                          disabled={!isArchiveableTransaction(transaction)}
+                          onChange={(checked) =>
+                            setTransactionSelected(transaction.id, checked)
+                          }
+                        />
+                      </TableCell>
                       <TableCell className="max-w-[120px] font-mono text-xs break-words">
                         {transaction.id}
                       </TableCell>
@@ -493,7 +831,9 @@ export function TransactionsMonitoring() {
                         ) : null}
                       </TableCell>
                       <TableCell>
-                        {renderTransactionStatus(transaction.status)}
+                        <div className="flex flex-wrap gap-1.5">
+                          {renderTransactionStatusBadges(transaction)}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {transaction.pendingAction ? (
@@ -502,7 +842,8 @@ export function TransactionsMonitoring() {
                               transaction.pendingAction.action,
                             )}
                           </Badge>
-                        ) : !isReadOnly("transactions") ? (
+                        ) : !transaction.isArchived &&
+                          !isReadOnly("transactions") ? (
                           <div className="flex items-center gap-1">
                             <DropdownMenu
                               items={getTransactionActionItems(
@@ -512,6 +853,10 @@ export function TransactionsMonitoring() {
                                     selectedTransaction,
                                     action,
                                   ),
+                                (selectedTransaction) =>
+                                  void handleMarkTesting(selectedTransaction),
+                                (selectedTransaction) =>
+                                  void handleUnmarkTesting(selectedTransaction),
                               )}
                             />
                           </div>
@@ -523,7 +868,7 @@ export function TransactionsMonitoring() {
                 {filtered.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={9}
                       className="py-10 text-center text-sm text-zinc-400"
                     >
                       No transactions found.
@@ -547,13 +892,24 @@ export function TransactionsMonitoring() {
               return (
                 <div
                   key={transaction.id}
-                  className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm"
+                  className={cn(
+                    "rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm",
+                    transaction.isArchived && "bg-zinc-50 text-zinc-500",
+                  )}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
+                        <SelectionCheckbox
+                          label={`Select transaction ${transaction.id}`}
+                          checked={selectedIds.has(transaction.id)}
+                          disabled={!isArchiveableTransaction(transaction)}
+                          onChange={(checked) =>
+                            setTransactionSelected(transaction.id, checked)
+                          }
+                        />
                         {renderPaymentMethod(paymentMethod)}
-                        {renderTransactionStatus(transaction.status)}
+                        {renderTransactionStatusBadges(transaction)}
                       </div>
                       <p className="mt-2 text-lg font-semibold text-zinc-950">
                         {formatCurrency(netAmount)}
@@ -611,7 +967,8 @@ export function TransactionsMonitoring() {
                       <span className="text-xs text-zinc-500">
                         Menunggu approval Super Admin
                       </span>
-                    ) : !isReadOnly("transactions") ? (
+                    ) : !transaction.isArchived &&
+                      !isReadOnly("transactions") ? (
                       <DropdownMenu
                         items={getTransactionActionItems(
                           transaction,
@@ -620,6 +977,10 @@ export function TransactionsMonitoring() {
                               selectedTransaction,
                               action,
                             ),
+                          (selectedTransaction) =>
+                            void handleMarkTesting(selectedTransaction),
+                          (selectedTransaction) =>
+                            void handleUnmarkTesting(selectedTransaction),
                         )}
                       />
                     ) : null}

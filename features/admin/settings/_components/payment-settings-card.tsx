@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import { CreditCard } from "lucide-react";
+import { Building2, CreditCard, Landmark } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
@@ -10,7 +10,6 @@ import {
   SwitchSetting,
 } from "./settings-card";
 import { cn } from "@/lib/utils";
-import { Building2, Landmark } from "lucide-react";
 
 type SubscriptionGatewayMode = "duitku" | "midtrans" | "both";
 
@@ -26,29 +25,44 @@ type PaymentSettingsCardProps<T extends SettingsForm> = {
   form: T;
   setForm: Dispatch<SetStateAction<T>>;
   superadminGateway?: SubscriptionGatewayMode;
+  privateGateway?: {
+    merchantCode: string;
+    sandbox: boolean;
+    paymentMethod: string;
+    hasApiKey: boolean;
+    apiKeyLast4: string | null;
+  } | null;
+  privateGatewayDraft: {
+    merchantCode: string;
+    apiKey: string;
+    sandbox: boolean;
+    paymentMethod: string;
+  };
+  setPrivateGatewayDraft: Dispatch<
+    SetStateAction<{
+      merchantCode: string;
+      apiKey: string;
+      sandbox: boolean;
+      paymentMethod: string;
+    }>
+  >;
 };
 
 export function PaymentSettingsCard<T extends SettingsForm>({
   form,
   setForm,
   superadminGateway,
+  privateGateway,
+  privateGatewayDraft,
+  setPrivateGatewayDraft,
 }: PaymentSettingsCardProps<T>) {
-  
-  // Calculate allowed gateway options based on superadmin settings
-  const allowedOptions = superadminGateway === "both"
-    ? [
-        { value: "duitku", label: "Duitku" },
-        { value: "midtrans", label: "Midtrans" },
-      ]
-    : superadminGateway === "duitku"
-    ? [{ value: "duitku", label: "Duitku" }]
-    : superadminGateway === "midtrans"
-    ? [{ value: "midtrans", label: "Midtrans" }]
-    : [
-        { value: "duitku", label: "Duitku" },
-        { value: "midtrans", label: "Midtrans" },
-        { value: "both", label: "Duitku + Midtrans" },
-      ];
+  const configuredGateway = superadminGateway ?? form.subscription_payment_gateway;
+  const gatewayOptions = [
+    { value: "duitku", label: "Duitku" },
+    { value: "midtrans", label: "Midtrans" },
+    { value: "both", label: "Duitku + Midtrans" },
+  ] satisfies Array<{ value: SubscriptionGatewayMode; label: string }>;
+
   return (
     <SettingsCard
       title="Payment settings"
@@ -110,33 +124,71 @@ export function PaymentSettingsCard<T extends SettingsForm>({
           </div>
 
           {form.payment_mode === "private" && (
-            <>
-              <SettingField label="Provider merchant ID">
+            <div className="md:col-span-2 grid gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <div className="text-sm font-semibold text-emerald-950">
+                  Credential Duitku organisasi
+                </div>
+                <div className="mt-1 text-xs leading-5 text-emerald-800/80">
+                  QRIS kiosk akan dibuat memakai merchant code dan API key ini.
+                  API key disimpan terenkripsi dan tidak ditampilkan ulang.
+                </div>
+              </div>
+
+              <SettingField label="Merchant code">
                 <Input
-                  placeholder="MID-12345"
-                  value={form.qris_provider_merchant_id}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      qris_provider_merchant_id: e.target.value,
+                  placeholder="DXXXX"
+                  value={privateGatewayDraft.merchantCode}
+                  onChange={(event) =>
+                    setPrivateGatewayDraft((draft) => ({
+                      ...draft,
+                      merchantCode: event.target.value,
                     }))
                   }
                 />
               </SettingField>
-              <SettingField label="Webhook secret">
+
+              <SettingField label="API key">
                 <Input
-                  placeholder="••••••••"
                   type="password"
-                  value={form.qris_webhook_secret}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      qris_webhook_secret: e.target.value,
+                  placeholder={
+                    privateGateway?.hasApiKey
+                      ? `Tersimpan ••••${privateGateway.apiKeyLast4 ?? ""}`
+                      : "Masukkan API key Duitku"
+                  }
+                  value={privateGatewayDraft.apiKey}
+                  onChange={(event) =>
+                    setPrivateGatewayDraft((draft) => ({
+                      ...draft,
+                      apiKey: event.target.value,
                     }))
                   }
                 />
+                {privateGateway?.hasApiKey ? (
+                  <div className="mt-2 text-xs text-emerald-800/75">
+                    Kosongkan jika tidak ingin mengganti API key.
+                  </div>
+                ) : null}
               </SettingField>
-            </>
+
+              <SettingField label="QRIS payment method">
+                <Select
+                  value={privateGatewayDraft.paymentMethod}
+                  onChange={(event) =>
+                    setPrivateGatewayDraft((draft) => ({
+                      ...draft,
+                      paymentMethod: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="SQ">Nusapay (SQ)</option>
+                  <option value="SP">Shopee Pay (SP)</option>
+                </Select>
+                <div className="mt-2 text-xs text-emerald-800/75">
+                  Pilih metode QRIS yang aktif di akun Duitku organisasi.
+                </div>
+              </SettingField>
+            </div>
           )}
 
           <SettingField
@@ -144,27 +196,19 @@ export function PaymentSettingsCard<T extends SettingsForm>({
             className="md:col-span-2"
           >
             <Select
-              value={form.subscription_payment_gateway}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  subscription_payment_gateway:
-                    e.target.value as SubscriptionGatewayMode,
-                }))
-              }
-              disabled={allowedOptions.length <= 1} // Auto-disable if only 1 option from superadmin
+              value={configuredGateway}
+              onChange={() => undefined}
+              disabled
             >
-              {allowedOptions.map((opt) => (
+              {gatewayOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
             </Select>
-            {allowedOptions.length <= 1 && (
-              <div className="mt-2 text-xs text-zinc-500">
-                Pilihan gateway dibatasi oleh konfigurasi Superadmin.
-              </div>
-            )}
+            <div className="mt-2 text-xs text-zinc-500">
+              Gateway checkout subscription mengikuti konfigurasi Super Admin.
+            </div>
           </SettingField>
         </div>
         <SwitchSetting

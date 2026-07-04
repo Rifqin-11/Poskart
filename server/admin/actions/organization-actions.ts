@@ -14,6 +14,12 @@ import {
   DEFAULT_ORGANIZATION_FEATURES,
   normalizeOrganizationFeatures,
 } from "@/lib/organization-features";
+import { getServiceRoleClient } from "@/lib/supabase/server";
+import {
+  getOrganizationDuitkuGatewaySummary,
+  saveOrganizationDuitkuGateway,
+  type SaveOrganizationDuitkuGatewayInput,
+} from "@/server/payments/organization-gateway";
 
 export async function getOrganizations(): Promise<Organization[]> {
   const { supabase } = await getAdminContext();
@@ -258,6 +264,66 @@ export async function updateMyOrganizationName(name: string) {
   return data;
 }
 
+export async function updateMyPaymentCollectionMode(
+  mode: "platform" | "custom",
+) {
+  const { supabase, user } = await getAdminContext();
+
+  const { data: profile } = await supabase
+    .from("organization_members")
+    .select("organization_id, role")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+  if (!profile?.organization_id) throw new Error("No organization associated");
+
+  if (profile.role !== "owner" && profile.role !== "admin") {
+    throw new Error(
+      "Hanya pemilik atau admin yang dapat mengubah mode pembayaran organisasi.",
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("organizations")
+    .update({
+      payment_collection_mode: mode,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", profile.organization_id)
+    .select("id,payment_collection_mode")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getMyPaymentGatewaySettings() {
+  const { supabase, user } = await getAdminContext();
+  const membership = await getMyManageableOrganizationMembership(supabase, user.id);
+  const serviceRoleClient = await getServiceRoleClient();
+  return getOrganizationDuitkuGatewaySummary(
+    serviceRoleClient,
+    membership.organization_id,
+  );
+}
+
+export async function saveMyPaymentGatewaySettings(
+  input: SaveOrganizationDuitkuGatewayInput,
+) {
+  const { supabase, user } = await getAdminContext();
+  const membership = await getMyManageableOrganizationMembership(supabase, user.id);
+  const serviceRoleClient = await getServiceRoleClient();
+  await saveOrganizationDuitkuGateway(
+    serviceRoleClient,
+    membership.organization_id,
+    input,
+    user.id,
+  );
+  return getOrganizationDuitkuGatewaySummary(
+    serviceRoleClient,
+    membership.organization_id,
+  );
+}
+
 export async function getMyOrganizationMembers() {
   const { supabase, user } = await getAdminContext();
 
@@ -291,6 +357,29 @@ export async function getMyOrganizationMembers() {
       profile_id: member.profile_id,
     };
   });
+}
+
+async function getMyManageableOrganizationMembership(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  userId: string,
+) {
+  const { data: profile, error } = await supabase
+    .from("organization_members")
+    .select("organization_id, role")
+    .eq("profile_id", userId)
+    .limit(1)
+    .single();
+
+  if (error || !profile?.organization_id) {
+    throw new Error("No organization associated");
+  }
+  if (profile.role !== "owner" && profile.role !== "admin") {
+    throw new Error(
+      "Hanya pemilik atau admin yang dapat mengatur payment gateway private.",
+    );
+  }
+
+  return profile;
 }
 
 export async function getMyOrganizationInvitations() {

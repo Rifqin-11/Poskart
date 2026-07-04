@@ -22,6 +22,38 @@ export function useUpdateTenantName() {
   });
 }
 
+export function useUpdatePaymentCollectionMode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: organizationApi.updateMyPaymentCollectionMode,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.organizationDetails });
+    },
+  });
+}
+
+export function usePaymentGatewaySettings() {
+  return useQuery<
+    Awaited<ReturnType<typeof organizationApi.getMyPaymentGatewaySettings>>,
+    Error
+  >({
+    queryKey: adminQueryKeys.organizationPaymentGateway,
+    queryFn: organizationApi.getMyPaymentGatewaySettings,
+  });
+}
+
+export function useSavePaymentGatewaySettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: organizationApi.saveMyPaymentGatewaySettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.organizationPaymentGateway,
+      });
+    },
+  });
+}
+
 export function useTenantMembers() {
   return useQuery<Awaited<ReturnType<typeof organizationApi.getMyOrganizationMembers>>, Error>({
     queryKey: adminQueryKeys.organizationMembers,
