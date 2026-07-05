@@ -44,6 +44,7 @@ export async function updateSession(request: NextRequest) {
     "/pricing",
     "/onboarding",
     "/pos",
+    "/queue",
     "/money",
     "/builder",
     "/themes",
@@ -60,6 +61,7 @@ export async function updateSession(request: NextRequest) {
   const subscriptionRoutes = [
     "/builder",
     "/pos",
+    "/queue",
     "/money",
     "/themes",
     "/templates",

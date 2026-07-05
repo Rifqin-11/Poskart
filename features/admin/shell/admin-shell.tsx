@@ -9,6 +9,7 @@ import {
   Gauge,
   LayoutTemplate,
   Images,
+  ListOrdered,
   LockKeyhole,
   Menu,
   MonitorSmartphone,
@@ -67,6 +68,12 @@ const navItems: AdminNavItem[] = [
     icon: PanelsTopLeft,
     requiresSubscription: true,
     organizationFeature: "posKasir",
+  },
+  {
+    href: "/queue",
+    labelKey: "nav.queue",
+    icon: ListOrdered,
+    requiresSubscription: true,
   },
   {
     href: "/money",

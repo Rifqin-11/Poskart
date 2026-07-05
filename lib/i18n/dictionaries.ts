@@ -7,6 +7,7 @@ export const dictionaries = {
   en: {
     "nav.dashboard": "Dashboard",
     "nav.pos": "POS Cashier",
+    "nav.queue": "Queue",
     "nav.money": "Finance",
     "nav.transactions": "Transactions",
     "nav.withdraw": "Withdraw",
@@ -53,6 +54,7 @@ export const dictionaries = {
   id: {
     "nav.dashboard": "Dashboard",
     "nav.pos": "POS Kasir",
+    "nav.queue": "Antrian",
     "nav.money": "Keuangan",
     "nav.transactions": "Transaksi",
     "nav.withdraw": "Pencairan / Penarikan",
