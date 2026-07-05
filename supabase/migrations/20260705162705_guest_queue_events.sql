@@ -34,6 +34,7 @@ create table if not exists public.guest_queue_entries (
   in_session_at timestamptz,
   completed_at timestamptz,
   notified_at timestamptz,
+  email_sent_at timestamptz,
   notes text,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),

@@ -246,22 +246,11 @@ export function QueueDashboard({
     popup.document.close();
   }
 
-  function contact(entry: GuestQueueEntry, type: "email" | "wa") {
+  function contact(entry: GuestQueueEntry) {
     startTransition(async () => {
       await markGuestQueueNotified(entry.id);
       router.refresh();
     });
-
-    if (type === "email") {
-      window.location.href = `mailto:${entry.visitorEmail}?subject=${encodeURIComponent(
-        "Your POSKART queue number is ready",
-      )}&body=${encodeURIComponent(
-        `Hi ${entry.visitorName}, your queue number ${queueNumber(
-          entry.queueNumber,
-        )} is ready. Please come to the photobooth cashier.`,
-      )}`;
-      return;
-    }
 
     window.open(
       `https://wa.me/${normalizeWhatsApp(entry.visitorPhone)}?text=${encodeURIComponent(
@@ -482,29 +471,43 @@ export function QueueDashboard({
                   <span>{nextEntry.visitorPhone}</span>
                   <span>Registered {formatDateTime(nextEntry.createdAt)}</span>
                   <span>
-                    {nextEntry.notifiedAt
-                      ? `Notified ${formatDateTime(nextEntry.notifiedAt)}`
-                      : "Not notified yet"}
+                    {nextEntry.emailSentAt
+                      ? `Email sent ${formatDateTime(nextEntry.emailSentAt)}`
+                      : nextEntry.notifiedAt
+                        ? `Contacted ${formatDateTime(nextEntry.notifiedAt)}`
+                        : "Not contacted yet"}
                   </span>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 lg:justify-end">
                 <Button
+                  variant="outline"
+                  onClick={() =>
+                    runAction(
+                      () => updateGuestQueueStatus(nextEntry.id, "called"),
+                      nextEntry.emailSentAt
+                        ? "Visitor called"
+                        : "Visitor called and emailed",
+                    )
+                  }
+                >
+                  <Mail className="size-4" />
+                  Call & email
+                </Button>
+                <Button
                   onClick={() =>
                     runAction(
                       () => updateGuestQueueStatus(nextEntry.id, "in_session"),
-                      "Visitor moved to session",
+                      nextEntry.emailSentAt
+                        ? "Visitor moved to session"
+                        : "Visitor moved to session and emailed",
                     )
                   }
                 >
                   <Play className="size-4" />
                   Start session
                 </Button>
-                <Button variant="outline" onClick={() => contact(nextEntry, "email")}>
-                  <Mail className="size-4" />
-                  Email
-                </Button>
-                <Button variant="outline" onClick={() => contact(nextEntry, "wa")}>
+                <Button variant="outline" onClick={() => contact(nextEntry)}>
                   <MessageCircle className="size-4" />
                   WhatsApp
                 </Button>
@@ -579,7 +582,7 @@ export function QueueDashboard({
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => contact(entry, "wa")}
+                            onClick={() => contact(entry)}
                           >
                             WA
                           </Button>

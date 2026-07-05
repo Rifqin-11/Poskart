@@ -36,6 +36,7 @@ export type GuestQueueEntryRow = {
   in_session_at: string | null;
   completed_at: string | null;
   notified_at: string | null;
+  email_sent_at: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -106,6 +107,7 @@ export function mapGuestQueueEntry(row: GuestQueueEntryRow): GuestQueueEntry {
     inSessionAt: row.in_session_at,
     completedAt: row.completed_at,
     notifiedAt: row.notified_at,
+    emailSentAt: row.email_sent_at,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

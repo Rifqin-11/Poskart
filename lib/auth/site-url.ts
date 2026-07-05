@@ -12,6 +12,14 @@ import { headers } from "next/headers";
  *   5. http://localhost:3000  (last resort, dev only)
  */
 export async function getSiteUrl(): Promise<string> {
+  const explicit =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (explicit) return stripTrailingSlash(explicit);
+
+  const vercel = process.env.VERCEL_URL?.trim();
+  if (vercel) return stripTrailingSlash(`https://${vercel}`);
+
   const h = await headers();
   const proto = h.get("x-forwarded-proto") ?? "https";
   const forwardedHost = h.get("x-forwarded-host");
@@ -20,12 +28,6 @@ export async function getSiteUrl(): Promise<string> {
   if (host && isLocalHost(host)) {
     return stripTrailingSlash(`http://${host}`);
   }
-
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (explicit) return stripTrailingSlash(explicit);
-
-  const vercel = process.env.VERCEL_URL?.trim();
-  if (vercel) return stripTrailingSlash(`https://${vercel}`);
 
   if (host) return stripTrailingSlash(`${proto}://${host}`);
 

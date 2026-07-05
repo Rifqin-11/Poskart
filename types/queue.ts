@@ -37,6 +37,7 @@ export type GuestQueueEntry = {
   inSessionAt: string | null;
   completedAt: string | null;
   notifiedAt: string | null;
+  emailSentAt: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;

@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getSiteUrl } from "@/lib/auth/site-url";
 import { getAdminContext } from "@/server/admin/context";
+import { sendQueueCallEmail } from "@/server/queue/queue-email";
 import {
   mapGuestQueueEntry,
   mapQueueDevice,
@@ -22,7 +24,20 @@ type MembershipRole = "owner" | "admin" | "designer" | "akuntan" | "partner";
 const QUEUE_EVENT_COLUMNS =
   "id,organization_id,device_id,name,description,public_token,status,starts_at,ends_at,last_queue_number,created_at,updated_at";
 const QUEUE_ENTRY_COLUMNS =
-  "id,organization_id,queue_event_id,queue_number,public_token,visitor_name,visitor_email,visitor_phone,status,called_at,in_session_at,completed_at,notified_at,notes,created_at,updated_at";
+  "id,organization_id,queue_event_id,queue_number,public_token,visitor_name,visitor_email,visitor_phone,status,called_at,in_session_at,completed_at,notified_at,email_sent_at,notes,created_at,updated_at";
+
+type QueueEmailRow = GuestQueueEntryRow & {
+  queue_events?:
+    | {
+        name: string;
+        organizations?: { name: string } | { name: string }[] | null;
+      }
+    | Array<{
+        name: string;
+        organizations?: { name: string } | { name: string }[] | null;
+      }>
+    | null;
+};
 
 async function getQueueMembership() {
   const { supabase, user } = await getAdminContext();
@@ -55,6 +70,11 @@ function assertCanManageQueue(role: string) {
   }
 }
 
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
 function computeMetrics(entries: GuestQueueEntry[]) {
   const activeEntries = entries.filter(
     (entry) => !["done", "cancelled", "no_show"].includes(entry.status),
@@ -70,6 +90,57 @@ function computeMetrics(entries: GuestQueueEntry[]) {
     total: entries.length,
     done: entries.filter((entry) => entry.status === "done").length,
   };
+}
+
+async function sendQueueCallEmailIfNeeded({
+  supabase,
+  organizationId,
+  entryId,
+  notifiedAt,
+}: {
+  supabase: Awaited<ReturnType<typeof getQueueMembership>>["supabase"];
+  organizationId: string;
+  entryId: string;
+  notifiedAt: string;
+}) {
+  const { data, error } = await supabase
+    .from("guest_queue_entries")
+    .select(`${QUEUE_ENTRY_COLUMNS},queue_events(name,organizations(name))`)
+    .eq("id", entryId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) throw new Error("Queue entry not found");
+
+  const row = data as unknown as QueueEmailRow;
+  if (row.email_sent_at) return;
+
+  const event = firstRelation(row.queue_events);
+  const organization = firstRelation(event?.organizations);
+  const siteUrl = await getSiteUrl();
+
+  await sendQueueCallEmail({
+    eventName: event?.name ?? "POSKART Queue",
+    organizationName: organization?.name ?? "POSKART Booth",
+    visitorName: row.visitor_name,
+    visitorEmail: row.visitor_email,
+    queueNumber: row.queue_number,
+    ticketUrl: `${siteUrl}/q/ticket/${row.public_token}`,
+  });
+
+  const { error: updateError } = await supabase
+    .from("guest_queue_entries")
+    .update({
+      email_sent_at: notifiedAt,
+      notified_at: notifiedAt,
+      updated_at: notifiedAt,
+    })
+    .eq("id", entryId)
+    .eq("organization_id", organizationId)
+    .is("email_sent_at", null);
+
+  if (updateError) throw updateError;
 }
 
 export async function getQueueDashboard(
@@ -319,6 +390,15 @@ export async function updateGuestQueueStatus(
 
     if (error) throw error;
     if (!data) return { success: false, error: "Queue entry not found" };
+
+    if (status === "called" || status === "in_session") {
+      await sendQueueCallEmailIfNeeded({
+        supabase,
+        organizationId,
+        entryId,
+        notifiedAt: now,
+      });
+    }
 
     revalidatePath("/queue");
     return { success: true };
