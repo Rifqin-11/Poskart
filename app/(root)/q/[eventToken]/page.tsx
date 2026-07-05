@@ -36,7 +36,6 @@ export default async function PublicQueuePage({
             <QueueRegistrationForm eventToken={event.publicToken} />
           </div>
         </section>
-
       </div>
     </main>
   );
