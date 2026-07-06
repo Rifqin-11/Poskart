@@ -17,6 +17,11 @@ export function readNumber(value: unknown, fallback: number) {
   return typeof value === "number" ? value : fallback;
 }
 
+function readPositiveInteger(value: unknown, fallback: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(1, Math.round(value));
+}
+
 export function normalizeFrameLayout(layout: FrameLayout): FrameLayout {
   return layout;
 }
@@ -159,12 +164,15 @@ export function createNode(type: FrameNodeType, layout: FrameLayout): FrameNode 
   };
 
   if (type === "photo-slot") {
+    const nextOrder =
+      layout.nodes.filter((node) => node.type === "photo-slot").length + 1;
     return {
       ...base,
       width: 160,
       height: 210,
       props: {
-        label: "Photo",
+        label: `Photo ${nextOrder}`,
+        photoOrder: nextOrder,
         background: "#f4f4f5",
         borderColor: "#d4d4d8",
         radius: 10,
@@ -206,19 +214,32 @@ export function createNode(type: FrameNodeType, layout: FrameLayout): FrameNode 
 
 export function normalizePhotoSlotLabels(nodes: FrameNode[]): FrameNode[] {
   const photoSlots = nodes.filter((node) => node.type === "photo-slot");
-  const slotIdToIndex = new Map(
-    photoSlots.map((node, index) => [node.id, index]),
+  const orderedSlots = [...photoSlots].sort((a, b) => {
+    const orderA = readPositiveInteger(
+      a.props?.photoOrder,
+      photoSlots.indexOf(a) + 1,
+    );
+    const orderB = readPositiveInteger(
+      b.props?.photoOrder,
+      photoSlots.indexOf(b) + 1,
+    );
+    if (orderA !== orderB) return orderA - orderB;
+    return photoSlots.indexOf(a) - photoSlots.indexOf(b);
+  });
+  const slotIdToOrder = new Map(
+    orderedSlots.map((node, index) => [node.id, index + 1]),
   );
 
   return nodes.map((node) => {
     if (node.type !== "photo-slot") return node;
-    const index = slotIdToIndex.get(node.id);
-    if (index === undefined) return node;
+    const order = slotIdToOrder.get(node.id);
+    if (order === undefined) return node;
     return {
       ...node,
       props: {
         ...node.props,
-        label: `Photo ${index + 1}`,
+        photoOrder: order,
+        label: `Photo ${order}`,
       },
     };
   });

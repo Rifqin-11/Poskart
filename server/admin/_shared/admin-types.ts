@@ -43,7 +43,7 @@ export type {
 import { pricingPlans } from "@/lib/constants/business";
 
 export const TRANSACTION_COLUMNS =
-  "id,organization_id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_count,print_status,print_attempts,print_last_error,paid_at,duitku_status_code,gateway_response,archived_at,archive_reason,payout_status";
+  "id,organization_id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_count,print_status,print_attempts,print_last_error,paid_at,duitku_status_code,gateway_response,merchant_order_id,archived_at,archive_reason,payout_status";
 
 export const BOOTH_COLUMNS =
   "id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at";
@@ -70,6 +70,7 @@ export type TransactionRow = Omit<
   paid_at: string | null;
   duitku_status_code: string | null;
   gateway_response: Record<string, unknown> | null;
+  merchant_order_id: string | null;
   archived_at?: string | null;
   archive_reason?: string | null;
   payout_status?: string | null;

@@ -6,6 +6,7 @@ import type { FrameNode } from "@/types/frame-template";
 
 export function FrameNodeRenderer({ node }: { node: FrameNode }) {
   if (node.type === "photo-slot") {
+    const photoOrder = readNumber(node.props.photoOrder, 0);
     return (
       <div
         className="grid h-full w-full place-items-center border-2 border-dashed text-center text-xs font-medium text-zinc-500"
@@ -15,7 +16,10 @@ export function FrameNodeRenderer({ node }: { node: FrameNode }) {
           borderRadius: readNumber(node.props.radius, 10),
         }}
       >
-        {readString(node.props.label, "Photo")}
+        {readString(
+          node.props.label,
+          photoOrder > 0 ? `Photo ${photoOrder}` : "Photo",
+        )}
       </div>
     );
   }

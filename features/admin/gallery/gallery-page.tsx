@@ -20,6 +20,7 @@ import {
 type GallerySessionRow = {
   id: string;
   device_id: string | null;
+  transaction_id: string | null;
   template_name: string;
   social_media_consent: boolean;
   share_url: string | null;
@@ -38,6 +39,13 @@ type LivePhotoJobRow = {
   session_id: string;
   status: string | null;
   updated_at: string | null;
+};
+
+type TransactionRow = {
+  id: string;
+  status: string | null;
+  provider: string | null;
+  merchant_order_id: string | null;
 };
 
 export async function GalleryPage() {
@@ -71,6 +79,23 @@ export async function GalleryPage() {
     .limit(100);
   const rows = (sessions ?? []) as GallerySessionRow[];
   const sessionIds = rows.map((session) => session.id);
+  const { data: transactions } = sessionIds.length
+    ? await supabase
+        .from("transactions")
+        .select("id,status,provider,merchant_order_id")
+        .eq("organization_id", organizationId)
+        .in("id", sessionIds)
+    : { data: [] };
+  const transactionRows = (transactions ?? []) as TransactionRow[];
+  const transactionIds = new Set(
+    transactionRows
+      .filter((transaction) => !isOrphanQrisPendingTransaction(transaction))
+      .map((transaction) => transaction.id),
+  );
+  const enrichedRows = rows.map((session) => ({
+    ...session,
+    transaction_id: transactionIds.has(session.id) ? session.id : null,
+  }));
   const { data: photos } = sessionIds.length
     ? await supabase
         .from("gallery_photos")
@@ -99,7 +124,7 @@ export async function GalleryPage() {
   const livePhotoJobBySessionId = new Map(
     livePhotoJobRows.map((job) => [job.session_id, job]),
   );
-  const visibleRows = rows.filter((session) =>
+  const visibleRows = enrichedRows.filter((session) =>
     shouldShowGallerySession({
       session,
       photoCount: photosBySessionId.get(session.id)?.length ?? 0,
@@ -277,9 +302,14 @@ export async function GalleryPage() {
                         <DeleteSessionButton sessionId={session.id} />
                       </div>
                     </div>
-                    <p className="mt-2 truncate text-[11px] text-zinc-400">
-                      {session.device_id || "Unknown device"}
-                    </p>
+                    <div className="mt-2 space-y-0.5 text-[11px] text-zinc-400">
+                      <p className="truncate">
+                        Device ID: {session.device_id || "Unknown device"}
+                      </p>
+                      <p className="truncate">
+                        Transaction ID: {session.transaction_id || "-"}
+                      </p>
+                    </div>
                     {session.social_media_consent && (
                       <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
                         <CircleCheck className="size-3.5" />
@@ -294,6 +324,14 @@ export async function GalleryPage() {
         </section>
       ))}
     </div>
+  );
+}
+
+function isOrphanQrisPendingTransaction(transaction: TransactionRow) {
+  return (
+    transaction.provider === "QRIS" &&
+    transaction.status === "pending" &&
+    !transaction.merchant_order_id
   );
 }
 

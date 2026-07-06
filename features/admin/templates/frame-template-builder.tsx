@@ -36,6 +36,7 @@ import {
   getRotatedVisualInset,
   normalizeFrameLayout,
   normalizePhotoSlotLabels,
+  readNumber,
   resizeFrameLayout,
   upsertFrameBackground,
 } from "@/features/admin/templates/frame-builder.utils";
@@ -578,6 +579,55 @@ export function FrameTemplateBuilder({
       ),
     }));
 
+  const assignPhotoSlotOrder = (id: string, order: number) =>
+    commitLayout((current) => {
+      const photoSlots = current.nodes.filter(
+        (node) => node.type === "photo-slot",
+      );
+      const selectedSlot = photoSlots.find((node) => node.id === id);
+      if (!selectedSlot) return current;
+
+      const clampedOrder = clampNumber(
+        Math.round(order),
+        1,
+        Math.max(1, photoSlots.length),
+      );
+      const orderedSlots = [...photoSlots].sort((a, b) => {
+        const orderA = readNumber(
+          a.props.photoOrder,
+          photoSlots.indexOf(a) + 1,
+        );
+        const orderB = readNumber(
+          b.props.photoOrder,
+          photoSlots.indexOf(b) + 1,
+        );
+        if (orderA !== orderB) return orderA - orderB;
+        return photoSlots.indexOf(a) - photoSlots.indexOf(b);
+      });
+      const withoutSelected = orderedSlots.filter((node) => node.id !== id);
+      withoutSelected.splice(clampedOrder - 1, 0, selectedSlot);
+      const orderById = new Map(
+        withoutSelected.map((node, index) => [node.id, index + 1]),
+      );
+
+      return {
+        ...current,
+        nodes: normalizePhotoSlotLabels(
+          current.nodes.map((node) =>
+            node.type === "photo-slot"
+              ? {
+                  ...node,
+                  props: {
+                    ...node.props,
+                    photoOrder: orderById.get(node.id) ?? 1,
+                  },
+                }
+              : node,
+          ),
+        ),
+      };
+    });
+
   const computeGuides = (
     node: FrameNode,
     rawX: number,
@@ -918,6 +968,7 @@ export function FrameTemplateBuilder({
             onUpdateCanvas={updateCanvas}
             onUpdateNode={updateNode}
             onUpdateNodeProps={updateNodeProps}
+            onAssignPhotoSlotOrder={assignPhotoSlotOrder}
             onDuplicateNode={duplicateNode}
             onDeleteNode={deleteNode}
             onUploadToNode={uploadToNode}

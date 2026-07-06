@@ -159,7 +159,9 @@ export async function getTransactions({
     error,
     "Unable to load transactions",
   );
-  const transactions = rows.map(mapTransaction);
+  const transactions = rows
+    .filter((row) => !isOrphanQrisPendingTransaction(row))
+    .map(mapTransaction);
   const ids = transactions.map((transaction) => transaction.id);
   if (ids.length === 0) return transactions;
 
@@ -200,6 +202,14 @@ export async function getTransactions({
   }));
 }
 
+function isOrphanQrisPendingTransaction(row: TransactionRow) {
+  return (
+    row.provider === "QRIS" &&
+    row.status === "pending" &&
+    !row.merchant_order_id
+  );
+}
+
 export async function getFailedPrintsByBooth(
   boothName: string,
 ): Promise<Transaction[]> {
@@ -218,7 +228,9 @@ export async function getFailedPrintsByBooth(
     data as TransactionRow[] | null,
     error,
     "Unable to load failed prints",
-  ).map(mapTransaction);
+  )
+    .filter((row) => !isOrphanQrisPendingTransaction(row))
+    .map(mapTransaction);
 }
 
 export async function retryPrint(transactionId: string): Promise<void> {

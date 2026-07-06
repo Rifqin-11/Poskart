@@ -20,6 +20,7 @@ export function FramePropertiesPanel({
   onUpdateCanvas,
   onUpdateNode,
   onUpdateNodeProps,
+  onAssignPhotoSlotOrder,
   onDuplicateNode,
   onDeleteNode,
   onUploadToNode,
@@ -31,6 +32,7 @@ export function FramePropertiesPanel({
   onUpdateCanvas: (patch: Partial<FrameLayout["canvas"]>) => void;
   onUpdateNode: (id: string, patch: Partial<FrameNode>) => void;
   onUpdateNodeProps: (id: string, props: Record<string, unknown>) => void;
+  onAssignPhotoSlotOrder: (id: string, order: number) => void;
   onDuplicateNode: (node: FrameNode) => void;
   onDeleteNode: (node: FrameNode) => void;
   onUploadToNode: (file?: File) => void;
@@ -198,6 +200,35 @@ export function FramePropertiesPanel({
                   }
                 />
               </label>
+
+              {selectedNode.type === "photo-slot" ? (
+                <label className="block text-xs font-medium text-zinc-500">
+                  Photo order
+                  <Select
+                    className="mt-1"
+                    value={String(
+                      readNumber(selectedNode.props.photoOrder, 1),
+                    )}
+                    onChange={(event) =>
+                      onAssignPhotoSlotOrder(
+                        selectedNode.id,
+                        Number(event.target.value),
+                      )
+                    }
+                  >
+                    {layout.nodes
+                      .filter((node) => node.type === "photo-slot")
+                      .map((_, index) => (
+                        <option key={index + 1} value={index + 1}>
+                          Photo {index + 1}
+                        </option>
+                      ))}
+                  </Select>
+                  <p className="mt-1 text-[11px] leading-4 text-zinc-400">
+                    Determines which captured photo is placed in this slot.
+                  </p>
+                </label>
+              ) : null}
 
               {selectedNode.type === "text" ||
               selectedNode.type === "date-stamp" ? (

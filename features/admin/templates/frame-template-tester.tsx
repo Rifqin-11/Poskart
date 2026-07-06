@@ -44,7 +44,13 @@ function makeFallbackLayout(template: Template): FrameLayout {
       opacity: 1,
       zIndex: index + 2,
       locked: false,
-      props: { label: `Photo ${index + 1}`, background: "#f4f4f5", borderColor: "#d4d4d8", radius: 10 },
+      props: {
+        label: `Photo ${index + 1}`,
+        photoOrder: index + 1,
+        background: "#f4f4f5",
+        borderColor: "#d4d4d8",
+        radius: 10,
+      },
     };
   });
 
@@ -225,6 +231,17 @@ function drawColorKeyImage(
 function getSortedPhotoSlots(layout: FrameLayout) {
   const photoSlots = layout.nodes.filter((node) => node.type === "photo-slot");
   return [...photoSlots].sort((a, b) => {
+    const orderA = readNumber(a.props.photoOrder, 0);
+    const orderB = readNumber(b.props.photoOrder, 0);
+    if (orderA > 0 || orderB > 0) {
+      if (orderA !== orderB) {
+        return (
+          (orderA || photoSlots.indexOf(a) + 1) -
+          (orderB || photoSlots.indexOf(b) + 1)
+        );
+      }
+      return photoSlots.indexOf(a) - photoSlots.indexOf(b);
+    }
     const labelA = String(a.props?.label || "");
     const labelB = String(b.props?.label || "");
     const matchA = /Photo\s+(\d+)/.exec(labelA);

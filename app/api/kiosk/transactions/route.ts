@@ -103,6 +103,18 @@ export async function POST(request: Request) {
         : transaction.provider === "Voucher"
           ? "Voucher"
           : "QRIS";
+    if (
+      provider === "QRIS" &&
+      transaction.status === "paid" &&
+      !existingTransaction
+    ) {
+      return jsonOk({
+        success: true,
+        transactionId: transaction.id,
+        ignored: true,
+        code: "KIOSK_QRIS_PAYMENT_TRANSACTION_NOT_FOUND",
+      });
+    }
     const status = resolveTransactionStatus({
       provider,
       requestedStatus: transaction.status,
