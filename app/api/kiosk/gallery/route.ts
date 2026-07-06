@@ -5,7 +5,10 @@ import {
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
 import { deleteCloudinaryAssets } from "@/lib/cloudinary/server";
-import { shouldShowGallerySession } from "@/lib/gallery/session-visibility";
+import {
+  isDisplayableGalleryPhoto,
+  shouldShowGallerySession,
+} from "@/lib/gallery/session-visibility";
 
 export async function GET(request: Request) {
   try {
@@ -56,19 +59,26 @@ export async function GET(request: Request) {
 
     if (transactionsError) throw transactionsError;
 
-    const photoCountBySessionId = new Map<string, number>();
-    for (const photo of photos ?? []) {
-      photoCountBySessionId.set(
-        photo.session_id,
-        (photoCountBySessionId.get(photo.session_id) ?? 0) + 1,
-      );
-    }
     const livePhotoJobBySessionId = new Map(
       (livePhotoJobs ?? []).map((job) => [job.session_id, job]),
     );
     const transactionBySessionId = new Map(
       (transactions ?? []).map((transaction) => [transaction.id, transaction]),
     );
+    const photoCountBySessionId = new Map<string, number>();
+    for (const photo of photos ?? []) {
+      if (
+        !isDisplayableGalleryPhoto(photo, {
+          hasValidTransaction: transactionBySessionId.has(photo.session_id),
+        })
+      ) {
+        continue;
+      }
+      photoCountBySessionId.set(
+        photo.session_id,
+        (photoCountBySessionId.get(photo.session_id) ?? 0) + 1,
+      );
+    }
     const enrichedSessions = (sessions ?? []).map((session) => {
       const transaction = transactionBySessionId.get(session.id);
       return {

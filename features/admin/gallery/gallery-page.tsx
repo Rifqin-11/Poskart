@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { DeleteSessionButton } from "@/app/(admin)/gallery/delete-button";
 import { PrintSessionButton } from "@/app/(admin)/gallery/print-button";
 import {
+  isDisplayableGalleryPhoto,
   isActiveLivePhotoJob,
   shouldShowGallerySession,
 } from "@/lib/gallery/session-visibility";
@@ -33,6 +34,7 @@ type GalleryPhotoRow = {
   kind: "raw" | "framed";
   photo_index: number;
   secure_url: string;
+  format: string | null;
 };
 
 type LivePhotoJobRow = {
@@ -99,7 +101,7 @@ export async function GalleryPage() {
   const { data: photos } = sessionIds.length
     ? await supabase
         .from("gallery_photos")
-        .select("id,session_id,kind,photo_index,secure_url")
+        .select("id,session_id,kind,photo_index,secure_url,format")
         .in("session_id", sessionIds)
         .order("photo_index", { ascending: true })
     : { data: [] };
@@ -121,13 +123,27 @@ export async function GalleryPage() {
     },
     new Map(),
   );
+  const visiblePhotoCountBySessionId = photoRows.reduce<Map<string, number>>(
+    (map, photo) => {
+      if (
+        !isDisplayableGalleryPhoto(photo, {
+          hasValidTransaction: transactionIds.has(photo.session_id),
+        })
+      ) {
+        return map;
+      }
+      map.set(photo.session_id, (map.get(photo.session_id) ?? 0) + 1);
+      return map;
+    },
+    new Map(),
+  );
   const livePhotoJobBySessionId = new Map(
     livePhotoJobRows.map((job) => [job.session_id, job]),
   );
   const visibleRows = enrichedRows.filter((session) =>
     shouldShowGallerySession({
       session,
-      photoCount: photosBySessionId.get(session.id)?.length ?? 0,
+      photoCount: visiblePhotoCountBySessionId.get(session.id) ?? 0,
       livePhotoJob: livePhotoJobBySessionId.get(session.id),
     }),
   );
@@ -204,7 +220,7 @@ export async function GalleryPage() {
               const isLivePhotoProcessing =
                 sessionPhotos.length === 0 && isActiveLivePhotoJob(livePhotoJob);
               const framed = sessionPhotos.find(
-                (photo) => photo.kind === "framed",
+                (photo) => photo.kind === "framed" && photo.photo_index === 0,
               );
               const rawCount = sessionPhotos.filter(
                 (photo) =>
@@ -212,12 +228,10 @@ export async function GalleryPage() {
                   photo.photo_index !== 98 &&
                   photo.photo_index !== 99,
               ).length;
-              const hasGif = sessionPhotos.some(
+              const motionAsset = sessionPhotos.find(
                 (photo) => photo.kind === "raw" && photo.photo_index === 98,
               );
-              const gif = sessionPhotos.find(
-                (photo) => photo.kind === "raw" && photo.photo_index === 98,
-              );
+              const motionAssetLabel = getMotionAssetLabel(motionAsset);
               const framedLivePhoto = sessionPhotos.find(
                 (photo) =>
                   photo.kind === "framed" && photo.photo_index === 1,
@@ -248,21 +262,20 @@ export async function GalleryPage() {
                         )}
                       </div>
                     )}
-                    {gif && (
+                    {motionAsset && (
                       <Link
                         href={session.share_url || `/s/${session.id}`}
                         target="_blank"
                         className="absolute right-2 bottom-2 size-16 overflow-hidden rounded-lg border-2 border-white bg-zinc-900 shadow-md"
-                        aria-label="Buka GIF sesi"
+                        aria-label={`Buka ${motionAssetLabel} sesi`}
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={gif.secure_url}
-                          alt="GIF sesi"
+                        <GalleryAssetPreview
+                          asset={motionAsset}
+                          alt={`${motionAssetLabel} sesi`}
                           className="size-full object-cover"
                         />
                         <span className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-[9px] font-bold text-white">
-                          GIF
+                          {motionAssetLabel}
                         </span>
                       </Link>
                     )}
@@ -281,7 +294,7 @@ export async function GalleryPage() {
                           }).format(new Date(session.created_at))}
                           {" · "}
                           {rawCount} raw
-                          {hasGif ? " · GIF" : ""}
+                          {motionAsset ? ` · ${motionAssetLabel}` : ""}
                           {framedLivePhoto ? " · Live Photo" : ""}
                           {isLivePhotoProcessing ? " · Processing" : ""}
                         </p>
@@ -333,6 +346,66 @@ function isOrphanQrisPendingTransaction(transaction: TransactionRow) {
     transaction.status === "pending" &&
     !transaction.merchant_order_id
   );
+}
+
+function GalleryAssetPreview({
+  asset,
+  alt,
+  className,
+}: {
+  asset: Pick<GalleryPhotoRow, "secure_url" | "format">;
+  alt: string;
+  className?: string;
+}) {
+  if (isVideoAsset(asset)) {
+    return (
+      <video
+        className={className}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+      >
+        <source src={asset.secure_url} type={getVideoMimeType(asset)} />
+        {alt}
+      </video>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={asset.secure_url} alt={alt} className={className} />
+  );
+}
+
+function getMotionAssetLabel(
+  asset: Pick<GalleryPhotoRow, "secure_url" | "format"> | null | undefined,
+) {
+  if (!asset) return "GIF";
+  const format = getAssetFormat(asset);
+  if (format === "mp4") return "MP4";
+  if (format === "webm") return "WEBM";
+  if (format === "mov") return "MOV";
+  return "GIF";
+}
+
+function isVideoAsset(asset: Pick<GalleryPhotoRow, "secure_url" | "format">) {
+  return ["mp4", "webm", "mov"].includes(getAssetFormat(asset));
+}
+
+function getVideoMimeType(asset: Pick<GalleryPhotoRow, "secure_url" | "format">) {
+  const format = getAssetFormat(asset);
+  if (format === "webm") return "video/webm";
+  if (format === "mov") return "video/quicktime";
+  return "video/mp4";
+}
+
+function getAssetFormat(asset: Pick<GalleryPhotoRow, "secure_url" | "format">) {
+  const fromFormat = asset.format?.trim().toLowerCase();
+  if (fromFormat) return fromFormat;
+  const extension = asset.secure_url.split("?")[0]?.split(".").pop();
+  return extension?.toLowerCase() ?? "";
 }
 
 function GalleryEmpty({ message }: { message: string }) {

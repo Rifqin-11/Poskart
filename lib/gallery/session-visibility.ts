@@ -10,6 +10,12 @@ export type LivePhotoJobVisibilityInput = {
   updated_at?: string | null;
 };
 
+export type GalleryPhotoVisibilityInput = {
+  kind: string | null;
+  photo_index: number | null;
+  secure_url?: string | null;
+};
+
 export const ACTIVE_LIVE_PHOTO_STATUSES = new Set(["queued", "processing"]);
 export const LIVE_PHOTO_PENDING_VISIBILITY_WINDOW_MS = 10 * 60_000;
 
@@ -49,4 +55,23 @@ export function shouldShowGallerySession({
     photoCount > 0 ||
     isRecentActiveLivePhotoJob(session, livePhotoJob, now ?? Date.now())
   );
+}
+
+export function isDisplayableGalleryPhoto(
+  photo: GalleryPhotoVisibilityInput,
+  options: { hasValidTransaction?: boolean } = {},
+) {
+  if (!photo.secure_url) return false;
+  const index = Number(photo.photo_index ?? -1);
+  if (!Number.isFinite(index)) return false;
+
+  if (photo.kind === "framed") {
+    return index === 0 && options.hasValidTransaction === true;
+  }
+
+  if (photo.kind === "raw") {
+    return index >= 0 && index < 98;
+  }
+
+  return false;
 }
