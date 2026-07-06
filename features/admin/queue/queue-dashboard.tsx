@@ -14,6 +14,7 @@ import {
   Plus,
   QrCode,
   Trash2,
+  UserX,
   Users,
 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
@@ -511,6 +512,18 @@ export function QueueDashboard({
                   <MessageCircle className="size-4" />
                   WhatsApp
                 </Button>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    runAction(
+                      () => updateGuestQueueStatus(nextEntry.id, "no_show"),
+                      "Visitor skipped as no-show",
+                    )
+                  }
+                >
+                  <UserX className="size-4" />
+                  Skip
+                </Button>
               </div>
             </div>
           ) : (
@@ -571,13 +584,42 @@ export function QueueDashboard({
                             onClick={() =>
                               runAction(
                                 () =>
-                                  updateGuestQueueStatus(entry.id, "in_session"),
-                                "Visitor moved to session",
+                                  updateGuestQueueStatus(
+                                    entry.id,
+                                    entry.status === "in_session"
+                                      ? "done"
+                                      : "in_session",
+                                  ),
+                                entry.status === "in_session"
+                                  ? "Queue ended"
+                                  : "Visitor moved to session",
                               )
                             }
-                            disabled={entry.status === "done"}
+                            disabled={[
+                              "done",
+                              "cancelled",
+                              "no_show",
+                            ].includes(entry.status)}
                           >
-                            Start
+                            {entry.status === "in_session" ? "End" : "Start"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              runAction(
+                                () =>
+                                  updateGuestQueueStatus(entry.id, "no_show"),
+                                "Visitor skipped as no-show",
+                              )
+                            }
+                            disabled={[
+                              "done",
+                              "cancelled",
+                              "no_show",
+                            ].includes(entry.status)}
+                          >
+                            Skip
                           </Button>
                           <Button
                             size="sm"

@@ -16,12 +16,22 @@ export function QueueRegistrationForm({ eventToken }: { eventToken: string }) {
     phone: "",
   });
 
+  function normalizePhoneInput(value: string) {
+    return value
+      .replace(/\D/g, "")
+      .replace(/^62/, "")
+      .replace(/^0+/, "")
+      .slice(0, 13);
+  }
+
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     startTransition(async () => {
       const result = await registerQueueVisitor({
         eventToken,
-        ...form,
+        name: form.name,
+        email: form.email,
+        phone: `62${form.phone}`,
       });
 
       if (!result.success || !result.ticketToken) {
@@ -72,17 +82,30 @@ export function QueueRegistrationForm({ eventToken }: { eventToken: string }) {
         <label htmlFor="phone" className="text-sm font-medium text-zinc-900">
           Phone / WhatsApp
         </label>
-        <Input
-          id="phone"
-          inputMode="tel"
-          value={form.phone}
-          onChange={(event) =>
-            setForm((current) => ({ ...current, phone: event.target.value }))
-          }
-          placeholder="08xxxxxxxxxx"
-          maxLength={32}
-          required
-        />
+        <div className="flex overflow-hidden rounded-full border border-zinc-200 bg-white shadow-sm focus-within:ring-2 focus-within:ring-zinc-950/10">
+          <div className="flex h-11 items-center border-r border-zinc-200 bg-zinc-50 px-4 text-sm font-semibold text-zinc-900">
+            62
+          </div>
+          <Input
+            id="phone"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={form.phone}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                phone: normalizePhoneInput(event.target.value),
+              }))
+            }
+            placeholder="81234567890"
+            maxLength={13}
+            className="h-11 rounded-none border-0 shadow-none focus-visible:ring-0"
+            required
+          />
+        </div>
+        <p className="text-xs leading-5 text-zinc-500">
+          Use digits only after 62. Leading 0, spaces, and dashes are removed.
+        </p>
       </div>
 
       <Button type="submit" className="h-11 w-full rounded-full" disabled={isPending}>

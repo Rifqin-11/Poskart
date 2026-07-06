@@ -2,6 +2,25 @@
 
 import { createPublicQueueEntry } from "@/server/queue/public-queue-service";
 
+function normalizeIndonesianPhone(value: string) {
+  const phone = value.trim();
+  if (!/^\d+$/.test(phone)) {
+    return {
+      error: "Phone number must use digits only, without spaces or dashes.",
+    };
+  }
+  if (phone.startsWith("0")) {
+    return { error: "Phone number must start with 62, not 0." };
+  }
+
+  const normalized = phone.startsWith("62") ? phone : `62${phone}`;
+  if (!/^62[1-9]\d{7,12}$/.test(normalized)) {
+    return { error: "Enter a valid Indonesian phone number." };
+  }
+
+  return { phone: normalized };
+}
+
 export async function registerQueueVisitor(input: {
   eventToken: string;
   name: string;
@@ -11,7 +30,7 @@ export async function registerQueueVisitor(input: {
   const eventToken = input.eventToken.trim();
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
-  const phone = input.phone.trim();
+  const phoneResult = normalizeIndonesianPhone(input.phone);
 
   if (!eventToken) return { success: false, error: "Invalid queue link" };
   if (name.length < 2 || name.length > 80) {
@@ -20,8 +39,8 @@ export async function registerQueueVisitor(input: {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return { success: false, error: "Enter a valid email address" };
   }
-  if (phone.replace(/[^0-9+]/g, "").length < 8) {
-    return { success: false, error: "Enter a valid phone number" };
+  if (phoneResult.error || !phoneResult.phone) {
+    return { success: false, error: phoneResult.error };
   }
 
   try {
@@ -29,7 +48,7 @@ export async function registerQueueVisitor(input: {
       eventToken,
       name,
       email,
-      phone,
+      phone: phoneResult.phone,
     });
     return { success: true, ticketToken: entry.publicToken };
   } catch (error) {

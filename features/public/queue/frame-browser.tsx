@@ -10,11 +10,11 @@ const DESKTOP_PAGE_SIZE = 9;
 function FrameCard({ template }: { template: PublicQueueTemplate }) {
   return (
     <article className="min-w-[240px] overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 sm:min-w-[280px] lg:min-w-0">
-      <div className="grid aspect-[4/3] place-items-center bg-white">
+      <div className="grid aspect-[4/3] place-items-center bg-[linear-gradient(45deg,#f4f4f5_25%,transparent_25%),linear-gradient(-45deg,#f4f4f5_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f4f4f5_75%),linear-gradient(-45deg,transparent_75%,#f4f4f5_75%)] bg-[length:18px_18px] bg-[position:0_0,0_9px,9px_-9px,-9px_0px] p-3">
         {template.frameImageUrl ? (
           <div
             aria-hidden="true"
-            className="h-full w-full bg-contain bg-center bg-no-repeat"
+            className="h-full w-full rounded-xl border border-zinc-200 bg-white bg-contain bg-center bg-no-repeat shadow-sm"
             style={{
               backgroundImage: `url(${template.frameImageUrl})`,
             }}
