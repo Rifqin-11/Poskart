@@ -9,21 +9,31 @@ const DESKTOP_PAGE_SIZE = 9;
 
 function FrameCard({ template }: { template: PublicQueueTemplate }) {
   return (
-    <article className="min-w-[240px] overflow-hidden rounded-2xl border border-zinc-300 bg-white sm:min-w-[280px] lg:min-w-0">
-      <div className="grid aspect-[4/3] place-items-center border-b border-zinc-200 bg-white">
+    <article className="flex h-[360px] w-[240px] flex-none flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white sm:h-[390px] sm:w-[280px] lg:w-full">
+      <div className="grid h-[240px] shrink-0 place-items-center border-b border-zinc-200 bg-zinc-50 sm:h-[260px]">
         {template.frameImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={template.frameImageUrl}
-            alt=""
-            aria-hidden="true"
-            className="max-h-full max-w-full border border-zinc-300 bg-white object-contain"
-          />
+          <div className="relative h-[210px] w-[168px] sm:h-[228px] sm:w-[184px]">
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 rounded-xl bg-[linear-gradient(180deg,#c9ecff_0%,#eaf9ff_52%,#d7ef91_53%,#8cb400_74%,#5f9700_100%)]"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 bottom-[20%] h-[26%] bg-[radial-gradient(90%_70%_at_22%_35%,#d7ef91_0%,#d7ef91_42%,transparent_43%),radial-gradient(95%_80%_at_70%_45%,#8cb400_0%,#8cb400_48%,transparent_49%)]"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={template.frameImageUrl}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full object-contain drop-shadow-[0_10px_18px_rgba(24,24,27,0.22)]"
+            />
+          </div>
         ) : (
           <ImageIcon className="size-8 text-zinc-300" />
         )}
       </div>
-      <div className="p-4">
+      <div className="flex flex-1 flex-col justify-center p-4">
         <div className="truncate font-semibold">{template.name}</div>
         <div className="mt-1 text-xs text-zinc-500">
           {template.photoCount} photo
