@@ -655,8 +655,8 @@ export function TransactionsMonitoring() {
 
       <Card className="overflow-hidden">
         <CardHeader className="p-4 sm:p-5">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(220px,1.2fr)_150px_170px_190px_160px_auto]">
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(260px,1.1fr)_160px_180px_220px_180px_110px]">
               <Input
                 className="min-w-0"
                 placeholder="Search by ID, device, customer…"
@@ -728,7 +728,7 @@ export function TransactionsMonitoring() {
                 aria-label="Filter transaction date"
               />
               <Button
-                className="w-full xl:w-auto"
+                className="w-full"
                 variant="outline"
                 disabled={!hasActiveFilters}
                 onClick={() => {
@@ -744,7 +744,7 @@ export function TransactionsMonitoring() {
                 Reset
               </Button>
             </div>
-            <div className="flex min-w-0 flex-col gap-2 text-xs text-zinc-500 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
+            <div className="flex min-w-0 flex-col gap-2 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
               <span className="whitespace-nowrap">
                 {filtered.length} of {data.length} transactions
               </span>

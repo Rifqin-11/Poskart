@@ -1,3 +1,5 @@
+import type { FrameLayout } from "./frame-template";
+
 export type QueueEventStatus = "active" | "paused" | "closed" | "deleted";
 
 export type GuestQueueStatus =
@@ -83,6 +85,7 @@ export type PublicQueueTemplate = {
   tagline: string | null;
   photoCount: number;
   frameImageUrl: string | null;
+  frameLayout: FrameLayout | null;
   accentColor: string;
 };
 

@@ -3,35 +3,98 @@
 import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { FrameLayout, FrameNode } from "@/types/frame-template";
 import type { PublicQueueTemplate } from "@/types/queue";
 
 const DESKTOP_PAGE_SIZE = 9;
 
+function readNumber(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function getPhotoSlots(layout: FrameLayout | null) {
+  if (!layout?.canvas || !Array.isArray(layout.nodes)) return [];
+  return layout.nodes.filter((node) => node.type === "photo-slot");
+}
+
+function ScenicPhotoSlot({
+  node,
+  canvas,
+}: {
+  node: FrameNode;
+  canvas: FrameLayout["canvas"];
+}) {
+  const left = (node.x / Math.max(1, canvas.width)) * 100;
+  const top = (node.y / Math.max(1, canvas.height)) * 100;
+  const width = (node.width / Math.max(1, canvas.width)) * 100;
+  const height = (node.height / Math.max(1, canvas.height)) * 100;
+
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute overflow-hidden bg-[linear-gradient(180deg,#c9ecff_0%,#eaf9ff_54%,#d7ef91_55%,#8cb400_77%,#5f9700_100%)]"
+      style={{
+        left: `${left}%`,
+        top: `${top}%`,
+        width: `${width}%`,
+        height: `${height}%`,
+        borderRadius: readNumber(node.props.radius, 0),
+      }}
+    >
+      <div className="absolute left-[18%] top-[13%] h-[14%] w-[34%] rounded-full bg-white" />
+      <div className="absolute left-[28%] top-[5%] size-[18%] rounded-full bg-white" />
+      <div className="absolute left-[45%] top-[14%] size-[13%] rounded-full bg-white" />
+      <div className="absolute inset-x-0 bottom-[23%] h-[30%] bg-[radial-gradient(90%_70%_at_22%_35%,#d7ef91_0%,#d7ef91_42%,transparent_43%),radial-gradient(95%_80%_at_70%_45%,#8cb400_0%,#8cb400_48%,transparent_49%)]" />
+    </div>
+  );
+}
+
+function FramePreview({ template }: { template: PublicQueueTemplate }) {
+  const layout = template.frameLayout;
+  const canvas = layout?.canvas ?? null;
+  const photoSlots = getPhotoSlots(layout);
+
+  return (
+    <div className="relative grid h-full w-full place-items-center">
+      {template.frameImageUrl ? (
+        <div
+          className="relative max-h-full max-w-full overflow-hidden drop-shadow-[0_10px_18px_rgba(24,24,27,0.22)]"
+          style={{
+            aspectRatio: canvas
+              ? `${Math.max(1, canvas.width)} / ${Math.max(1, canvas.height)}`
+              : "2 / 3",
+            height: "100%",
+          }}
+        >
+          {canvas
+            ? photoSlots.map((node) => (
+                <ScenicPhotoSlot
+                  key={node.id}
+                  node={node}
+                  canvas={canvas}
+                />
+              ))
+            : null}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={template.frameImageUrl}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 z-10 h-full w-full object-contain"
+          />
+        </div>
+      ) : (
+        <ImageIcon className="size-8 text-zinc-300" />
+      )}
+    </div>
+  );
+}
+
 function FrameCard({ template }: { template: PublicQueueTemplate }) {
   return (
     <article className="flex h-[360px] w-[240px] flex-none flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white sm:h-[390px] sm:w-[280px] lg:w-full">
-      <div className="grid h-[240px] shrink-0 place-items-center border-b border-zinc-200 bg-zinc-50 sm:h-[260px]">
-        {template.frameImageUrl ? (
-          <div className="relative h-[210px] w-[168px] sm:h-[228px] sm:w-[184px]">
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 rounded-xl bg-[linear-gradient(180deg,#c9ecff_0%,#eaf9ff_52%,#d7ef91_53%,#8cb400_74%,#5f9700_100%)]"
-            />
-            <div
-              aria-hidden="true"
-              className="absolute inset-x-0 bottom-[20%] h-[26%] bg-[radial-gradient(90%_70%_at_22%_35%,#d7ef91_0%,#d7ef91_42%,transparent_43%),radial-gradient(95%_80%_at_70%_45%,#8cb400_0%,#8cb400_48%,transparent_49%)]"
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={template.frameImageUrl}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 h-full w-full object-contain drop-shadow-[0_10px_18px_rgba(24,24,27,0.22)]"
-            />
-          </div>
-        ) : (
-          <ImageIcon className="size-8 text-zinc-300" />
-        )}
+      <div className="grid h-[240px] shrink-0 place-items-center overflow-hidden border-b border-zinc-200 bg-zinc-50 px-6 py-7 sm:h-[260px] sm:px-8">
+        <FramePreview template={template} />
       </div>
       <div className="flex flex-1 flex-col justify-center p-4">
         <div className="truncate font-semibold">{template.name}</div>

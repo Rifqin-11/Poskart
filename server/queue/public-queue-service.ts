@@ -62,7 +62,7 @@ async function getPublicTemplatesForEvent(
       : Promise.resolve({ data: null, error: null }),
     supabase
       .from("templates")
-      .select("id,name,tagline,photo_count,frame_image_url,accent_color")
+      .select("id,name,tagline,photo_count,frame_image_url,frame_layout,accent_color")
       .eq("organization_id", event.organization_id)
       .eq("status", "published")
       .order("display_order", { ascending: true })
