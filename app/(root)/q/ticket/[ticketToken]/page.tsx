@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import QRCode from "react-qr-code";
 import { Badge } from "@/components/ui/badge";
 import { FrameBrowser } from "@/features/public/queue/frame-browser";
-import { PublicFooter } from "@/features/root/shell/public-site-shell";
+import { QueueFooter } from "@/features/public/queue/queue-footer";
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { getPublicQueueTicketWithFrames } from "@/server/queue/public-queue-service";
 
@@ -83,7 +83,7 @@ export default async function PublicQueueTicketPage({
           </section>
         </div>
       </main>
-      <PublicFooter />
+      <QueueFooter />
     </>
   );
 }

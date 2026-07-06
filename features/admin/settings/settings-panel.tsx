@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
@@ -153,6 +153,7 @@ export function SettingsPanel() {
   const [activeTab, setActiveTab] = useState<SettingsTab>(() =>
     readSettingsTab(searchParams.get("tab")) ?? "details",
   );
+  const tabsListRef = useRef<HTMLDivElement>(null);
   const [profileSaving, setProfileSaving] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
@@ -401,6 +402,17 @@ export function SettingsPanel() {
     ? "organization"
     : (visibleTabs.some((t) => t.id === activeTab) ? activeTab : "details");
 
+  useEffect(() => {
+    const activeTrigger = tabsListRef.current?.querySelector<HTMLElement>(
+      `[data-settings-tab="${visibleActiveTab}"]`,
+    );
+    activeTrigger?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [visibleActiveTab]);
+
   const getHeaderAction = () => {
     if (visibleActiveTab === "organization") {
       if (!canEditOrg) return null;
@@ -445,7 +457,10 @@ export function SettingsPanel() {
 
       <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm shadow-zinc-200/70">
         <div className="border-b border-zinc-100 p-3">
-          <div className="grid grid-cols-2 gap-1.5 rounded-[1.35rem] bg-zinc-50 p-1.5 sm:flex sm:overflow-x-auto">
+          <div
+            ref={tabsListRef}
+            className="flex max-w-full flex-nowrap gap-1.5 overflow-x-auto rounded-[1.35rem] bg-zinc-50 p-1.5 [-ms-overflow-style:none] [mask-image:linear-gradient(to_right,transparent,black_18px,black_calc(100%-18px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             {visibleTabs.map((tab) => {
               const active = visibleActiveTab === tab.id;
               const disabled =
@@ -454,12 +469,13 @@ export function SettingsPanel() {
                 <button
                   key={tab.id}
                   type="button"
+                  data-settings-tab={tab.id}
                   onClick={() => {
                     if (!disabled) setActiveTab(tab.id);
                   }}
                   disabled={disabled}
                   className={cn(
-                    "min-h-10 rounded-2xl px-3 py-2 text-sm font-medium leading-tight transition-colors sm:h-10 sm:shrink-0 sm:px-4 sm:py-0",
+                    "h-10 shrink-0 rounded-2xl px-4 text-sm font-medium leading-tight transition-colors",
                     active
                       ? "bg-white text-zinc-950 shadow-sm"
                       : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",

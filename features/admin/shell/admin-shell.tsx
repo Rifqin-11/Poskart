@@ -63,17 +63,17 @@ type AdminNavItem = {
 const navItems: AdminNavItem[] = [
   { href: "/dashboard", labelKey: "nav.dashboard", icon: Gauge },
   {
+    href: "/queue",
+    labelKey: "nav.queue",
+    icon: ListOrdered,
+    requiresSubscription: true,
+  },
+  {
     href: "/pos",
     labelKey: "nav.pos",
     icon: PanelsTopLeft,
     requiresSubscription: true,
     organizationFeature: "posKasir",
-  },
-  {
-    href: "/queue",
-    labelKey: "nav.queue",
-    icon: ListOrdered,
-    requiresSubscription: true,
   },
   {
     href: "/money",

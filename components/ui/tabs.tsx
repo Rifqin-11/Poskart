@@ -34,10 +34,26 @@ export function Tabs({
 }
 
 export function TabsList({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  const context = React.useContext(TabsContext);
+  const listRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!context?.value) return;
+    const activeTrigger = listRef.current?.querySelector<HTMLElement>(
+      `[data-tab-value="${context.value}"]`,
+    );
+    activeTrigger?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [context?.value]);
+
   return (
     <div
+      ref={listRef}
       className={cn(
-        "flex min-h-9 flex-wrap items-center gap-1 rounded-full bg-zinc-100 p-1",
+        "flex min-h-9 max-w-full flex-nowrap items-center gap-1 overflow-x-auto rounded-full bg-zinc-100 p-1 [-ms-overflow-style:none] [mask-image:linear-gradient(to_right,transparent,black_18px,black_calc(100%-18px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
       {...props}
@@ -60,9 +76,10 @@ export function TabsTrigger({
   return (
     <button
       type="button"
+      data-tab-value={value}
       onClick={() => context?.setValue(value)}
       className={cn(
-        "inline-flex h-7 items-center justify-center whitespace-nowrap rounded-full px-3 text-xs font-medium text-zinc-500 transition-colors",
+        "inline-flex h-7 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-3 text-xs font-medium text-zinc-500 transition-colors",
         selected && "bg-white text-zinc-950 shadow-sm",
         className,
       )}

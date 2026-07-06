@@ -338,7 +338,7 @@ function TransactionSummaryMetric({
   description: ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3 border-zinc-100 md:border-r md:pr-5 md:last:border-r-0">
+    <div className="flex min-w-0 items-start gap-3 border-zinc-100 md:border-r md:pr-5 md:last:border-r-0">
       <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-700">
         <Icon className="size-5" />
       </div>
@@ -615,13 +615,13 @@ export function TransactionsMonitoring() {
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <PageHeader
         title="Transaction & QRIS Monitoring"
         description="Track live payments, failed logs, manual verification, retry, and refund tools."
       />
 
-      <Card className="mb-4">
+      <Card className="mb-4 overflow-hidden">
         <CardContent className="grid gap-4 p-5 md:grid-cols-3">
           <TransactionSummaryMetric
             icon={Banknote}
@@ -653,11 +653,12 @@ export function TransactionsMonitoring() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden">
+        <CardHeader className="p-4 sm:p-5">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.2fr)_150px_170px_190px_160px_auto]">
+            <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(220px,1.2fr)_150px_170px_190px_160px_auto]">
               <Input
+                className="min-w-0"
                 placeholder="Search by ID, device, customer…"
                 value={search}
                 onChange={(e) => {
@@ -667,6 +668,7 @@ export function TransactionsMonitoring() {
                 }}
               />
               <Select
+                className="min-w-0"
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
@@ -683,6 +685,7 @@ export function TransactionsMonitoring() {
                 <option value="testing">{t("transactions.status.testing")}</option>
               </Select>
               <Select
+                className="min-w-0"
                 value={paymentMethodFilter}
                 onChange={(e) => {
                   setPaymentMethodFilter(e.target.value);
@@ -698,6 +701,7 @@ export function TransactionsMonitoring() {
                 ))}
               </Select>
               <Select
+                className="min-w-0"
                 value={packageFilter}
                 onChange={(e) => {
                   setPackageFilter(e.target.value);
@@ -713,6 +717,7 @@ export function TransactionsMonitoring() {
                 ))}
               </Select>
               <Input
+                className="min-w-0"
                 type="date"
                 value={dateFilter}
                 onChange={(e) => {
@@ -723,6 +728,7 @@ export function TransactionsMonitoring() {
                 aria-label="Filter transaction date"
               />
               <Button
+                className="w-full xl:w-auto"
                 variant="outline"
                 disabled={!hasActiveFilters}
                 onClick={() => {
@@ -738,7 +744,7 @@ export function TransactionsMonitoring() {
                 Reset
               </Button>
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+            <div className="flex min-w-0 flex-col gap-2 text-xs text-zinc-500 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
               <span className="whitespace-nowrap">
                 {filtered.length} of {data.length} transactions
               </span>
@@ -756,9 +762,9 @@ export function TransactionsMonitoring() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="hidden overflow-x-auto xl:block">
-            <Table className="min-w-180">
+        <CardContent className="p-4 pt-0 sm:p-5 sm:pt-0">
+          <div className="hidden max-w-full overflow-x-auto rounded-2xl border border-zinc-100 xl:block">
+            <Table className="min-w-[1120px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">
@@ -769,14 +775,14 @@ export function TransactionsMonitoring() {
                       onChange={setPageSelected}
                     />
                   </TableHead>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Date & Time</TableHead>
-                  <TableHead>Device</TableHead>
-                  <TableHead>Payment Method</TableHead>
-                  <TableHead>Package</TableHead>
-                  <TableHead>Amount net</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="min-w-[120px]">ID</TableHead>
+                  <TableHead className="min-w-[150px]">Date & Time</TableHead>
+                  <TableHead className="min-w-[180px]">Device</TableHead>
+                  <TableHead className="min-w-[130px]">Payment</TableHead>
+                  <TableHead className="min-w-[150px]">Package</TableHead>
+                  <TableHead className="min-w-[140px]">Amount net</TableHead>
+                  <TableHead className="min-w-[110px]">Status</TableHead>
+                  <TableHead className="w-16">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -814,13 +820,13 @@ export function TransactionsMonitoring() {
                       <TableCell className="whitespace-nowrap text-sm text-zinc-600">
                         {formatDateTime(transaction.createdAtRaw)}
                       </TableCell>
-                      <TableCell className="max-w-[220px] break-words">
+                      <TableCell className="max-w-[190px] break-words">
                         {transaction.device}
                       </TableCell>
                       <TableCell>
                         {renderPaymentMethod(paymentMethod)}
                       </TableCell>
-                      <TableCell className="max-w-[160px] break-words">
+                      <TableCell className="max-w-[150px] break-words">
                         {transaction.packageName}
                       </TableCell>
                       <TableCell className="min-w-[140px]">
@@ -897,11 +903,11 @@ export function TransactionsMonitoring() {
                 <div
                   key={transaction.id}
                   className={cn(
-                    "rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm",
+                    "min-w-0 overflow-hidden rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm",
                     transaction.isArchived && "bg-zinc-50 text-zinc-500",
                   )}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <SelectionCheckbox
@@ -915,7 +921,7 @@ export function TransactionsMonitoring() {
                         {renderPaymentMethod(paymentMethod)}
                         {renderTransactionStatusBadges(transaction)}
                       </div>
-                      <p className="mt-2 text-lg font-semibold text-zinc-950">
+                      <p className="mt-2 break-words text-lg font-semibold text-zinc-950">
                         {formatCurrency(netAmount)}
                       </p>
                       {hasGatewayFeeBreakdown ? (
@@ -936,32 +942,32 @@ export function TransactionsMonitoring() {
                       </Badge>
                     ) : null}
                   </div>
-                  <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                    <div>
+                  <div className="mt-4 grid min-w-0 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="min-w-0">
                       <p className="text-xs text-zinc-500">Date</p>
                       <p className="mt-1 text-zinc-700">
                         {formatDateTime(transaction.createdAtRaw)}
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-zinc-500">Device</p>
                       <p className="mt-1 break-words text-zinc-900">
                         {transaction.device}
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-zinc-500">Package</p>
                       <p className="mt-1 break-words text-zinc-900">
                         {transaction.packageName}
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-zinc-500">Customer</p>
                       <p className="mt-1 break-words text-zinc-900">
                         {transaction.customer}
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-zinc-500">Payment</p>
                       <p className="mt-1 text-zinc-900">{paymentMethod}</p>
                     </div>
