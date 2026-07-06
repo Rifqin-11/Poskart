@@ -17,7 +17,7 @@ import {
   UserX,
   Users,
 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   createQueueEvent,
@@ -36,6 +36,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import { StatCard } from "@/features/admin/_components/stat-card";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn, formatDateTime } from "@/lib/utils";
 import type {
   GuestQueueEntry,
@@ -184,6 +185,7 @@ export function QueueDashboard({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectedEvent = data.selectedEvent;
   const publicQueueUrl = useMemo(() => {
     if (!selectedEvent) return "";
@@ -195,6 +197,58 @@ export function QueueDashboard({
     router.push(eventId ? `/queue?event=${eventId}` : "/queue");
     router.refresh();
   }
+
+  useEffect(() => {
+    if (!selectedEvent) return;
+
+    const supabase = getSupabaseBrowserClient();
+    const scheduleRefresh = () => {
+      if (refreshTimerRef.current) return;
+      refreshTimerRef.current = setTimeout(() => {
+        refreshTimerRef.current = null;
+        router.refresh();
+      }, 500);
+    };
+
+    const channel = supabase
+      .channel(`queue-event-${selectedEvent.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "guest_queue_entries",
+          filter: `queue_event_id=eq.${selectedEvent.id}`,
+        },
+        scheduleRefresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "queue_events",
+          filter: `id=eq.${selectedEvent.id}`,
+        },
+        scheduleRefresh,
+      )
+      .subscribe();
+
+    const fallbackInterval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        scheduleRefresh();
+      }
+    }, 45_000);
+
+    return () => {
+      window.clearInterval(fallbackInterval);
+      if (refreshTimerRef.current) {
+        window.clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [router, selectedEvent]);
 
   function runAction(
     action: () => Promise<{ success: boolean; error?: string; eventId?: string }>,
