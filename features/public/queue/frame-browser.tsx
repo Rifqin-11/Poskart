@@ -12,12 +12,12 @@ function FrameCard({ template }: { template: PublicQueueTemplate }) {
     <article className="min-w-[240px] overflow-hidden rounded-2xl border border-zinc-300 bg-white sm:min-w-[280px] lg:min-w-0">
       <div className="grid aspect-[4/3] place-items-center border-b border-zinc-200 bg-white">
         {template.frameImageUrl ? (
-          <div
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={template.frameImageUrl}
+            alt=""
             aria-hidden="true"
-            className="h-full w-full bg-contain bg-center bg-no-repeat"
-            style={{
-              backgroundImage: `url(${template.frameImageUrl})`,
-            }}
+            className="max-h-full max-w-full border border-zinc-300 bg-white object-contain"
           />
         ) : (
           <ImageIcon className="size-8 text-zinc-300" />
