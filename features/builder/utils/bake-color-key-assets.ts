@@ -2,6 +2,7 @@
 
 import { applyColorKeyToImageData, normalizeColorKey } from "@/lib/color-key";
 import { uploadBuilderImage } from "@/lib/services/storage-service";
+import { fetchColorKeyImageBlob } from "@/features/builder/utils/color-key-image-source";
 import type { LayoutSchema } from "@/types/builder";
 import type { ColorKeySettings } from "@/types/color-key";
 import type { FrameLayout, FrameNode } from "@/types/frame-template";
@@ -80,12 +81,7 @@ async function bakeColorKeyImage(
   if (existing) return existing;
 
   const task = (async () => {
-    const response = await fetch(src, { mode: "cors" });
-    if (!response.ok) {
-      throw new Error("Unable to download image for background removal.");
-    }
-
-    const image = await loadImageFromBlob(await response.blob());
+    const image = await loadImageFromBlob(await fetchColorKeyImageBlob(src));
     if (!image.naturalWidth || !image.naturalHeight) {
       throw new Error("Unable to read image size for background removal.");
     }

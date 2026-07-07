@@ -79,7 +79,9 @@ export async function GET(request: Request) {
         (photoCountBySessionId.get(photo.session_id) ?? 0) + 1,
       );
     }
-    const enrichedSessions = (sessions ?? []).map((session) => {
+    const enrichedSessions = (sessions ?? [])
+      .filter((session) => transactionBySessionId.has(session.id))
+      .map((session) => {
       const transaction = transactionBySessionId.get(session.id);
       return {
         ...session,

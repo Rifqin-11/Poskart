@@ -94,10 +94,12 @@ export async function GalleryPage() {
       .filter((transaction) => !isOrphanQrisPendingTransaction(transaction))
       .map((transaction) => transaction.id),
   );
-  const enrichedRows = rows.map((session) => ({
-    ...session,
-    transaction_id: transactionIds.has(session.id) ? session.id : null,
-  }));
+  const enrichedRows = rows
+    .filter((session) => transactionIds.has(session.id))
+    .map((session) => ({
+      ...session,
+      transaction_id: session.id,
+    }));
   const { data: photos } = sessionIds.length
     ? await supabase
         .from("gallery_photos")
