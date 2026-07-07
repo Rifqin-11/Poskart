@@ -1,7 +1,14 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { Users } from "lucide-react";
+import { useState, type ComponentType, type ReactNode } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  ShieldCheck,
+  Users,
+  WalletCards,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,6 +68,8 @@ type AdminUserProfile = {
   memberRole: string | null;
 };
 
+type SuperAdminSection = "overview" | "organizations" | "finance" | "requests";
+
 const EMPTY_TENANT: TenantInput = {
   name: "",
   plan: "Free",
@@ -95,6 +104,8 @@ export function TenantManagement() {
   );
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
   const [creating, setCreating] = useState(false);
+  const [activeSection, setActiveSection] =
+    useState<SuperAdminSection>("overview");
   const [organizationPage, setOrganizationPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
   const pageSize = 10;
@@ -107,6 +118,22 @@ export function TenantManagement() {
   const paginatedProfiles = profiles.slice(
     (userPage - 1) * pageSize,
     userPage * pageSize,
+  );
+  const activeOrganizations = tenantsList.filter(
+    (organization) => organization.status === "active",
+  ).length;
+  const activeSubscriptions = tenantsList.filter(
+    (organization) =>
+      organization.subscriptionStatus === "active" ||
+      organization.subscriptionStatus === "trialing" ||
+      organization.subscriptionStatus === "trial",
+  ).length;
+  const customPaymentOrganizations = tenantsList.filter(
+    (organization) => organization.paymentCollectionMode === "custom",
+  ).length;
+  const totalDevices = tenantsList.reduce(
+    (sum, organization) => sum + organization.devices,
+    0,
   );
 
   const handleDelete = (organization: Organization) => {
@@ -137,267 +164,440 @@ export function TenantManagement() {
           </Button>
         }
       />
-      <Tabs defaultValue="organizations">
-        <div className="mb-4 w-full rounded-[28px] bg-white p-2 shadow-sm">
-          <TabsList className="w-full justify-start rounded-[22px]">
-            <TabsTrigger value="organizations">Organizations</TabsTrigger>
-            <TabsTrigger value="users">Registered Users</TabsTrigger>
-            <TabsTrigger value="saas-pricing">SaaS Pricing</TabsTrigger>
-            <TabsTrigger value="payment-gateway">Payment Gateway</TabsTrigger>
-            <TabsTrigger value="payout-invoices">Payout / Withdraw</TabsTrigger>
-            <TabsTrigger value="transaction-requests">
-              Transaction Requests
-            </TabsTrigger>
-          </TabsList>
-        </div>
-        <TabsContent value="organizations">
-          <Card>
-            <CardContent className="pt-5">
-              <div className="hidden overflow-x-auto xl:block">
-                <Table className="min-w-[1180px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Organization</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Subscription Status</TableHead>
-                      <TableHead>Org Status</TableHead>
-                      <TableHead>Devices</TableHead>
-                      <TableHead>Users</TableHead>
-                      <TableHead>Collection</TableHead>
-                      <TableHead>Enabled Features</TableHead>
-                      <TableHead>Renewal / Expiration</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedOrganizations.map((organization) => (
-                      <TableRow key={organization.id}>
-                        <TableCell className="font-medium">
-                          {organization.name}
-                        </TableCell>
-                        <TableCell>{organization.plan}</TableCell>
-                        <TableCell>
-                          <SubscriptionStatusBadge organization={organization} />
-                        </TableCell>
-                        <TableCell>
-                          <OrganizationStatusBadge organization={organization} />
-                        </TableCell>
-                        <TableCell>
-                          {organization.devices} / {organization.deviceLimit ?? 1}
-                        </TableCell>
-                        <TableCell>{organization.users}</TableCell>
-                        <TableCell>
-                          <PaymentCollectionBadge organization={organization} />
-                        </TableCell>
-                        <TableCell>
-                          <OrganizationFeatureBadges organization={organization} />
-                        </TableCell>
-                        <TableCell>
-                          <OrganizationExpiry organization={organization} />
-                        </TableCell>
-                        <TableCell>
-                          <OrganizationActions
-                            organization={organization}
-                            onEdit={setEditing}
-                            onDelete={handleDelete}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {tenantsList.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={10}
-                          className="py-8 text-center text-sm text-zinc-400"
-                        >
-                          No organizations yet. Click{" "}
-                          <strong>Create organization</strong>.
-                        </TableCell>
-                      </TableRow>
-                    ) : null}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="grid gap-3 xl:hidden">
-                {paginatedOrganizations.map((organization) => (
-                  <div
-                    key={organization.id}
-                    className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-3">
+      {activeSection === "overview" ? (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <SuperAdminMetricCard
+              icon={Building2}
+              label="Organizations"
+              value={tenantsList.length.toLocaleString()}
+              description={`${activeOrganizations} active workspaces`}
+            />
+            <SuperAdminMetricCard
+              icon={Users}
+              label="Registered users"
+              value={profiles.length.toLocaleString()}
+              description="Across all organizations"
+            />
+            <SuperAdminMetricCard
+              icon={ShieldCheck}
+              label="Active subscriptions"
+              value={activeSubscriptions.toLocaleString()}
+              description="Active or trialing plans"
+            />
+            <SuperAdminMetricCard
+              icon={WalletCards}
+              label="Payment setup"
+              value={`${customPaymentOrganizations} custom`}
+              description={`${tenantsList.length - customPaymentOrganizations} using POSKART PG`}
+            />
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+            <SuperAdminSectionButton
+              icon={Building2}
+              title="Organizations"
+              description="Manage workspaces, users, subscriptions, device limits, and enabled features."
+              onClick={() => setActiveSection("organizations")}
+            />
+            <SuperAdminSectionButton
+              icon={WalletCards}
+              title="Finance"
+              description="Configure pricing, payment gateway, and payout or withdrawal operations."
+              onClick={() => setActiveSection("finance")}
+            />
+            <SuperAdminSectionButton
+              icon={ShieldCheck}
+              title="Requests"
+              description="Review transaction verification, refund, and archive requests from organizations."
+              onClick={() => setActiveSection("requests")}
+            />
+          </div>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent organizations</CardTitle>
+                <CardDescription>
+                  Latest workspaces that need operational attention.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="divide-y divide-zinc-100">
+                  {tenantsList.slice(0, 5).map((organization) => (
+                    <div
+                      key={organization.id}
+                      className="flex items-center justify-between gap-4 py-3"
+                    >
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-zinc-950">
+                        <div className="truncate text-sm font-medium text-zinc-950">
                           {organization.name}
                         </div>
                         <div className="mt-1 text-xs text-zinc-500">
                           {organization.plan} · {organization.users} users
                         </div>
                       </div>
-                      <OrganizationActions
-                        organization={organization}
-                        onEdit={setEditing}
-                        onDelete={handleDelete}
-                      />
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-1.5">
-                      <SubscriptionStatusBadge organization={organization} />
-                      <OrganizationStatusBadge organization={organization} />
-                      <PaymentCollectionBadge organization={organization} />
-                    </div>
-                    <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                      <CompactInfo label="Devices">
-                        {organization.devices} / {organization.deviceLimit ?? 1}
-                      </CompactInfo>
-                      <CompactInfo label="Renewal / expiration">
-                        <OrganizationExpiry organization={organization} />
-                      </CompactInfo>
-                    </div>
-                    <div className="mt-4 border-t border-zinc-100 pt-3">
-                      <div className="mb-2 text-xs font-medium text-zinc-500">
-                        Enabled features
+                      <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                        <SubscriptionStatusBadge organization={organization} />
+                        <PaymentCollectionBadge organization={organization} />
                       </div>
-                      <OrganizationFeatureBadges organization={organization} />
                     </div>
+                  ))}
+                  {tenantsList.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-zinc-400">
+                      No organizations yet.
+                    </div>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>System snapshot</CardTitle>
+                <CardDescription>
+                  Quick operational signal before opening detailed sections.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                <OverviewLine label="Active devices" value={totalDevices} />
+                <OverviewLine
+                  label="Platform PG organizations"
+                  value={tenantsList.length - customPaymentOrganizations}
+                />
+                <OverviewLine
+                  label="Custom PG organizations"
+                  value={customPaymentOrganizations}
+                />
+                <OverviewLine
+                  label="Free organizations"
+                  value={
+                    tenantsList.filter(
+                      (organization) =>
+                        organization.subscriptionStatus === "free",
+                    ).length
+                  }
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      ) : null}
+      {activeSection === "organizations" ? (
+        <div className="space-y-4">
+          <SuperAdminBackHeader
+            title="Organizations"
+            description="Manage organization records and registered user accounts."
+            onBack={() => setActiveSection("overview")}
+          />
+          <Tabs defaultValue="organization-list">
+            <div className="mb-4 rounded-[24px] bg-white p-2 shadow-sm">
+              <TabsList className="w-full justify-start rounded-[18px]">
+                <TabsTrigger value="organization-list">
+                  Organizations
+                </TabsTrigger>
+                <TabsTrigger value="user-accounts">
+                  Registered Users
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="organization-list">
+              <Card>
+                <CardContent className="pt-5">
+                  <div className="hidden overflow-x-auto xl:block">
+                    <Table className="min-w-[1180px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Organization</TableHead>
+                          <TableHead>Plan</TableHead>
+                          <TableHead>Subscription Status</TableHead>
+                          <TableHead>Org Status</TableHead>
+                          <TableHead>Devices</TableHead>
+                          <TableHead>Users</TableHead>
+                          <TableHead>Collection</TableHead>
+                          <TableHead>Enabled Features</TableHead>
+                          <TableHead>Renewal / Expiration</TableHead>
+                          <TableHead />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedOrganizations.map((organization) => (
+                          <TableRow key={organization.id}>
+                            <TableCell className="font-medium">
+                              {organization.name}
+                            </TableCell>
+                            <TableCell>{organization.plan}</TableCell>
+                            <TableCell>
+                              <SubscriptionStatusBadge
+                                organization={organization}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <OrganizationStatusBadge
+                                organization={organization}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {organization.devices} /{" "}
+                              {organization.deviceLimit ?? 1}
+                            </TableCell>
+                            <TableCell>{organization.users}</TableCell>
+                            <TableCell>
+                              <PaymentCollectionBadge
+                                organization={organization}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <OrganizationFeatureBadges
+                                organization={organization}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <OrganizationExpiry organization={organization} />
+                            </TableCell>
+                            <TableCell>
+                              <OrganizationActions
+                                organization={organization}
+                                onEdit={setEditing}
+                                onDelete={handleDelete}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {tenantsList.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={10}
+                              className="py-8 text-center text-sm text-zinc-400"
+                            >
+                              No organizations yet. Click{" "}
+                              <strong>Create organization</strong>.
+                            </TableCell>
+                          </TableRow>
+                        ) : null}
+                      </TableBody>
+                    </Table>
                   </div>
-                ))}
-                {tenantsList.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-400">
-                    No organizations yet. Click{" "}
-                    <strong>Create organization</strong>.
+                  <div className="grid gap-3 xl:hidden">
+                    {paginatedOrganizations.map((organization) => (
+                      <div
+                        key={organization.id}
+                        className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-zinc-950">
+                              {organization.name}
+                            </div>
+                            <div className="mt-1 text-xs text-zinc-500">
+                              {organization.plan} · {organization.users} users
+                            </div>
+                          </div>
+                          <OrganizationActions
+                            organization={organization}
+                            onEdit={setEditing}
+                            onDelete={handleDelete}
+                          />
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-1.5">
+                          <SubscriptionStatusBadge
+                            organization={organization}
+                          />
+                          <OrganizationStatusBadge
+                            organization={organization}
+                          />
+                          <PaymentCollectionBadge
+                            organization={organization}
+                          />
+                        </div>
+                        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                          <CompactInfo label="Devices">
+                            {organization.devices} /{" "}
+                            {organization.deviceLimit ?? 1}
+                          </CompactInfo>
+                          <CompactInfo label="Renewal / expiration">
+                            <OrganizationExpiry organization={organization} />
+                          </CompactInfo>
+                        </div>
+                        <div className="mt-4 border-t border-zinc-100 pt-3">
+                          <div className="mb-2 text-xs font-medium text-zinc-500">
+                            Enabled features
+                          </div>
+                          <OrganizationFeatureBadges
+                            organization={organization}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {tenantsList.length === 0 ? (
+                      <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-400">
+                        No organizations yet. Click{" "}
+                        <strong>Create organization</strong>.
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-              <TablePagination
-                page={organizationPage}
-                pageSize={pageSize}
-                totalItems={tenantsList.length}
-                onPageChange={setOrganizationPage}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="users">
-          <Card>
-            <CardHeader>
-              <CardTitle>User Accounts</CardTitle>
-              <CardDescription>
-                All user accounts across the system.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="hidden overflow-x-auto lg:block">
-                <Table className="min-w-[760px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Email</TableHead>
-                      <TableHead>System Role</TableHead>
-                      <TableHead>Organization</TableHead>
-                      <TableHead>Joined At</TableHead>
-                      <TableHead></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                  <TablePagination
+                    page={organizationPage}
+                    pageSize={pageSize}
+                    totalItems={tenantsList.length}
+                    onPageChange={setOrganizationPage}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="user-accounts">
+              <Card>
+                <CardHeader>
+                  <CardTitle>User Accounts</CardTitle>
+                  <CardDescription>
+                    All user accounts across the system.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="hidden overflow-x-auto lg:block">
+                    <Table className="min-w-[760px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>System Role</TableHead>
+                          <TableHead>Organization</TableHead>
+                          <TableHead>Joined At</TableHead>
+                          <TableHead></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedProfiles.map((profile) => (
+                          <TableRow key={profile.id}>
+                            <TableCell className="font-medium">
+                              {profile.email}
+                            </TableCell>
+                            <TableCell>
+                              <UserRoleBadge role={profile.role} />
+                            </TableCell>
+                            <TableCell className="text-zinc-600">
+                              {profile.organizationName || "None"}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(profile.created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingProfile(profile)}
+                              >
+                                Edit User
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {profiles.length === 0 && !isLoadingProfiles && (
+                          <TableRow>
+                            <TableCell
+                              colSpan={5}
+                              className="py-8 text-center text-zinc-500"
+                            >
+                              No users found.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="grid gap-3 lg:hidden">
                     {paginatedProfiles.map((profile) => (
-                      <TableRow key={profile.id}>
-                        <TableCell className="font-medium">
-                          {profile.email}
-                        </TableCell>
-                        <TableCell>
+                      <div
+                        key={profile.id}
+                        className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-zinc-950">
+                              {profile.email}
+                            </div>
+                            <div className="mt-1 text-xs text-zinc-500">
+                              Joined{" "}
+                              {new Date(
+                                profile.created_at,
+                              ).toLocaleDateString()}
+                            </div>
+                          </div>
                           <UserRoleBadge role={profile.role} />
-                        </TableCell>
-                        <TableCell className="text-zinc-600">
-                          {profile.organizationName || "None"}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(profile.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
+                        </div>
+                        <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-100 pt-3">
+                          <CompactInfo label="Organization">
+                            {profile.organizationName || "None"}
+                          </CompactInfo>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => setEditingProfile(profile)}
                           >
                             Edit User
                           </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {profiles.length === 0 && !isLoadingProfiles && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={5}
-                          className="text-center text-zinc-500 py-8"
-                        >
-                          No users found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="grid gap-3 lg:hidden">
-                {paginatedProfiles.map((profile) => (
-                  <div
-                    key={profile.id}
-                    className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-zinc-950">
-                          {profile.email}
-                        </div>
-                        <div className="mt-1 text-xs text-zinc-500">
-                          Joined{" "}
-                          {new Date(profile.created_at).toLocaleDateString()}
                         </div>
                       </div>
-                      <UserRoleBadge role={profile.role} />
-                    </div>
-                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-100 pt-3">
-                      <CompactInfo label="Organization">
-                        {profile.organizationName || "None"}
-                      </CompactInfo>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditingProfile(profile)}
-                      >
-                        Edit User
-                      </Button>
-                    </div>
+                    ))}
+                    {profiles.length === 0 && !isLoadingProfiles ? (
+                      <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500">
+                        No users found.
+                      </div>
+                    ) : null}
                   </div>
-                ))}
-                {profiles.length === 0 && !isLoadingProfiles ? (
-                  <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500">
-                    No users found.
-                  </div>
-                ) : null}
-              </div>
-              <TablePagination
-                page={userPage}
-                pageSize={pageSize}
-                totalItems={profiles.length}
-                onPageChange={setUserPage}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="saas-pricing">
-          <SaasPricingManagement
-            subscriptionPlans={subscriptionPlans}
-            onEditPlan={setEditingPlan}
+                  <TablePagination
+                    page={userPage}
+                    pageSize={pageSize}
+                    totalItems={profiles.length}
+                    onPageChange={setUserPage}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      ) : null}
+      {activeSection === "finance" ? (
+        <div className="space-y-4">
+          <SuperAdminBackHeader
+            title="Finance"
+            description="Manage SaaS pricing, subscription payment gateway, and payout operations."
+            onBack={() => setActiveSection("overview")}
           />
-        </TabsContent>
-        <TabsContent value="payment-gateway">
-          <PaymentGatewayManagement />
-        </TabsContent>
-        <TabsContent value="payout-invoices">
-          <PayoutInvoiceManagement organizations={tenantsList} />
-        </TabsContent>
-        <TabsContent value="transaction-requests">
+          <Tabs defaultValue="saas-pricing">
+            <div className="mb-4 rounded-[24px] bg-white p-2 shadow-sm">
+              <TabsList className="w-full justify-start rounded-[18px]">
+                <TabsTrigger value="saas-pricing">Pricing</TabsTrigger>
+                <TabsTrigger value="payment-gateway">Payment Gateway</TabsTrigger>
+                <TabsTrigger value="payout-invoices">
+                  Payout / Withdraw
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="saas-pricing">
+              <SaasPricingManagement
+                subscriptionPlans={subscriptionPlans}
+                onEditPlan={setEditingPlan}
+              />
+            </TabsContent>
+            <TabsContent value="payment-gateway">
+              <PaymentGatewayManagement />
+            </TabsContent>
+            <TabsContent value="payout-invoices">
+              <PayoutInvoiceManagement organizations={tenantsList} />
+            </TabsContent>
+          </Tabs>
+        </div>
+      ) : null}
+      {activeSection === "requests" ? (
+        <div className="space-y-4">
+          <SuperAdminBackHeader
+            title="Requests"
+            description="Review operational requests that need super admin approval."
+            onBack={() => setActiveSection("overview")}
+          />
           <TransactionActionRequestManagement />
-        </TabsContent>
-      </Tabs>
+        </div>
+      ) : null}
 
       {creating ? (
         <TenantFormDialog
@@ -567,6 +767,108 @@ function SubscriptionStatusBadge({
     >
       {organization.subscriptionStatus || "free"}
     </Badge>
+  );
+}
+
+function SuperAdminMetricCard({
+  icon: Icon,
+  label,
+  value,
+  description,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  description: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="flex items-start gap-3 p-5">
+        <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-zinc-100 text-zinc-700">
+          <Icon className="size-5" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm text-zinc-500">{label}</div>
+          <div className="mt-1 truncate text-2xl font-semibold text-zinc-950">
+            {value}
+          </div>
+          <div className="mt-1 text-xs text-zinc-500">{description}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SuperAdminSectionButton({
+  icon: Icon,
+  title,
+  description,
+  onClick,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex min-h-[138px] w-full items-start justify-between gap-4 rounded-[28px] border border-zinc-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+    >
+      <div className="min-w-0">
+        <div className="grid size-11 place-items-center rounded-2xl bg-zinc-100 text-zinc-700 transition group-hover:bg-zinc-950 group-hover:text-white">
+          <Icon className="size-5" />
+        </div>
+        <div className="mt-4 text-base font-semibold text-zinc-950">
+          {title}
+        </div>
+        <div className="mt-1 max-w-sm text-sm leading-5 text-zinc-500">
+          {description}
+        </div>
+      </div>
+      <ArrowRight className="mt-1 size-5 shrink-0 text-zinc-400 transition group-hover:translate-x-1 group-hover:text-zinc-900" />
+    </button>
+  );
+}
+
+function SuperAdminBackHeader({
+  title,
+  description,
+  onBack,
+}: {
+  title: string;
+  description: string;
+  onBack: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-[28px] border border-zinc-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2 mb-2 text-zinc-500 hover:text-zinc-950"
+          onClick={onBack}
+        >
+          <ArrowLeft className="size-4" />
+          Back
+        </Button>
+        <div className="text-lg font-semibold text-zinc-950">{title}</div>
+        <div className="mt-1 text-sm text-zinc-500">{description}</div>
+      </div>
+    </div>
+  );
+}
+
+function OverviewLine({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-3">
+      <span className="text-sm text-zinc-500">{label}</span>
+      <span className="text-sm font-semibold text-zinc-950">
+        {value.toLocaleString()}
+      </span>
+    </div>
   );
 }
 
