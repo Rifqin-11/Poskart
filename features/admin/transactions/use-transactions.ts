@@ -39,7 +39,7 @@ export function useRequestTransactionAction() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactionsRoot });
       queryClient.invalidateQueries({
-        queryKey: adminQueryKeys.transactionActionRequests,
+        queryKey: adminQueryKeys.transactionActionRequestsRoot,
       });
       queryClient.invalidateQueries({
         queryKey: adminQueryKeys.adminNotifications,
@@ -74,13 +74,14 @@ export function useUnmarkTransactionAsTesting() {
   });
 }
 
-export function useTransactionActionRequests() {
+export function useTransactionActionRequests(page = 1, pageSize = 10) {
   return useQuery<
     Awaited<ReturnType<typeof transactionsApi.getTransactionActionRequestsForSuperadmin>>,
     Error
   >({
-    queryKey: adminQueryKeys.transactionActionRequests,
-    queryFn: transactionsApi.getTransactionActionRequestsForSuperadmin,
+    queryKey: adminQueryKeys.transactionActionRequests(page, pageSize),
+    queryFn: () =>
+      transactionsApi.getTransactionActionRequestsForSuperadmin({ page, pageSize }),
   });
 }
 
@@ -92,7 +93,7 @@ export function useReviewTransactionActionRequest() {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactionsRoot });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
       queryClient.invalidateQueries({
-        queryKey: adminQueryKeys.transactionActionRequests,
+        queryKey: adminQueryKeys.transactionActionRequestsRoot,
       });
       queryClient.invalidateQueries({
         queryKey: adminQueryKeys.adminNotifications,

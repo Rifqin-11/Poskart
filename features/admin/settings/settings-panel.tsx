@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Save } from "lucide-react";
+import { PencilLine, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { DialogActions } from "@/features/admin/_components/dialog-actions";
 import {
   useAppConfig,
   useSaveAppConfig,
@@ -25,7 +27,6 @@ import { EditProfileDialog } from "./_components/edit-profile-dialog";
 import { OrganizationCard } from "./_components/organization-card";
 import { PaymentSettingsCard } from "./_components/payment-settings-card";
 import { MediaSettingsCard } from "./_components/media-settings-card";
-import { KioskDefaultsCard } from "./_components/kiosk-defaults-card";
 
 type SubscriptionGatewayMode = "duitku" | "midtrans" | "both";
 
@@ -34,7 +35,6 @@ const SETTINGS_TABS = [
   { id: "organization", label: "Organization" },
   { id: "payment", label: "Payment" },
   { id: "media", label: "Media & Gallery" },
-  { id: "kiosk", label: "Kiosk Defaults" },
 ] as const;
 
 type SettingsTab = (typeof SETTINGS_TABS)[number]["id"];
@@ -120,7 +120,8 @@ export function SettingsPanel() {
   const updatePaymentMode = useUpdatePaymentCollectionMode();
   const savePrivateGateway = useSavePaymentGatewaySettings();
 
-  const [isEditingOrg, setIsEditingOrg] = useState(false);
+  const [editOrganizationOpen, setEditOrganizationOpen] = useState(false);
+  const [editMediaOpen, setEditMediaOpen] = useState(false);
   const [form, setForm] = useState<SettingsForm>(DEFAULT_SETTINGS_FORM);
   const [account, setAccount] = useState<{
     email: string;
@@ -150,8 +151,8 @@ export function SettingsPanel() {
     sandbox: false,
     paymentMethod: "SQ",
   });
-  const [activeTab, setActiveTab] = useState<SettingsTab>(() =>
-    readSettingsTab(searchParams.get("tab")) ?? "details",
+  const [activeTab, setActiveTab] = useState<SettingsTab>(
+    () => readSettingsTab(searchParams.get("tab")) ?? "details",
   );
   const tabsListRef = useRef<HTMLDivElement>(null);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -175,9 +176,7 @@ export function SettingsPanel() {
         qris_webhook_secret: config.qris_webhook_secret ?? "",
         qris_auto_retry: config.qris_auto_retry ?? true,
         payment_mode:
-          tenant?.payment_collection_mode === "custom"
-            ? "private"
-            : "sharing",
+          tenant?.payment_collection_mode === "custom" ? "private" : "sharing",
         subscription_payment_gateway:
           config.subscription_payment_gateway ?? "duitku",
         gateway_fee_type: config.gateway_fee_type ?? "percentage",
@@ -207,40 +206,51 @@ export function SettingsPanel() {
     const supabase = createClient();
     supabase.auth
       .getUser()
-      .then((res: { data: { user: { email?: string | null; role?: string | null; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> } | null } }) => {
-        if (cancelled) return;
-        const user = res.data.user;
-        const fullName =
-          typeof user?.user_metadata?.full_name === "string"
-            ? user.user_metadata.full_name
-            : typeof user?.user_metadata?.name === "string"
-              ? user.user_metadata.name
+      .then(
+        (res: {
+          data: {
+            user: {
+              email?: string | null;
+              role?: string | null;
+              app_metadata?: Record<string, unknown>;
+              user_metadata?: Record<string, unknown>;
+            } | null;
+          };
+        }) => {
+          if (cancelled) return;
+          const user = res.data.user;
+          const fullName =
+            typeof user?.user_metadata?.full_name === "string"
+              ? user.user_metadata.full_name
+              : typeof user?.user_metadata?.name === "string"
+                ? user.user_metadata.name
+                : "";
+          const appRole =
+            typeof user?.app_metadata?.role === "string"
+              ? user.app_metadata.role
+              : user?.role || "authenticated";
+          const phone =
+            typeof user?.user_metadata?.phone === "string"
+              ? user.user_metadata.phone
               : "";
-        const appRole =
-          typeof user?.app_metadata?.role === "string"
-            ? user.app_metadata.role
-            : user?.role || "authenticated";
-        const phone =
-          typeof user?.user_metadata?.phone === "string"
-            ? user.user_metadata.phone
-            : "";
-        const jobTitle =
-          typeof user?.user_metadata?.job_title === "string"
-            ? user.user_metadata.job_title
-            : "";
-        const timezone =
-          typeof user?.user_metadata?.timezone === "string"
-            ? user.user_metadata.timezone
-            : "Asia/Jakarta";
-        setAccount({
-          email: user?.email || "",
-          systemRole: appRole,
-          fullName,
-          phone,
-          jobTitle,
-          timezone,
-        });
-      })
+          const jobTitle =
+            typeof user?.user_metadata?.job_title === "string"
+              ? user.user_metadata.job_title
+              : "";
+          const timezone =
+            typeof user?.user_metadata?.timezone === "string"
+              ? user.user_metadata.timezone
+              : "Asia/Jakarta";
+          setAccount({
+            email: user?.email || "",
+            systemRole: appRole,
+            fullName,
+            phone,
+            jobTitle,
+            timezone,
+          });
+        },
+      )
       .catch(() => {
         // ignore
       });
@@ -267,10 +277,12 @@ export function SettingsPanel() {
     };
   }, [privateGateway]);
 
-  const handleSave = async (scope: SettingsTab) => {
+  const handleSave = async (
+    scope: Extract<SettingsTab, "payment" | "media">,
+  ) => {
     if (!config) {
       toast.error("Konfigurasi belum siap dimuat.");
-      return;
+      return false;
     }
 
     const appConfigPatch: Omit<AppConfigRow, "id" | "updated_at"> = {
@@ -312,12 +324,14 @@ export function SettingsPanel() {
         form.payment_mode === "private" ? "custom" : "platform";
       if (paymentMode === "custom") {
         if (!privateGatewayDraft.merchantCode.trim()) {
-          toast.error("Merchant code Duitku wajib diisi untuk Payment Private.");
-          return;
+          toast.error(
+            "Merchant code Duitku wajib diisi untuk Payment Private.",
+          );
+          return false;
         }
         if (!privateGateway?.hasApiKey && !privateGatewayDraft.apiKey.trim()) {
           toast.error("API key Duitku wajib diisi untuk Payment Private.");
-          return;
+          return false;
         }
         mutations.push(
           savePrivateGateway.mutateAsync({
@@ -335,10 +349,12 @@ export function SettingsPanel() {
     try {
       await Promise.all(mutations);
       toast.success("Settings saved successfully");
+      return true;
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to save settings",
       );
+      return false;
     }
   };
 
@@ -390,17 +406,17 @@ export function SettingsPanel() {
     return true;
   });
 
-  const subscriptionRequired =
-    searchParams.get("subscription") === "required";
-  const organizationOnly =
-    !isLoadingTenant && !subscriptionActive;
+  const subscriptionRequired = searchParams.get("subscription") === "required";
+  const organizationOnly = !isLoadingTenant && !subscriptionActive;
   const isSavingSettings =
     saveConfig.isPending ||
     updatePaymentMode.isPending ||
     savePrivateGateway.isPending;
   const visibleActiveTab: SettingsTab = organizationOnly
     ? "organization"
-    : (visibleTabs.some((t) => t.id === activeTab) ? activeTab : "details");
+    : visibleTabs.some((t) => t.id === activeTab)
+      ? activeTab
+      : "details";
 
   useEffect(() => {
     const activeTrigger = tabsListRef.current?.querySelector<HTMLElement>(
@@ -414,32 +430,51 @@ export function SettingsPanel() {
   }, [visibleActiveTab]);
 
   const getHeaderAction = () => {
-    if (visibleActiveTab === "organization") {
-      if (!canEditOrg) return null;
+    if (visibleActiveTab === "details") {
       return (
         <Button
-          onClick={() => setIsEditingOrg((prev) => !prev)}
-          variant={isEditingOrg ? "outline" : "default"}
+          type="button"
+          onClick={() => {
+            setProfileDraft({
+              fullName: account.fullName,
+              phone: account.phone,
+              jobTitle: account.jobTitle,
+              timezone: account.timezone,
+              memberRole: currentMember?.role ?? "",
+            });
+            setEditProfileOpen(true);
+          }}
           className="rounded-2xl"
         >
-          {isEditingOrg ? "Finish Editing" : "Edit Organization"}
+          <UserRound className="size-4" />
+          Change profile
         </Button>
       );
     }
 
-    if (
-      visibleActiveTab === "payment" ||
-      visibleActiveTab === "media" ||
-      visibleActiveTab === "kiosk"
-    ) {
+    if (visibleActiveTab === "organization") {
+      if (!canEditOrg) return null;
       return (
         <Button
-          onClick={() => void handleSave(visibleActiveTab)}
-          disabled={isSavingSettings}
+          type="button"
+          onClick={() => setEditOrganizationOpen(true)}
           className="rounded-2xl"
         >
-          <Save className="size-4" />
-          {isSavingSettings ? "Saving..." : "Save app settings"}
+          <PencilLine className="size-4" />
+          Edit organization
+        </Button>
+      );
+    }
+
+    if (visibleActiveTab === "media") {
+      return (
+        <Button
+          type="button"
+          onClick={() => setEditMediaOpen(true)}
+          className="rounded-2xl"
+        >
+          <PencilLine className="size-4" />
+          Edit
         </Button>
       );
     }
@@ -451,7 +486,7 @@ export function SettingsPanel() {
     <div className="space-y-4">
       <PageHeader
         title="Settings"
-        description="Manage account profile, workspace, payment, media, and POSKART kiosk defaults."
+        description="Manage account profile, workspace, payment, media, and POSKART defaults."
         action={getHeaderAction()}
       />
 
@@ -463,8 +498,7 @@ export function SettingsPanel() {
           >
             {visibleTabs.map((tab) => {
               const active = visibleActiveTab === tab.id;
-              const disabled =
-                organizationOnly && tab.id !== "organization";
+              const disabled = organizationOnly && tab.id !== "organization";
               return (
                 <button
                   key={tab.id}
@@ -479,7 +513,8 @@ export function SettingsPanel() {
                     active
                       ? "bg-white text-zinc-950 shadow-sm"
                       : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",
-                    disabled && "cursor-not-allowed opacity-45 hover:bg-transparent",
+                    disabled &&
+                      "cursor-not-allowed opacity-45 hover:bg-transparent",
                   )}
                 >
                   {tab.label}
@@ -511,7 +546,7 @@ export function SettingsPanel() {
             <OrganizationCard
               myEmail={account.email}
               subscriptionRequired={subscriptionRequired}
-              isEditing={isEditingOrg}
+              isEditing={false}
             />
           ) : null}
 
@@ -526,15 +561,13 @@ export function SettingsPanel() {
               privateGateway={privateGateway}
               privateGatewayDraft={privateGatewayDraft}
               setPrivateGatewayDraft={setPrivateGatewayDraft}
+              saving={isSavingSettings}
+              onSave={() => void handleSave("payment")}
             />
           ) : null}
 
           {visibleActiveTab === "media" ? (
-            <MediaSettingsCard form={form} setForm={setForm} />
-          ) : null}
-
-          {visibleActiveTab === "kiosk" ? (
-            <KioskDefaultsCard form={form} setForm={setForm} />
+            <MediaSettingsCard form={form} setForm={setForm} mode="summary" />
           ) : null}
         </div>
       </div>
@@ -551,6 +584,49 @@ export function SettingsPanel() {
           currentMemberRole={currentMember?.role}
         />
       )}
+
+      {editOrganizationOpen ? (
+        <Dialog
+          open={editOrganizationOpen}
+          onOpenChange={(open) => setEditOrganizationOpen(open)}
+          title="Edit organization"
+          className="max-w-5xl rounded-3xl"
+        >
+          <OrganizationCard
+            myEmail={account.email}
+            subscriptionRequired={subscriptionRequired}
+            isEditing
+          />
+        </Dialog>
+      ) : null}
+
+      {editMediaOpen ? (
+        <Dialog
+          open={editMediaOpen}
+          onOpenChange={(open) => setEditMediaOpen(open)}
+          title="Edit media & gallery"
+          className="max-w-3xl rounded-3xl"
+        >
+          <form
+            className="space-y-5"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const saved = await handleSave("media");
+              if (saved) setEditMediaOpen(false);
+            }}
+          >
+            <MediaSettingsCard form={form} setForm={setForm} mode="form" />
+            <div className="border-t border-zinc-200 pt-4">
+              <DialogActions
+                submitting={isSavingSettings}
+                submitLabel="Save changes"
+                submittingLabel="Saving..."
+                onCancel={() => setEditMediaOpen(false)}
+              />
+            </div>
+          </form>
+        </Dialog>
+      ) : null}
     </div>
   );
 }

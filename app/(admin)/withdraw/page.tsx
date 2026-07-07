@@ -6,16 +6,16 @@ import {
 } from "@/server/admin/actions/payout-actions";
 
 export default async function WithdrawPage() {
-  const [summary, invoices, availableLedgerEntries] = await Promise.all([
+  const [summary, invoicesPage, availableLedgerEntries] = await Promise.all([
     getMyPayoutSummary(),
-    getMyPayoutInvoices(),
+    getMyPayoutInvoices({ page: 1, pageSize: 10 }),
     getMyAvailablePayoutLedgerEntries(),
   ]);
 
   return (
     <PayoutDashboard
       summary={summary}
-      invoices={invoices}
+      invoicesPage={invoicesPage}
       availableLedgerEntries={availableLedgerEntries}
     />
   );

@@ -18,6 +18,7 @@ import type {
   TransactionActionType,
   TransactionPendingAction,
 } from "@/types/transaction";
+import type { PaginatedResult, PaginationInput } from "@/types/pagination";
 
 type TransactionActionRequestRow = {
   id: string;
@@ -72,6 +73,43 @@ type TransactionForActionRow = {
   payout_status?: string | null;
   payout_invoice_id?: string | null;
 };
+
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 50;
+
+function normalizePagination(input?: PaginationInput) {
+  const page = Math.max(1, Math.floor(Number(input?.page ?? 1)));
+  const requestedPageSize = Math.floor(
+    Number(input?.pageSize ?? DEFAULT_PAGE_SIZE),
+  );
+  const pageSize = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(
+      1,
+      Number.isFinite(requestedPageSize)
+        ? requestedPageSize
+        : DEFAULT_PAGE_SIZE,
+    ),
+  );
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  return { page, pageSize, from, to };
+}
+
+function toPaginatedResult<T>(
+  items: T[],
+  pagination: ReturnType<typeof normalizePagination>,
+  totalItems: number,
+): PaginatedResult<T> {
+  return {
+    items,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    totalItems,
+    totalPages: Math.max(1, Math.ceil(totalItems / pagination.pageSize)),
+  };
+}
 
 function actionLabel(action: TransactionActionType) {
   if (action === "verify") return "Verifikasi";
@@ -545,11 +583,12 @@ async function requireSuperAdmin() {
   return context;
 }
 
-export async function getTransactionActionRequestsForSuperadmin(): Promise<
-  TransactionActionRequest[]
-> {
+export async function getTransactionActionRequestsForSuperadmin(
+  paginationInput?: PaginationInput,
+): Promise<PaginatedResult<TransactionActionRequest>> {
   const { supabase } = await requireSuperAdmin();
-  const { data, error } = await supabase
+  const pagination = normalizePagination(paginationInput);
+  const { data, error, count } = await supabase
     .from("transaction_action_requests")
     .select(
       `
@@ -568,13 +607,18 @@ export async function getTransactionActionRequestsForSuperadmin(): Promise<
       profiles!transaction_action_requests_requested_by_fkey(email),
       transactions(id,booth,package_name,amount,status,provider,created_at)
     `,
+      { count: "exact" },
     )
     .order("requested_at", { ascending: false })
-    .limit(100);
+    .range(pagination.from, pagination.to);
 
   if (error) throw new Error(`Gagal memuat request transaksi: ${error.message}`);
-  return ((data ?? []) as unknown as TransactionActionRequestRow[]).map(
-    mapTransactionActionRequest,
+  return toPaginatedResult(
+    ((data ?? []) as unknown as TransactionActionRequestRow[]).map(
+      mapTransactionActionRequest,
+    ),
+    pagination,
+    count ?? 0,
   );
 }
 

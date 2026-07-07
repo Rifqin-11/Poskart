@@ -1,14 +1,11 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import { Building2, CreditCard, Landmark } from "lucide-react";
+import { Building2, CreditCard, Landmark, Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import {
-  SettingField,
-  SettingsCard,
-  SwitchSetting,
-} from "./settings-card";
+import { SettingField, SettingsCard, SwitchSetting } from "./settings-card";
 import { cn } from "@/lib/utils";
 
 type SubscriptionGatewayMode = "duitku" | "midtrans" | "both";
@@ -46,6 +43,8 @@ type PaymentSettingsCardProps<T extends SettingsForm> = {
       paymentMethod: string;
     }>
   >;
+  saving?: boolean;
+  onSave?: () => void;
 };
 
 export function PaymentSettingsCard<T extends SettingsForm>({
@@ -55,8 +54,11 @@ export function PaymentSettingsCard<T extends SettingsForm>({
   privateGateway,
   privateGatewayDraft,
   setPrivateGatewayDraft,
+  saving = false,
+  onSave,
 }: PaymentSettingsCardProps<T>) {
-  const configuredGateway = superadminGateway ?? form.subscription_payment_gateway;
+  const configuredGateway =
+    superadminGateway ?? form.subscription_payment_gateway;
   const gatewayOptions = [
     { value: "duitku", label: "Duitku" },
     { value: "midtrans", label: "Midtrans" },
@@ -71,53 +73,70 @@ export function PaymentSettingsCard<T extends SettingsForm>({
     >
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="grid gap-4 md:grid-cols-2">
-          
           {/* Payment Mode Selection */}
           <div className="md:col-span-2 grid gap-3 sm:grid-cols-2">
             <button
               type="button"
-              onClick={() => setForm((f) => ({ ...f, payment_mode: "sharing" }))}
+              onClick={() =>
+                setForm((f) => ({ ...f, payment_mode: "sharing" }))
+              }
               className={cn(
                 "flex flex-col items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all",
                 form.payment_mode === "sharing"
                   ? "border-blue-600 bg-blue-50/50"
-                  : "border-zinc-200 bg-white hover:border-zinc-300"
+                  : "border-zinc-200 bg-white hover:border-zinc-300",
               )}
             >
-              <div className={cn(
-                "grid size-10 place-items-center rounded-full",
-                form.payment_mode === "sharing" ? "bg-blue-600 text-white" : "bg-zinc-100 text-zinc-600"
-              )}>
+              <div
+                className={cn(
+                  "grid size-10 place-items-center rounded-full",
+                  form.payment_mode === "sharing"
+                    ? "bg-blue-600 text-white"
+                    : "bg-zinc-100 text-zinc-600",
+                )}
+              >
                 <Building2 className="size-5" />
               </div>
               <div>
-                <div className="font-semibold text-zinc-950">Payment Sharing</div>
+                <div className="font-semibold text-zinc-950">
+                  Payment Sharing
+                </div>
                 <div className="mt-1 text-xs leading-5 text-zinc-500">
-                  Gunakan QRIS bawaan POSKART. Hasil penjualan akan dikumpulkan di akun Anda dan dapat dicairkan (payout) kapan saja.
+                  Gunakan QRIS bawaan POSKART. Hasil penjualan akan dikumpulkan
+                  di akun Anda dan dapat dicairkan (payout) kapan saja.
                 </div>
               </div>
             </button>
 
             <button
               type="button"
-              onClick={() => setForm((f) => ({ ...f, payment_mode: "private" }))}
+              onClick={() =>
+                setForm((f) => ({ ...f, payment_mode: "private" }))
+              }
               className={cn(
                 "flex flex-col items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all",
                 form.payment_mode === "private"
                   ? "border-emerald-600 bg-emerald-50/50"
-                  : "border-zinc-200 bg-white hover:border-zinc-300"
+                  : "border-zinc-200 bg-white hover:border-zinc-300",
               )}
             >
-              <div className={cn(
-                "grid size-10 place-items-center rounded-full",
-                form.payment_mode === "private" ? "bg-emerald-600 text-white" : "bg-zinc-100 text-zinc-600"
-              )}>
+              <div
+                className={cn(
+                  "grid size-10 place-items-center rounded-full",
+                  form.payment_mode === "private"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-zinc-100 text-zinc-600",
+                )}
+              >
                 <Landmark className="size-5" />
               </div>
               <div>
-                <div className="font-semibold text-zinc-950">Payment Private</div>
+                <div className="font-semibold text-zinc-950">
+                  Payment Private
+                </div>
                 <div className="mt-1 text-xs leading-5 text-zinc-500">
-                  Gunakan akun Duitku Anda sendiri. Pendapatan langsung masuk ke akun Anda tanpa biaya admin POSKART.
+                  Gunakan akun Duitku Anda sendiri. Pendapatan langsung masuk ke
+                  akun Anda tanpa biaya admin POSKART.
                 </div>
               </div>
             </button>
@@ -211,14 +230,25 @@ export function PaymentSettingsCard<T extends SettingsForm>({
             </div>
           </SettingField>
         </div>
-        <SwitchSetting
-          title="Auto retry failed QRIS payment"
-          description="Retry otomatis saat transaksi QRIS gagal diproses."
-          checked={form.qris_auto_retry}
-          onCheckedChange={(v) =>
-            setForm((f) => ({ ...f, qris_auto_retry: v }))
-          }
-        />
+        <div className="space-y-3">
+          <SwitchSetting
+            title="Auto retry failed QRIS payment"
+            description="Retry otomatis saat transaksi QRIS gagal diproses."
+            checked={form.qris_auto_retry}
+            onCheckedChange={(v) =>
+              setForm((f) => ({ ...f, qris_auto_retry: v }))
+            }
+          />
+          <Button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            className="w-full rounded-2xl"
+          >
+            <Save className="size-4" />
+            {saving ? "Saving..." : "Save payment"}
+          </Button>
+        </div>
       </div>
     </SettingsCard>
   );

@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -37,6 +38,7 @@ import {
 } from "@/features/admin/payout/payout-format";
 import type { Organization } from "@/types/organization";
 import type { PayoutInvoice, PayoutSettings, PayoutStatus } from "@/types/payout";
+import type { PaginatedResult } from "@/types/pagination";
 
 type Filters = {
   status: PayoutStatus | "all";
@@ -54,20 +56,31 @@ const DEFAULT_FILTERS: Filters = {
   dateTo: "",
 };
 
+const EMPTY_PAYOUT_PAGE: PaginatedResult<PayoutInvoice> = {
+  items: [],
+  page: 1,
+  pageSize: 10,
+  totalItems: 0,
+  totalPages: 1,
+};
+
 export function PayoutInvoiceManagement({
   organizations,
 }: {
   organizations: Organization[];
 }) {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [invoices, setInvoices] = useState<PayoutInvoice[]>([]);
+  const [invoicePage, setInvoicePage] =
+    useState<PaginatedResult<PayoutInvoice>>(EMPTY_PAYOUT_PAGE);
   const [loading, setLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState<PayoutInvoice | null>(
     null,
   );
   const [settings, setSettings] = useState<PayoutSettings | null>(null);
 
-  const loadInvoices = async (nextFilters = filters) => {
+  const invoices = invoicePage.items;
+
+  const loadInvoices = async (nextFilters = filters, page = 1) => {
     setLoading(true);
     try {
       const data = await getPayoutInvoicesForSuperadmin({
@@ -76,8 +89,11 @@ export function PayoutInvoiceManagement({
         paymentGateway: nextFilters.paymentGateway || undefined,
         dateFrom: nextFilters.dateFrom || undefined,
         dateTo: nextFilters.dateTo || undefined,
+      }, {
+        page,
+        pageSize: invoicePage.pageSize,
       });
-      setInvoices(data);
+      setInvoicePage(data);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to load payouts");
     } finally {
@@ -87,7 +103,7 @@ export function PayoutInvoiceManagement({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void loadInvoices(DEFAULT_FILTERS);
+      void loadInvoices(DEFAULT_FILTERS, 1);
       void getPayoutSettingsForSuperadmin()
         .then(setSettings)
         .catch((error) =>
@@ -204,7 +220,7 @@ export function PayoutInvoiceManagement({
               variant="outline"
               size="icon"
               className="shrink-0"
-              onClick={() => void loadInvoices(filters)}
+              onClick={() => void loadInvoices(filters, 1)}
             >
               <Filter className="size-4" />
             </Button>
@@ -212,9 +228,9 @@ export function PayoutInvoiceManagement({
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
-          <Metric label="Payouts" value={String(invoices.length)} />
-          <Metric label="Pending payout" value={formatPayoutCurrency(totals.pending)} />
-          <Metric label="Net total" value={formatPayoutCurrency(totals.net)} />
+          <Metric label="Filtered payouts" value={String(invoicePage.totalItems)} />
+          <Metric label="Page pending" value={formatPayoutCurrency(totals.pending)} />
+          <Metric label="Page net" value={formatPayoutCurrency(totals.net)} />
         </div>
 
         <div className="hidden overflow-x-auto xl:block">
@@ -323,12 +339,18 @@ export function PayoutInvoiceManagement({
             </div>
           ) : null}
         </div>
+        <TablePagination
+          page={invoicePage.page}
+          pageSize={invoicePage.pageSize}
+          totalItems={invoicePage.totalItems}
+          onPageChange={(page) => void loadInvoices(filters, page)}
+        />
       </CardContent>
 
       <PayoutReviewDialog
         invoice={selectedInvoice}
         onClose={() => setSelectedInvoice(null)}
-        onChanged={() => void loadInvoices(filters)}
+        onChanged={() => void loadInvoices(filters, invoicePage.page)}
       />
     </Card>
   );

@@ -5,7 +5,9 @@ export const adminQueryKeys = {
     ["transactions", { includeArchived }] as const,
   payoutSummary: ["payout-summary"] as const,
   payoutInvoices: ["payout-invoices"] as const,
-  transactionActionRequests: ["transaction-action-requests"] as const,
+  transactionActionRequestsRoot: ["transaction-action-requests"] as const,
+  transactionActionRequests: (page = 1, pageSize = 10) =>
+    ["transaction-action-requests", { page, pageSize }] as const,
   adminNotifications: ["admin-notifications"] as const,
   failedPrints: (boothName?: string | null) => ["failed-prints", boothName ?? null] as const,
   devices: ["devices"] as const,

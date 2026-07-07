@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -21,25 +22,27 @@ import {
   getPayoutStatusClassName,
   getPayoutStatusLabel,
 } from "@/features/admin/payout/payout-format";
-import { requestPayout, approveInternalPayoutRequest, rejectInternalPayoutRequest, cancelInternalPayoutRequest } from "@/server/admin/actions/payout-actions";
+import { getMyPayoutInvoices, requestPayout, approveInternalPayoutRequest, rejectInternalPayoutRequest, cancelInternalPayoutRequest } from "@/server/admin/actions/payout-actions";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import type {
   PayoutAvailableLedgerEntry,
   PayoutInvoice,
   PayoutSummary,
 } from "@/types/payout";
+import type { PaginatedResult } from "@/types/pagination";
 
 export function PayoutDashboard({
   summary,
-  invoices,
+  invoicesPage,
   availableLedgerEntries,
 }: {
   summary: PayoutSummary;
-  invoices: PayoutInvoice[];
+  invoicesPage: PaginatedResult<PayoutInvoice>;
   availableLedgerEntries: PayoutAvailableLedgerEntry[];
 }) {
   const router = useRouter();
   const { isReadOnly } = usePermission();
+  const [invoicePage, setInvoicePage] = useState(invoicesPage);
   const [requestOpen, setRequestOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<PayoutInvoice | null>(
     null,
@@ -48,6 +51,7 @@ export function PayoutDashboard({
   const [requestForm, setRequestForm] = useState({
     amount: summary.availableNetAmount,
   });
+  const invoices = invoicePage.items;
 
   const hasAccount = Boolean(summary.payoutAccount);
   const canRequest =
@@ -73,6 +77,20 @@ export function PayoutDashboard({
     [availableLedgerEntries, requestForm.amount, summary.settings],
   );
 
+  const loadInvoicePage = async (page: number) => {
+    startTransition(async () => {
+      try {
+        const nextPage = await getMyPayoutInvoices({
+          page,
+          pageSize: invoicePage.pageSize,
+        });
+        setInvoicePage(nextPage);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to load withdrawals");
+      }
+    });
+  };
+
   const submitRequest = () => {
     if (!summary.payoutAccount) {
       toast.error("Complete the payout account first.");
@@ -90,6 +108,7 @@ export function PayoutDashboard({
       }
       toast.success("Withdrawal request sent");
       setRequestOpen(false);
+      void loadInvoicePage(1);
       router.refresh();
     });
   };
@@ -316,6 +335,12 @@ export function PayoutDashboard({
               ) : null}
             </TableBody>
           </Table>
+          <TablePagination
+            page={invoicePage.page}
+            pageSize={invoicePage.pageSize}
+            totalItems={invoicePage.totalItems}
+            onPageChange={(page) => void loadInvoicePage(page)}
+          />
         </CardContent>
       </Card>
 

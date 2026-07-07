@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TablePagination } from "@/components/ui/table-pagination";
 import {
   useReviewTransactionActionRequest,
   useTransactionActionRequests,
@@ -49,8 +51,11 @@ function statusVariant(status: TransactionActionRequest["status"]) {
 }
 
 export function TransactionActionRequestManagement() {
-  const { data = [], isLoading } = useTransactionActionRequests();
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const { data, isLoading } = useTransactionActionRequests(page, pageSize);
   const review = useReviewTransactionActionRequest();
+  const requests = data?.items ?? [];
 
   async function submitReview(
     request: TransactionActionRequest,
@@ -97,7 +102,7 @@ export function TransactionActionRequestManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((request) => (
+              {requests.map((request) => (
                 <TableRow key={request.id}>
                   <TableCell>
                     <Badge variant={actionVariant(request.action)}>
@@ -133,7 +138,7 @@ export function TransactionActionRequestManagement() {
                   </TableCell>
                 </TableRow>
               ))}
-              {data.length === 0 ? (
+              {requests.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={8}
@@ -150,7 +155,7 @@ export function TransactionActionRequestManagement() {
         </div>
 
         <div className="grid gap-3 xl:hidden">
-          {data.map((request) => (
+          {requests.map((request) => (
             <div
               key={request.id}
               className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm"
@@ -195,7 +200,7 @@ export function TransactionActionRequestManagement() {
               </div>
             </div>
           ))}
-          {data.length === 0 ? (
+          {requests.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500">
               {isLoading
                 ? "Loading transaction requests..."
@@ -203,6 +208,12 @@ export function TransactionActionRequestManagement() {
             </div>
           ) : null}
         </div>
+        <TablePagination
+          page={data?.page ?? page}
+          pageSize={data?.pageSize ?? pageSize}
+          totalItems={data?.totalItems ?? 0}
+          onPageChange={setPage}
+        />
       </CardContent>
     </Card>
   );

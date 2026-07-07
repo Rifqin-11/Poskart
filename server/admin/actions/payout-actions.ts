@@ -22,6 +22,7 @@ import type {
   SavePayoutSettingsInput,
   SavePayoutAccountInput,
 } from "@/types/payout";
+import type { PaginatedResult, PaginationInput } from "@/types/pagination";
 
 type MembershipRole = "owner" | "admin" | "designer" | "akuntan" | "partner";
 
@@ -106,6 +107,43 @@ const DEFAULT_PAYOUT_SETTINGS: PayoutSettings = {
   platformFeeFixedAmount: 0,
   minimumPayoutAmount: 0,
 };
+
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 50;
+
+function normalizePagination(input?: PaginationInput) {
+  const page = Math.max(1, Math.floor(Number(input?.page ?? 1)));
+  const requestedPageSize = Math.floor(
+    Number(input?.pageSize ?? DEFAULT_PAGE_SIZE),
+  );
+  const pageSize = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(
+      1,
+      Number.isFinite(requestedPageSize)
+        ? requestedPageSize
+        : DEFAULT_PAGE_SIZE,
+    ),
+  );
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  return { page, pageSize, from, to };
+}
+
+function toPaginatedResult<T>(
+  items: T[],
+  pagination: ReturnType<typeof normalizePagination>,
+  totalItems: number,
+): PaginatedResult<T> {
+  return {
+    items,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    totalItems,
+    totalPages: Math.max(1, Math.ceil(totalItems / pagination.pageSize)),
+  };
+}
 
 function mapPayoutAccount(row: PayoutAccountRow): PayoutAccount {
   return {
@@ -452,14 +490,26 @@ async function loadEligibleLedgerEntries(
   return rows;
 }
 
+function loadInvoices(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  filters?: PayoutInvoiceFilters & { organizationId?: string },
+): Promise<PayoutInvoice[]>;
+function loadInvoices(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  filters: PayoutInvoiceFilters & { organizationId?: string },
+  paginationInput: PaginationInput,
+): Promise<PaginatedResult<PayoutInvoice>>;
 async function loadInvoices(
   supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
   filters: PayoutInvoiceFilters & { organizationId?: string } = {},
+  paginationInput?: PaginationInput,
 ) {
+  const pagination = paginationInput ? normalizePagination(paginationInput) : null;
   let query = supabase
     .from("payout_invoices")
     .select(
       "id,invoice_number,organization_id,organizations(name),status,gross_amount,gateway_fee_amount,platform_fee_amount,adjustment_amount,net_amount,requested_amount,requested_at,reviewed_at,paid_at,payment_reference,payment_proof_url,payment_proof_key,payment_proof_uploaded_at,notes,review_notes,rejection_reason,account_snapshot,fee_snapshot",
+      pagination ? { count: "exact" } : undefined,
     )
     .order("requested_at", { ascending: false });
 
@@ -478,9 +528,13 @@ async function loadInvoices(
     query = query.lte("requested_at", end.toISOString());
   }
 
-  const { data, error } = await query.limit(500);
+  const { data, error, count } = pagination
+    ? await query.range(pagination.from, pagination.to)
+    : await query.limit(500);
   if (error) {
-    if (error.code === "42P01" || error.code === "42703") return [];
+    if (error.code === "42P01" || error.code === "42703") {
+      return pagination ? toPaginatedResult([], pagination, 0) : [];
+    }
     throw new Error(`Failed to load payouts: ${error.message}`);
   }
 
@@ -519,7 +573,10 @@ async function loadInvoices(
     }
   }
 
-  return rows.map((row) => mapPayoutInvoice(row, itemsByInvoice));
+  const invoices = rows.map((row) => mapPayoutInvoice(row, itemsByInvoice));
+  if (!pagination) return invoices;
+
+  return toPaginatedResult(invoices, pagination, count ?? invoices.length);
 }
 
 export async function getMyPayoutSummary() {
@@ -556,9 +613,11 @@ export async function getMyPayoutSummary() {
   };
 }
 
-export async function getMyPayoutInvoices() {
+export async function getMyPayoutInvoices(
+  pagination?: PaginationInput,
+): Promise<PaginatedResult<PayoutInvoice>> {
   const { supabase, organizationId } = await getOrganizationContext();
-  return loadInvoices(supabase, { organizationId });
+  return loadInvoices(supabase, { organizationId }, pagination ?? {});
 }
 
 export async function getMyAvailablePayoutLedgerEntries() {
@@ -892,9 +951,10 @@ export async function requestPayout(
 
 export async function getPayoutInvoicesForSuperadmin(
   filters: PayoutInvoiceFilters = {},
-) {
+  pagination?: PaginationInput,
+): Promise<PaginatedResult<PayoutInvoice>> {
   const { supabase } = await requireSuperAdmin();
-  return loadInvoices(supabase, filters);
+  return loadInvoices(supabase, filters, pagination ?? {});
 }
 
 export async function getPayoutSettingsForSuperadmin() {
