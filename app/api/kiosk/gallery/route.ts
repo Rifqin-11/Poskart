@@ -82,13 +82,13 @@ export async function GET(request: Request) {
     const enrichedSessions = (sessions ?? [])
       .filter((session) => transactionBySessionId.has(session.id))
       .map((session) => {
-      const transaction = transactionBySessionId.get(session.id);
-      return {
-        ...session,
-        package_name: transaction?.package_name ?? null,
-        print_count: transaction?.print_count ?? 0,
-      };
-    });
+        const transaction = transactionBySessionId.get(session.id);
+        return {
+          ...session,
+          package_name: transaction?.package_name ?? null,
+          print_count: transaction?.print_count ?? 0,
+        };
+      });
     const now = Date.now();
     const visibleSessions = enrichedSessions.filter((session) =>
       shouldShowGallerySession({
