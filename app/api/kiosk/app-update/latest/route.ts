@@ -1,6 +1,9 @@
 const GITHUB_RELEASE_URL =
   "https://api.github.com/repos/Rifqin-11/poskart-releases/releases/latest";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET() {
   const headers: HeadersInit = {
     Accept: "application/vnd.github+json",
@@ -14,7 +17,7 @@ export async function GET() {
   try {
     const response = await fetch(GITHUB_RELEASE_URL, {
       headers,
-      next: { revalidate: 600 },
+      cache: "no-store",
     });
 
     const payload = await response.json().catch(() => null);
@@ -29,7 +32,7 @@ export async function GET() {
         {
           status: response.status === 403 ? 502 : response.status,
           headers: {
-            "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+            "Cache-Control": "no-store, max-age=0",
           },
         },
       );
@@ -37,7 +40,7 @@ export async function GET() {
 
     return Response.json(payload, {
       headers: {
-        "Cache-Control": "public, s-maxage=600, stale-while-revalidate=1800",
+        "Cache-Control": "no-store, max-age=0",
       },
     });
   } catch (error) {

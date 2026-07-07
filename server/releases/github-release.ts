@@ -46,7 +46,7 @@ export async function getLatestAppRelease(): Promise<LatestAppRelease | null> {
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
       },
-      next: { revalidate: 300 },
+      cache: "no-store",
     });
     if (!response.ok) return null;
 
