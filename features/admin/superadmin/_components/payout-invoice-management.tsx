@@ -23,6 +23,11 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
+  MobileFilterButton,
+  MobileFilterDrawer,
+  MobileFilterField,
+} from "@/features/admin/_components";
+import {
   approvePayoutInvoice,
   getPayoutInvoicesForSuperadmin,
   getPayoutSettingsForSuperadmin,
@@ -70,6 +75,7 @@ export function PayoutInvoiceManagement({
   organizations: Organization[];
 }) {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [invoicePage, setInvoicePage] =
     useState<PaginatedResult<PayoutInvoice>>(EMPTY_PAYOUT_PAGE);
   const [loading, setLoading] = useState(true);
@@ -99,6 +105,18 @@ export function PayoutInvoiceManagement({
     } finally {
       setLoading(false);
     }
+  };
+
+  const hasActiveFilters =
+    filters.organizationId !== DEFAULT_FILTERS.organizationId ||
+    filters.status !== DEFAULT_FILTERS.status ||
+    filters.paymentGateway !== DEFAULT_FILTERS.paymentGateway ||
+    filters.dateFrom !== DEFAULT_FILTERS.dateFrom ||
+    filters.dateTo !== DEFAULT_FILTERS.dateTo;
+
+  const resetFilters = () => {
+    setFilters(DEFAULT_FILTERS);
+    void loadInvoices(DEFAULT_FILTERS, 1);
   };
 
   useEffect(() => {
@@ -149,7 +167,14 @@ export function PayoutInvoiceManagement({
           />
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="flex justify-end xl:hidden">
+          <MobileFilterButton
+            active={hasActiveFilters}
+            onClick={() => setMobileFilterOpen(true)}
+          />
+        </div>
+
+        <div className="hidden gap-3 xl:grid xl:grid-cols-5">
           <Select
             value={filters.organizationId}
             onChange={(event) =>
@@ -226,6 +251,92 @@ export function PayoutInvoiceManagement({
             </Button>
           </div>
         </div>
+
+        <MobileFilterDrawer
+          open={mobileFilterOpen}
+          onOpenChange={setMobileFilterOpen}
+          title="Payout filters"
+          description="Filter withdrawal requests before reviewing payouts."
+          onReset={resetFilters}
+          resetDisabled={!hasActiveFilters}
+          doneLabel="Apply"
+          onDone={() => void loadInvoices(filters, 1)}
+        >
+          <MobileFilterField label="Organization">
+            <Select
+              value={filters.organizationId}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  organizationId: event.target.value,
+                }))
+              }
+            >
+              <option value="">All organizations</option>
+              {organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>
+                  {organization.name}
+                </option>
+              ))}
+            </Select>
+          </MobileFilterField>
+          <MobileFilterField label="Status">
+            <Select
+              value={filters.status}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  status: event.target.value as Filters["status"],
+                }))
+              }
+            >
+              <option value="all">All statuses</option>
+              <option value="requested">Requested</option>
+              <option value="approved">Approved</option>
+              <option value="paid">Paid</option>
+              <option value="rejected">Rejected</option>
+              <option value="canceled">Canceled</option>
+            </Select>
+          </MobileFilterField>
+          <MobileFilterField label="Payment gateway">
+            <Select
+              value={filters.paymentGateway}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  paymentGateway: event.target.value,
+                }))
+              }
+            >
+              <option value="">All gateways</option>
+              <option value="duitku">Duitku</option>
+            </Select>
+          </MobileFilterField>
+          <MobileFilterField label="Date from">
+            <Input
+              type="date"
+              value={filters.dateFrom}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  dateFrom: event.target.value,
+                }))
+              }
+            />
+          </MobileFilterField>
+          <MobileFilterField label="Date to">
+            <Input
+              type="date"
+              value={filters.dateTo}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  dateTo: event.target.value,
+                }))
+              }
+            />
+          </MobileFilterField>
+        </MobileFilterDrawer>
 
         <div className="grid gap-3 md:grid-cols-3">
           <Metric label="Filtered payouts" value={String(invoicePage.totalItems)} />

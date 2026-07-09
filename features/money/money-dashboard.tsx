@@ -32,7 +32,12 @@ import {
   saveMoneyEntry,
   saveMoneyTransfer,
 } from "@/app/(admin)/money/actions";
-import { StatCard } from "@/features/admin/_components/stat-card";
+import {
+  MobileFilterButton,
+  MobileFilterDrawer,
+  MobileFilterField,
+  StatCard,
+} from "@/features/admin/_components";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -106,6 +111,7 @@ export function MoneyDashboard({
   >("all");
   const [walletFilter, setWalletFilter] = useState<WalletFilter>("all");
   const [tagFilter, setTagFilter] = useState("all");
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const monthOptions = useMemo(
@@ -190,6 +196,15 @@ export function MoneyDashboard({
       : getWalletLabel(walletFilter, wallets);
   const selectedMonthLabel =
     selectedMonth === "all" ? "Semua bulan" : formatMonthLabel(selectedMonth);
+  const hasTableFilters =
+    selectedMonth !== "all" || tagFilter !== "all" || typeFilter !== "all";
+
+  function resetTableFilters() {
+    setSelectedMonth("all");
+    setTagFilter("all");
+    setTypeFilter("all");
+    setPage(1);
+  }
 
   const exportToExcel = useCallback(() => {
     const headers = [
@@ -827,7 +842,25 @@ export function MoneyDashboard({
                 Rincian aktivitas keuangan berdasarkan akun dan kategori.
               </CardDescription>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_170px_170px_150px]">
+            <div className="flex min-w-0 gap-2 xl:hidden">
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+                <Input
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Cari judul atau kategori"
+                  className="pl-9"
+                />
+              </div>
+              <MobileFilterButton
+                active={hasTableFilters}
+                onClick={() => setMobileFilterOpen(true)}
+              />
+            </div>
+            <div className="hidden gap-2 xl:grid xl:grid-cols-[minmax(220px,1fr)_170px_170px_150px]">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
                 <Input
@@ -883,6 +916,66 @@ export function MoneyDashboard({
                 <option value="transfer">Transfer</option>
               </Select>
             </div>
+            <MobileFilterDrawer
+              open={mobileFilterOpen}
+              onOpenChange={setMobileFilterOpen}
+              title="Finance filters"
+              description="Filter the transaction history by month, tag, or type."
+              onReset={resetTableFilters}
+              resetDisabled={!hasTableFilters}
+            >
+              <MobileFilterField label="Month">
+                <Select
+                  value={selectedMonth}
+                  onChange={(event) => {
+                    setSelectedMonth(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="all">Semua bulan</option>
+                  {monthOptions.map((month) => (
+                    <option key={month} value={month}>
+                      {formatMonthLabel(month)}
+                    </option>
+                  ))}
+                </Select>
+              </MobileFilterField>
+              <MobileFilterField label="Tag">
+                <Select
+                  value={tagFilter}
+                  onChange={(event) => {
+                    setTagFilter(event.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="all">Semua tag</option>
+                  {tags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>
+                      {tag.name}
+                    </option>
+                  ))}
+                </Select>
+              </MobileFilterField>
+              <MobileFilterField label="Type">
+                <Select
+                  value={typeFilter}
+                  onChange={(event) => {
+                    setTypeFilter(
+                      event.target.value as
+                        | "all"
+                        | MoneyEntryType
+                        | "transfer",
+                    );
+                    setPage(1);
+                  }}
+                >
+                  <option value="all">Semua jenis</option>
+                  <option value="income">Uang masuk</option>
+                  <option value="expense">Uang keluar</option>
+                  <option value="transfer">Transfer</option>
+                </Select>
+              </MobileFilterField>
+            </MobileFilterDrawer>
           </div>
         </CardHeader>
         <CardContent className="min-w-0">

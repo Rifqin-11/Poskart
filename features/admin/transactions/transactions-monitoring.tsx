@@ -23,7 +23,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TablePagination } from "@/components/ui/table-pagination";
-import { PageHeader } from "@/features/admin/_components/page-header";
+import {
+  MobileFilterButton,
+  MobileFilterDrawer,
+  MobileFilterField,
+  PageHeader,
+} from "@/features/admin/_components";
 import {
   useMarkTransactionAsTesting,
   useRequestTransactionAction,
@@ -356,9 +361,20 @@ export function TransactionsMonitoring() {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [packageFilter, setPackageFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
+  function resetFilters() {
+    setSearch("");
+    setStatusFilter("all");
+    setPaymentMethodFilter("all");
+    setPackageFilter("all");
+    setDateFilter("");
+    setSelectedIds(new Set());
+    setPage(1);
+  }
 
   const paymentMethodOptions = useMemo(
     () =>
@@ -434,6 +450,11 @@ export function TransactionsMonitoring() {
     paymentMethodFilter !== "all" ||
     packageFilter !== "all" ||
     dateFilter;
+  const hasAdvancedFilters =
+    statusFilter !== "all" ||
+    paymentMethodFilter !== "all" ||
+    packageFilter !== "all" ||
+    Boolean(dateFilter);
   const activePage = Math.min(
     page,
     Math.max(1, Math.ceil(filtered.length / pageSize)),
@@ -643,7 +664,24 @@ export function TransactionsMonitoring() {
       <Card className="overflow-hidden">
         <CardHeader className="p-4 sm:p-5">
           <div className="flex min-w-0 flex-col gap-3">
-            <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(260px,1.1fr)_160px_180px_220px_180px_110px]">
+            <div className="flex min-w-0 gap-2 xl:hidden">
+              <Input
+                className="min-w-0 flex-1"
+                placeholder="Search by ID, device, customer…"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setSelectedIds(new Set());
+                  setPage(1);
+                }}
+              />
+              <MobileFilterButton
+                active={hasAdvancedFilters}
+                onClick={() => setMobileFilterOpen(true)}
+              />
+            </div>
+
+            <div className="hidden min-w-0 gap-2 xl:grid xl:grid-cols-[minmax(260px,1.1fr)_160px_180px_220px_180px_110px]">
               <Input
                 className="min-w-0"
                 placeholder="Search by ID, device, customer…"
@@ -668,8 +706,12 @@ export function TransactionsMonitoring() {
                 <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
                 <option value="refunded">Refunded</option>
-                <option value="archive">{t("transactions.status.archive")}</option>
-                <option value="testing">{t("transactions.status.testing")}</option>
+                <option value="archive">
+                  {t("transactions.status.archive")}
+                </option>
+                <option value="testing">
+                  {t("transactions.status.testing")}
+                </option>
               </Select>
               <Select
                 className="min-w-0"
@@ -718,19 +760,88 @@ export function TransactionsMonitoring() {
                 className="w-full"
                 variant="outline"
                 disabled={!hasActiveFilters}
-                onClick={() => {
-                  setSearch("");
-                  setStatusFilter("all");
-                  setPaymentMethodFilter("all");
-                  setPackageFilter("all");
-                  setDateFilter("");
-                  setSelectedIds(new Set());
-                  setPage(1);
-                }}
+                onClick={resetFilters}
               >
                 Reset
               </Button>
             </div>
+            <MobileFilterDrawer
+              open={mobileFilterOpen}
+              onOpenChange={setMobileFilterOpen}
+              title="Transaction filters"
+              description="Narrow the table by status, payment, package, or date."
+              onReset={resetFilters}
+              resetDisabled={!hasActiveFilters}
+            >
+              <MobileFilterField label="Status">
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setSelectedIds(new Set());
+                    setPage(1);
+                  }}
+                >
+                  <option value="all">All status</option>
+                  <option value="paid">Paid</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                  <option value="refunded">Refunded</option>
+                  <option value="archive">
+                    {t("transactions.status.archive")}
+                  </option>
+                  <option value="testing">
+                    {t("transactions.status.testing")}
+                  </option>
+                </Select>
+              </MobileFilterField>
+              <MobileFilterField label="Payment method">
+                <Select
+                  value={paymentMethodFilter}
+                  onChange={(e) => {
+                    setPaymentMethodFilter(e.target.value);
+                    setSelectedIds(new Set());
+                    setPage(1);
+                  }}
+                >
+                  <option value="all">All methods</option>
+                  {paymentMethodOptions.map((method) => (
+                    <option key={method} value={method}>
+                      {method}
+                    </option>
+                  ))}
+                </Select>
+              </MobileFilterField>
+              <MobileFilterField label="Package">
+                <Select
+                  value={packageFilter}
+                  onChange={(e) => {
+                    setPackageFilter(e.target.value);
+                    setSelectedIds(new Set());
+                    setPage(1);
+                  }}
+                >
+                  <option value="all">All packages</option>
+                  {packageOptions.map((packageName) => (
+                    <option key={packageName} value={packageName}>
+                      {packageName}
+                    </option>
+                  ))}
+                </Select>
+              </MobileFilterField>
+              <MobileFilterField label="Date">
+                <Input
+                  type="date"
+                  value={dateFilter}
+                  onChange={(e) => {
+                    setDateFilter(e.target.value);
+                    setSelectedIds(new Set());
+                    setPage(1);
+                  }}
+                  aria-label="Filter transaction date"
+                />
+              </MobileFilterField>
+            </MobileFilterDrawer>
             <div className="flex min-w-0 flex-col gap-2 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
               <span className="whitespace-nowrap">
                 {filtered.length} of {data.length} transactions
