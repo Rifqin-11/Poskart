@@ -208,44 +208,31 @@ function BulkActionMenu({
     onClick: () => void;
   }[];
 }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div className="relative">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={disabled || selectedCount === 0}
-        onClick={() => setOpen((value) => !value)}
-      >
-        Action selected
-        {selectedCount > 0 ? ` (${selectedCount})` : ""}
-        <ChevronDown className="size-4" />
-      </Button>
-      {open ? (
-        <div className="absolute right-0 top-10 z-40 w-56 rounded-lg border border-zinc-200 bg-white p-1 shadow-xl">
-          {items.map((item) => (
-            <button
-              key={item.action}
-              type="button"
-              disabled={item.count === 0}
-              className={cn(
-                "flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40",
-                item.destructive && "text-red-600",
-              )}
-              onClick={() => {
-                item.onClick();
-                setOpen(false);
-              }}
-            >
-              <span>{getBulkActionLabel(item.action)}</span>
-              <span className="text-xs text-zinc-400">{item.count}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
+    <DropdownMenu
+      width={224}
+      items={items.map((item) => ({
+        label: getBulkActionLabel(item.action),
+        rightLabel: String(item.count),
+        destructive: item.destructive,
+        disabled: item.count === 0,
+        onClick: item.onClick,
+      }))}
+      trigger={({ open, toggle }) => (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-expanded={open}
+          disabled={disabled || selectedCount === 0}
+          onClick={toggle}
+        >
+          Action selected
+          {selectedCount > 0 ? ` (${selectedCount})` : ""}
+          <ChevronDown className="size-4" />
+        </Button>
+      )}
+    />
   );
 }
 
