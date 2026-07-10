@@ -4,6 +4,7 @@ import {
   requireKioskContext,
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { resolveKioskPricingProduct } from "@/lib/kiosk/pricing";
 import {
   isDuitkuTransactionPaid,
@@ -12,6 +13,7 @@ import {
 
 type TransactionBody = {
   deviceId?: string;
+  action?: "abandon";
   transaction?: {
     id?: string;
     customer?: string;
@@ -46,6 +48,57 @@ export async function POST(request: Request) {
       body.deviceId ?? "",
     );
     const transaction = body.transaction;
+
+    if (body.action === "abandon") {
+      if (!transaction?.id) {
+        return jsonOk(
+          {
+            error: "Transaction ID is required.",
+            code: "KIOSK_TRANSACTION_INVALID",
+          },
+          { status: 400 },
+        );
+      }
+
+      const now = new Date().toISOString();
+      const { data: archived, error: archiveError } = await context.client
+        .from("transactions")
+        .update({
+          archived_at: now,
+          archived_by: context.user.id,
+          archive_reason: "abandoned",
+          payout_status: "abandoned",
+          updated_at: now,
+        })
+        .eq("organization_id", context.organizationId)
+        .eq("id", transaction.id)
+        .is("payout_invoice_id", null)
+        .select("id")
+        .maybeSingle();
+
+      if (archiveError) throw archiveError;
+
+      if (archived) {
+        const adminClient = createSupabaseAdminClient();
+        const { error: ledgerError } = await adminClient
+          .from("payment_ledger_entries")
+          .update({
+            settlement_status: "abandoned",
+            updated_at: now,
+          })
+          .eq("organization_id", context.organizationId)
+          .eq("transaction_id", transaction.id)
+          .is("payout_invoice_id", null);
+
+        if (ledgerError && ledgerError.code !== "42P01") throw ledgerError;
+      }
+
+      return jsonOk({
+        success: true,
+        transactionId: transaction.id,
+        abandoned: Boolean(archived),
+      });
+    }
 
     if (
       !transaction?.id ||
