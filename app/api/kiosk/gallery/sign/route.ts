@@ -16,6 +16,7 @@ type SignBody = {
   templateName?: string;
   themeName?: string;
   socialMediaConsent?: boolean;
+  testMode?: boolean;
   files?: CloudinaryUploadDescriptor[];
 };
 
@@ -61,9 +62,10 @@ export async function POST(request: Request) {
         template_name: body.templateName?.trim() ?? "",
         theme_name: body.themeName?.trim() ?? "",
         social_media_consent: body.socialMediaConsent === true,
+        test_mode: body.testMode === true,
         share_url: shareUrl,
         updated_at: new Date().toISOString(),
-    });
+      });
     if (sessionError) throw sessionError;
 
     if (files.length === 0) {

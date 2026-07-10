@@ -24,6 +24,7 @@ type GallerySessionRow = {
   transaction_id: string | null;
   template_name: string;
   social_media_consent: boolean;
+  test_mode: boolean;
   share_url: string | null;
   created_at: string;
 };
@@ -74,7 +75,7 @@ export async function GalleryPage() {
   const { data: sessions } = await supabase
     .from("gallery_sessions")
     .select(
-      "id,device_id,template_name,social_media_consent,share_url,created_at",
+      "id,device_id,template_name,social_media_consent,test_mode,share_url,created_at",
     )
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
@@ -94,11 +95,14 @@ export async function GalleryPage() {
       .filter((transaction) => !isOrphanQrisPendingTransaction(transaction))
       .map((transaction) => transaction.id),
   );
+  const testSessionIds = new Set(
+    rows.filter((session) => session.test_mode).map((session) => session.id),
+  );
   const enrichedRows = rows
-    .filter((session) => transactionIds.has(session.id))
+    .filter((session) => transactionIds.has(session.id) || session.test_mode)
     .map((session) => ({
       ...session,
-      transaction_id: session.id,
+      transaction_id: session.test_mode ? null : session.id,
     }));
   const { data: photos } = sessionIds.length
     ? await supabase
@@ -129,7 +133,9 @@ export async function GalleryPage() {
     (map, photo) => {
       if (
         !isDisplayableGalleryPhoto(photo, {
-          hasValidTransaction: transactionIds.has(photo.session_id),
+          hasValidTransaction:
+            transactionIds.has(photo.session_id) ||
+            testSessionIds.has(photo.session_id),
         })
       ) {
         return map;
@@ -220,7 +226,8 @@ export async function GalleryPage() {
               const sessionPhotos = photosBySessionId.get(session.id) ?? [];
               const livePhotoJob = livePhotoJobBySessionId.get(session.id);
               const isLivePhotoProcessing =
-                sessionPhotos.length === 0 && isActiveLivePhotoJob(livePhotoJob);
+                sessionPhotos.length === 0 &&
+                isActiveLivePhotoJob(livePhotoJob);
               const framed = sessionPhotos.find(
                 (photo) => photo.kind === "framed" && photo.photo_index === 0,
               );
@@ -235,8 +242,7 @@ export async function GalleryPage() {
               );
               const motionAssetLabel = getMotionAssetLabel(motionAsset);
               const framedLivePhoto = sessionPhotos.find(
-                (photo) =>
-                  photo.kind === "framed" && photo.photo_index === 1,
+                (photo) => photo.kind === "framed" && photo.photo_index === 1,
               );
 
               return (
@@ -322,7 +328,10 @@ export async function GalleryPage() {
                         Device ID: {session.device_id || "Unknown device"}
                       </p>
                       <p className="truncate">
-                        Transaction ID: {session.transaction_id || "-"}
+                        Transaction ID:{" "}
+                        {session.test_mode
+                          ? "Test Mode"
+                          : session.transaction_id || "-"}
                       </p>
                     </div>
                     {session.social_media_consent && (
@@ -396,7 +405,9 @@ function isVideoAsset(asset: Pick<GalleryPhotoRow, "secure_url" | "format">) {
   return ["mp4", "webm", "mov"].includes(getAssetFormat(asset));
 }
 
-function getVideoMimeType(asset: Pick<GalleryPhotoRow, "secure_url" | "format">) {
+function getVideoMimeType(
+  asset: Pick<GalleryPhotoRow, "secure_url" | "format">,
+) {
   const format = getAssetFormat(asset);
   if (format === "webm") return "video/webm";
   if (format === "mov") return "video/quicktime";

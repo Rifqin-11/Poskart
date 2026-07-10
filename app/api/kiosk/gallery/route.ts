@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const { data: sessions, error: sessionsError } = await context.client
       .from("gallery_sessions")
       .select(
-        "id,device_id,template_name,theme_name,social_media_consent,share_url,created_at",
+        "id,device_id,template_name,theme_name,social_media_consent,test_mode,share_url,created_at",
       )
       .eq("organization_id", context.organizationId)
       .order("created_at", { ascending: false })
@@ -65,11 +65,18 @@ export async function GET(request: Request) {
     const transactionBySessionId = new Map(
       (transactions ?? []).map((transaction) => [transaction.id, transaction]),
     );
+    const testSessionIds = new Set(
+      (sessions ?? [])
+        .filter((session) => session.test_mode === true)
+        .map((session) => session.id),
+    );
     const photoCountBySessionId = new Map<string, number>();
     for (const photo of photos ?? []) {
       if (
         !isDisplayableGalleryPhoto(photo, {
-          hasValidTransaction: transactionBySessionId.has(photo.session_id),
+          hasValidTransaction:
+            transactionBySessionId.has(photo.session_id) ||
+            testSessionIds.has(photo.session_id),
         })
       ) {
         continue;
@@ -80,7 +87,10 @@ export async function GET(request: Request) {
       );
     }
     const enrichedSessions = (sessions ?? [])
-      .filter((session) => transactionBySessionId.has(session.id))
+      .filter(
+        (session) =>
+          transactionBySessionId.has(session.id) || session.test_mode === true,
+      )
       .map((session) => {
         const transaction = transactionBySessionId.get(session.id);
         return {

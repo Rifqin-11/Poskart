@@ -23,6 +23,7 @@ type LivePhotoJobBody = {
   templateName?: string;
   themeName?: string;
   socialMediaConsent?: boolean;
+  testMode?: boolean;
   template?: Record<string, unknown>;
   assets?: LivePhotoSourceAsset[];
 };
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
         template_name: body.templateName?.trim() ?? "",
         theme_name: body.themeName?.trim() ?? "",
         social_media_consent: body.socialMediaConsent === true,
+        test_mode: body.testMode === true,
         share_url: shareUrl,
         updated_at: now,
       });

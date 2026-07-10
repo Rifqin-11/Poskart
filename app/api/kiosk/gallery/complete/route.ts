@@ -24,6 +24,7 @@ type CompleteBody = {
   templateName?: string;
   themeName?: string;
   socialMediaConsent?: boolean;
+  testMode?: boolean;
   assets?: UploadedAsset[];
 };
 
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
         template_name: body.templateName?.trim() ?? "",
         theme_name: body.themeName?.trim() ?? "",
         social_media_consent: body.socialMediaConsent === true,
+        test_mode: body.testMode === true,
         share_url: shareUrl,
         updated_at: now,
       });
