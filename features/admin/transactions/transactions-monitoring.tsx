@@ -664,7 +664,7 @@ export function TransactionsMonitoring() {
       <Card className="overflow-hidden">
         <CardHeader className="p-4 sm:p-5">
           <div className="flex min-w-0 flex-col gap-3">
-            <div className="flex min-w-0 gap-2 xl:hidden">
+            <div className="flex min-w-0 gap-2 md:hidden">
               <Input
                 className="min-w-0 flex-1"
                 placeholder="Search by ID, device, customer…"
@@ -681,7 +681,7 @@ export function TransactionsMonitoring() {
               />
             </div>
 
-            <div className="hidden min-w-0 gap-2 xl:grid xl:grid-cols-[minmax(260px,1.1fr)_160px_180px_220px_180px_110px]">
+            <div className="hidden min-w-0 gap-2 md:grid md:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_150px_160px] xl:grid-cols-[minmax(260px,1.1fr)_160px_180px_220px_180px_110px]">
               <Input
                 className="min-w-0"
                 placeholder="Search by ID, device, customer…"
@@ -861,7 +861,7 @@ export function TransactionsMonitoring() {
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-0 sm:p-5 sm:pt-0">
-          <div className="hidden max-w-full overflow-x-auto rounded-2xl border border-zinc-100 xl:block">
+          <div className="hidden w-full max-w-full overflow-x-auto overscroll-x-contain rounded-2xl border border-zinc-100 md:block">
             <Table className="min-w-[1120px]">
               <TableHeader>
                 <TableRow>
@@ -986,7 +986,7 @@ export function TransactionsMonitoring() {
               </TableBody>
             </Table>
           </div>
-          <div className="space-y-3 xl:hidden">
+          <div className="space-y-3 md:hidden">
             {paginatedTransactions.map((transaction: Transaction) => {
               const paymentMethod = getTransactionPaymentMethod(transaction);
               const netAmount = getTransactionNetAmount(transaction, config);
