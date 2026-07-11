@@ -31,14 +31,17 @@ CRON_SECRET=your-cron-secret
 CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
 CLOUDINARY_API_KEY=your-cloudinary-api-key
 CLOUDINARY_API_SECRET=your-cloudinary-api-secret
+PAYMENT_CREDENTIALS_SECRET=your-random-secret-at-least-24-characters
 ```
 
 `DUITKU_PAYMENT_METHOD=SQ` directs subscription checkout to ShopeePay QRIS.
 
 Gallery cleanup is scheduled by `vercel.json` through
-`/api/cron/gallery-cleanup`. The endpoint deletes Cloudinary assets and
-gallery records older than the Media settings retention window. Set
-`CRON_SECRET` in production so only the scheduler can run cleanup.
+`/api/cron/gallery-cleanup`. The endpoint deletes assets from the provider
+stored on each gallery row and removes gallery records older than the Media
+settings retention window. Cloudinary and ImageKit credentials for new uploads
+are managed from Super Admin, while `CLOUDINARY_*` env values remain a legacy
+fallback. Set `CRON_SECRET` in production so only the scheduler can run cleanup.
 
 The checkout flow is:
 

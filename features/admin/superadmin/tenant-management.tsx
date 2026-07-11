@@ -56,6 +56,7 @@ import { PaymentGatewayManagement } from "./_components/payment-gateway-manageme
 import { SaasPricingManagement } from "./_components/saas-pricing-management";
 import { PayoutInvoiceManagement } from "./_components/payout-invoice-management";
 import { TransactionActionRequestManagement } from "./_components/transaction-action-request-management";
+import { GalleryStorageManagement } from "./_components/gallery-storage-management";
 import { DEFAULT_ORGANIZATION_FEATURES } from "@/lib/organization-features";
 
 type AdminUserProfile = {
@@ -568,6 +569,9 @@ export function TenantManagement() {
               <TabsList className="w-full justify-start rounded-[18px]">
                 <TabsTrigger value="saas-pricing">Pricing</TabsTrigger>
                 <TabsTrigger value="payment-gateway">Payment Gateway</TabsTrigger>
+                <TabsTrigger value="gallery-storage">
+                  Gallery Storage
+                </TabsTrigger>
                 <TabsTrigger value="payout-invoices">
                   Payout / Withdraw
                 </TabsTrigger>
@@ -581,6 +585,9 @@ export function TenantManagement() {
             </TabsContent>
             <TabsContent value="payment-gateway">
               <PaymentGatewayManagement />
+            </TabsContent>
+            <TabsContent value="gallery-storage">
+              <GalleryStorageManagement />
             </TabsContent>
             <TabsContent value="payout-invoices">
               <PayoutInvoiceManagement organizations={tenantsList} />

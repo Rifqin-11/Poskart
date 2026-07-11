@@ -42,7 +42,13 @@ SUPABASE_SERVICE_ROLE_KEY=
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
+PAYMENT_CREDENTIALS_SECRET=
 ```
+
+`CLOUDINARY_*` is now only required when Cloudinary remains the active gallery
+storage provider or as a legacy fallback. If Super Admin selects ImageKit, the
+worker reads encrypted ImageKit credentials from `app_configs` and uses
+`PAYMENT_CREDENTIALS_SECRET` to decrypt them.
 
 Optional tuning:
 

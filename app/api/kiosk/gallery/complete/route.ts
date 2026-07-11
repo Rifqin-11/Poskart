@@ -5,6 +5,10 @@ import {
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
 import { getPublicGalleryUrl } from "@/lib/gallery/urls";
+import {
+  normalizeProvider,
+  type GalleryStorageProvider,
+} from "@/lib/gallery/storage-provider";
 
 type UploadedAsset = {
   kind?: "raw" | "framed";
@@ -16,6 +20,7 @@ type UploadedAsset = {
   bytes?: number;
   format?: string;
   resourceType?: "image" | "video";
+  storageProvider?: GalleryStorageProvider;
 };
 
 type CompleteBody = {
@@ -103,12 +108,15 @@ export async function POST(request: Request) {
       .from("gallery_photos")
       .upsert(
         assets.map((asset) => ({
+          storage_provider: normalizeProvider(asset.storageProvider),
           session_id: sessionId,
           organization_id: context.organizationId,
           kind: asset.kind,
           photo_index: Math.max(0, asset.photoIndex ?? 0),
           cloudinary_public_id: asset.publicId!.trim(),
+          provider_public_id: asset.publicId!.trim(),
           secure_url: asset.secureUrl!.trim(),
+          resource_type: asset.resourceType === "video" ? "video" : "image",
           width: asset.width ?? null,
           height: asset.height ?? null,
           bytes: asset.bytes ?? null,

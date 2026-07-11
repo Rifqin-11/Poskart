@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createDecipheriv, createHash, createHmac, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
@@ -43,9 +43,9 @@ const WORKER_ID =
 
 const supabaseUrl = requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
 const supabaseServiceKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
-const cloudinaryCloudName = requiredEnv("CLOUDINARY_CLOUD_NAME");
-const cloudinaryApiKey = requiredEnv("CLOUDINARY_API_KEY");
-const cloudinaryApiSecret = requiredEnv("CLOUDINARY_API_SECRET");
+const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim() ?? "";
+const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY?.trim() ?? "";
+const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET?.trim() ?? "";
 const supabaseOrigin = new URL(supabaseUrl).origin;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
@@ -110,7 +110,7 @@ async function processJob(job) {
     });
     const outputPath = path.join(workDir, "framed-live-photo.mp4");
     await encodeMp4(renderedFramePaths, outputPath);
-    const upload = await uploadToCloudinary({
+    const upload = await uploadToGalleryProvider({
       filePath: outputPath,
       organizationId: job.organization_id,
       sessionId: job.session_id,
@@ -140,7 +140,7 @@ function normalizeSourceAssets(value) {
     .filter(
       (asset) =>
         asset.slotIndex >= 0 &&
-        isAllowedCloudinaryUrl(asset.secureUrl) &&
+        isAllowedGallerySourceUrl(asset.secureUrl) &&
         (asset.bytes === null || asset.bytes <= MAX_SOURCE_BYTES),
     )
     .sort((left, right) => left.slotIndex - right.slotIndex);
@@ -620,32 +620,88 @@ async function encodeMp4(framePaths, outputPath) {
   ]);
 }
 
-async function uploadToCloudinary({ filePath, organizationId, sessionId }) {
+async function uploadToGalleryProvider({ filePath, organizationId, sessionId }) {
+  const config = await resolveGalleryStorageConfig();
+  if (config.provider === "imagekit") {
+    return uploadToImageKit({ filePath, organizationId, sessionId, config });
+  }
+
+  return uploadToCloudinary({ filePath, organizationId, sessionId, config });
+}
+
+async function uploadToCloudinary({ filePath, organizationId, sessionId, config }) {
   const timestamp = Math.floor(Date.now() / 1000);
   const folder = ["poskart", safeSegment(organizationId), safeSegment(sessionId)].join("/");
   const publicId = "framed-live-photo";
   const signaturePayload = `folder=${folder}&public_id=${publicId}&timestamp=${timestamp}`;
   const signature = createHash("sha1")
-    .update(`${signaturePayload}${cloudinaryApiSecret}`)
+    .update(`${signaturePayload}${config.apiSecret}`)
     .digest("hex");
   const bytes = await readFile(filePath);
   const formData = new FormData();
   formData.append("file", new Blob([bytes], { type: "video/mp4" }), "framed-live-photo.mp4");
-  formData.append("api_key", cloudinaryApiKey);
+  formData.append("api_key", config.apiKey);
   formData.append("timestamp", `${timestamp}`);
   formData.append("folder", folder);
   formData.append("public_id", publicId);
   formData.append("signature", signature);
 
   const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/video/upload`,
+    `https://api.cloudinary.com/v1_1/${config.cloudName}/video/upload`,
     { method: "POST", body: formData },
   );
   const result = await response.json();
   if (!response.ok || !result.secure_url) {
     throw new Error(`Cloudinary upload failed: ${JSON.stringify(result)}`);
   }
-  return result;
+  return {
+    provider: "cloudinary",
+    publicId: result.public_id,
+    secureUrl: result.secure_url,
+    width: result.width ?? null,
+    height: result.height ?? null,
+    bytes: result.bytes ?? null,
+    format: result.format ?? "mp4",
+    resourceType: "video",
+  };
+}
+
+async function uploadToImageKit({ filePath, organizationId, sessionId, config }) {
+  const bytes = await readFile(filePath);
+  const folder = ["/poskart", safeSegment(organizationId), safeSegment(sessionId)].join("/");
+  const token = randomUUID();
+  const expire = Math.floor(Date.now() / 1000) + 30 * 60;
+  const signature = createHmac("sha1", config.privateKey)
+    .update(`${token}${expire}`)
+    .digest("hex");
+  const formData = new FormData();
+  formData.append("file", new Blob([bytes], { type: "video/mp4" }), "framed-live-photo.mp4");
+  formData.append("fileName", "framed-live-photo.mp4");
+  formData.append("publicKey", config.publicKey);
+  formData.append("signature", signature);
+  formData.append("expire", `${expire}`);
+  formData.append("token", token);
+  formData.append("folder", folder);
+  formData.append("useUniqueFileName", "false");
+
+  const response = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
+    method: "POST",
+    body: formData,
+  });
+  const result = await response.json();
+  if (!response.ok || !result.url || !result.fileId) {
+    throw new Error(`ImageKit upload failed: ${JSON.stringify(result)}`);
+  }
+  return {
+    provider: "imagekit",
+    publicId: result.fileId,
+    secureUrl: result.url,
+    width: result.width ?? null,
+    height: result.height ?? null,
+    bytes: result.size ?? null,
+    format: "mp4",
+    resourceType: "video",
+  };
 }
 
 async function saveOutput(job, upload) {
@@ -656,8 +712,11 @@ async function saveOutput(job, upload) {
       organization_id: job.organization_id,
       kind: "framed",
       photo_index: 1,
-      cloudinary_public_id: upload.public_id,
-      secure_url: upload.secure_url,
+      storage_provider: upload.provider,
+      cloudinary_public_id: upload.publicId,
+      provider_public_id: upload.publicId,
+      secure_url: upload.secureUrl,
+      resource_type: upload.resourceType,
       width: upload.width ?? null,
       height: upload.height ?? null,
       bytes: upload.bytes ?? null,
@@ -671,8 +730,8 @@ async function saveOutput(job, upload) {
     .from("live_photo_render_jobs")
     .update({
       status: "succeeded",
-      output_public_id: upload.public_id,
-      output_secure_url: upload.secure_url,
+      output_public_id: upload.publicId,
+      output_secure_url: upload.secureUrl,
       output_width: upload.width ?? null,
       output_height: upload.height ?? null,
       output_bytes: upload.bytes ?? null,
@@ -747,14 +806,31 @@ function isAllowedCloudinaryUrl(value) {
     const url = new URL(value);
     if (url.protocol !== "https:") return false;
     if (url.hostname !== "res.cloudinary.com") return false;
+    if (!cloudinaryCloudName) return true;
     return url.pathname.startsWith(`/${cloudinaryCloudName}/`);
   } catch {
     return false;
   }
 }
 
+function isAllowedGallerySourceUrl(value) {
+  return isAllowedCloudinaryUrl(value) || isAllowedImageKitUrl(value);
+}
+
+function isAllowedImageKitUrl(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    const endpoint = process.env.IMAGEKIT_URL_ENDPOINT?.trim();
+    if (!endpoint) return url.hostname.endsWith("imagekit.io");
+    return url.hostname === new URL(endpoint).hostname;
+  } catch {
+    return false;
+  }
+}
+
 function isAllowedImageNodeUrl(value) {
-  return isAllowedCloudinaryUrl(value) || isAllowedSupabaseBuilderAssetUrl(value);
+  return isAllowedGallerySourceUrl(value) || isAllowedSupabaseBuilderAssetUrl(value);
 }
 
 function isAllowedSupabaseBuilderAssetUrl(value) {
@@ -766,6 +842,71 @@ function isAllowedSupabaseBuilderAssetUrl(value) {
   } catch {
     return false;
   }
+}
+
+async function resolveGalleryStorageConfig() {
+  const { data, error } = await supabase
+    .from("app_configs")
+    .select(
+      "gallery_storage_provider,gallery_imagekit_public_key,gallery_imagekit_private_key_ciphertext,gallery_imagekit_private_key_iv,gallery_imagekit_private_key_tag,gallery_imagekit_url_endpoint,gallery_cloudinary_cloud_name,gallery_cloudinary_api_key,gallery_cloudinary_api_secret_ciphertext,gallery_cloudinary_api_secret_iv,gallery_cloudinary_api_secret_tag",
+    )
+    .eq("id", "default")
+    .maybeSingle();
+
+  if (error && error.code !== "42703") {
+    throw new Error(`Unable to load gallery storage config: ${error.message}`);
+  }
+
+  if (data?.gallery_storage_provider === "imagekit") {
+    const privateKey = decryptStoredCredential({
+      ciphertext: data.gallery_imagekit_private_key_ciphertext,
+      iv: data.gallery_imagekit_private_key_iv,
+      tag: data.gallery_imagekit_private_key_tag,
+    });
+    const publicKey = data.gallery_imagekit_public_key?.trim() ?? "";
+    const urlEndpoint = data.gallery_imagekit_url_endpoint?.trim() ?? "";
+    if (!publicKey || !privateKey || !urlEndpoint) {
+      throw new Error("ImageKit gallery storage is not configured.");
+    }
+    return {
+      provider: "imagekit",
+      publicKey,
+      privateKey,
+      urlEndpoint: urlEndpoint.replace(/\/+$/, ""),
+    };
+  }
+
+  const apiSecret =
+    decryptStoredCredential({
+      ciphertext: data?.gallery_cloudinary_api_secret_ciphertext,
+      iv: data?.gallery_cloudinary_api_secret_iv,
+      tag: data?.gallery_cloudinary_api_secret_tag,
+    }) ?? cloudinaryApiSecret;
+  const cloudName = data?.gallery_cloudinary_cloud_name?.trim() || cloudinaryCloudName;
+  const apiKey = data?.gallery_cloudinary_api_key?.trim() || cloudinaryApiKey;
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error("Cloudinary gallery storage is not configured.");
+  }
+  return { provider: "cloudinary", cloudName, apiKey, apiSecret };
+}
+
+function decryptStoredCredential(row) {
+  if (!row?.ciphertext || !row.iv || !row.tag) return null;
+  const secret = process.env.PAYMENT_CREDENTIALS_SECRET?.trim();
+  if (!secret || secret.length < 24) {
+    throw new Error("PAYMENT_CREDENTIALS_SECRET is required to decrypt gallery storage credentials.");
+  }
+  const key = createHash("sha256").update(secret).digest();
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    key,
+    Buffer.from(row.iv, "base64"),
+  );
+  decipher.setAuthTag(Buffer.from(row.tag, "base64"));
+  return Buffer.concat([
+    decipher.update(Buffer.from(row.ciphertext, "base64")),
+    decipher.final(),
+  ]).toString("utf8");
 }
 
 function isImagePath(filePath) {

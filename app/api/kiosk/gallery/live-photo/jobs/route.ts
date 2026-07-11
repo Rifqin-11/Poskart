@@ -5,6 +5,7 @@ import {
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
 import { getPublicGalleryUrl } from "@/lib/gallery/urls";
+import { normalizeProvider, type GalleryStorageProvider } from "@/lib/gallery/storage-provider";
 
 type LivePhotoSourceAsset = {
   slotIndex?: number;
@@ -14,6 +15,7 @@ type LivePhotoSourceAsset = {
   height?: number;
   bytes?: number;
   format?: string;
+  storageProvider?: GalleryStorageProvider;
   mirrorHorizontal?: boolean;
 };
 
@@ -95,6 +97,7 @@ export async function POST(request: Request) {
             height: asset.height ?? null,
             bytes: asset.bytes ?? null,
             format: asset.format?.trim() || null,
+            storageProvider: normalizeProvider(asset.storageProvider),
             mirrorHorizontal: asset.mirrorHorizontal === true,
           })),
           status: "queued",
@@ -130,7 +133,7 @@ export async function POST(request: Request) {
 
 function isAllowedSourceAsset(asset: LivePhotoSourceAsset) {
   const secureUrl = asset.secureUrl?.trim();
-  if (!secureUrl || !isAllowedCloudinaryUrl(secureUrl)) return false;
+  if (!secureUrl || !isAllowedGallerySourceUrl(secureUrl)) return false;
 
   const bytes = Number(asset.bytes ?? 0);
   if (Number.isFinite(bytes) && bytes > MAX_LIVE_PHOTO_SOURCE_BYTES) {
@@ -142,6 +145,10 @@ function isAllowedSourceAsset(asset: LivePhotoSourceAsset) {
   return ["mp4", "mov", "webm", "jpg", "jpeg", "png", "webp"].includes(format);
 }
 
+function isAllowedGallerySourceUrl(value: string) {
+  return isAllowedCloudinaryUrl(value) || isAllowedImageKitUrl(value);
+}
+
 function isAllowedCloudinaryUrl(value: string) {
   try {
     const url = new URL(value);
@@ -151,6 +158,23 @@ function isAllowedCloudinaryUrl(value: string) {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
     if (!cloudName) return true;
     return url.pathname.startsWith(`/${cloudName}/`);
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedImageKitUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+
+    const endpoint = process.env.IMAGEKIT_URL_ENDPOINT?.trim();
+    if (endpoint) {
+      const expected = new URL(endpoint);
+      return url.hostname === expected.hostname;
+    }
+
+    return url.hostname.endsWith("imagekit.io");
   } catch {
     return false;
   }

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { deleteCloudinaryAssets } from "@/lib/cloudinary/server";
+import { deleteGalleryAssets } from "@/lib/gallery/storage-provider";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const CONFIG_ID = "default";
@@ -108,23 +108,15 @@ export async function cleanupExpiredGalleryAssets(): Promise<CleanupResult> {
 
   const { data: photos, error: photosError } = await supabase
     .from("gallery_photos")
-    .select("cloudinary_public_id")
+    .select("storage_provider,provider_public_id,cloudinary_public_id")
     .in("session_id", sessionIds);
 
   if (photosError) {
     throw new Error(`Unable to load expired gallery photos: ${photosError.message}`);
   }
 
-  const publicIds = Array.from(
-    new Set(
-      (photos ?? [])
-        .map((photo) => photo.cloudinary_public_id)
-        .filter((publicId): publicId is string => Boolean(publicId)),
-    ),
-  );
-
-  if (publicIds.length > 0) {
-    await deleteCloudinaryAssets(publicIds);
+  if ((photos ?? []).length > 0) {
+    await deleteGalleryAssets(photos ?? []);
   }
 
   const { error: deleteError } = await supabase
@@ -142,7 +134,7 @@ export async function cleanupExpiredGalleryAssets(): Promise<CleanupResult> {
     cutoff,
     retentionDays: cloudinaryRetentionDays,
     sessionCount: sessionIds.length,
-    assetCount: publicIds.length,
+    assetCount: (photos ?? []).length,
     deletedSessionIds: sessionIds,
     ...orphanCleanup,
   };

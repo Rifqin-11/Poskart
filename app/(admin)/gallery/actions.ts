@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { deleteCloudinaryAssets } from "@/lib/cloudinary/server";
+import { deleteGalleryAssets } from "@/lib/gallery/storage-provider";
 
 export async function deleteGallerySession(sessionId: string) {
   const supabase = await createClient();
@@ -28,7 +28,7 @@ export async function deleteGallerySession(sessionId: string) {
     throw new Error("No organization connection");
   }
 
-  // Verify the session belongs to the user's organization and fetch its photos' cloudinary public IDs
+  // Verify the session belongs to the user's organization and fetch its storage IDs.
   const { data: session } = await supabase
     .from("gallery_sessions")
     .select("id")
@@ -42,14 +42,11 @@ export async function deleteGallerySession(sessionId: string) {
 
   const { data: photos } = await supabase
     .from("gallery_photos")
-    .select("cloudinary_public_id")
+    .select("storage_provider,provider_public_id,cloudinary_public_id")
     .eq("session_id", sessionId);
 
-  const publicIds = (photos ?? []).map((p) => p.cloudinary_public_id);
-
-  // Delete from Cloudinary first
-  if (publicIds.length > 0) {
-    await deleteCloudinaryAssets(publicIds);
+  if ((photos ?? []).length > 0) {
+    await deleteGalleryAssets(photos ?? []);
   }
 
   // Delete session from Supabase (cascades to gallery_photos)

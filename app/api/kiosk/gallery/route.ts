@@ -4,7 +4,7 @@ import {
   requireKioskContext,
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
-import { deleteCloudinaryAssets } from "@/lib/cloudinary/server";
+import { deleteGalleryAssets } from "@/lib/gallery/storage-provider";
 import {
   isDisplayableGalleryPhoto,
   shouldShowGallerySession,
@@ -150,19 +150,14 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Fetch photo cloudinary public IDs
+    // Fetch photo storage IDs
     const { data: photos } = await context.client
       .from("gallery_photos")
-      .select("cloudinary_public_id")
+      .select("storage_provider,provider_public_id,cloudinary_public_id")
       .eq("session_id", sessionId);
 
-    const publicIds = (photos ?? [])
-      .map((p) => p.cloudinary_public_id)
-      .filter(Boolean);
-
-    // Delete from Cloudinary
-    if (publicIds.length > 0) {
-      await deleteCloudinaryAssets(publicIds);
+    if ((photos ?? []).length > 0) {
+      await deleteGalleryAssets(photos ?? []);
     }
 
     // Delete session (cascades to gallery_photos)

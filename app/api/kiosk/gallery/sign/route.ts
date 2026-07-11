@@ -1,7 +1,7 @@
 import {
-  createCloudinaryUploadSignatures,
-  type CloudinaryUploadDescriptor,
-} from "@/lib/cloudinary/server";
+  createGalleryUploadSignatures,
+  type GalleryUploadDescriptor,
+} from "@/lib/gallery/storage-provider";
 import { getPublicGalleryUrl } from "@/lib/gallery/urls";
 import {
   jsonError,
@@ -17,7 +17,7 @@ type SignBody = {
   themeName?: string;
   socialMediaConsent?: boolean;
   testMode?: boolean;
-  files?: CloudinaryUploadDescriptor[];
+  files?: GalleryUploadDescriptor[];
 };
 
 export async function POST(request: Request) {
@@ -78,11 +78,11 @@ export async function POST(request: Request) {
     }
 
     return jsonOk({
-      ...createCloudinaryUploadSignatures({
+      ...(await createGalleryUploadSignatures({
         organizationId: context.organizationId,
         sessionId,
         files,
-      }),
+      })),
       shareUrl,
     });
   } catch (error) {
