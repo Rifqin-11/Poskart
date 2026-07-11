@@ -532,6 +532,7 @@ export async function buildKioskBootstrap(
           watermarkEnabled: config.watermark_enabled ?? null,
           maintenanceMode: config.maintenance_mode ?? false,
           qrisAutoRetry: config.qris_auto_retry ?? null,
+          galleryStorageProvider: config.gallery_storage_provider ?? "cloudinary",
         }
       : null,
     layoutSchema: layout?.schema
