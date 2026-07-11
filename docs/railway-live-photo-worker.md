@@ -42,13 +42,15 @@ SUPABASE_SERVICE_ROLE_KEY=
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
-PAYMENT_CREDENTIALS_SECRET=
+IMAGEKIT_PUBLIC_KEY=
+IMAGEKIT_PRIVATE_KEY=
+IMAGEKIT_URL_ENDPOINT=
 ```
 
-`CLOUDINARY_*` is now only required when Cloudinary remains the active gallery
-storage provider or as a legacy fallback. If Super Admin selects ImageKit, the
-worker reads encrypted ImageKit credentials from `app_configs` and uses
-`PAYMENT_CREDENTIALS_SECRET` to decrypt them.
+`CLOUDINARY_*` is required when Cloudinary is the active gallery storage
+provider. `IMAGEKIT_*` is required when Super Admin selects ImageKit. The worker
+reads only the active provider from `app_configs`; provider secrets stay in
+Railway/Vercel environment variables.
 
 Optional tuning:
 

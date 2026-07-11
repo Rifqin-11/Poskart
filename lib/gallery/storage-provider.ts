@@ -4,11 +4,6 @@ import crypto from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { deleteCloudinaryAssets } from "@/lib/cloudinary/server";
-import {
-  decryptCredential,
-  encryptCredential,
-  type EncryptedSecret,
-} from "@/lib/security/credentials";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { KioskApiError } from "@/lib/kiosk/server";
 
@@ -26,135 +21,80 @@ export type GalleryUploadDescriptor = {
 
 type GalleryStorageConfigRow = {
   gallery_storage_provider: string | null;
-  gallery_imagekit_public_key: string | null;
-  gallery_imagekit_private_key_ciphertext: string | null;
-  gallery_imagekit_private_key_iv: string | null;
-  gallery_imagekit_private_key_tag: string | null;
-  gallery_imagekit_private_key_last4: string | null;
-  gallery_imagekit_url_endpoint: string | null;
-  gallery_cloudinary_cloud_name: string | null;
-  gallery_cloudinary_api_key: string | null;
-  gallery_cloudinary_api_secret_ciphertext: string | null;
-  gallery_cloudinary_api_secret_iv: string | null;
-  gallery_cloudinary_api_secret_tag: string | null;
-  gallery_cloudinary_api_secret_last4: string | null;
 };
 
 export type GalleryStorageSummary = {
   provider: GalleryStorageProvider;
   imagekit: {
-    publicKey: string;
-    urlEndpoint: string;
-    hasPrivateKey: boolean;
-    privateKeyLast4: string | null;
+    configured: boolean;
+    publicKeyLast4: string | null;
+    urlEndpoint: string | null;
   };
   cloudinary: {
-    cloudName: string;
-    apiKey: string;
-    hasApiSecret: boolean;
+    configured: boolean;
+    cloudName: string | null;
+    apiKeyLast4: string | null;
     apiSecretLast4: string | null;
-    usingEnvFallback: boolean;
   };
 };
 
 export type SaveGalleryStorageInput = {
   provider: GalleryStorageProvider;
-  imagekit?: {
-    publicKey?: string;
-    privateKey?: string;
-    urlEndpoint?: string;
-  };
-  cloudinary?: {
-    cloudName?: string;
-    apiKey?: string;
-    apiSecret?: string;
-  };
 };
 
 export async function getGalleryStorageSummary(): Promise<GalleryStorageSummary> {
   const supabase = createSupabaseAdminClient();
   const row = await getGalleryStorageConfigRow(supabase);
   const cloudinaryEnv = getCloudinaryEnvConfig();
+  const imageKitEnv = getImageKitEnvConfig();
 
   return {
     provider: normalizeProvider(row?.gallery_storage_provider),
     imagekit: {
-      publicKey: row?.gallery_imagekit_public_key ?? "",
-      urlEndpoint: row?.gallery_imagekit_url_endpoint ?? "",
-      hasPrivateKey: Boolean(row?.gallery_imagekit_private_key_last4),
-      privateKeyLast4: row?.gallery_imagekit_private_key_last4 ?? null,
+      configured: Boolean(
+        imageKitEnv.publicKey && imageKitEnv.privateKey && imageKitEnv.urlEndpoint,
+      ),
+      publicKeyLast4: imageKitEnv.publicKey?.slice(-4) ?? null,
+      urlEndpoint: imageKitEnv.urlEndpoint,
     },
     cloudinary: {
-      cloudName: row?.gallery_cloudinary_cloud_name ?? cloudinaryEnv.cloudName ?? "",
-      apiKey: row?.gallery_cloudinary_api_key ?? cloudinaryEnv.apiKey ?? "",
-      hasApiSecret: Boolean(
-        row?.gallery_cloudinary_api_secret_last4 || cloudinaryEnv.apiSecret,
+      configured: Boolean(
+        cloudinaryEnv.cloudName && cloudinaryEnv.apiKey && cloudinaryEnv.apiSecret,
       ),
-      apiSecretLast4:
-        row?.gallery_cloudinary_api_secret_last4 ??
-        cloudinaryEnv.apiSecret?.slice(-4) ??
-        null,
-      usingEnvFallback: !row?.gallery_cloudinary_api_secret_last4,
+      cloudName: cloudinaryEnv.cloudName,
+      apiKeyLast4: cloudinaryEnv.apiKey?.slice(-4) ?? null,
+      apiSecretLast4: cloudinaryEnv.apiSecret?.slice(-4) ?? null,
     },
   };
 }
 
 export async function saveGalleryStorageSettings(input: SaveGalleryStorageInput) {
   const supabase = createSupabaseAdminClient();
-  const existing = await getGalleryStorageConfigRow(supabase);
   const provider = normalizeProvider(input.provider);
-  const imagekitPrivateKey = input.imagekit?.privateKey?.trim() ?? "";
-  const cloudinaryApiSecret = input.cloudinary?.apiSecret?.trim() ?? "";
-  const imagekitSecret = imagekitPrivateKey
-    ? encryptCredential(imagekitPrivateKey)
-    : existing
-      ? existingSecret(existing, "gallery_imagekit_private_key")
-      : null;
-  const cloudinarySecret = cloudinaryApiSecret
-    ? encryptCredential(cloudinaryApiSecret)
-    : existing
-      ? existingSecret(existing, "gallery_cloudinary_api_secret")
-      : null;
 
   if (provider === "imagekit") {
-    if (!input.imagekit?.publicKey?.trim()) {
-      throw new Error("ImageKit public key is required.");
-    }
-    if (!input.imagekit?.urlEndpoint?.trim()) {
-      throw new Error("ImageKit URL endpoint is required.");
-    }
-    if (!imagekitSecret?.ciphertext) {
-      throw new Error("ImageKit private key is required.");
+    const env = getImageKitEnvConfig();
+    if (!env.publicKey || !env.privateKey || !env.urlEndpoint) {
+      throw new Error(
+        "ImageKit env is incomplete. Set IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, and IMAGEKIT_URL_ENDPOINT.",
+      );
     }
   }
 
   if (provider === "cloudinary") {
     const env = getCloudinaryEnvConfig();
-    if (!input.cloudinary?.cloudName?.trim() && !env.cloudName) {
-      throw new Error("Cloudinary cloud name is required.");
-    }
-    if (!input.cloudinary?.apiKey?.trim() && !env.apiKey) {
-      throw new Error("Cloudinary API key is required.");
-    }
-    if (!cloudinarySecret?.ciphertext && !env.apiSecret) {
-      throw new Error("Cloudinary API secret is required.");
+    if (!env.cloudName || !env.apiKey || !env.apiSecret) {
+      throw new Error(
+        "Cloudinary env is incomplete. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.",
+      );
     }
   }
 
   const payload: Record<string, unknown> = {
     id: CONFIG_ID,
     gallery_storage_provider: provider,
-    gallery_imagekit_public_key: input.imagekit?.publicKey?.trim() ?? "",
-    gallery_imagekit_url_endpoint: normalizeImageKitEndpoint(
-      input.imagekit?.urlEndpoint,
-    ),
-    gallery_cloudinary_cloud_name: input.cloudinary?.cloudName?.trim() ?? "",
-    gallery_cloudinary_api_key: input.cloudinary?.apiKey?.trim() ?? "",
     updated_at: new Date().toISOString(),
   };
-
-  applySecretPayload(payload, "gallery_imagekit_private_key", imagekitSecret);
-  applySecretPayload(payload, "gallery_cloudinary_api_secret", cloudinarySecret);
 
   const { error } = await supabase.from("app_configs").upsert(payload);
   if (error) throw new Error(`Unable to save gallery storage: ${error.message}`);
@@ -347,42 +287,36 @@ async function resolveActiveStorageConfig(): Promise<
   const provider = normalizeProvider(row?.gallery_storage_provider);
 
   if (provider === "imagekit") {
-    const privateKey = decryptCredential({
-      ciphertext: row?.gallery_imagekit_private_key_ciphertext ?? null,
-      iv: row?.gallery_imagekit_private_key_iv ?? null,
-      tag: row?.gallery_imagekit_private_key_tag ?? null,
-    });
-    const publicKey = row?.gallery_imagekit_public_key?.trim() ?? "";
-    const urlEndpoint = normalizeImageKitEndpoint(
-      row?.gallery_imagekit_url_endpoint,
-    );
-    if (!publicKey || !privateKey || !urlEndpoint) {
+    const env = getImageKitEnvConfig();
+    if (!env.publicKey || !env.privateKey || !env.urlEndpoint) {
       throw new KioskApiError(
         "ImageKit gallery storage is not configured.",
         503,
         "IMAGEKIT_NOT_CONFIGURED",
       );
     }
-    return { provider: "imagekit", publicKey, privateKey, urlEndpoint };
+    return {
+      provider: "imagekit",
+      publicKey: env.publicKey,
+      privateKey: env.privateKey,
+      urlEndpoint: env.urlEndpoint,
+    };
   }
 
   const env = getCloudinaryEnvConfig();
-  const apiSecret =
-    decryptCredential({
-      ciphertext: row?.gallery_cloudinary_api_secret_ciphertext ?? null,
-      iv: row?.gallery_cloudinary_api_secret_iv ?? null,
-      tag: row?.gallery_cloudinary_api_secret_tag ?? null,
-    }) ?? env.apiSecret;
-  const cloudName = row?.gallery_cloudinary_cloud_name?.trim() || env.cloudName;
-  const apiKey = row?.gallery_cloudinary_api_key?.trim() || env.apiKey;
-  if (!cloudName || !apiKey || !apiSecret) {
+  if (!env.cloudName || !env.apiKey || !env.apiSecret) {
     throw new KioskApiError(
       "Cloudinary gallery storage is not configured.",
       503,
       "CLOUDINARY_NOT_CONFIGURED",
     );
   }
-  return { provider: "cloudinary", cloudName, apiKey, apiSecret };
+  return {
+    provider: "cloudinary",
+    cloudName: env.cloudName,
+    apiKey: env.apiKey,
+    apiSecret: env.apiSecret,
+  };
 }
 
 async function deleteImageKitAssets(fileIds: string[]) {
@@ -413,29 +347,22 @@ async function deleteImageKitAssets(fileIds: string[]) {
 }
 
 async function resolveImageKitDeleteConfig(): Promise<ResolvedImageKitConfig> {
-  const supabase = createSupabaseAdminClient();
-  const row = await getGalleryStorageConfigRow(supabase);
-  const privateKey = decryptCredential({
-    ciphertext: row?.gallery_imagekit_private_key_ciphertext ?? null,
-    iv: row?.gallery_imagekit_private_key_iv ?? null,
-    tag: row?.gallery_imagekit_private_key_tag ?? null,
-  });
-  const publicKey = row?.gallery_imagekit_public_key?.trim() ?? "";
-  const urlEndpoint = normalizeImageKitEndpoint(
-    row?.gallery_imagekit_url_endpoint,
-  );
-  if (!publicKey || !privateKey || !urlEndpoint) {
+  const env = getImageKitEnvConfig();
+  if (!env.publicKey || !env.privateKey || !env.urlEndpoint) {
     throw new Error("ImageKit gallery storage is not configured.");
   }
-  return { provider: "imagekit", publicKey, privateKey, urlEndpoint };
+  return {
+    provider: "imagekit",
+    publicKey: env.publicKey,
+    privateKey: env.privateKey,
+    urlEndpoint: env.urlEndpoint,
+  };
 }
 
 async function getGalleryStorageConfigRow(client: SupabaseClient) {
   const { data, error } = await client
     .from("app_configs")
-    .select(
-      "gallery_storage_provider,gallery_imagekit_public_key,gallery_imagekit_private_key_ciphertext,gallery_imagekit_private_key_iv,gallery_imagekit_private_key_tag,gallery_imagekit_private_key_last4,gallery_imagekit_url_endpoint,gallery_cloudinary_cloud_name,gallery_cloudinary_api_key,gallery_cloudinary_api_secret_ciphertext,gallery_cloudinary_api_secret_iv,gallery_cloudinary_api_secret_tag,gallery_cloudinary_api_secret_last4",
-    )
+    .select("gallery_storage_provider")
     .eq("id", CONFIG_ID)
     .maybeSingle();
 
@@ -447,35 +374,19 @@ async function getGalleryStorageConfigRow(client: SupabaseClient) {
   return (data ?? null) as GalleryStorageConfigRow | null;
 }
 
-function existingSecret(
-  row: GalleryStorageConfigRow,
-  prefix: "gallery_imagekit_private_key" | "gallery_cloudinary_api_secret",
-): EncryptedSecret | null {
-  const ciphertext = row[`${prefix}_ciphertext`];
-  const iv = row[`${prefix}_iv`];
-  const tag = row[`${prefix}_tag`];
-  const last4 = row[`${prefix}_last4`];
-  if (!ciphertext || !iv || !tag || !last4) return null;
-  return { ciphertext, iv, tag, last4 };
-}
-
-function applySecretPayload(
-  payload: Record<string, unknown>,
-  prefix: "gallery_imagekit_private_key" | "gallery_cloudinary_api_secret",
-  secret: EncryptedSecret | null,
-) {
-  if (!secret) return;
-  payload[`${prefix}_ciphertext`] = secret.ciphertext;
-  payload[`${prefix}_iv`] = secret.iv;
-  payload[`${prefix}_tag`] = secret.tag;
-  payload[`${prefix}_last4`] = secret.last4;
-}
-
 function getCloudinaryEnvConfig() {
   return {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME?.trim() || null,
     apiKey: process.env.CLOUDINARY_API_KEY?.trim() || null,
     apiSecret: process.env.CLOUDINARY_API_SECRET?.trim() || null,
+  };
+}
+
+function getImageKitEnvConfig() {
+  return {
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY?.trim() || null,
+    privateKey: process.env.IMAGEKIT_PRIVATE_KEY?.trim() || null,
+    urlEndpoint: normalizeImageKitEndpoint(process.env.IMAGEKIT_URL_ENDPOINT),
   };
 }
 

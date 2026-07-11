@@ -1,4 +1,4 @@
-import { createDecipheriv, createHash, createHmac, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
@@ -46,6 +46,11 @@ const supabaseServiceKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
 const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim() ?? "";
 const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY?.trim() ?? "";
 const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET?.trim() ?? "";
+const imageKitPublicKey = process.env.IMAGEKIT_PUBLIC_KEY?.trim() ?? "";
+const imageKitPrivateKey = process.env.IMAGEKIT_PRIVATE_KEY?.trim() ?? "";
+const imageKitUrlEndpoint = normalizeImageKitEndpoint(
+  process.env.IMAGEKIT_URL_ENDPOINT,
+);
 const supabaseOrigin = new URL(supabaseUrl).origin;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
@@ -847,9 +852,7 @@ function isAllowedSupabaseBuilderAssetUrl(value) {
 async function resolveGalleryStorageConfig() {
   const { data, error } = await supabase
     .from("app_configs")
-    .select(
-      "gallery_storage_provider,gallery_imagekit_public_key,gallery_imagekit_private_key_ciphertext,gallery_imagekit_private_key_iv,gallery_imagekit_private_key_tag,gallery_imagekit_url_endpoint,gallery_cloudinary_cloud_name,gallery_cloudinary_api_key,gallery_cloudinary_api_secret_ciphertext,gallery_cloudinary_api_secret_iv,gallery_cloudinary_api_secret_tag",
-    )
+    .select("gallery_storage_provider")
     .eq("id", "default")
     .maybeSingle();
 
@@ -858,55 +861,32 @@ async function resolveGalleryStorageConfig() {
   }
 
   if (data?.gallery_storage_provider === "imagekit") {
-    const privateKey = decryptStoredCredential({
-      ciphertext: data.gallery_imagekit_private_key_ciphertext,
-      iv: data.gallery_imagekit_private_key_iv,
-      tag: data.gallery_imagekit_private_key_tag,
-    });
-    const publicKey = data.gallery_imagekit_public_key?.trim() ?? "";
-    const urlEndpoint = data.gallery_imagekit_url_endpoint?.trim() ?? "";
-    if (!publicKey || !privateKey || !urlEndpoint) {
+    if (!imageKitPublicKey || !imageKitPrivateKey || !imageKitUrlEndpoint) {
       throw new Error("ImageKit gallery storage is not configured.");
     }
     return {
       provider: "imagekit",
-      publicKey,
-      privateKey,
-      urlEndpoint: urlEndpoint.replace(/\/+$/, ""),
+      publicKey: imageKitPublicKey,
+      privateKey: imageKitPrivateKey,
+      urlEndpoint: imageKitUrlEndpoint,
     };
   }
 
-  const apiSecret =
-    decryptStoredCredential({
-      ciphertext: data?.gallery_cloudinary_api_secret_ciphertext,
-      iv: data?.gallery_cloudinary_api_secret_iv,
-      tag: data?.gallery_cloudinary_api_secret_tag,
-    }) ?? cloudinaryApiSecret;
-  const cloudName = data?.gallery_cloudinary_cloud_name?.trim() || cloudinaryCloudName;
-  const apiKey = data?.gallery_cloudinary_api_key?.trim() || cloudinaryApiKey;
-  if (!cloudName || !apiKey || !apiSecret) {
+  if (!cloudinaryCloudName || !cloudinaryApiKey || !cloudinaryApiSecret) {
     throw new Error("Cloudinary gallery storage is not configured.");
   }
-  return { provider: "cloudinary", cloudName, apiKey, apiSecret };
+  return {
+    provider: "cloudinary",
+    cloudName: cloudinaryCloudName,
+    apiKey: cloudinaryApiKey,
+    apiSecret: cloudinaryApiSecret,
+  };
 }
 
-function decryptStoredCredential(row) {
-  if (!row?.ciphertext || !row.iv || !row.tag) return null;
-  const secret = process.env.PAYMENT_CREDENTIALS_SECRET?.trim();
-  if (!secret || secret.length < 24) {
-    throw new Error("PAYMENT_CREDENTIALS_SECRET is required to decrypt gallery storage credentials.");
-  }
-  const key = createHash("sha256").update(secret).digest();
-  const decipher = createDecipheriv(
-    "aes-256-gcm",
-    key,
-    Buffer.from(row.iv, "base64"),
-  );
-  decipher.setAuthTag(Buffer.from(row.tag, "base64"));
-  return Buffer.concat([
-    decipher.update(Buffer.from(row.ciphertext, "base64")),
-    decipher.final(),
-  ]).toString("utf8");
+function normalizeImageKitEndpoint(value) {
+  const endpoint = typeof value === "string" ? value.trim() : "";
+  if (!endpoint) return "";
+  return endpoint.replace(/\/+$/, "");
 }
 
 function isImagePath(filePath) {

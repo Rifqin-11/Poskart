@@ -19,34 +19,30 @@ type GalleryStorageProvider = "cloudinary" | "imagekit";
 type GalleryStorageSummary = {
   provider: GalleryStorageProvider;
   imagekit: {
-    publicKey: string;
-    urlEndpoint: string;
-    hasPrivateKey: boolean;
-    privateKeyLast4: string | null;
+    configured: boolean;
+    publicKeyLast4: string | null;
+    urlEndpoint: string | null;
   };
   cloudinary: {
-    cloudName: string;
-    apiKey: string;
-    hasApiSecret: boolean;
+    configured: boolean;
+    cloudName: string | null;
+    apiKeyLast4: string | null;
     apiSecretLast4: string | null;
-    usingEnvFallback: boolean;
   };
 };
 
 const EMPTY_SUMMARY: GalleryStorageSummary = {
   provider: "cloudinary",
   imagekit: {
-    publicKey: "",
-    urlEndpoint: "",
-    hasPrivateKey: false,
-    privateKeyLast4: null,
+    configured: false,
+    publicKeyLast4: null,
+    urlEndpoint: null,
   },
   cloudinary: {
-    cloudName: "",
-    apiKey: "",
-    hasApiSecret: false,
+    configured: false,
+    cloudName: null,
+    apiKeyLast4: null,
     apiSecretLast4: null,
-    usingEnvFallback: false,
   },
 };
 
@@ -54,16 +50,6 @@ export function GalleryStorageManagement() {
   const [summary, setSummary] = useState<GalleryStorageSummary>(EMPTY_SUMMARY);
   const [provider, setProvider] =
     useState<GalleryStorageProvider>("cloudinary");
-  const [imagekit, setImagekit] = useState({
-    publicKey: "",
-    privateKey: "",
-    urlEndpoint: "",
-  });
-  const [cloudinary, setCloudinary] = useState({
-    cloudName: "",
-    apiKey: "",
-    apiSecret: "",
-  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -91,16 +77,6 @@ export function GalleryStorageManagement() {
         if (!cancelled && payload && "provider" in payload) {
           setSummary(payload);
           setProvider(payload.provider);
-          setImagekit({
-            publicKey: payload.imagekit.publicKey,
-            privateKey: "",
-            urlEndpoint: payload.imagekit.urlEndpoint,
-          });
-          setCloudinary({
-            cloudName: payload.cloudinary.cloudName,
-            apiKey: payload.cloudinary.apiKey,
-            apiSecret: "",
-          });
         }
       } catch (error) {
         if (!cancelled) {
@@ -130,8 +106,6 @@ export function GalleryStorageManagement() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider,
-          imagekit,
-          cloudinary,
         }),
       });
       const payload = (await response.json().catch(() => null)) as
@@ -149,8 +123,6 @@ export function GalleryStorageManagement() {
 
       if (payload && "provider" in payload) {
         setSummary(payload);
-        setImagekit((draft) => ({ ...draft, privateKey: "" }));
-        setCloudinary((draft) => ({ ...draft, apiSecret: "" }));
       }
       toast.success("Gallery storage updated");
     } catch (error) {
@@ -190,86 +162,27 @@ export function GalleryStorageManagement() {
         </div>
 
         <div className="grid gap-4 xl:grid-cols-2">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-sm font-semibold text-zinc-950">
-              ImageKit credentials
-            </div>
-            <div className="mt-1 text-xs leading-5 text-zinc-500">
-              Required when ImageKit is the active provider.
-            </div>
-            <div className="mt-4 grid gap-3">
-              <Field
-                label="Public key"
-                value={imagekit.publicKey}
-                placeholder="public_xxxxx"
-                onChange={(value) =>
-                  setImagekit((draft) => ({ ...draft, publicKey: value }))
-                }
-              />
-              <Field
-                label="Private key"
-                type="password"
-                value={imagekit.privateKey}
-                placeholder={
-                  summary.imagekit.hasPrivateKey
-                    ? `Stored ••••${summary.imagekit.privateKeyLast4 ?? ""}`
-                    : "private_xxxxx"
-                }
-                onChange={(value) =>
-                  setImagekit((draft) => ({ ...draft, privateKey: value }))
-                }
-              />
-              <Field
-                label="URL endpoint"
-                value={imagekit.urlEndpoint}
-                placeholder="https://ik.imagekit.io/your_id"
-                onChange={(value) =>
-                  setImagekit((draft) => ({ ...draft, urlEndpoint: value }))
-                }
-              />
-            </div>
-          </div>
+          <ProviderStatusCard
+            title="ImageKit environment"
+            configured={summary.imagekit.configured}
+            description="Used when ImageKit is selected. Configure these in Vercel and Railway, not in the dashboard."
+            items={[
+              ["IMAGEKIT_PUBLIC_KEY", summary.imagekit.publicKeyLast4],
+              ["IMAGEKIT_PRIVATE_KEY", summary.imagekit.configured ? "set" : null],
+              ["IMAGEKIT_URL_ENDPOINT", summary.imagekit.urlEndpoint],
+            ]}
+          />
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-sm font-semibold text-zinc-950">
-              Cloudinary credentials
-            </div>
-            <div className="mt-1 text-xs leading-5 text-zinc-500">
-              Required when Cloudinary is the active provider. Env fallback can
-              keep legacy setup working.
-            </div>
-            <div className="mt-4 grid gap-3">
-              <Field
-                label="Cloud name"
-                value={cloudinary.cloudName}
-                placeholder="your-cloud-name"
-                onChange={(value) =>
-                  setCloudinary((draft) => ({ ...draft, cloudName: value }))
-                }
-              />
-              <Field
-                label="API key"
-                value={cloudinary.apiKey}
-                placeholder="1234567890"
-                onChange={(value) =>
-                  setCloudinary((draft) => ({ ...draft, apiKey: value }))
-                }
-              />
-              <Field
-                label="API secret"
-                type="password"
-                value={cloudinary.apiSecret}
-                placeholder={
-                  summary.cloudinary.hasApiSecret
-                    ? `Stored ••••${summary.cloudinary.apiSecretLast4 ?? ""}`
-                    : "cloudinary-api-secret"
-                }
-                onChange={(value) =>
-                  setCloudinary((draft) => ({ ...draft, apiSecret: value }))
-                }
-              />
-            </div>
-          </div>
+          <ProviderStatusCard
+            title="Cloudinary environment"
+            configured={summary.cloudinary.configured}
+            description="Used when Cloudinary is selected and for provider-specific asset deletion."
+            items={[
+              ["CLOUDINARY_CLOUD_NAME", summary.cloudinary.cloudName],
+              ["CLOUDINARY_API_KEY", summary.cloudinary.apiKeyLast4],
+              ["CLOUDINARY_API_SECRET", summary.cloudinary.apiSecretLast4],
+            ]}
+          />
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-6 text-zinc-600">
@@ -336,29 +249,54 @@ function StorageProviderCard({
   );
 }
 
-function Field({
-  label,
-  value,
-  placeholder,
-  type = "text",
-  onChange,
+function ProviderStatusCard({
+  title,
+  description,
+  configured,
+  items,
 }: {
-  label: string;
-  value: string;
-  placeholder: string;
-  type?: "text" | "password";
-  onChange: (value: string) => void;
+  title: string;
+  description: string;
+  configured: boolean;
+  items: Array<[string, string | null]>;
 }) {
   return (
-    <label className="grid gap-1.5 text-xs font-medium text-zinc-600">
-      {label}
-      <input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 rounded-full border border-zinc-200 bg-white px-4 text-sm text-zinc-950 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-400"
-      />
-    </label>
+    <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-zinc-950">{title}</div>
+          <div className="mt-1 text-xs leading-5 text-zinc-500">
+            {description}
+          </div>
+        </div>
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
+            configured
+              ? "bg-emerald-50 text-emerald-700"
+              : "bg-amber-50 text-amber-700",
+          )}
+        >
+          {configured ? "Configured" : "Incomplete"}
+        </span>
+      </div>
+      <div className="mt-4 grid gap-2">
+        {items.map(([label, value]) => (
+          <div
+            key={label}
+            className="flex items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-xs"
+          >
+            <span className="font-medium text-zinc-500">{label}</span>
+            <span className="truncate text-right font-semibold text-zinc-950">
+              {value ? maskValue(value) : "Missing"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
+}
+
+function maskValue(value: string) {
+  return value === "set" || value.startsWith("http") ? value : `••••${value}`;
 }
