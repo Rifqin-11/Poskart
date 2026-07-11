@@ -57,6 +57,32 @@ export async function POST(request: Request) {
 
     const shareUrl = getPublicGalleryUrl(sessionId);
     const now = new Date().toISOString();
+    const includesPrimaryFrame = assets.some(
+      (asset) => asset.kind === "framed" && asset.photoIndex === 0,
+    );
+
+    if (!includesPrimaryFrame) {
+      const { data: existingPrimaryFrame, error: existingFrameError } =
+        await context.client
+          .from("gallery_photos")
+          .select("id")
+          .eq("organization_id", context.organizationId)
+          .eq("session_id", sessionId)
+          .eq("kind", "framed")
+          .eq("photo_index", 0)
+          .maybeSingle();
+      if (existingFrameError) throw existingFrameError;
+      if (!existingPrimaryFrame) {
+        return jsonOk(
+          {
+            error:
+              "Primary framed photo is required before supplemental gallery assets.",
+            code: "KIOSK_GALLERY_PRIMARY_FRAME_REQUIRED",
+          },
+          { status: 409 },
+        );
+      }
+    }
 
     const { error: sessionError } = await context.client
       .from("gallery_sessions")

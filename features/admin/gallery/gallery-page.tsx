@@ -145,16 +145,35 @@ export async function GalleryPage() {
     },
     new Map(),
   );
+  const hasPrimaryFrameBySessionId = photoRows.reduce<Map<string, boolean>>(
+    (map, photo) => {
+      if (
+        photo.kind === "framed" &&
+        photo.photo_index === 0 &&
+        Boolean(photo.secure_url)
+      ) {
+        map.set(photo.session_id, true);
+      }
+      return map;
+    },
+    new Map(),
+  );
   const livePhotoJobBySessionId = new Map(
     livePhotoJobRows.map((job) => [job.session_id, job]),
   );
-  const visibleRows = enrichedRows.filter((session) =>
-    shouldShowGallerySession({
+  const visibleRows = enrichedRows.filter((session) => {
+    const livePhotoJob = livePhotoJobBySessionId.get(session.id);
+    const showSession = shouldShowGallerySession({
       session,
       photoCount: visiblePhotoCountBySessionId.get(session.id) ?? 0,
-      livePhotoJob: livePhotoJobBySessionId.get(session.id),
-    }),
-  );
+      livePhotoJob,
+    });
+    if (!showSession) return false;
+    return (
+      hasPrimaryFrameBySessionId.get(session.id) === true ||
+      isActiveLivePhotoJob(livePhotoJob)
+    );
+  });
 
   if (visibleRows.length === 0) {
     return (
