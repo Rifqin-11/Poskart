@@ -7,6 +7,10 @@ import {
 } from "@supabase/supabase-js";
 
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
+import {
+  collectAssetUrls,
+  getKioskAssetManifest,
+} from "@/lib/assets/asset-manifest";
 import { getPublicGalleryBaseUrl } from "@/lib/gallery/urls";
 import type { LayoutSchema } from "@/types/builder";
 
@@ -388,6 +392,7 @@ export async function buildKioskBootstrap(
     subscriptionResult,
     configResult,
     layoutsResult,
+    activeLayoutResult,
     themeResult,
     templatesResult,
     pricingResult,
@@ -407,14 +412,22 @@ export async function buildKioskBootstrap(
       .maybeSingle(),
     context.client
       .from("app_configs")
-      .select("*")
+      .select(
+        "id,merchant_name,qris_payload_prefix,countdown_duration_seconds,flash_duration_ms,auto_return_duration_seconds,default_template_id,printer_name,booth_timeout_seconds,download_expiry_hours,watermark_enabled,maintenance_mode,qris_auto_retry,gallery_storage_provider",
+      )
       .eq("id", "default")
       .maybeSingle(),
     context.client
       .from("layout_schemas")
-      .select("id,name,schema,is_active,status,updated_at")
+      .select("id,name,is_active,status,updated_at")
       .eq("organization_id", context.organizationId)
       .order("updated_at", { ascending: false }),
+    context.client
+      .from("layout_schemas")
+      .select("id,name,schema,is_active,status,updated_at")
+      .eq("organization_id", context.organizationId)
+      .eq("is_active", true)
+      .maybeSingle(),
     context.client
       .from("theme_presets")
       .select("id,name,schema,status,updated_at")
@@ -483,7 +496,17 @@ export async function buildKioskBootstrap(
 
   const config = configResult.data;
   const layouts = layoutsResult.data ?? [];
-  const layout = layouts.find((l) => l.is_active) ?? layouts[0] ?? null;
+  let layout = activeLayoutResult.data;
+  if (!layout && layouts[0]?.id) {
+    const fallbackLayout = await context.client
+      .from("layout_schemas")
+      .select("id,name,schema,is_active,status,updated_at")
+      .eq("organization_id", context.organizationId)
+      .eq("id", layouts[0].id)
+      .maybeSingle();
+    if (fallbackLayout.error) throw fallbackLayout.error;
+    layout = fallbackLayout.data;
+  }
   const assignedTemplates = new Set(device?.frame_templates ?? []);
   const assignedPricing = new Set(device?.pricing_profiles ?? []);
 
@@ -502,9 +525,17 @@ export async function buildKioskBootstrap(
       assignedPricing.has(product.id) ||
       assignedPricing.has(product.name),
   );
+  const assetReferences = collectAssetUrls({
+    layoutSchema: layout?.schema,
+    templates,
+  });
+  const assetManifest = await getKioskAssetManifest(
+    context.organizationId,
+    assetReferences,
+  );
 
   return {
-    version: 1,
+    version: 2,
     generatedAt: new Date().toISOString(),
     user: {
       id: context.user.id,
@@ -544,8 +575,9 @@ export async function buildKioskBootstrap(
       isActive: l.is_active,
       status: l.status,
       updatedAt: l.updated_at,
-      schema: l.schema,
+      schema: null,
     })),
+    assetManifest,
     designTokens: themeResult.data?.schema ?? null,
     templates: templates.map((template) => ({
       id: template.id,

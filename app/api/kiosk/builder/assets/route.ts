@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, requireKioskContext } from "@/lib/kiosk/server";
 import { createR2SignedUploadUrl, uploadR2Object } from "@/lib/r2/server";
+import { recordKioskAssetManifest } from "@/lib/assets/asset-manifest";
 
 export const runtime = "nodejs";
 
@@ -123,6 +124,14 @@ export async function POST(request: Request) {
         key: filePath,
         contentType: fileType,
       });
+      await recordKioskAssetManifest({
+        organizationId: context.organizationId,
+        sourceUrl: signed.url,
+        deliveryUrl: signed.url,
+        revision: `${signed.key}:${fileSize}`,
+        byteSize: fileSize,
+        contentType: fileType,
+      });
 
       return jsonOk({
         uploadUrl: signed.uploadUrl,
@@ -160,6 +169,14 @@ export async function POST(request: Request) {
     const uploaded = await uploadR2Object({
       key: filePath,
       body: Buffer.from(await file.arrayBuffer()),
+      contentType: file.type,
+    });
+    await recordKioskAssetManifest({
+      organizationId: context.organizationId,
+      sourceUrl: uploaded.url,
+      deliveryUrl: uploaded.url,
+      revision: `${uploaded.key}:${file.size}`,
+      byteSize: file.size,
       contentType: file.type,
     });
 

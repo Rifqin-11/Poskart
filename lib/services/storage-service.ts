@@ -1,6 +1,4 @@
 import { createClient } from "@/lib/supabase/client";
-
-const BUILDER_BUCKET = "builder-assets";
 export const MAX_BUILDER_IMAGE_SIZE = 8 * 1024 * 1024;
 export const MAX_BUILDER_VIDEO_SIZE = 200 * 1024 * 1024;
 export const BUILDER_IMAGE_ACCEPT =
@@ -18,13 +16,6 @@ const ALLOWED_IMAGE_TYPES = [
   "image/svg+xml",
 ];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
-
-function safeFileName(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9.]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
 
 function formatFileSize(bytes: number) {
   const mb = bytes / (1024 * 1024);
@@ -154,8 +145,8 @@ export async function uploadBuilderMedia(
 }
 
 /**
- * Upload an image meant for the Asset Library (admin Media & Asset Library).
- * Returns the public URL, storage path, and human-readable size string.
+ * Upload an image meant for the Asset Library. New assets use R2 so the
+ * legacy Supabase Storage bucket can remain read-only during migration.
  */
 export async function uploadLibraryAsset(
   file: File,
@@ -163,19 +154,40 @@ export async function uploadLibraryAsset(
   const validationError = getBuilderImageValidationError(file);
   if (validationError) throw new Error(validationError);
   const supabase = createClient();
-  const path = `library/${crypto.randomUUID()}-${safeFileName(file.name)}`;
-  const { error } = await supabase.storage
-    .from(BUILDER_BUCKET)
-    .upload(path, file, {
-      cacheControl: "31536000",
-      upsert: false,
-      contentType: file.type,
-    });
-  if (error) throw new Error(`Unable to upload asset: ${error.message}`);
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
+  if (!accessToken) throw new Error("You must be signed in to upload an asset.");
 
-  const { data } = supabase.storage.from(BUILDER_BUCKET).getPublicUrl(path);
+  const intentResponse = await fetch("/api/admin/assets/upload", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+    }),
+  });
+  const intent = (await intentResponse.json().catch(() => null)) as {
+    uploadUrl?: string;
+    url?: string;
+    path?: string;
+    error?: string;
+  } | null;
+  if (!intentResponse.ok || !intent.uploadUrl || !intent.url || !intent.path) {
+    throw new Error(intent?.error || "Unable to create asset upload.");
+  }
+  const uploadResponse = await fetch(intent.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+  if (!uploadResponse.ok) throw new Error("Unable to upload asset to R2.");
+
   const sizeKb = Math.max(1, Math.round(file.size / 1024));
   const size =
     sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
-  return { url: data.publicUrl, path, size };
+  return { url: intent.url, path: intent.path, size };
 }
