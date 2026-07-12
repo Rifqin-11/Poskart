@@ -9,14 +9,14 @@ export default async function WithdrawPage() {
   const [summary, invoicesPage, availableLedgerEntries] = await Promise.all([
     getMyPayoutSummary(),
     getMyPayoutInvoices({ page: 1, pageSize: 10 }),
-    getMyAvailablePayoutLedgerEntries(),
+    getMyAvailablePayoutLedgerEntries({ page: 1, pageSize: 20 }),
   ]);
 
   return (
     <PayoutDashboard
       summary={summary}
       invoicesPage={invoicesPage}
-      availableLedgerEntries={availableLedgerEntries}
+      availableLedgerPage={availableLedgerEntries}
     />
   );
 }

@@ -2,17 +2,36 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeDollarSign, Clock3, Download, Landmark, Wallet } from "lucide-react";
+import {
+  BadgeDollarSign,
+  Clock3,
+  Download,
+  Landmark,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import { StatCard } from "@/features/admin/_components/stat-card";
 import { cn } from "@/lib/utils";
@@ -22,7 +41,14 @@ import {
   getPayoutStatusClassName,
   getPayoutStatusLabel,
 } from "@/features/admin/payout/payout-format";
-import { getMyPayoutInvoices, requestPayout, approveInternalPayoutRequest, rejectInternalPayoutRequest, cancelInternalPayoutRequest } from "@/server/admin/actions/payout-actions";
+import {
+  getMyAvailablePayoutLedgerEntries,
+  getMyPayoutInvoices,
+  requestPayout,
+  approveInternalPayoutRequest,
+  rejectInternalPayoutRequest,
+  cancelInternalPayoutRequest,
+} from "@/server/admin/actions/payout-actions";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import type {
   PayoutAvailableLedgerEntry,
@@ -34,39 +60,32 @@ import type { PaginatedResult } from "@/types/pagination";
 export function PayoutDashboard({
   summary,
   invoicesPage,
-  availableLedgerEntries,
+  availableLedgerPage,
 }: {
   summary: PayoutSummary;
   invoicesPage: PaginatedResult<PayoutInvoice>;
-  availableLedgerEntries: PayoutAvailableLedgerEntry[];
+  availableLedgerPage: PaginatedResult<PayoutAvailableLedgerEntry>;
 }) {
   const router = useRouter();
   const { isReadOnly } = usePermission();
   const [invoicePage, setInvoicePage] = useState(invoicesPage);
+  const [ledgerPage, setLedgerPage] = useState(availableLedgerPage);
   const [requestOpen, setRequestOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<PayoutInvoice | null>(
     null,
   );
   const [isPending, startTransition] = useTransition();
   const [requestForm, setRequestForm] = useState({
-    amount: summary.availableNetAmount,
+    amount: summary.availableGrossAmount,
   });
   const invoices = invoicePage.items;
+  const availableLedgerEntries = ledgerPage.items;
 
   const hasAccount = Boolean(summary.payoutAccount);
   const canRequest =
     hasAccount &&
-    summary.availableNetAmount > 0 &&
-    summary.availableNetAmount >= summary.settings.minimumPayoutAmount;
-  const ledgerTotals = availableLedgerEntries.reduce(
-    (acc, entry) => ({
-      grossAmount: acc.grossAmount + entry.grossAmount,
-      feeAmount:
-        acc.feeAmount + entry.gatewayFeeAmount + entry.platformFeeAmount,
-      netAmount: acc.netAmount + entry.netAmount,
-    }),
-    { grossAmount: 0, feeAmount: 0, netAmount: 0 },
-  );
+    summary.availableGrossAmount > 0 &&
+    summary.availableGrossAmount >= summary.settings.minimumPayoutAmount;
   const requestEstimate = useMemo(
     () =>
       estimatePayoutRequest(
@@ -86,7 +105,27 @@ export function PayoutDashboard({
         });
         setInvoicePage(nextPage);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Failed to load withdrawals");
+        toast.error(
+          error instanceof Error ? error.message : "Failed to load withdrawals",
+        );
+      }
+    });
+  };
+
+  const loadLedgerPage = async (page: number) => {
+    startTransition(async () => {
+      try {
+        const nextPage = await getMyAvailablePayoutLedgerEntries({
+          page,
+          pageSize: ledgerPage.pageSize,
+        });
+        setLedgerPage(nextPage);
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to load available payout entries",
+        );
       }
     });
   };
@@ -120,11 +159,11 @@ export function PayoutDashboard({
         description="Monitor verified QRIS photobooth revenue and request organization withdrawals."
         action={
           <Button
-            className="rounded-2xl"
+            className="w-full rounded-2xl sm:w-auto"
             disabled={!canRequest || isReadOnly("invoices")}
             onClick={() => {
               setRequestForm({
-                amount: summary.availableNetAmount,
+                amount: summary.availableGrossAmount,
               });
               setRequestOpen(true);
             }}
@@ -135,7 +174,7 @@ export function PayoutDashboard({
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Available balance"
           value={formatPayoutCurrency(summary.availableNetAmount)}
@@ -171,98 +210,118 @@ export function PayoutDashboard({
       <PayoutSettingsSummary summary={summary} />
 
       <Card>
-        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <CardTitle>Available balance details</CardTitle>
             <CardDescription>
               Payment ledger entries that currently form the available balance.
-              Entries disappear from this table once they are locked into a payout request.
+              A partially allocated payment remains here with only its remaining
+              balance.
             </CardDescription>
           </div>
-          <div className="grid min-w-64 grid-cols-3 gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs">
+          <div className="grid w-full grid-cols-3 gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs lg:w-auto lg:min-w-64">
             <div>
               <div className="text-zinc-500">Gross</div>
               <div className="mt-1 font-semibold text-zinc-950">
-                {formatPayoutCurrency(ledgerTotals.grossAmount)}
+                {formatPayoutCurrency(summary.availableGrossAmount)}
               </div>
             </div>
             <div>
               <div className="text-zinc-500">Fee</div>
               <div className="mt-1 font-semibold text-zinc-950">
-                {formatPayoutCurrency(ledgerTotals.feeAmount)}
+                {formatPayoutCurrency(
+                  summary.availableGatewayFeeAmount +
+                    summary.availablePlatformFeeAmount,
+                )}
               </div>
             </div>
             <div>
               <div className="text-zinc-500">Net</div>
               <div className="mt-1 font-semibold text-zinc-950">
-                {formatPayoutCurrency(ledgerTotals.netAmount)}
+                {formatPayoutCurrency(summary.availableNetAmount)}
               </div>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Paid</TableHead>
-                <TableHead>Booth / Package</TableHead>
-                <TableHead>Order</TableHead>
-                <TableHead>Reference</TableHead>
-                <TableHead className="text-right">Gross</TableHead>
-                <TableHead className="text-right">Fee</TableHead>
-                <TableHead className="text-right">Net</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {availableLedgerEntries.map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell>
-                    <div className="text-sm">
-                      {formatPayoutDate(entry.paidAt)}
-                    </div>
-                    <div className="mt-1 text-xs text-zinc-500">
-                      Verified {formatPayoutDate(entry.verifiedAt)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{entry.booth ?? "-"}</div>
-                    <div className="mt-1 text-xs text-zinc-500">
-                      {entry.packageName ?? "-"}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {shortCode(entry.merchantOrderId)}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {entry.duitkuReference
-                      ? shortCode(entry.duitkuReference)
-                      : "-"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatPayoutCurrency(entry.grossAmount)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatPayoutCurrency(
-                      entry.gatewayFeeAmount + entry.platformFeeAmount,
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {formatPayoutCurrency(entry.netAmount)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {availableLedgerEntries.length === 0 ? (
+          <div className="hidden overflow-x-auto md:block">
+            <Table className="min-w-[820px]">
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-8 text-center text-sm text-zinc-500"
-                  >
-                    No eligible payment ledger entries yet.
-                  </TableCell>
+                  <TableHead>Paid</TableHead>
+                  <TableHead>Booth / Package</TableHead>
+                  <TableHead>Order</TableHead>
+                  <TableHead>Reference</TableHead>
+                  <TableHead className="text-right">Gross</TableHead>
+                  <TableHead className="text-right">Fee</TableHead>
+                  <TableHead className="text-right">Net</TableHead>
                 </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {availableLedgerEntries.map((entry) => (
+                  <TableRow key={entry.id}>
+                    <TableCell>
+                      <div className="text-sm">
+                        {formatPayoutDate(entry.paidAt)}
+                      </div>
+                      <div className="mt-1 text-xs text-zinc-500">
+                        Verified {formatPayoutDate(entry.verifiedAt)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{entry.booth ?? "-"}</div>
+                      <div className="mt-1 text-xs text-zinc-500">
+                        {entry.packageName ?? "-"}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {shortCode(entry.merchantOrderId)}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {entry.duitkuReference
+                        ? shortCode(entry.duitkuReference)
+                        : "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatPayoutCurrency(entry.grossAmount)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatPayoutCurrency(
+                        entry.gatewayFeeAmount + entry.platformFeeAmount,
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {formatPayoutCurrency(entry.netAmount)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {availableLedgerEntries.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="py-8 text-center text-sm text-zinc-500"
+                    >
+                      No eligible payment ledger entries yet.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="grid gap-3 md:hidden">
+            {availableLedgerEntries.map((entry) => (
+              <LedgerEntryCard key={entry.id} entry={entry} />
+            ))}
+            {availableLedgerEntries.length === 0 ? (
+              <EmptyMobileCard message="No eligible payment ledger entries yet." />
+            ) : null}
+          </div>
+          <TablePagination
+            page={ledgerPage.page}
+            pageSize={ledgerPage.pageSize}
+            totalItems={ledgerPage.totalItems}
+            onPageChange={(page) => void loadLedgerPage(page)}
+          />
         </CardContent>
       </Card>
 
@@ -270,71 +329,90 @@ export function PayoutDashboard({
         <CardHeader>
           <CardTitle>Payout / withdraw history</CardTitle>
           <CardDescription>
-            Each payout locks its ledger entries so the same revenue cannot be withdrawn twice.
+            Each payout locks its ledger entries so the same revenue cannot be
+            withdrawn twice.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Payout</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Requested</TableHead>
-                <TableHead>Gross</TableHead>
-                <TableHead>Fee</TableHead>
-                <TableHead>Net</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoices.map((invoice) => (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">
-                    {invoice.invoiceNumber}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={getPayoutStatusClassName(invoice.status)}
-                    >
-                      {getPayoutStatusLabel(invoice.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formatPayoutDate(invoice.requestedAt)}</TableCell>
-                  <TableCell>{formatPayoutCurrency(invoice.grossAmount)}</TableCell>
-                  <TableCell>
-                    {formatPayoutCurrency(
-                      invoice.gatewayFeeAmount + invoice.platformFeeAmount,
-                    )}
-                  </TableCell>
-                  <TableCell className="font-semibold">
-                    {formatPayoutCurrency(invoice.netAmount)}
-                  </TableCell>
-                  <TableCell>{invoice.items.length}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedInvoice(invoice)}
-                    >
-                      Details
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {invoices.length === 0 ? (
+          <div className="hidden overflow-x-auto md:block">
+            <Table className="min-w-[780px]">
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={8}
-                    className="py-8 text-center text-sm text-zinc-500"
-                  >
-                    No payout requests yet.
-                  </TableCell>
+                  <TableHead>Payout</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Requested</TableHead>
+                  <TableHead>Gross</TableHead>
+                  <TableHead>Fee</TableHead>
+                  <TableHead>Net</TableHead>
+                  <TableHead>Items</TableHead>
+                  <TableHead />
                 </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {invoices.map((invoice) => (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">
+                      {invoice.invoiceNumber}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={getPayoutStatusClassName(invoice.status)}
+                      >
+                        {getPayoutStatusLabel(invoice.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {formatPayoutDate(invoice.requestedAt)}
+                    </TableCell>
+                    <TableCell>
+                      {formatPayoutCurrency(invoice.grossAmount)}
+                    </TableCell>
+                    <TableCell>
+                      {formatPayoutCurrency(
+                        invoice.gatewayFeeAmount + invoice.platformFeeAmount,
+                      )}
+                    </TableCell>
+                    <TableCell className="font-semibold">
+                      {formatPayoutCurrency(invoice.netAmount)}
+                    </TableCell>
+                    <TableCell>{invoice.items.length}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedInvoice(invoice)}
+                      >
+                        Details
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {invoices.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={8}
+                      className="py-8 text-center text-sm text-zinc-500"
+                    >
+                      No payout requests yet.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="grid gap-3 md:hidden">
+            {invoices.map((invoice) => (
+              <PayoutInvoiceCard
+                key={invoice.id}
+                invoice={invoice}
+                onDetails={() => setSelectedInvoice(invoice)}
+              />
+            ))}
+            {invoices.length === 0 ? (
+              <EmptyMobileCard message="No payout requests yet." />
+            ) : null}
+          </div>
           <TablePagination
             page={invoicePage.page}
             pageSize={invoicePage.pageSize}
@@ -348,13 +426,14 @@ export function PayoutDashboard({
         open={requestOpen}
         onOpenChange={setRequestOpen}
         title="Request withdrawal"
+        className="max-w-lg"
       >
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm leading-6 text-zinc-600">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm leading-6 text-zinc-600 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span>Available balance</span>
+              <span>Available gross</span>
               <span className="font-semibold text-zinc-950">
-                {formatPayoutCurrency(summary.availableNetAmount)}
+                {formatPayoutCurrency(summary.availableGrossAmount)}
               </span>
             </div>
             <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -364,13 +443,32 @@ export function PayoutDashboard({
               </span>
             </div>
           </div>
-          <label className="block text-xs font-medium text-zinc-600">
-            Request amount
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3 text-xs font-medium text-zinc-600">
+              <label htmlFor="payout-request-amount">
+                Gross request amount
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-full px-3 text-xs"
+                onClick={() =>
+                  setRequestForm((current) => ({
+                    ...current,
+                    amount: summary.availableGrossAmount,
+                  }))
+                }
+              >
+                Max
+              </Button>
+            </div>
             <Input
-              className="mt-1.5"
+              id="payout-request-amount"
+              className="h-11"
               type="number"
               min={1}
-              max={summary.availableNetAmount}
+              max={summary.availableGrossAmount}
               value={requestForm.amount}
               onChange={(event) =>
                 setRequestForm((current) => ({
@@ -379,8 +477,12 @@ export function PayoutDashboard({
                 }))
               }
             />
-          </label>
-          <div className="grid gap-2 rounded-2xl border border-zinc-200 bg-white p-3 text-xs md:grid-cols-4">
+            <p className="text-xs leading-5 text-zinc-500">
+              Fees are deducted from this gross amount. The final received
+              amount is shown below.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-zinc-200 bg-white p-2 text-xs sm:grid-cols-4 sm:p-3">
             <EstimateStat
               label="Gross"
               value={formatPayoutCurrency(requestEstimate.grossAmount)}
@@ -408,7 +510,7 @@ export function PayoutDashboard({
               Request amount is still below the minimum withdrawal amount.
             </div>
           ) : null}
-          <div className="flex justify-end gap-2">
+          <div className="grid grid-cols-2 gap-2 pt-1 sm:flex sm:justify-end">
             <Button variant="outline" onClick={() => setRequestOpen(false)}>
               Cancel
             </Button>
@@ -427,22 +529,19 @@ export function PayoutDashboard({
   );
 }
 
-function PayoutSettingsSummary({
-  summary,
-}: {
-  summary: PayoutSummary;
-}) {
+function PayoutSettingsSummary({ summary }: { summary: PayoutSummary }) {
   const router = useRouter();
   const account = summary.payoutAccount;
 
   return (
     <Card>
-      <CardContent className="grid gap-6 p-5 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+      <CardContent className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] lg:gap-6">
         <div className="space-y-4">
           <div>
             <CardTitle>Payout account</CardTitle>
             <CardDescription className="mt-1.5">
-              Managed from Settings and snapshotted when a withdrawal request is created.
+              Managed from Settings and snapshotted when a withdrawal request is
+              created.
             </CardDescription>
           </div>
           {account ? (
@@ -514,6 +613,201 @@ function PayoutSettingsSummary({
   );
 }
 
+function LedgerEntryCard({ entry }: { entry: PayoutAvailableLedgerEntry }) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-zinc-950">
+            {entry.booth ?? "-"}
+          </div>
+          <div className="mt-1 text-xs text-zinc-500">
+            {entry.packageName ?? "-"}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-sm font-semibold text-emerald-700">
+            {formatPayoutCurrency(entry.netAmount)}
+          </div>
+          <div className="mt-1 text-xs text-zinc-500">Net</div>
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+        <MobileMeta label="Paid" value={formatPayoutDate(entry.paidAt)} />
+        <MobileMeta
+          label="Verified"
+          value={formatPayoutDate(entry.verifiedAt)}
+        />
+        <MobileMeta
+          label="Order"
+          value={shortCode(entry.merchantOrderId)}
+          mono
+        />
+        <MobileMeta
+          label="Reference"
+          value={entry.duitkuReference ? shortCode(entry.duitkuReference) : "-"}
+          mono
+        />
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-zinc-50 p-3 text-xs">
+        <MobileAmount label="Gross" value={entry.grossAmount} />
+        <MobileAmount
+          label="Fee"
+          value={entry.gatewayFeeAmount + entry.platformFeeAmount}
+        />
+        <MobileAmount label="Net" value={entry.netAmount} strong />
+      </div>
+    </div>
+  );
+}
+
+function PayoutInvoiceCard({
+  invoice,
+  onDetails,
+}: {
+  invoice: PayoutInvoice;
+  onDetails: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-zinc-950">
+            {invoice.invoiceNumber}
+          </div>
+          <div className="mt-1 text-xs text-zinc-500">
+            {formatPayoutDate(invoice.requestedAt)}
+          </div>
+        </div>
+        <Badge
+          variant="outline"
+          className={getPayoutStatusClassName(invoice.status)}
+        >
+          {getPayoutStatusLabel(invoice.status)}
+        </Badge>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-zinc-50 p-3 text-xs">
+        <MobileAmount label="Gross" value={invoice.grossAmount} />
+        <MobileAmount
+          label="Fee"
+          value={invoice.gatewayFeeAmount + invoice.platformFeeAmount}
+        />
+        <MobileAmount label="Net" value={invoice.netAmount} strong />
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <div className="text-xs text-zinc-500">
+          {invoice.items.length} items
+        </div>
+        <Button variant="outline" size="sm" onClick={onDetails}>
+          Details
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function PayoutInvoiceItemCard({
+  item,
+}: {
+  item: PayoutInvoice["items"][number];
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-zinc-950">
+            {item.booth ?? "-"}
+          </div>
+          <div className="mt-1 text-xs text-zinc-500">
+            {item.packageName ?? "-"}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-sm font-semibold text-emerald-700">
+            {formatPayoutCurrency(item.netAmount)}
+          </div>
+          <div className="mt-1 text-xs text-zinc-500">Net</div>
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+        <MobileMeta
+          label="Transaction"
+          value={item.transactionId ?? item.ledgerEntryId ?? "-"}
+          mono
+        />
+        <MobileMeta
+          label="Time"
+          value={formatPayoutDate(item.transactionPaidAt)}
+        />
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-zinc-50 p-3 text-xs">
+        <MobileAmount label="Gross" value={item.grossAmount} />
+        <MobileAmount
+          label="Fee"
+          value={item.gatewayFeeAmount + item.platformFeeAmount}
+        />
+        <MobileAmount label="Net" value={item.netAmount} strong />
+      </div>
+    </div>
+  );
+}
+
+function EmptyMobileCard({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center text-sm text-zinc-500">
+      {message}
+    </div>
+  );
+}
+
+function MobileMeta({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="text-zinc-500">{label}</div>
+      <div
+        className={cn(
+          "mt-1 truncate font-medium text-zinc-950",
+          mono && "font-mono",
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function MobileAmount({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: number;
+  strong?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="text-zinc-500">{label}</div>
+      <div
+        className={cn(
+          "mt-1 truncate font-semibold text-zinc-950",
+          strong && "text-emerald-700",
+        )}
+      >
+        {formatPayoutCurrency(value)}
+      </div>
+    </div>
+  );
+}
+
 function EstimateStat({
   label,
   value,
@@ -543,7 +837,7 @@ function estimatePayoutRequest(
   requestedAmount: number,
   settings: PayoutSummary["settings"],
 ) {
-  const requestedNetAmount = Math.max(0, Math.round(Number(requestedAmount)));
+  let remainingGrossAmount = Math.max(0, Math.round(Number(requestedAmount)));
   let grossAmount = 0;
   let gatewayFeeAmount = 0;
   let ledgerNetAmount = 0;
@@ -551,15 +845,34 @@ function estimatePayoutRequest(
 
   for (const entry of entries) {
     if (entry.netAmount <= 0) continue;
-    if (count > 0 && ledgerNetAmount + entry.netAmount > requestedNetAmount) {
-      break;
-    }
-    if (count === 0 && entry.netAmount > requestedNetAmount) break;
+    const allocatedGrossAmount = Math.min(
+      entry.grossAmount,
+      remainingGrossAmount,
+    );
+    if (allocatedGrossAmount <= 0) break;
 
-    grossAmount += entry.grossAmount;
-    gatewayFeeAmount += entry.gatewayFeeAmount;
-    ledgerNetAmount += entry.netAmount;
+    const ratio =
+      entry.grossAmount > 0 ? allocatedGrossAmount / entry.grossAmount : 0;
+    const allocatedGatewayFee = Math.min(
+      entry.gatewayFeeAmount,
+      Math.round(entry.gatewayFeeAmount * ratio),
+    );
+    const allocatedPlatformFee = Math.min(
+      entry.platformFeeAmount,
+      Math.round(entry.platformFeeAmount * ratio),
+    );
+    const allocatedNetAmount = Math.max(
+      0,
+      allocatedGrossAmount - allocatedGatewayFee - allocatedPlatformFee,
+    );
+
+    grossAmount += allocatedGrossAmount;
+    gatewayFeeAmount += allocatedGatewayFee;
+
+    ledgerNetAmount += allocatedNetAmount;
     count += 1;
+    remainingGrossAmount -= allocatedGrossAmount;
+    if (remainingGrossAmount <= 0) break;
   }
 
   const platformFeeAmount =
@@ -578,7 +891,9 @@ function calculateFrontendConfiguredFee(
   }
   return Math.max(
     0,
-    Math.round((baseAmount * Number(settings.platformFeePercentage ?? 0)) / 100),
+    Math.round(
+      (baseAmount * Number(settings.platformFeePercentage ?? 0)) / 100,
+    ),
   );
 }
 
@@ -594,9 +909,11 @@ function formatFeeSetting(
 
 function ReadonlyField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[104px_minmax(0,1fr)] items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2.5">
+    <div className="grid gap-1 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 sm:grid-cols-[104px_minmax(0,1fr)] sm:items-center sm:gap-3">
       <div className="text-xs text-zinc-500">{label}</div>
-      <div className="truncate text-sm font-semibold text-zinc-950">{value}</div>
+      <div className="truncate text-sm font-semibold text-zinc-950">
+        {value}
+      </div>
     </div>
   );
 }
@@ -677,7 +994,10 @@ function PayoutDetailDialog({
       return;
     }
     startTransition(async () => {
-      const result = await rejectInternalPayoutRequest(invoice.id, rejectReason);
+      const result = await rejectInternalPayoutRequest(
+        invoice.id,
+        rejectReason,
+      );
       if (result.success) {
         toast.success("Withdrawal draft rejected");
         setIsRejectOpen(false);
@@ -691,10 +1011,10 @@ function PayoutDetailDialog({
   const handleCancel = () => {
     if (!invoice) return;
     confirm({
-        title: "Cancel withdrawal draft?",
-              description:
-                "Are you sure you want to cancel this withdrawal draft? Locked ledger entries will be released.",
-              confirmLabel: "Cancel draft",
+      title: "Cancel withdrawal draft?",
+      description:
+        "Are you sure you want to cancel this withdrawal draft? Locked ledger entries will be released.",
+      confirmLabel: "Cancel draft",
       cancelLabel: "Close",
       destructive: true,
       onConfirm: () => {
@@ -721,9 +1041,9 @@ function PayoutDetailDialog({
       className="max-w-4xl"
     >
       {invoice ? (
-        <div className="space-y-5">
+        <div className="space-y-4 sm:space-y-5">
           <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-zinc-200 p-4">
+            <div className="rounded-2xl border border-zinc-200 p-3 sm:p-4">
               <div className="text-xs text-zinc-500">Account</div>
               <div className="mt-2 text-sm font-semibold">
                 {invoice.accountSnapshot.bankName ?? "-"}
@@ -733,20 +1053,20 @@ function PayoutDetailDialog({
                 {invoice.accountSnapshot.accountHolderName ?? "-"}
               </div>
             </div>
-            <div className="rounded-2xl border border-zinc-200 p-4">
+            <div className="rounded-2xl border border-zinc-200 p-3 sm:p-4">
               <div className="text-xs text-zinc-500">Net payout</div>
               <div className="mt-2 text-lg font-semibold">
                 {formatPayoutCurrency(invoice.netAmount)}
               </div>
             </div>
-            <div className="rounded-2xl border border-zinc-200 p-4">
+            <div className="rounded-2xl border border-zinc-200 p-3 sm:p-4">
               <div className="text-xs text-zinc-500">Payment reference</div>
-              <div className="mt-2 text-sm font-semibold">
+              <div className="mt-2 break-all text-sm font-semibold">
                 {invoice.paymentReference ?? "-"}
               </div>
             </div>
           </div>
-          <div className="grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs sm:text-sm md:grid-cols-4 md:gap-3">
             <PayoutAmountMetric
               label="Gross"
               value={formatPayoutCurrency(invoice.grossAmount)}
@@ -769,41 +1089,57 @@ function PayoutDetailDialog({
             Duitku fee comes from each QRIS transaction. The POSKART withdrawal
             fee is charged once for this payout request.
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Transaction</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Booth</TableHead>
-                <TableHead>Package</TableHead>
-                <TableHead>Gross</TableHead>
-                <TableHead>Fee</TableHead>
-                <TableHead>Net</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoice.items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-mono text-xs">
-                    {item.transactionId ?? item.ledgerEntryId ?? "-"}
-                  </TableCell>
-                  <TableCell>{formatPayoutDate(item.transactionPaidAt)}</TableCell>
-                  <TableCell>{item.booth ?? "-"}</TableCell>
-                  <TableCell>{item.packageName ?? "-"}</TableCell>
-                  <TableCell>{formatPayoutCurrency(item.grossAmount)}</TableCell>
-                  <TableCell>
-                    {formatPayoutCurrency(
-                      item.gatewayFeeAmount + item.platformFeeAmount,
-                    )}
-                  </TableCell>
-                  <TableCell>{formatPayoutCurrency(item.netAmount)}</TableCell>
+          <div className="hidden overflow-x-auto md:block">
+            <Table className="min-w-[760px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Transaction</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Booth</TableHead>
+                  <TableHead>Package</TableHead>
+                  <TableHead>Gross</TableHead>
+                  <TableHead>Fee</TableHead>
+                  <TableHead>Net</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {invoice.items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-mono text-xs">
+                      {item.transactionId ?? item.ledgerEntryId ?? "-"}
+                    </TableCell>
+                    <TableCell>
+                      {formatPayoutDate(item.transactionPaidAt)}
+                    </TableCell>
+                    <TableCell>{item.booth ?? "-"}</TableCell>
+                    <TableCell>{item.packageName ?? "-"}</TableCell>
+                    <TableCell>
+                      {formatPayoutCurrency(item.grossAmount)}
+                    </TableCell>
+                    <TableCell>
+                      {formatPayoutCurrency(
+                        item.gatewayFeeAmount + item.platformFeeAmount,
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {formatPayoutCurrency(item.netAmount)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="grid gap-3 md:hidden">
+            {invoice.items.map((item) => (
+              <PayoutInvoiceItemCard key={item.id} item={item} />
+            ))}
+            {invoice.items.length === 0 ? (
+              <EmptyMobileCard message="No transaction items in this payout." />
+            ) : null}
+          </div>
 
           {invoice.status === "pending_approval" && (
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="grid gap-2 pt-2 sm:flex sm:justify-end sm:pt-4">
               {isOwnerOrAdmin ? (
                 <>
                   <Button
@@ -813,10 +1149,7 @@ function PayoutDetailDialog({
                   >
                     Reject draft
                   </Button>
-                  <Button
-                    disabled={isPendingAction}
-                    onClick={handleApprove}
-                  >
+                  <Button disabled={isPendingAction} onClick={handleApprove}>
                     Approve withdrawal
                   </Button>
                 </>
@@ -838,10 +1171,12 @@ function PayoutDetailDialog({
         open={isRejectOpen}
         onOpenChange={setIsRejectOpen}
         title="Reject withdrawal draft"
+        className="max-w-md"
       >
         <div className="space-y-4">
           <p className="text-sm leading-6 text-zinc-500">
-            Provide a rejection reason so the accountant understands why this draft was rejected.
+            Provide a rejection reason so the accountant understands why this
+            draft was rejected.
           </p>
           <Textarea
             placeholder="Rejection reason..."

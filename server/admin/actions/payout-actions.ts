@@ -56,6 +56,14 @@ type EligibleLedgerEntryRow = {
   verified_response: Record<string, unknown> | null;
 };
 
+type ActivePayoutAllocationRow = {
+  ledger_entry_id: string | null;
+  gross_amount: number;
+  gateway_fee_amount: number;
+  platform_fee_amount: number;
+  net_amount: number;
+};
+
 type PayoutInvoiceRow = {
   id: string;
   invoice_number: string;
@@ -241,10 +249,17 @@ async function getOrganizationContext(options?: { requireManager?: boolean }) {
 
   const role = data.role as MembershipRole;
   if (options?.requireManager && !isManageableRole(role)) {
-    throw new Error("Hanya owner/admin/akuntan organisasi yang bisa mengajukan payout.");
+    throw new Error(
+      "Hanya owner/admin/akuntan organisasi yang bisa mengajukan payout.",
+    );
   }
 
-  return { supabase, user, organizationId: data.organization_id as string, role };
+  return {
+    supabase,
+    user,
+    organizationId: data.organization_id as string,
+    role,
+  };
 }
 
 async function requireSuperAdmin() {
@@ -288,10 +303,13 @@ function calculateLine(row: EligibleLedgerEntryRow, settings: PayoutSettings) {
   return {
     ledgerEntryId: row.id,
     transactionId: row.transaction_id,
+    merchantOrderId: row.merchant_order_id,
+    duitkuReference: row.duitku_reference,
     paymentGateway: row.provider,
     booth: row.booth,
     packageName: row.package_name,
     transactionPaidAt: row.paid_at ?? row.created_at,
+    verifiedAt: row.verified_at,
     grossAmount,
     gatewayFeeAmount,
     platformFeeAmount,
@@ -369,24 +387,168 @@ async function notifySafely(
 }
 
 function mapAvailableLedgerEntry(
-  row: EligibleLedgerEntryRow,
-  settings: PayoutSettings,
+  line: ReturnType<typeof calculateLine>,
 ): PayoutAvailableLedgerEntry {
-  const line = calculateLine(row, settings);
-
   return {
-    id: row.id,
-    transactionId: row.transaction_id,
-    merchantOrderId: row.merchant_order_id,
-    duitkuReference: row.duitku_reference,
-    booth: row.booth,
-    packageName: row.package_name,
-    paidAt: row.paid_at,
-    verifiedAt: row.verified_at,
+    id: line.ledgerEntryId,
+    transactionId: line.transactionId,
+    merchantOrderId: line.merchantOrderId,
+    duitkuReference: line.duitkuReference,
+    booth: line.booth,
+    packageName: line.packageName,
+    paidAt: line.transactionPaidAt,
+    verifiedAt: line.verifiedAt,
     grossAmount: line.grossAmount,
     gatewayFeeAmount: line.gatewayFeeAmount,
     platformFeeAmount: line.platformFeeAmount,
     netAmount: line.netAmount,
+  };
+}
+
+async function loadActivePayoutAllocations(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  organizationId: string,
+  ledgerEntryIds: string[],
+) {
+  if (!ledgerEntryIds.length) return [] as ActivePayoutAllocationRow[];
+
+  const { data: invoices, error: invoiceError } = await supabase
+    .from("payout_invoices")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .in("status", ["pending_approval", "requested", "approved", "paid"]);
+
+  if (invoiceError) {
+    if (invoiceError.code === "42P01" || invoiceError.code === "42703") {
+      return [] as ActivePayoutAllocationRow[];
+    }
+    throw new Error(
+      `Failed to load payout allocations: ${invoiceError.message}`,
+    );
+  }
+
+  const invoiceIds = (invoices ?? []).map((invoice) => invoice.id as string);
+  if (!invoiceIds.length) return [] as ActivePayoutAllocationRow[];
+
+  const { data, error } = await supabase
+    .from("payout_invoice_items")
+    .select(
+      "ledger_entry_id,gross_amount,gateway_fee_amount,platform_fee_amount,net_amount",
+    )
+    .in("payout_invoice_id", invoiceIds)
+    .in("ledger_entry_id", ledgerEntryIds);
+
+  if (error) {
+    if (error.code === "42P01" || error.code === "42703") {
+      return [] as ActivePayoutAllocationRow[];
+    }
+    throw new Error(`Failed to load payout allocations: ${error.message}`);
+  }
+
+  return (data ?? []) as ActivePayoutAllocationRow[];
+}
+
+async function loadAvailablePayoutLines(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  organizationId: string,
+  settings: PayoutSettings,
+) {
+  const rows = await loadEligibleLedgerEntries(supabase, organizationId);
+  const allocations = await loadActivePayoutAllocations(
+    supabase,
+    organizationId,
+    rows.map((row) => row.id),
+  );
+  return mapAvailablePayoutLines(rows, allocations, settings);
+}
+
+function mapAvailablePayoutLines(
+  rows: EligibleLedgerEntryRow[],
+  allocations: ActivePayoutAllocationRow[],
+  settings: PayoutSettings,
+) {
+  const allocatedByLedger = new Map<
+    string,
+    { grossAmount: number; gatewayFeeAmount: number; platformFeeAmount: number }
+  >();
+
+  for (const allocation of allocations) {
+    if (!allocation.ledger_entry_id) continue;
+    const current = allocatedByLedger.get(allocation.ledger_entry_id) ?? {
+      grossAmount: 0,
+      gatewayFeeAmount: 0,
+      platformFeeAmount: 0,
+    };
+    current.grossAmount += Number(allocation.gross_amount);
+    current.gatewayFeeAmount += Number(allocation.gateway_fee_amount);
+    current.platformFeeAmount += Number(allocation.platform_fee_amount);
+    allocatedByLedger.set(allocation.ledger_entry_id, current);
+  }
+
+  return rows.flatMap((row) => {
+    const fullLine = calculateLine(row, settings);
+    const allocated = allocatedByLedger.get(row.id) ?? {
+      grossAmount: 0,
+      gatewayFeeAmount: 0,
+      platformFeeAmount: 0,
+    };
+    const remainingGrossAmount = Math.max(
+      0,
+      fullLine.grossAmount - allocated.grossAmount,
+    );
+    if (remainingGrossAmount <= 0) return [];
+
+    return [
+      {
+        ...fullLine,
+        grossAmount: remainingGrossAmount,
+        gatewayFeeAmount: Math.max(
+          0,
+          fullLine.gatewayFeeAmount - allocated.gatewayFeeAmount,
+        ),
+        platformFeeAmount: Math.max(
+          0,
+          fullLine.platformFeeAmount - allocated.platformFeeAmount,
+        ),
+        netAmount: Math.max(
+          0,
+          remainingGrossAmount -
+            (fullLine.gatewayFeeAmount - allocated.gatewayFeeAmount) -
+            (fullLine.platformFeeAmount - allocated.platformFeeAmount),
+        ),
+      },
+    ];
+  });
+}
+
+function allocatePayoutLine(
+  line: ReturnType<typeof calculateLine>,
+  grossAmount: number,
+) {
+  const allocatedGrossAmount = Math.min(
+    line.grossAmount,
+    Math.max(0, Math.round(grossAmount)),
+  );
+  const ratio =
+    line.grossAmount > 0 ? allocatedGrossAmount / line.grossAmount : 0;
+  const gatewayFeeAmount = Math.min(
+    line.gatewayFeeAmount,
+    Math.max(0, Math.round(line.gatewayFeeAmount * ratio)),
+  );
+  const platformFeeAmount = Math.min(
+    line.platformFeeAmount,
+    Math.max(0, Math.round(line.platformFeeAmount * ratio)),
+  );
+
+  return {
+    ...line,
+    grossAmount: allocatedGrossAmount,
+    gatewayFeeAmount,
+    platformFeeAmount,
+    netAmount: Math.max(
+      0,
+      allocatedGrossAmount - gatewayFeeAmount - platformFeeAmount,
+    ),
   };
 }
 
@@ -396,18 +558,18 @@ function isVerifiedDuitkuLedgerEntry(row: EligibleLedgerEntryRow) {
 
   const isQrCreationPayload = Boolean(
     response.qrString ||
-      response.qr_string ||
-      response.paymentUrl ||
-      response.payment_url,
+    response.qr_string ||
+    response.paymentUrl ||
+    response.payment_url,
   );
 
   if (isQrCreationPayload) return false;
 
   return Boolean(
     response.reference ||
-      response.statusCode === "00" ||
-      response.resultCode === "00" ||
-      response.status === "SUCCESS",
+    response.statusCode === "00" ||
+    response.resultCode === "00" ||
+    response.status === "SUCCESS",
   );
 }
 
@@ -476,7 +638,9 @@ async function loadEligibleLedgerEntries(
 
     if (error) {
       if (error.code === "42P01" || error.code === "42703") return [];
-      throw new Error(`Failed to load eligible ledger entries: ${error.message}`);
+      throw new Error(
+        `Failed to load eligible ledger entries: ${error.message}`,
+      );
     }
 
     rows.push(
@@ -488,6 +652,70 @@ async function loadEligibleLedgerEntries(
   }
 
   return rows;
+}
+
+async function loadEligibleLedgerEntriesPage(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  organizationId: string,
+  paginationInput: PaginationInput,
+) {
+  const pagination = normalizePagination(paginationInput);
+  const { data, error, count } = await supabase
+    .from("payment_ledger_entries")
+    .select(
+      "id,transaction_id,provider,merchant_order_id,duitku_reference,gross_amount,gateway_fee_amount,platform_fee_amount,adjustment_amount,net_amount,booth,package_name,paid_at,verified_at,created_at,verified_response",
+      { count: "exact" },
+    )
+    .eq("organization_id", organizationId)
+    .eq("status", "paid")
+    .eq("provider", "duitku")
+    .eq("payment_method", "QRIS")
+    .eq("collection_mode", "platform")
+    .is("settlement_status", null)
+    .is("payout_invoice_id", null)
+    .order("paid_at", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true })
+    .range(pagination.from, pagination.to);
+
+  if (error) {
+    if (error.code === "42P01" || error.code === "42703") {
+      return {
+        rows: [] as EligibleLedgerEntryRow[],
+        pagination,
+        totalItems: 0,
+      };
+    }
+    throw new Error(`Failed to load eligible ledger entries: ${error.message}`);
+  }
+
+  return {
+    rows: ((data ?? []) as EligibleLedgerEntryRow[]).filter(
+      isVerifiedDuitkuLedgerEntry,
+    ),
+    pagination,
+    totalItems: count ?? (data ?? []).length,
+  };
+}
+
+async function loadPayoutSummaryTotals(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  organizationId: string,
+) {
+  const { data, error } = await supabase
+    .from("payout_invoices")
+    .select("status,net_amount")
+    .eq("organization_id", organizationId)
+    .limit(5000);
+
+  if (error) {
+    if (error.code === "42P01" || error.code === "42703") return [];
+    throw new Error(`Failed to load payout totals: ${error.message}`);
+  }
+
+  return (data ?? []) as Array<{
+    status: PayoutStatus;
+    net_amount: number;
+  }>;
 }
 
 function loadInvoices(
@@ -504,7 +732,9 @@ async function loadInvoices(
   filters: PayoutInvoiceFilters & { organizationId?: string } = {},
   paginationInput?: PaginationInput,
 ) {
-  const pagination = paginationInput ? normalizePagination(paginationInput) : null;
+  const pagination = paginationInput
+    ? normalizePagination(paginationInput)
+    : null;
   let query = supabase
     .from("payout_invoices")
     .select(
@@ -581,21 +811,24 @@ async function loadInvoices(
 
 export async function getMyPayoutSummary() {
   const { supabase, organizationId } = await getOrganizationContext();
-  const [settings, payoutAccount, eligibleRows, invoices] = await Promise.all([
-    getPayoutSettings(supabase),
-    getDefaultPayoutAccount(supabase, organizationId),
-    loadEligibleLedgerEntries(supabase, organizationId),
-    loadInvoices(supabase, { organizationId }),
-  ]);
+  const settingsPromise = getPayoutSettings(supabase);
+  const [settings, payoutAccount, availableLines, invoiceTotals] =
+    await Promise.all([
+      settingsPromise,
+      getDefaultPayoutAccount(supabase, organizationId),
+      settingsPromise.then((loadedSettings) =>
+        loadAvailablePayoutLines(supabase, organizationId, loadedSettings),
+      ),
+      loadPayoutSummaryTotals(supabase, organizationId),
+    ]);
 
-  const lines = eligibleRows.map((row) => calculateLine(row, settings));
-  const available = sumLines(lines);
-  const pendingNetAmount = invoices
+  const available = sumLines(availableLines);
+  const pendingNetAmount = invoiceTotals
     .filter((invoice) => ["requested", "approved"].includes(invoice.status))
-    .reduce((sum, invoice) => sum + invoice.netAmount, 0);
-  const paidNetAmount = invoices
+    .reduce((sum, invoice) => sum + Number(invoice.net_amount), 0);
+  const paidNetAmount = invoiceTotals
     .filter((invoice) => invoice.status === "paid")
-    .reduce((sum, invoice) => sum + invoice.netAmount, 0);
+    .reduce((sum, invoice) => sum + Number(invoice.net_amount), 0);
 
   return {
     availableGrossAmount: available.grossAmount,
@@ -604,8 +837,8 @@ export async function getMyPayoutSummary() {
     availableNetAmount: available.netAmount,
     pendingNetAmount,
     paidNetAmount,
-    eligibleTransactionCount: lines.length,
-    pendingInvoiceCount: invoices.filter((invoice) =>
+    eligibleTransactionCount: availableLines.length,
+    pendingInvoiceCount: invoiceTotals.filter((invoice) =>
       ["requested", "approved"].includes(invoice.status),
     ).length,
     settings,
@@ -620,13 +853,28 @@ export async function getMyPayoutInvoices(
   return loadInvoices(supabase, { organizationId }, pagination ?? {});
 }
 
-export async function getMyAvailablePayoutLedgerEntries() {
+export async function getMyAvailablePayoutLedgerEntries(
+  paginationInput?: PaginationInput,
+): Promise<PaginatedResult<PayoutAvailableLedgerEntry>> {
   const { supabase, organizationId } = await getOrganizationContext();
-  const [settings, rows] = await Promise.all([
-    getPayoutSettings(supabase),
-    loadEligibleLedgerEntries(supabase, organizationId),
-  ]);
-  return rows.map((row) => mapAvailableLedgerEntry(row, settings));
+  const settings = await getPayoutSettings(supabase);
+  const pageResult = await loadEligibleLedgerEntriesPage(
+    supabase,
+    organizationId,
+    paginationInput ?? { page: 1, pageSize: 20 },
+  );
+  const allocations = await loadActivePayoutAllocations(
+    supabase,
+    organizationId,
+    pageResult.rows.map((row) => row.id),
+  );
+  const lines = mapAvailablePayoutLines(pageResult.rows, allocations, settings);
+
+  return toPaginatedResult(
+    lines.map((line) => mapAvailableLedgerEntry(line)),
+    pageResult.pagination,
+    pageResult.totalItems,
+  );
 }
 
 export async function saveMyPayoutAccount(
@@ -636,9 +884,12 @@ export async function saveMyPayoutAccount(
     const { supabase, organizationId, role } = await getOrganizationContext({
       requireManager: true,
     });
-    
+
     if (role === "akuntan") {
-      return { success: false, error: "Only owners or admins can update the payout account." };
+      return {
+        success: false,
+        error: "Only owners or admins can update the payout account.",
+      };
     }
 
     const bankName = values.bankName.trim();
@@ -673,7 +924,10 @@ export async function saveMyPayoutAccount(
       : await supabase.from("organization_payout_accounts").insert(payload);
 
     if (error) {
-      return { success: false, error: `Failed to save payout account: ${error.message}` };
+      return {
+        success: false,
+        error: `Failed to save payout account: ${error.message}`,
+      };
     }
 
     revalidatePath("/withdraw");
@@ -682,7 +936,10 @@ export async function saveMyPayoutAccount(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to save payout account.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to save payout account.",
     };
   }
 }
@@ -691,9 +948,10 @@ export async function requestPayout(
   values: RequestPayoutInput,
 ): Promise<PayoutActionState> {
   try {
-    const { supabase, user, organizationId, role } = await getOrganizationContext({
-      requireManager: true,
-    });
+    const { supabase, user, organizationId, role } =
+      await getOrganizationContext({
+        requireManager: true,
+      });
     const isAccountant = role === "akuntan";
     const initialStatus = isAccountant ? "pending_approval" : "requested";
     const ledgerClient = createSupabaseAdminClient();
@@ -702,11 +960,15 @@ export async function requestPayout(
       return { success: false, error: "Invalid withdrawal amount." };
     }
 
-    const [settings, account, eligibleRows] = await Promise.all([
+    const [settings, account] = await Promise.all([
       getPayoutSettings(supabase),
       getDefaultPayoutAccount(supabase, organizationId),
-      loadEligibleLedgerEntries(ledgerClient, organizationId),
     ]);
+    const availableLines = await loadAvailablePayoutLines(
+      ledgerClient,
+      organizationId,
+      settings,
+    );
 
     if (!account || account.id !== values.accountId) {
       return { success: false, error: "Invalid payout account." };
@@ -721,33 +983,31 @@ export async function requestPayout(
       };
     }
 
-    const selectedLines: ReturnType<typeof calculateLine>[] = [];
-    let selectedNetAmount = 0;
-
-    for (const row of eligibleRows) {
-      const line = calculateLine(row, settings);
-      if (line.netAmount <= 0) continue;
-      if (
-        selectedLines.length > 0 &&
-        selectedNetAmount + line.netAmount > requestedAmount
-      ) {
-        break;
-      }
-      if (
-        selectedLines.length === 0 &&
-        line.netAmount > requestedAmount
-      ) {
-        break;
-      }
-      selectedLines.push(line);
-      selectedNetAmount += line.netAmount;
+    const availableGrossAmount = sumLines(availableLines).grossAmount;
+    if (requestedAmount > availableGrossAmount) {
+      return {
+        success: false,
+        error: `Withdrawal amount cannot exceed available gross of Rp ${availableGrossAmount.toLocaleString("id-ID")}.`,
+      };
     }
 
-    if (selectedLines.length === 0) {
+    const selectedLines: ReturnType<typeof calculateLine>[] = [];
+    let remainingGrossAmount = requestedAmount;
+
+    for (const line of availableLines) {
+      if (line.netAmount <= 0) continue;
+      const allocatedLine = allocatePayoutLine(line, remainingGrossAmount);
+      if (allocatedLine.grossAmount <= 0) break;
+      selectedLines.push(allocatedLine);
+      remainingGrossAmount -= allocatedLine.grossAmount;
+      if (remainingGrossAmount <= 0) break;
+    }
+
+    if (selectedLines.length === 0 || remainingGrossAmount > 0) {
       return {
         success: false,
         error:
-          "No eligible payments match the requested withdrawal amount.",
+          "The requested amount is no longer available. Refresh and try again.",
       };
     }
 
@@ -805,60 +1065,6 @@ export async function requestPayout(
       };
     }
 
-    const ledgerEntryIds = selectedLines.map((line) => line.ledgerEntryId);
-    const transactionIds = selectedLines
-      .map((line) => line.transactionId)
-      .filter((id): id is string => Boolean(id));
-    const { data: lockedRows, error: lockError } = await ledgerClient
-      .from("payment_ledger_entries")
-      .update({
-        settlement_status: initialStatus,
-        payout_invoice_id: invoice.id,
-        updated_at: now,
-      })
-      .in("id", ledgerEntryIds)
-      .eq("organization_id", organizationId)
-      .is("settlement_status", null)
-      .is("payout_invoice_id", null)
-      .select("id");
-
-    const lockedIds = new Set((lockedRows ?? []).map((row) => row.id as string));
-    if (lockError || lockedIds.size !== ledgerEntryIds.length) {
-      await ledgerClient
-        .from("payment_ledger_entries")
-        .update({
-          settlement_status: null,
-          payout_invoice_id: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("payout_invoice_id", invoice.id);
-      await ledgerClient
-        .from("payout_invoices")
-        .update({
-          status: "canceled",
-          rejection_reason: "Payment data changed while the payout request was being created.",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", invoice.id);
-
-      return {
-        success: false,
-        error:
-          lockError?.message ??
-          "Some payment ledger entries are already locked in another payout. Refresh the page and try again.",
-      };
-    }
-
-    await ledgerClient
-      .from("transactions")
-      .update({
-        payout_status: initialStatus,
-        payout_invoice_id: invoice.id,
-        updated_at: now,
-      })
-      .in("id", transactionIds.length ? transactionIds : ["__none__"])
-      .eq("organization_id", organizationId);
-
     const { error: itemError } = await ledgerClient
       .from("payout_invoice_items")
       .insert(
@@ -879,22 +1085,6 @@ export async function requestPayout(
       );
 
     if (itemError) {
-      await ledgerClient
-        .from("payment_ledger_entries")
-        .update({
-          settlement_status: null,
-          payout_invoice_id: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("payout_invoice_id", invoice.id);
-      await ledgerClient
-        .from("transactions")
-        .update({
-          payout_status: null,
-          payout_invoice_id: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("payout_invoice_id", invoice.id);
       await ledgerClient
         .from("payout_invoices")
         .update({
@@ -944,7 +1134,8 @@ export async function requestPayout(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to request payout.",
+      error:
+        error instanceof Error ? error.message : "Failed to request payout.",
     };
   }
 }
@@ -1007,7 +1198,9 @@ export async function savePayoutSettingsForSuperadmin(
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : "Failed to save payout settings.",
+        error instanceof Error
+          ? error.message
+          : "Failed to save payout settings.",
     };
   }
 }
@@ -1092,7 +1285,8 @@ export async function approvePayoutInvoice(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to approve payout.",
+      error:
+        error instanceof Error ? error.message : "Failed to approve payout.",
     };
   }
 }
@@ -1165,7 +1359,8 @@ export async function rejectPayoutInvoice(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to reject payout.",
+      error:
+        error instanceof Error ? error.message : "Failed to reject payout.",
     };
   }
 }
@@ -1262,7 +1457,10 @@ export async function markPayoutInvoicePaid(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to mark payout as paid.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to mark payout as paid.",
     };
   }
 }
@@ -1271,12 +1469,16 @@ export async function approveInternalPayoutRequest(
   invoiceId: string,
 ): Promise<PayoutActionState> {
   try {
-    const { supabase, user, organizationId, role } = await getOrganizationContext({
-      requireManager: true,
-    });
-    
+    const { supabase, user, organizationId, role } =
+      await getOrganizationContext({
+        requireManager: true,
+      });
+
     if (role === "akuntan") {
-      return { success: false, error: "Only owners or admins can approve withdrawals." };
+      return {
+        success: false,
+        error: "Only owners or admins can approve withdrawals.",
+      };
     }
 
     const ledgerClient = createSupabaseAdminClient();
@@ -1325,7 +1527,7 @@ export async function approveInternalPayoutRequest(
 
     revalidatePath("/withdraw");
     revalidatePath("/superadmin");
-    
+
     // Notify superadmin
     await notifySafely(ledgerClient, {
       audience: "superadmin",
@@ -1343,22 +1545,23 @@ export async function approveInternalPayoutRequest(
 
     // Notify the accountant who requested it
     if (invoice.requested_by) {
-       await notifySafely(ledgerClient, {
-         audience: "user",
-         recipientProfileId: invoice.requested_by,
-         organizationId,
-         type: "payout.approved_internal",
-         title: "Withdrawal draft approved",
-         body: `Withdrawal draft ${invoice.invoice_number} has been approved and forwarded to the platform.`,
-         href: "/withdraw",
-       });
+      await notifySafely(ledgerClient, {
+        audience: "user",
+        recipientProfileId: invoice.requested_by,
+        organizationId,
+        type: "payout.approved_internal",
+        title: "Withdrawal draft approved",
+        body: `Withdrawal draft ${invoice.invoice_number} has been approved and forwarded to the platform.`,
+        href: "/withdraw",
+      });
     }
 
     return { success: true };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to approve payout.",
+      error:
+        error instanceof Error ? error.message : "Failed to approve payout.",
     };
   }
 }
@@ -1368,12 +1571,16 @@ export async function rejectInternalPayoutRequest(
   reason: string,
 ): Promise<PayoutActionState> {
   try {
-    const { supabase, user, organizationId, role } = await getOrganizationContext({
-      requireManager: true,
-    });
-    
+    const { supabase, user, organizationId, role } =
+      await getOrganizationContext({
+        requireManager: true,
+      });
+
     if (role === "akuntan") {
-      return { success: false, error: "Only owners or admins can reject withdrawals." };
+      return {
+        success: false,
+        error: "Only owners or admins can reject withdrawals.",
+      };
     }
 
     const ledgerClient = createSupabaseAdminClient();
@@ -1420,7 +1627,8 @@ export async function rejectInternalPayoutRequest(
         status: "rejected",
         reviewed_by: user.id,
         reviewed_at: now,
-        rejection_reason: reason.trim() || "Rejected by the organization admin/owner.",
+        rejection_reason:
+          reason.trim() || "Rejected by the organization admin/owner.",
         updated_at: now,
       })
       .eq("id", invoiceId);
@@ -1447,7 +1655,8 @@ export async function rejectInternalPayoutRequest(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to reject payout.",
+      error:
+        error instanceof Error ? error.message : "Failed to reject payout.",
     };
   }
 }
@@ -1459,7 +1668,7 @@ export async function cancelInternalPayoutRequest(
     const { supabase, user, organizationId } = await getOrganizationContext({
       requireManager: true,
     });
-    
+
     const ledgerClient = createSupabaseAdminClient();
     const now = new Date().toISOString();
 
@@ -1475,11 +1684,18 @@ export async function cancelInternalPayoutRequest(
     }
 
     if (invoice.status !== "pending_approval") {
-      return { success: false, error: "This payout is not pending approval or can no longer be canceled." };
+      return {
+        success: false,
+        error:
+          "This payout is not pending approval or can no longer be canceled.",
+      };
     }
 
     if (invoice.requested_by !== user.id) {
-      return { success: false, error: "Only the creator can cancel this draft." };
+      return {
+        success: false,
+        error: "Only the creator can cancel this draft.",
+      };
     }
 
     // Unlink items
@@ -1519,7 +1735,10 @@ export async function cancelInternalPayoutRequest(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to cancel payout draft.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to cancel payout draft.",
     };
   }
 }
