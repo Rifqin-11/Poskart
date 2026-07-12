@@ -178,7 +178,8 @@ export function PaymentGatewayManagement() {
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm leading-6 text-zinc-600">
           Payout fees, deduction methods, and minimum withdrawal requests are managed
-          from the <span className="font-medium text-zinc-950">Payout / Withdraw</span> tab.
+          from <span className="font-medium text-zinc-950">Requests</span> →{" "}
+          <span className="font-medium text-zinc-950">Payout / Withdraw</span>.
         </div>
 
         <Button onClick={() => void saveGateway()} disabled={loading || saving}>

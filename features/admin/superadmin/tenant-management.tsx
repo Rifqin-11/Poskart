@@ -204,13 +204,13 @@ export function TenantManagement() {
             <SuperAdminSectionButton
               icon={WalletCards}
               title="SaaS"
-              description="Configure pricing, payment gateway, and payout or withdrawal operations."
+              description="Configure pricing, subscription payment gateway, and gallery storage."
               onClick={() => setActiveSection("SaaS")}
             />
             <SuperAdminSectionButton
               icon={ShieldCheck}
               title="Requests"
-              description="Review transaction verification, refund, and archive requests from organizations."
+              description="Review payout, withdrawal, verification, refund, and archive requests from organizations."
               onClick={() => setActiveSection("requests")}
             />
           </div>
@@ -561,7 +561,7 @@ export function TenantManagement() {
         <div className="space-y-4">
           <SuperAdminBackHeader
             title="SaaS"
-            description="Manage SaaS pricing, subscription payment gateway, and payout operations."
+            description="Manage SaaS pricing, subscription payment gateway, and gallery storage."
             onBack={() => setActiveSection("overview")}
           />
           <Tabs defaultValue="saas-pricing">
@@ -571,9 +571,6 @@ export function TenantManagement() {
                 <TabsTrigger value="payment-gateway">Payment Gateway</TabsTrigger>
                 <TabsTrigger value="gallery-storage">
                   Gallery Storage
-                </TabsTrigger>
-                <TabsTrigger value="payout-invoices">
-                  Payout / Withdraw
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -589,9 +586,6 @@ export function TenantManagement() {
             <TabsContent value="gallery-storage">
               <GalleryStorageManagement />
             </TabsContent>
-            <TabsContent value="payout-invoices">
-              <PayoutInvoiceManagement organizations={tenantsList} />
-            </TabsContent>
           </Tabs>
         </div>
       ) : null}
@@ -602,7 +596,24 @@ export function TenantManagement() {
             description="Review operational requests that need super admin approval."
             onBack={() => setActiveSection("overview")}
           />
-          <TransactionActionRequestManagement />
+          <Tabs defaultValue="payout-invoices">
+            <div className="mb-4 rounded-[24px] bg-white p-2 shadow-sm">
+              <TabsList className="w-full justify-start rounded-[18px]">
+                <TabsTrigger value="payout-invoices">
+                  Payout / Withdraw
+                </TabsTrigger>
+                <TabsTrigger value="transaction-requests">
+                  Transaction Requests
+                </TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="payout-invoices">
+              <PayoutInvoiceManagement organizations={tenantsList} />
+            </TabsContent>
+            <TabsContent value="transaction-requests">
+              <TransactionActionRequestManagement />
+            </TabsContent>
+          </Tabs>
         </div>
       ) : null}
 
