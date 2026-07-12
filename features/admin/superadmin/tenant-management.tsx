@@ -69,7 +69,7 @@ type AdminUserProfile = {
   memberRole: string | null;
 };
 
-type SuperAdminSection = "overview" | "organizations" | "finance" | "requests";
+type SuperAdminSection = "overview" | "organizations" | "SaaS" | "requests";
 
 const EMPTY_TENANT: TenantInput = {
   name: "",
@@ -203,9 +203,9 @@ export function TenantManagement() {
             />
             <SuperAdminSectionButton
               icon={WalletCards}
-              title="Finance"
+              title="SaaS"
               description="Configure pricing, payment gateway, and payout or withdrawal operations."
-              onClick={() => setActiveSection("finance")}
+              onClick={() => setActiveSection("SaaS")}
             />
             <SuperAdminSectionButton
               icon={ShieldCheck}
@@ -557,10 +557,10 @@ export function TenantManagement() {
           </Tabs>
         </div>
       ) : null}
-      {activeSection === "finance" ? (
+      {activeSection === "SaaS" ? (
         <div className="space-y-4">
           <SuperAdminBackHeader
-            title="Finance"
+            title="SaaS"
             description="Manage SaaS pricing, subscription payment gateway, and payout operations."
             onBack={() => setActiveSection("overview")}
           />
