@@ -223,7 +223,9 @@ export async function getTransactionsPage(
   visibilityFilter = `and(${visibilityFilter},or(provider.neq.QRIS,status.neq.pending,merchant_order_id.not.is.null))`;
 
   const buildFilteredQuery = (select: string) => {
-    let query = supabase.from("transactions").select(select);
+    let query = supabase
+      .from("transactions")
+      .select(select, { count: "exact" });
     if (paymentMethod !== "all") {
       query = query.eq("provider", paymentMethod);
     }

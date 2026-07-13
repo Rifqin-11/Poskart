@@ -3,6 +3,7 @@ import { CalendarDays, Images } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { GallerySessionCard } from "@/features/admin/gallery/gallery-session-card";
+import { GalleryLoadMore } from "@/features/admin/gallery/gallery-load-more";
 import {
   isActiveLivePhotoJob,
   shouldShowGallerySession,
@@ -69,6 +70,7 @@ export async function GalleryPage() {
     )
     .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(100);
   const rows = (sessions ?? []) as GallerySessionRow[];
   const sessionIds = rows.map((session) => session.id);
@@ -162,6 +164,13 @@ export async function GalleryPage() {
     );
   });
 
+  const lastRow = rows.at(-1);
+  const hasMoreRows = rows.length === 100;
+  const initialCursor =
+    hasMoreRows && lastRow
+      ? encodeGalleryCursor({ createdAt: lastRow.created_at, id: lastRow.id })
+      : null;
+
   if (visibleRows.length === 0) {
     return (
       <GalleryEmpty message="Hasil photobooth akan muncul setelah kiosk membuat QR dan menyelesaikan upload." />
@@ -244,8 +253,14 @@ export async function GalleryPage() {
           </div>
         </section>
       ))}
+
+      <GalleryLoadMore initialCursor={initialCursor} />
     </div>
   );
+}
+
+function encodeGalleryCursor(cursor: { createdAt: string; id: string }) {
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
 }
 
 function isOrphanQrisPendingTransaction(transaction: TransactionRow) {
