@@ -392,32 +392,28 @@ export function TransactionsMonitoring() {
     setPage(1);
   }
 
-  // Filtering and pagination happen on the server. This is only the bounded
-  // page currently visible in the table.
+  // Filtering and pagination happen on the server. The summary is aggregated
+  // server-side across every matching row, not just the visible page.
   const filtered = data;
-  const summary = filtered.reduce(
-    (acc, transaction) => {
-      const isActivePaid =
-        transaction.status === "paid" &&
-        !transaction.isTesting &&
-        !transaction.isArchived;
-      const netAmount = getTransactionNetAmount(transaction, config);
-      return {
-        revenue: acc.revenue + (isActivePaid ? netAmount : 0),
-        printCount: acc.printCount + (isActivePaid ? transaction.printCount : 0),
-        transactionCount: acc.transactionCount + 1,
-        paidCount: acc.paidCount + (isActivePaid ? 1 : 0),
-        grossRevenue: acc.grossRevenue + (isActivePaid ? transaction.amount : 0),
-      };
-    },
-    {
-      revenue: 0,
-      printCount: 0,
-      transactionCount: 0,
-      paidCount: 0,
-      grossRevenue: 0,
-    },
-  );
+  const serverSummary = transactionQuery.data?.summary;
+  const qrisFee = serverSummary
+    ? config?.gateway_fee_type === "fixed"
+      ? serverSummary.qrisPaidCount *
+        Number(config.gateway_fee_fixed_amount ?? 0)
+      : calculateConfiguredFee(
+          serverSummary.qrisGrossRevenue,
+          config?.gateway_fee_type,
+          config?.gateway_fee_percentage,
+          config?.gateway_fee_fixed_amount,
+        )
+    : 0;
+  const summary = {
+    revenue: Math.max(0, (serverSummary?.grossRevenue ?? 0) - qrisFee),
+    printCount: serverSummary?.printCount ?? 0,
+    transactionCount: serverSummary?.transactionCount ?? 0,
+    paidCount: serverSummary?.paidCount ?? 0,
+    grossRevenue: serverSummary?.grossRevenue ?? 0,
+  };
   const hasActiveFilters =
     search.trim() ||
     statusFilter !== "all" ||

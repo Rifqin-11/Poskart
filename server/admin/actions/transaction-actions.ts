@@ -85,6 +85,19 @@ export type TransactionListFilters = PaginationInput & {
   date?: string;
 };
 
+export type TransactionPageSummary = {
+  transactionCount: number;
+  paidCount: number;
+  printCount: number;
+  grossRevenue: number;
+  qrisGrossRevenue: number;
+  qrisPaidCount: number;
+};
+
+export type TransactionPageResult = PaginatedResult<Transaction> & {
+  summary: TransactionPageSummary;
+};
+
 function normalizePagination(input?: PaginationInput) {
   const page = Math.max(1, Math.floor(Number(input?.page ?? 1)));
   const requestedPageSize = Math.floor(
@@ -169,7 +182,7 @@ async function attachPendingActions(
  */
 export async function getTransactionsPage(
   filters: TransactionListFilters = {},
-): Promise<PaginatedResult<Transaction>> {
+): Promise<TransactionPageResult> {
   const { supabase } = await getAdminContext();
   const pagination = normalizePagination(filters);
   const requestedStatus = filters.status?.trim() || "all";
@@ -193,12 +206,6 @@ export async function getTransactionsPage(
   const packageName = filters.packageName?.trim();
   const search = filters.search?.trim();
 
-  let query = supabase
-    .from("transactions")
-    .select(TRANSACTION_COLUMNS, { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(pagination.from, pagination.to);
-
   let visibilityFilter: string;
   if (status === "archive") {
     visibilityFilter = "and(archived_at.not.is.null,archive_reason.neq.testing)";
@@ -215,45 +222,85 @@ export async function getTransactionsPage(
   // pagination consistent with the rows rendered by the legacy path.
   visibilityFilter = `and(${visibilityFilter},or(provider.neq.QRIS,status.neq.pending,merchant_order_id.not.is.null))`;
 
-  if (paymentMethod !== "all") {
-    query = query.eq("provider", paymentMethod);
-  }
-  if (packageName && packageName !== "all") {
-    query = query.ilike("package_name", `%${packageName}%`);
-  }
+  const buildFilteredQuery = (select: string) => {
+    let query = supabase.from("transactions").select(select);
+    if (paymentMethod !== "all") {
+      query = query.eq("provider", paymentMethod);
+    }
+    if (packageName && packageName !== "all") {
+      query = query.ilike("package_name", `%${packageName}%`);
+    }
+    query = query.or(visibilityFilter);
+    if (filters.date) {
+      const start = new Date(`${filters.date}T00:00:00`);
+      if (!Number.isNaN(start.getTime())) {
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+        query = query
+          .gte("created_at", start.toISOString())
+          .lt("created_at", end.toISOString());
+      }
+    }
+    return query;
+  };
+
   if (search) {
     const escaped = search.replace(/[%(),]/g, " ").trim();
     if (escaped) {
       visibilityFilter = `and(${visibilityFilter},or(id.ilike.%${escaped}%,booth.ilike.%${escaped}%,customer.ilike.%${escaped}%,package_name.ilike.%${escaped}%))`;
     }
   }
-  query = query.or(visibilityFilter);
-  if (filters.date) {
-    const start = new Date(`${filters.date}T00:00:00`);
-    if (!Number.isNaN(start.getTime())) {
-      const end = new Date(start);
-      end.setDate(end.getDate() + 1);
-      query = query
-        .gte("created_at", start.toISOString())
-        .lt("created_at", end.toISOString());
-    }
-  }
 
-  const { data, error, count } = await query;
+  const query = buildFilteredQuery(TRANSACTION_COLUMNS)
+    .order("created_at", { ascending: false })
+    .range(pagination.from, pagination.to);
+  const summaryRequest = supabase.rpc("get_transaction_summary", {
+    p_status: status,
+    p_payment_method: paymentMethod,
+    p_package_name: packageName ?? "",
+    p_search: search ?? "",
+    p_date: filters.date || null,
+  });
+  const [{ data, error, count }, { data: summaryRows, error: summaryError }] =
+    await Promise.all([query, summaryRequest]);
   const rows = assertSupabaseResult(
     data as TransactionRow[] | null,
     error,
     "Unable to load transactions",
   );
+  const summaryData = assertSupabaseResult(
+    summaryRows as Array<{
+      transaction_count: number | null;
+      paid_count: number | null;
+      print_count: number | null;
+      gross_revenue: number | string | null;
+      qris_gross_revenue: number | string | null;
+      qris_paid_count: number | null;
+    }> | null,
+    summaryError,
+    "Unable to load transaction summary",
+  )[0];
   const transactions = rows
     .filter((row) => !isOrphanQrisPendingTransaction(row))
     .map(mapTransaction);
 
-  return toPaginatedResult(
+  const summary: TransactionPageSummary = {
+    transactionCount: Number(summaryData?.transaction_count ?? 0),
+    paidCount: Number(summaryData?.paid_count ?? 0),
+    printCount: Number(summaryData?.print_count ?? 0),
+    grossRevenue: Number(summaryData?.gross_revenue ?? 0),
+    qrisGrossRevenue: Number(summaryData?.qris_gross_revenue ?? 0),
+    qrisPaidCount: Number(summaryData?.qris_paid_count ?? 0),
+  };
+
+  return {
+    ...toPaginatedResult(
     await attachPendingActions(supabase, transactions),
     pagination,
     Math.max(0, count ?? 0),
-  );
+    ),
+    summary,
+  };
 }
 
 function actionLabel(action: TransactionActionType) {
