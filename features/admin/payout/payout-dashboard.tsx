@@ -89,11 +89,17 @@ export function PayoutDashboard({
   const requestEstimate = useMemo(
     () =>
       estimatePayoutRequest(
-        availableLedgerEntries,
         requestForm.amount,
+        summary.availableGrossAmount,
+        summary.availableGatewayFeeAmount,
         summary.settings,
       ),
-    [availableLedgerEntries, requestForm.amount, summary.settings],
+    [
+      requestForm.amount,
+      summary.availableGrossAmount,
+      summary.availableGatewayFeeAmount,
+      summary.settings,
+    ],
   );
 
   const loadInvoicePage = async (page: number) => {
@@ -833,53 +839,31 @@ function EstimateStat({
 }
 
 function estimatePayoutRequest(
-  entries: PayoutAvailableLedgerEntry[],
   requestedAmount: number,
+  availableGrossAmount: number,
+  availableGatewayFeeAmount: number,
   settings: PayoutSummary["settings"],
 ) {
-  let remainingGrossAmount = Math.max(0, Math.round(Number(requestedAmount)));
-  let grossAmount = 0;
-  let gatewayFeeAmount = 0;
-  let ledgerNetAmount = 0;
-  let count = 0;
-
-  for (const entry of entries) {
-    if (entry.netAmount <= 0) continue;
-    const allocatedGrossAmount = Math.min(
-      entry.grossAmount,
-      remainingGrossAmount,
-    );
-    if (allocatedGrossAmount <= 0) break;
-
-    const ratio =
-      entry.grossAmount > 0 ? allocatedGrossAmount / entry.grossAmount : 0;
-    const allocatedGatewayFee = Math.min(
-      entry.gatewayFeeAmount,
-      Math.round(entry.gatewayFeeAmount * ratio),
-    );
-    const allocatedPlatformFee = Math.min(
-      entry.platformFeeAmount,
-      Math.round(entry.platformFeeAmount * ratio),
-    );
-    const allocatedNetAmount = Math.max(
-      0,
-      allocatedGrossAmount - allocatedGatewayFee - allocatedPlatformFee,
-    );
-
-    grossAmount += allocatedGrossAmount;
-    gatewayFeeAmount += allocatedGatewayFee;
-
-    ledgerNetAmount += allocatedNetAmount;
-    count += 1;
-    remainingGrossAmount -= allocatedGrossAmount;
-    if (remainingGrossAmount <= 0) break;
-  }
-
+  const grossAmount = Math.min(
+    Math.max(0, Math.round(Number(requestedAmount))),
+    Math.max(0, Math.round(Number(availableGrossAmount))),
+  );
+  const ratio = availableGrossAmount > 0 ? grossAmount / availableGrossAmount : 0;
+  const gatewayFeeAmount = Math.min(
+    Math.max(0, Math.round(Number(availableGatewayFeeAmount))),
+    Math.max(0, Math.round(availableGatewayFeeAmount * ratio)),
+  );
+  const ledgerNetAmount = Math.max(0, grossAmount - gatewayFeeAmount);
   const platformFeeAmount =
-    count > 0 ? calculateFrontendConfiguredFee(ledgerNetAmount, settings) : 0;
+    grossAmount > 0 ? calculateFrontendConfiguredFee(ledgerNetAmount, settings) : 0;
   const netAmount = Math.max(0, ledgerNetAmount - platformFeeAmount);
 
-  return { count, grossAmount, gatewayFeeAmount, platformFeeAmount, netAmount };
+  return {
+    grossAmount,
+    gatewayFeeAmount,
+    platformFeeAmount,
+    netAmount,
+  };
 }
 
 function calculateFrontendConfiguredFee(
