@@ -1,5 +1,6 @@
 import {
   getTransactions,
+  getTransactionsPage,
   getFailedPrintsByBooth,
   retryPrint,
   requestTransactionAction,
@@ -9,10 +10,13 @@ import {
   reviewTransactionActionRequest,
 } from "@/server/admin/actions/transaction-actions";
 import type { TransactionActionType } from "@/types/transaction";
+import type { TransactionListFilters } from "@/server/admin/actions/transaction-actions";
 
 export const transactionService = {
   getTransactions: (input?: { includeArchived?: boolean }) =>
     getTransactions(input),
+  getTransactionsPage: (input?: TransactionListFilters) =>
+    getTransactionsPage(input),
   getFailedPrintsByBooth,
   retryPrint,
   markTransactionAsTesting,

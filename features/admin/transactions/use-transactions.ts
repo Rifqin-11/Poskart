@@ -3,11 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { transactionsApi } from "@/features/admin/transactions/api";
+import type { TransactionListFilters } from "@/server/admin/actions/transaction-actions";
 
-export function useTransactions(includeArchived = false) {
-  return useQuery<Awaited<ReturnType<typeof transactionsApi.getTransactions>>, Error>({
-    queryKey: adminQueryKeys.transactions(includeArchived),
-    queryFn: () => transactionsApi.getTransactions({ includeArchived }),
+export function useTransactions(filters: TransactionListFilters = {}) {
+  return useQuery<Awaited<ReturnType<typeof transactionsApi.getTransactionsPage>>, Error>({
+    queryKey: adminQueryKeys.transactions(filters),
+    queryFn: () => transactionsApi.getTransactionsPage(filters),
   });
 }
 

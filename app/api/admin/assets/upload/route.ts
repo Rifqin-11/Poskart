@@ -1,5 +1,5 @@
 import { jsonError, jsonOk } from "@/lib/kiosk/server";
-import { getAdminContext } from "@/server/admin/context";
+import { verifyRole } from "@/server/admin/context";
 import { recordKioskAssetManifest } from "@/lib/assets/asset-manifest";
 import { createR2SignedUploadUrl, uploadR2Object } from "@/lib/r2/server";
 
@@ -35,7 +35,7 @@ function validate(fileType: string, fileSize: number) {
 
 export async function POST(request: Request) {
   try {
-    const { organizationId } = await getAdminContext();
+    const { organizationId } = await verifyRole(["owner", "admin", "designer"]);
     const contentType = request.headers.get("content-type") ?? "";
 
     if (contentType.includes("application/json")) {

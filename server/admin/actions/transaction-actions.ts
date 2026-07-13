@@ -77,6 +77,14 @@ type TransactionForActionRow = {
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 50;
 
+export type TransactionListFilters = PaginationInput & {
+  search?: string;
+  status?: string;
+  paymentMethod?: string;
+  packageName?: string;
+  date?: string;
+};
+
 function normalizePagination(input?: PaginationInput) {
   const page = Math.max(1, Math.floor(Number(input?.page ?? 1)));
   const requestedPageSize = Math.floor(
@@ -109,6 +117,143 @@ function toPaginatedResult<T>(
     totalItems,
     totalPages: Math.max(1, Math.ceil(totalItems / pagination.pageSize)),
   };
+}
+
+async function attachPendingActions(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  transactions: Transaction[],
+) {
+  const ids = transactions.map((transaction) => transaction.id);
+  if (ids.length === 0) return transactions;
+
+  const { data: requests, error: requestError } = await supabase
+    .from("transaction_action_requests")
+    .select("id,transaction_id,action,status,requested_at")
+    .eq("status", "requested")
+    .in("transaction_id", ids);
+
+  if (requestError) {
+    if (requestError.code === "42P01" || requestError.code === "42703") {
+      return transactions;
+    }
+    throw new Error(
+      `Unable to load transaction action requests: ${requestError.message}`,
+    );
+  }
+
+  const pendingByTransaction = new Map<string, TransactionPendingAction>();
+  for (const request of (requests ?? []) as Array<{
+    id: string;
+    transaction_id: string;
+    action: TransactionActionType;
+    status: TransactionActionStatus;
+    requested_at: string;
+  }>) {
+    pendingByTransaction.set(request.transaction_id, {
+      id: request.id,
+      action: request.action,
+      status: request.status,
+      requestedAt: request.requested_at,
+    });
+  }
+
+  return transactions.map((transaction) => ({
+    ...transaction,
+    pendingAction: pendingByTransaction.get(transaction.id) ?? null,
+  }));
+}
+
+/**
+ * Server-side transaction list. The legacy getTransactions function remains
+ * for dashboard aggregates, while the monitoring table uses this bounded query.
+ */
+export async function getTransactionsPage(
+  filters: TransactionListFilters = {},
+): Promise<PaginatedResult<Transaction>> {
+  const { supabase } = await getAdminContext();
+  const pagination = normalizePagination(filters);
+  const requestedStatus = filters.status?.trim() || "all";
+  const status = new Set([
+    "all",
+    "paid",
+    "pending",
+    "failed",
+    "refunded",
+    "archive",
+    "testing",
+  ]).has(requestedStatus)
+    ? requestedStatus
+    : "all";
+  const requestedPaymentMethod = filters.paymentMethod?.trim() || "all";
+  const paymentMethod = new Set(["all", "QRIS", "Cash", "Voucher"]).has(
+    requestedPaymentMethod,
+  )
+    ? requestedPaymentMethod
+    : "all";
+  const packageName = filters.packageName?.trim();
+  const search = filters.search?.trim();
+
+  let query = supabase
+    .from("transactions")
+    .select(TRANSACTION_COLUMNS, { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(pagination.from, pagination.to);
+
+  let visibilityFilter: string;
+  if (status === "archive") {
+    visibilityFilter = "and(archived_at.not.is.null,archive_reason.neq.testing)";
+  } else if (status === "testing") {
+    visibilityFilter = "or(archive_reason.eq.testing,payout_status.eq.testing)";
+  } else {
+    visibilityFilter =
+      status === "all"
+        ? "and(archived_at.is.null,archive_reason.is.null)"
+        : `and(archived_at.is.null,archive_reason.is.null,status.eq.${status})`;
+  }
+  // A QRIS pending row without a merchant order is an abandoned payment
+  // attempt, not a real transaction. Excluding it here keeps the count and
+  // pagination consistent with the rows rendered by the legacy path.
+  visibilityFilter = `and(${visibilityFilter},or(provider.neq.QRIS,status.neq.pending,merchant_order_id.not.is.null))`;
+
+  if (paymentMethod !== "all") {
+    query = query.eq("provider", paymentMethod);
+  }
+  if (packageName && packageName !== "all") {
+    query = query.ilike("package_name", `%${packageName}%`);
+  }
+  if (search) {
+    const escaped = search.replace(/[%(),]/g, " ").trim();
+    if (escaped) {
+      visibilityFilter = `and(${visibilityFilter},or(id.ilike.%${escaped}%,booth.ilike.%${escaped}%,customer.ilike.%${escaped}%,package_name.ilike.%${escaped}%))`;
+    }
+  }
+  query = query.or(visibilityFilter);
+  if (filters.date) {
+    const start = new Date(`${filters.date}T00:00:00`);
+    if (!Number.isNaN(start.getTime())) {
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      query = query
+        .gte("created_at", start.toISOString())
+        .lt("created_at", end.toISOString());
+    }
+  }
+
+  const { data, error, count } = await query;
+  const rows = assertSupabaseResult(
+    data as TransactionRow[] | null,
+    error,
+    "Unable to load transactions",
+  );
+  const transactions = rows
+    .filter((row) => !isOrphanQrisPendingTransaction(row))
+    .map(mapTransaction);
+
+  return toPaginatedResult(
+    await attachPendingActions(supabase, transactions),
+    pagination,
+    Math.max(0, count ?? 0),
+  );
 }
 
 function actionLabel(action: TransactionActionType) {

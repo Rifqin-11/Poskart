@@ -1,8 +1,8 @@
 export const adminQueryKeys = {
   dashboard: ["dashboard"] as const,
   transactionsRoot: ["transactions"] as const,
-  transactions: (includeArchived = false) =>
-    ["transactions", { includeArchived }] as const,
+  transactions: (filters: Record<string, unknown> = {}) =>
+    ["transactions", filters] as const,
   payoutSummary: ["payout-summary"] as const,
   payoutInvoices: ["payout-invoices"] as const,
   transactionActionRequestsRoot: ["transaction-action-requests"] as const,

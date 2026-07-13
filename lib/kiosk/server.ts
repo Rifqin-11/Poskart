@@ -639,10 +639,15 @@ export function jsonError(error: unknown) {
 }
 
 export function jsonOk(data: unknown, init?: ResponseInit) {
-  return Response.json(data, {
+  const body = JSON.stringify(data);
+  return new Response(body, {
     ...init,
     headers: {
       "Cache-Control": "no-store",
+      "Content-Type": "application/json; charset=utf-8",
+      "X-POSKART-Response-Bytes": String(
+        new TextEncoder().encode(body).byteLength,
+      ),
       ...init?.headers,
     },
   });

@@ -10,24 +10,72 @@ import {
   shouldShowGallerySession,
 } from "@/lib/gallery/session-visibility";
 
+function encodeGalleryCursor(createdAt: string, id: string) {
+  return Buffer.from(JSON.stringify({ createdAt, id })).toString("base64url");
+}
+
+function decodeGalleryCursor(value: string) {
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+    if (
+      typeof parsed.createdAt === "string" &&
+      typeof parsed.id === "string"
+    ) {
+      return parsed as { createdAt: string; id: string };
+    }
+  } catch {}
+  return null;
+}
+
 export async function GET(request: Request) {
   try {
     const context = await requireKioskContext(request);
     const { searchParams } = new URL(request.url);
     const deviceId = searchParams.get("deviceId") ?? "";
+    const sessionId = searchParams.get("sessionId")?.trim() ?? "";
+    const summaryOnly = searchParams.get("summaryOnly") !== "false" && !sessionId;
+    const cursor = searchParams.get("cursor")?.trim() ?? "";
+    const requestedLimit = Number(searchParams.get("limit") ?? 24);
+    const limit = Math.min(
+      50,
+      Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 24),
+    );
     await requireOrganizationDevice(context, deviceId);
 
-    // Fetch sessions for this organization
-    const { data: sessions, error: sessionsError } = await context.client
+    let sessionsQuery = context.client
       .from("gallery_sessions")
       .select(
         "id,device_id,template_name,theme_name,social_media_consent,test_mode,share_url,created_at",
       )
       .eq("organization_id", context.organizationId)
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .order("created_at", { ascending: false });
+    if (sessionId) {
+      sessionsQuery = sessionsQuery.eq("id", sessionId).limit(1);
+    } else {
+      if (cursor) {
+        const decodedCursor = decodeGalleryCursor(cursor);
+        if (decodedCursor) {
+          sessionsQuery = sessionsQuery.or(
+            `created_at.lt.${decodedCursor.createdAt},and(created_at.eq.${decodedCursor.createdAt},id.lt.${decodedCursor.id})`,
+          );
+        } else {
+          sessionsQuery = sessionsQuery.lt("created_at", cursor);
+        }
+      }
+      sessionsQuery = sessionsQuery.limit(limit + 1);
+    }
+    const { data: sessionRows, error: sessionsError } = await sessionsQuery;
 
     if (sessionsError) throw sessionsError;
+    const hasMore = !sessionId && (sessionRows ?? []).length > limit;
+    const sessions = sessionId
+      ? sessionRows ?? []
+      : (sessionRows ?? []).slice(0, limit);
+    const lastSession = sessions[sessions.length - 1];
+    const nextCursor =
+      hasMore && lastSession
+        ? encodeGalleryCursor(lastSession.created_at, lastSession.id)
+        : null;
 
     const sessionIds = (sessions ?? []).map((s) => s.id);
     const { data: photos, error: photosError } = sessionIds.length
@@ -112,11 +160,29 @@ export async function GET(request: Request) {
       visibleSessions.map((session) => session.id),
     );
 
+    const responsePhotos = summaryOnly
+      ? visibleSessions.flatMap((session) => {
+          const sessionPhotos = (photos ?? []).filter(
+            (photo) => photo.session_id === session.id,
+          );
+          const thumbnail =
+            sessionPhotos.find((photo) => photo.kind === "framed") ??
+            sessionPhotos.find(
+              (photo) =>
+                photo.kind === "raw" &&
+                photo.photo_index !== 98 &&
+                photo.photo_index !== 99,
+            );
+          return thumbnail ? [thumbnail] : [];
+        })
+      : (photos ?? []).filter((photo) => visibleSessionIds.has(photo.session_id));
+
     return jsonOk({
       sessions: visibleSessions,
-      photos: (photos ?? []).filter((photo) =>
-        visibleSessionIds.has(photo.session_id),
-      ),
+      photos: responsePhotos,
+      nextCursor,
+      hasMore,
+      summaryOnly,
     });
   } catch (error) {
     return jsonError(error);

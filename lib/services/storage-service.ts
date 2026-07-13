@@ -176,10 +176,13 @@ export async function uploadLibraryAsset(
     path?: string;
     error?: string;
   } | null;
-  if (!intentResponse.ok || !intent.uploadUrl || !intent.url || !intent.path) {
+  const uploadUrl = intent?.uploadUrl;
+  const publicUrl = intent?.url;
+  const path = intent?.path;
+  if (!intentResponse.ok || !uploadUrl || !publicUrl || !path) {
     throw new Error(intent?.error || "Unable to create asset upload.");
   }
-  const uploadResponse = await fetch(intent.uploadUrl, {
+  const uploadResponse = await fetch(uploadUrl, {
     method: "PUT",
     headers: { "Content-Type": file.type },
     body: file,
@@ -189,5 +192,5 @@ export async function uploadLibraryAsset(
   const sizeKb = Math.max(1, Math.round(file.size / 1024));
   const size =
     sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
-  return { url: intent.url, path: intent.path, size };
+  return { url: publicUrl, path, size };
 }

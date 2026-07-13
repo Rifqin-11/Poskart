@@ -3,7 +3,7 @@
 import {
   type ComponentType,
   type ReactNode,
-  useMemo,
+  useEffect,
   useState,
 } from "react";
 import { Banknote, ChevronDown, Printer, ReceiptText } from "lucide-react";
@@ -81,6 +81,15 @@ function getTransactionActionLabel(action: TransactionActionType) {
   return "Archive";
 }
 
+function useDebouncedValue<T>(value: T, delayMs = 250) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [delayMs, value]);
+  return debounced;
+}
+
 function getTransactionActionItems(
   transaction: Transaction,
   onRequest: (transaction: Transaction, action: TransactionActionType) => void,
@@ -124,12 +133,6 @@ function getTransactionActionItems(
   });
 
   return items;
-}
-
-function getTransactionDateKey(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function renderTestingBadge(transaction: Transaction) {
@@ -355,9 +358,6 @@ export function TransactionsMonitoring() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const includeSpecialStatusTransactions =
-    statusFilter === "archive" || statusFilter === "testing";
-  const { data = [] } = useTransactions(includeSpecialStatusTransactions);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [packageFilter, setPackageFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
@@ -365,6 +365,22 @@ export function TransactionsMonitoring() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
   const pageSize = 10;
+  const debouncedSearch = useDebouncedValue(search);
+  const debouncedPackageFilter = useDebouncedValue(packageFilter);
+
+  const transactionQuery = useTransactions({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    status: statusFilter,
+    paymentMethod: paymentMethodFilter,
+    packageName:
+      debouncedPackageFilter === "all" ? "" : debouncedPackageFilter,
+    date: dateFilter,
+  });
+  const data = transactionQuery.data?.items ?? [];
+  const totalItems = transactionQuery.data?.totalItems ?? 0;
+  const paymentMethodOptions = ["QRIS", "Cash", "Voucher"];
 
   function resetFilters() {
     setSearch("");
@@ -376,51 +392,9 @@ export function TransactionsMonitoring() {
     setPage(1);
   }
 
-  const paymentMethodOptions = useMemo(
-    () =>
-      Array.from(new Set(data.map(getTransactionPaymentMethod))).sort((a, b) =>
-        a.localeCompare(b),
-      ),
-    [data],
-  );
-  const packageOptions = useMemo(
-    () =>
-      Array.from(new Set(data.map((transaction) => transaction.packageName)))
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b)),
-    [data],
-  );
-
-  const filtered = data.filter((t: Transaction) => {
-    const paymentMethod = getTransactionPaymentMethod(t);
-    const matchSearch =
-      !search ||
-      t.id.toLowerCase().includes(search.toLowerCase()) ||
-      t.device.toLowerCase().includes(search.toLowerCase()) ||
-      t.customer.toLowerCase().includes(search.toLowerCase()) ||
-      t.packageName.toLowerCase().includes(search.toLowerCase());
-    const matchStatus =
-      statusFilter === "all"
-        ? !t.isArchived && !t.isTesting
-        : statusFilter === "archive"
-          ? Boolean(t.isArchived)
-          : statusFilter === "testing"
-            ? Boolean(t.isTesting)
-            : !t.isArchived && !t.isTesting && t.status === statusFilter;
-    const matchPaymentMethod =
-      paymentMethodFilter === "all" || paymentMethod === paymentMethodFilter;
-    const matchPackage =
-      packageFilter === "all" || t.packageName === packageFilter;
-    const matchDate =
-      !dateFilter || getTransactionDateKey(t.createdAtRaw) === dateFilter;
-    return (
-      matchSearch &&
-      matchStatus &&
-      matchPaymentMethod &&
-      matchPackage &&
-      matchDate
-    );
-  });
+  // Filtering and pagination happen on the server. This is only the bounded
+  // page currently visible in the table.
+  const filtered = data;
   const summary = filtered.reduce(
     (acc, transaction) => {
       const isActivePaid =
@@ -455,14 +429,8 @@ export function TransactionsMonitoring() {
     paymentMethodFilter !== "all" ||
     packageFilter !== "all" ||
     Boolean(dateFilter);
-  const activePage = Math.min(
-    page,
-    Math.max(1, Math.ceil(filtered.length / pageSize)),
-  );
-  const paginatedTransactions = filtered.slice(
-    (activePage - 1) * pageSize,
-    activePage * pageSize,
-  );
+  const activePage = transactionQuery.data?.page ?? page;
+  const paginatedTransactions = filtered;
   const selectablePageTransactions = paginatedTransactions.filter(
     isArchiveableTransaction,
   );
@@ -654,7 +622,7 @@ export function TransactionsMonitoring() {
             value={`${summary.transactionCount} transactions`}
             description={
               hasActiveFilters
-                ? `Filtered from ${data.length} transactions`
+                ? `Filtered from ${totalItems} transactions`
                 : "All transactions"
             }
           />
@@ -729,22 +697,16 @@ export function TransactionsMonitoring() {
                   </option>
                 ))}
               </Select>
-              <Select
+              <Input
                 className="min-w-0"
-                value={packageFilter}
+                placeholder="Package"
+                value={packageFilter === "all" ? "" : packageFilter}
                 onChange={(e) => {
-                  setPackageFilter(e.target.value);
+                  setPackageFilter(e.target.value || "all");
                   setSelectedIds(new Set());
                   setPage(1);
                 }}
-              >
-                <option value="all">All packages</option>
-                {packageOptions.map((packageName) => (
-                  <option key={packageName} value={packageName}>
-                    {packageName}
-                  </option>
-                ))}
-              </Select>
+              />
               <Input
                 className="min-w-0"
                 type="date"
@@ -813,21 +775,15 @@ export function TransactionsMonitoring() {
                 </Select>
               </MobileFilterField>
               <MobileFilterField label="Package">
-                <Select
-                  value={packageFilter}
+                <Input
+                  placeholder="Package name"
+                  value={packageFilter === "all" ? "" : packageFilter}
                   onChange={(e) => {
-                    setPackageFilter(e.target.value);
+                    setPackageFilter(e.target.value || "all");
                     setSelectedIds(new Set());
                     setPage(1);
                   }}
-                >
-                  <option value="all">All packages</option>
-                  {packageOptions.map((packageName) => (
-                    <option key={packageName} value={packageName}>
-                      {packageName}
-                    </option>
-                  ))}
-                </Select>
+                />
               </MobileFilterField>
               <MobileFilterField label="Date">
                 <Input
@@ -844,7 +800,7 @@ export function TransactionsMonitoring() {
             </MobileFilterDrawer>
             <div className="flex min-w-0 flex-col gap-2 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
               <span className="whitespace-nowrap">
-                {filtered.length} of {data.length} transactions
+                {totalItems} transactions
               </span>
               {!isReadOnly("transactions") ? (
                 <BulkActionMenu
@@ -1105,7 +1061,7 @@ export function TransactionsMonitoring() {
           <TablePagination
             page={activePage}
             pageSize={pageSize}
-            totalItems={filtered.length}
+            totalItems={totalItems}
             onPageChange={setPage}
           />
         </CardContent>
