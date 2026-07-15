@@ -57,7 +57,7 @@ export const dictionaries = {
     "nav.queue": "Antrian",
     "nav.money": "Keuangan",
     "nav.transactions": "Transaksi",
-    "nav.withdraw": "Pencairan / Penarikan",
+    "nav.withdraw": "Penarikan",
     "nav.pricing": "Pricing",
     "nav.devices": "Perangkat",
     "nav.themes": "Themes",
