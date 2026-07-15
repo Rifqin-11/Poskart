@@ -21,7 +21,10 @@ export async function POST(request: Request) {
   try {
     const context = await requireKioskContext(request);
     const body = (await request.json()) as PosSaleBody;
-    const device = await requireOrganizationDevice(context, body.deviceId ?? "");
+    const device = await requireOrganizationDevice(
+      context,
+      body.deviceId ?? "",
+    );
 
     if (!body.packageCode) {
       return jsonOk(
@@ -38,6 +41,15 @@ export async function POST(request: Request) {
       device,
       body.packageCode,
     );
+    if (product.accessMode === "event") {
+      return jsonOk(
+        {
+          error: "Event access cannot be recorded as a POS sale.",
+          code: "KIOSK_EVENT_POS_SALE_NOT_ALLOWED",
+        },
+        { status: 400 },
+      );
+    }
 
     const { data, error } = await context.client
       .from("pos_sales")

@@ -58,7 +58,8 @@ export async function POST(request: Request) {
       body.deviceId ?? "",
     );
     const sessionId = body.sessionId?.trim() ?? "";
-    const packageCode = body.packageCode?.trim() || body.packageName?.trim() || "";
+    const packageCode =
+      body.packageCode?.trim() || body.packageName?.trim() || "";
 
     if (!sessionId || !packageCode) {
       return jsonOk(
@@ -75,6 +76,15 @@ export async function POST(request: Request) {
       device,
       packageCode,
     );
+    if (product.accessMode === "event") {
+      return jsonOk(
+        {
+          error: "Event access does not use QRIS payment.",
+          code: "KIOSK_EVENT_PAYMENT_NOT_ALLOWED",
+        },
+        { status: 400 },
+      );
+    }
 
     const existing = await loadTransaction(context, sessionId);
     if (existing && isDuitkuTransactionPaid(existing)) {

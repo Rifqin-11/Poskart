@@ -13,6 +13,9 @@ type PricingProductRow = {
   promo_price: number | null;
   print_limit: number | null;
   active: boolean;
+  access_mode: "paid" | "event" | null;
+  event_name: string | null;
+  event_expires_at: string | null;
 };
 
 export type ResolvedKioskPricingProduct = {
@@ -20,6 +23,9 @@ export type ResolvedKioskPricingProduct = {
   name: string;
   amount: number;
   printCount: number;
+  accessMode: "paid" | "event";
+  eventName: string | null;
+  eventExpiresAt: string | null;
 };
 
 export async function resolveKioskPricingProduct(
@@ -45,7 +51,29 @@ export async function resolveKioskPricingProduct(
     );
   }
 
-  const assignedPricing = new Set(device.pricing_profiles ?? []);
+  const accessMode = product.access_mode === "event" ? "event" : "paid";
+  if (accessMode === "event" && product.event_expires_at) {
+    const expiry = new Date(product.event_expires_at).getTime();
+    if (!Number.isFinite(expiry) || expiry <= Date.now()) {
+      throw new KioskApiError(
+        "This event access has expired.",
+        400,
+        "KIOSK_EVENT_EXPIRED",
+      );
+    }
+  }
+
+  const assignedPricing = new Set([
+    ...(device.pricing_profiles ?? []),
+    ...(device.pricing_profile ? [device.pricing_profile] : []),
+  ]);
+  if (accessMode === "event" && assignedPricing.size === 0) {
+    throw new KioskApiError(
+      "Event access must be explicitly assigned to this device.",
+      403,
+      "KIOSK_EVENT_NOT_ASSIGNED",
+    );
+  }
   if (
     assignedPricing.size > 0 &&
     !assignedPricing.has(product.id) &&
@@ -62,7 +90,7 @@ export async function resolveKioskPricingProduct(
     0,
     Math.round(product.promo_price ?? product.price ?? 0),
   );
-  if (amount <= 0) {
+  if (accessMode === "paid" && amount <= 0) {
     throw new KioskApiError(
       "The selected package has an invalid price.",
       400,
@@ -75,6 +103,9 @@ export async function resolveKioskPricingProduct(
     name: product.name,
     amount,
     printCount: Math.max(1, Math.round(product.print_limit ?? 1)),
+    accessMode,
+    eventName: product.event_name,
+    eventExpiresAt: product.event_expires_at,
   };
 }
 
@@ -84,7 +115,9 @@ async function findPricingProduct(
 ) {
   const { data: byId, error: idError } = await context.client
     .from("pricing_products")
-    .select("id,name,price,promo_price,print_limit,active")
+    .select(
+      "id,name,price,promo_price,print_limit,active,access_mode,event_name,event_expires_at",
+    )
     .eq("id", packageCode)
     .maybeSingle();
   if (idError) throw idError;
@@ -92,7 +125,9 @@ async function findPricingProduct(
 
   const { data: byName, error: nameError } = await context.client
     .from("pricing_products")
-    .select("id,name,price,promo_price,print_limit,active")
+    .select(
+      "id,name,price,promo_price,print_limit,active,access_mode,event_name,event_expires_at",
+    )
     .eq("name", packageCode)
     .maybeSingle();
   if (nameError) throw nameError;

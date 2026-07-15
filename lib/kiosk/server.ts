@@ -59,7 +59,9 @@ function normalizeDeviceLocation(location: string) {
 }
 
 function sanitizeKioskDevice(device: KioskDeviceRow | null) {
-  return device ? { ...device, location: normalizeDeviceLocation(device.location) } : null;
+  return device
+    ? { ...device, location: normalizeDeviceLocation(device.location) }
+    : null;
 }
 
 export type KioskRequestContext = {
@@ -448,7 +450,7 @@ export async function buildKioskBootstrap(
     context.client
       .from("pricing_products")
       .select(
-        "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active",
+        "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,event_name,event_expires_at",
       )
       .eq("active", true)
       .order("price", { ascending: true }),
@@ -508,7 +510,10 @@ export async function buildKioskBootstrap(
     layout = fallbackLayout.data;
   }
   const assignedTemplates = new Set(device?.frame_templates ?? []);
-  const assignedPricing = new Set(device?.pricing_profiles ?? []);
+  const assignedPricing = new Set([
+    ...(device?.pricing_profiles ?? []),
+    ...(device?.pricing_profile ? [device.pricing_profile] : []),
+  ]);
 
   const allTemplates = templatesResult.data ?? [];
   // When a device has specific templates assigned, only return those.
@@ -563,7 +568,8 @@ export async function buildKioskBootstrap(
           watermarkEnabled: config.watermark_enabled ?? null,
           maintenanceMode: config.maintenance_mode ?? false,
           qrisAutoRetry: config.qris_auto_retry ?? null,
-          galleryStorageProvider: config.gallery_storage_provider ?? "cloudinary",
+          galleryStorageProvider:
+            config.gallery_storage_provider ?? "cloudinary",
         }
       : null,
     layoutSchema: layout?.schema

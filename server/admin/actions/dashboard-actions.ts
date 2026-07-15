@@ -89,9 +89,9 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
     if (organizationId) query = query.eq("organization_id", organizationId);
 
     const { data: allTx } = await query;
-    const rows = ((allTx ?? []) as RawTransactionRow[]).map(
-      normalizeQrisTransactionStatus,
-    );
+    const rows = ((allTx ?? []) as RawTransactionRow[])
+      .map(normalizeQrisTransactionStatus)
+      .filter((row) => row.provider !== "Event");
 
     const todayRows = rows.filter((r) => r.created_at >= startOfToday);
     const monthRows = rows.filter((r) => r.created_at >= startOfThisMonth);
@@ -234,7 +234,9 @@ async function getChartPoints(
         duitku_status_code: string | null;
         gateway_response: Record<string, unknown> | null;
       }[];
-      const normalizedRows = rows.map(normalizeQrisTransactionStatus);
+      const normalizedRows = rows
+        .map(normalizeQrisTransactionStatus)
+        .filter((row) => row.provider !== "Event");
 
       return Array.from({ length: 7 }, (_, i) => {
         const day = new Date(now);
@@ -301,7 +303,9 @@ async function getChartPoints(
         duitku_status_code: string | null;
         gateway_response: Record<string, unknown> | null;
       }[];
-      const normalizedRows = rows.map(normalizeQrisTransactionStatus);
+      const normalizedRows = rows
+        .map(normalizeQrisTransactionStatus)
+        .filter((row) => row.provider !== "Event");
 
       return Array.from({ length: 6 }, (_, i) => {
         const month = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
@@ -551,10 +555,7 @@ export async function getDashboard(): Promise<DashboardData> {
   if (posSummaryResult.status === "rejected")
     console.error("[getDashboard] posSummary failed:", posSummaryResult.reason);
   if (eventStatsResult.status === "rejected")
-    console.error(
-      "[getDashboard] eventStats failed:",
-      eventStatsResult.reason,
-    );
+    console.error("[getDashboard] eventStats failed:", eventStatsResult.reason);
 
   return {
     kpiMetrics: kpiResult.status === "fulfilled" ? kpiResult.value : [],
@@ -563,7 +564,9 @@ export async function getDashboard(): Promise<DashboardData> {
       monthlyResult.status === "fulfilled" ? monthlyResult.value : [],
     transactions:
       transactionsResult.status === "fulfilled"
-        ? transactionsResult.value.filter((transaction) => !transaction.isTesting)
+        ? transactionsResult.value.filter(
+            (transaction) => !transaction.isTesting,
+          )
         : [],
     devices: devicesResult.status === "fulfilled" ? devicesResult.value : [],
     posSummary:

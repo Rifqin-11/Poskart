@@ -198,9 +198,13 @@ export async function getTransactionsPage(
     ? requestedStatus
     : "all";
   const requestedPaymentMethod = filters.paymentMethod?.trim() || "all";
-  const paymentMethod = new Set(["all", "QRIS", "Cash", "Voucher"]).has(
-    requestedPaymentMethod,
-  )
+  const paymentMethod = new Set([
+    "all",
+    "QRIS",
+    "Cash",
+    "Voucher",
+    "Event",
+  ]).has(requestedPaymentMethod)
     ? requestedPaymentMethod
     : "all";
   const packageName = filters.packageName?.trim();
@@ -208,7 +212,8 @@ export async function getTransactionsPage(
 
   let visibilityFilter: string;
   if (status === "archive") {
-    visibilityFilter = "and(archived_at.not.is.null,archive_reason.neq.testing)";
+    visibilityFilter =
+      "and(archived_at.not.is.null,archive_reason.neq.testing)";
   } else if (status === "testing") {
     visibilityFilter = "or(archive_reason.eq.testing,payout_status.eq.testing)";
   } else {
@@ -297,9 +302,9 @@ export async function getTransactionsPage(
 
   return {
     ...toPaginatedResult(
-    await attachPendingActions(supabase, transactions),
-    pagination,
-    Math.max(0, count ?? 0),
+      await attachPendingActions(supabase, transactions),
+      pagination,
+      Math.max(0, count ?? 0),
     ),
     summary,
   };
@@ -334,7 +339,9 @@ function mapTransactionActionRequest(
   const organization = Array.isArray(row.organizations)
     ? row.organizations[0]
     : row.organizations;
-  const requester = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+  const requester = Array.isArray(row.profiles)
+    ? row.profiles[0]
+    : row.profiles;
   const transaction = Array.isArray(row.transactions)
     ? row.transactions[0]
     : row.transactions;
@@ -584,7 +591,9 @@ export async function requestTransactionAction({
     .eq("profile_id", user.id)
     .maybeSingle();
   if (membershipError) {
-    throw new Error(`Gagal memeriksa akses organisasi: ${membershipError.message}`);
+    throw new Error(
+      `Gagal memeriksa akses organisasi: ${membershipError.message}`,
+    );
   }
   if (!membership && !(await isSuperAdminProfile(supabase, user.id))) {
     throw new Error("Anda tidak punya akses ke transaksi ini.");
@@ -614,7 +623,9 @@ export async function requestTransactionAction({
 
   if (insertError) {
     if (insertError.code === "23505") {
-      throw new Error(`${actionLabel(normalizedAction)} sudah menunggu approval.`);
+      throw new Error(
+        `${actionLabel(normalizedAction)} sudah menunggu approval.`,
+      );
     }
     throw new Error(`Gagal membuat request: ${insertError.message}`);
   }
@@ -659,7 +670,10 @@ export async function markTransactionAsTesting(
   if (transaction.archived_at && transaction.archive_reason !== "testing") {
     throw new Error("Transaksi sudah diarsipkan.");
   }
-  if (transaction.archive_reason === "testing" || transaction.payout_status === "testing") {
+  if (
+    transaction.archive_reason === "testing" ||
+    transaction.payout_status === "testing"
+  ) {
     throw new Error("Transaksi sudah ditandai sebagai mode testing.");
   }
   if (transaction.payout_status || transaction.payout_invoice_id) {
@@ -698,7 +712,11 @@ export async function markTransactionAsTesting(
     .is("settlement_status", null)
     .is("payout_invoice_id", null);
 
-  if (ledgerError && ledgerError.code !== "42P01" && ledgerError.code !== "42703") {
+  if (
+    ledgerError &&
+    ledgerError.code !== "42P01" &&
+    ledgerError.code !== "42703"
+  ) {
     throw new Error(`Gagal mengunci ledger testing: ${ledgerError.message}`);
   }
 }
@@ -714,9 +732,7 @@ export async function unmarkTransactionAsTesting(
 
   const { data, error } = await supabase
     .from("transactions")
-    .select(
-      "id,organization_id,archive_reason,payout_status,payout_invoice_id",
-    )
+    .select("id,organization_id,archive_reason,payout_status,payout_invoice_id")
     .eq("id", transactionId)
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -724,7 +740,10 @@ export async function unmarkTransactionAsTesting(
   if (error) throw new Error(`Gagal memuat transaksi: ${error.message}`);
   const transaction = data as TransactionForActionRow | null;
   if (!transaction) throw new Error("Transaksi tidak ditemukan.");
-  if (transaction.archive_reason !== "testing" && transaction.payout_status !== "testing") {
+  if (
+    transaction.archive_reason !== "testing" &&
+    transaction.payout_status !== "testing"
+  ) {
     throw new Error("Transaksi ini tidak sedang dalam mode testing.");
   }
   if (transaction.payout_invoice_id) {
@@ -764,7 +783,11 @@ export async function unmarkTransactionAsTesting(
     .eq("settlement_status", "testing")
     .is("payout_invoice_id", null);
 
-  if (ledgerError && ledgerError.code !== "42P01" && ledgerError.code !== "42703") {
+  if (
+    ledgerError &&
+    ledgerError.code !== "42P01" &&
+    ledgerError.code !== "42703"
+  ) {
     throw new Error(`Gagal membuka ledger testing: ${ledgerError.message}`);
   }
 }
@@ -806,7 +829,8 @@ export async function getTransactionActionRequestsForSuperadmin(
     .order("requested_at", { ascending: false })
     .range(pagination.from, pagination.to);
 
-  if (error) throw new Error(`Gagal memuat request transaksi: ${error.message}`);
+  if (error)
+    throw new Error(`Gagal memuat request transaksi: ${error.message}`);
   return toPaginatedResult(
     ((data ?? []) as unknown as TransactionActionRequestRow[]).map(
       mapTransactionActionRequest,
@@ -833,16 +857,14 @@ export async function reviewTransactionActionRequest({
     .maybeSingle();
 
   if (error) throw new Error(`Gagal memuat request: ${error.message}`);
-  const request = data as
-    | {
-        id: string;
-        transaction_id: string;
-        organization_id: string;
-        requested_by: string | null;
-        action: TransactionActionType;
-        status: TransactionActionStatus;
-      }
-    | null;
+  const request = data as {
+    id: string;
+    transaction_id: string;
+    organization_id: string;
+    requested_by: string | null;
+    action: TransactionActionType;
+    status: TransactionActionStatus;
+  } | null;
   if (!request) throw new Error("Request tidak ditemukan.");
   if (request.status !== "requested") {
     throw new Error("Request ini sudah direview.");

@@ -40,6 +40,7 @@ export async function createDevice(values: BoothInput): Promise<void> {
     values.pricingProfiles,
     values.pricingProfile,
   );
+  await assertPricingAssignmentModes(supabase, pricingProfiles);
   const { error } = await supabase.from("devices").insert({
     id,
     name: values.name,
@@ -108,13 +109,16 @@ export async function updateDevice(
     dbPatch.frame_templates = frameTemplates;
     dbPatch.template = frameTemplates[0] ?? "";
   }
-  if (patch.pricingProfile !== undefined)
+  if (patch.pricingProfile !== undefined) {
+    await assertPricingAssignmentModes(supabase, [patch.pricingProfile]);
     dbPatch.pricing_profile = patch.pricingProfile;
+  }
   if (patch.pricingProfiles !== undefined) {
     const pricingProfiles = normalizeAssignmentList(
       patch.pricingProfiles,
       patch.pricingProfile,
     );
+    await assertPricingAssignmentModes(supabase, pricingProfiles);
     dbPatch.pricing_profiles = pricingProfiles;
     dbPatch.pricing_profile = pricingProfiles[0] ?? "";
   }
@@ -159,13 +163,53 @@ export async function updateDevice(
   if (error) throw new Error(`Unable to update device: ${error.message}`);
 }
 
+async function assertPricingAssignmentModes(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  assignments: string[],
+) {
+  const normalizedAssignments = assignments
+    .map((assignment) => assignment.trim())
+    .filter(Boolean);
+  if (normalizedAssignments.length === 0) return;
+
+  const { data, error } = await supabase
+    .from("pricing_products")
+    .select("id,name,access_mode");
+  if (error)
+    throw new Error(`Unable to validate pricing assignment: ${error.message}`);
+
+  const products = (data ?? []).filter(
+    (product) =>
+      normalizedAssignments.includes(product.id) ||
+      normalizedAssignments.includes(product.name),
+  );
+  const eventProducts = products.filter(
+    (product) => product.access_mode === "event",
+  );
+  const paidProducts = products.filter(
+    (product) => product.access_mode !== "event",
+  );
+
+  if (eventProducts.length > 1) {
+    throw new Error("Assign only one Event access package to a device.");
+  }
+  if (eventProducts.length > 0 && paidProducts.length > 0) {
+    throw new Error(
+      "A device cannot mix Event access and paid packages. Assign one access mode.",
+    );
+  }
+}
+
 export async function deleteDevice(id: string): Promise<void> {
   const { supabase } = await verifyRole(["owner", "admin"]);
   const { error } = await supabase.from("devices").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete device: ${error.message}`);
 }
 
-export async function approveVoucherRequest(id: string, code = "FREE"): Promise<void> {
+export async function approveVoucherRequest(
+  id: string,
+  code = "FREE",
+): Promise<void> {
   const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const now = new Date().toISOString();
   const normalizedCode = code.trim().toUpperCase() || "FREE";

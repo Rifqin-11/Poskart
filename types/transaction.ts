@@ -1,11 +1,8 @@
 export type PrintStatus = "pending" | "printed" | "failed" | "reprinting";
-export type TransactionProvider = "QRIS" | "Cash" | "Voucher";
+export type TransactionProvider = "QRIS" | "Cash" | "Voucher" | "Event";
 export type TransactionActionType = "verify" | "refund" | "archive";
 export type TransactionActionStatus =
-  | "requested"
-  | "approved"
-  | "rejected"
-  | "canceled";
+  "requested" | "approved" | "rejected" | "canceled";
 
 export type TransactionPendingAction = {
   id: string;

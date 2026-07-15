@@ -18,7 +18,9 @@ export async function getPricingProducts(): Promise<PricingProduct[]> {
   const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("pricing_products")
-    .select("id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active")
+    .select(
+      "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,event_name,event_expires_at",
+    )
     .order("price", { ascending: true });
 
   return assertSupabaseResult(
@@ -33,16 +35,22 @@ export async function createPricingProduct(
 ): Promise<void> {
   const { supabase } = await verifyRole(["owner", "admin", "akuntan"]);
   const id = `PRC-${Date.now()}`;
+  const accessMode = values.accessMode === "event" ? "event" : "paid";
+  const eventName = values.eventName?.trim() || null;
+  const eventExpiresAt = normalizeEventExpiry(values.eventExpiresAt);
   const { error } = await supabase.from("pricing_products").insert({
     id,
     name: values.name,
-    price: values.price,
-    promo_price: values.promoPrice ?? null,
+    price: accessMode === "event" ? 0 : Math.max(0, Math.round(values.price)),
+    promo_price: accessMode === "event" ? null : (values.promoPrice ?? null),
     print_limit: values.printLimit,
-    qris_download: values.qrisDownload,
+    qris_download: accessMode === "paid" && values.qrisDownload,
     live_photo_enabled: values.livePhotoEnabled,
     gif_enabled: values.gifEnabled,
     active: values.active,
+    access_mode: accessMode,
+    event_name: accessMode === "event" ? eventName : null,
+    event_expires_at: accessMode === "event" ? eventExpiresAt : null,
     updated_at: new Date().toISOString(),
   });
   if (error)
@@ -54,21 +62,55 @@ export async function updatePricingProduct(
   patch: Partial<PricingProductInput>,
 ): Promise<void> {
   const { supabase } = await verifyRole(["owner", "admin", "akuntan"]);
+  const { data: current, error: currentError } = await supabase
+    .from("pricing_products")
+    .select("access_mode")
+    .eq("id", id)
+    .maybeSingle();
+  if (currentError)
+    throw new Error(`Unable to read pricing product: ${currentError.message}`);
+  const accessMode =
+    patch.accessMode === "event" || patch.accessMode === "paid"
+      ? patch.accessMode
+      : current?.access_mode === "event"
+        ? "event"
+        : "paid";
   const dbPatch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
   if (patch.name !== undefined) dbPatch.name = patch.name;
-  if (patch.price !== undefined) dbPatch.price = patch.price;
+  if (patch.price !== undefined && accessMode !== "event")
+    dbPatch.price = Math.max(0, Math.round(patch.price));
   if (patch.promoPrice !== undefined)
-    dbPatch.promo_price = patch.promoPrice ?? null;
+    dbPatch.promo_price =
+      accessMode === "event" ? null : (patch.promoPrice ?? null);
   if (patch.printLimit !== undefined) dbPatch.print_limit = patch.printLimit;
   if (patch.qrisDownload !== undefined)
-    dbPatch.qris_download = patch.qrisDownload;
+    dbPatch.qris_download = accessMode === "event" ? false : patch.qrisDownload;
   if (patch.livePhotoEnabled !== undefined) {
     dbPatch.live_photo_enabled = patch.livePhotoEnabled;
   }
   if (patch.gifEnabled !== undefined) dbPatch.gif_enabled = patch.gifEnabled;
   if (patch.active !== undefined) dbPatch.active = patch.active;
+  if (patch.accessMode !== undefined) {
+    dbPatch.access_mode = accessMode;
+    if (accessMode === "event") {
+      dbPatch.price = 0;
+      dbPatch.promo_price = null;
+      dbPatch.qris_download = false;
+      dbPatch.event_name = patch.eventName?.trim() || null;
+      dbPatch.event_expires_at = normalizeEventExpiry(patch.eventExpiresAt);
+    } else {
+      dbPatch.event_name = null;
+      dbPatch.event_expires_at = null;
+    }
+  } else if (accessMode === "event") {
+    if (patch.qrisDownload !== undefined) dbPatch.qris_download = false;
+    if (patch.eventName !== undefined)
+      dbPatch.event_name = patch.eventName?.trim() || null;
+    if (patch.eventExpiresAt !== undefined)
+      dbPatch.event_expires_at = normalizeEventExpiry(patch.eventExpiresAt);
+  }
 
   const { error } = await supabase
     .from("pricing_products")
@@ -76,6 +118,15 @@ export async function updatePricingProduct(
     .eq("id", id);
   if (error)
     throw new Error(`Unable to update pricing product: ${error.message}`);
+}
+
+function normalizeEventExpiry(value: string | undefined) {
+  if (!value?.trim()) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Event expiry must be a valid date.");
+  }
+  return date.toISOString();
 }
 
 export async function deletePricingProduct(id: string): Promise<void> {

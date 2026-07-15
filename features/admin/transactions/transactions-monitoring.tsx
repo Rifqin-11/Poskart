@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  type ComponentType,
-  type ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import { type ComponentType, type ReactNode, useEffect, useState } from "react";
 import { Banknote, ChevronDown, Printer, ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +64,11 @@ function renderPaymentMethod(
   method: ReturnType<typeof getTransactionPaymentMethod>,
 ) {
   return (
-    <Badge variant={method === "Voucher" ? "secondary" : "outline"}>
+    <Badge
+      variant={
+        method === "Voucher" || method === "Event" ? "secondary" : "outline"
+      }
+    >
       {method}
     </Badge>
   );
@@ -141,7 +140,8 @@ function renderTestingBadge(transaction: Transaction) {
 }
 
 function renderTransactionStatusBadges(transaction: Transaction) {
-  if (transaction.isArchived) return <Badge variant="secondary">Archived</Badge>;
+  if (transaction.isArchived)
+    return <Badge variant="secondary">Archived</Badge>;
   return transaction.isTesting
     ? renderTestingBadge(transaction)
     : renderTransactionStatus(transaction.status);
@@ -374,13 +374,12 @@ export function TransactionsMonitoring() {
     search: debouncedSearch,
     status: statusFilter,
     paymentMethod: paymentMethodFilter,
-    packageName:
-      debouncedPackageFilter === "all" ? "" : debouncedPackageFilter,
+    packageName: debouncedPackageFilter === "all" ? "" : debouncedPackageFilter,
     date: dateFilter,
   });
   const data = transactionQuery.data?.items ?? [];
   const totalItems = transactionQuery.data?.totalItems ?? 0;
-  const paymentMethodOptions = ["QRIS", "Cash", "Voucher"];
+  const paymentMethodOptions = ["QRIS", "Cash", "Voucher", "Event"];
 
   function resetFilters() {
     setSearch("");
@@ -573,9 +572,7 @@ export function TransactionsMonitoring() {
         action === "verify" || action === "refund" || action === "archive"
           ? " and waiting for Super Admin approval"
           : "";
-      toast.success(
-        `${successCount} transactions processed${approvalSuffix}.`,
-      );
+      toast.success(`${successCount} transactions processed${approvalSuffix}.`);
     }
     if (failedMessage) {
       toast.error(
@@ -839,7 +836,10 @@ export function TransactionsMonitoring() {
                 {paginatedTransactions.map((transaction: Transaction) => {
                   const paymentMethod =
                     getTransactionPaymentMethod(transaction);
-                  const netAmount = getTransactionNetAmount(transaction, config);
+                  const netAmount = getTransactionNetAmount(
+                    transaction,
+                    config,
+                  );
                   const hasGatewayFeeBreakdown =
                     paymentMethod === "QRIS" && transaction.status === "paid";
                   const feeRuleLabel = getTransactionFeeRuleLabel(

@@ -61,12 +61,12 @@ export type TransactionRow = Omit<
   organization_id: string;
   booth: string; // actual DB column name in transactions table
   package_name: string;
-    created_at_label: string;
-    created_at: string;
-    print_count: number | null;
-    print_status: Transaction["printStatus"];
-    print_attempts: number;
-    print_last_error: string | null;
+  created_at_label: string;
+  created_at: string;
+  print_count: number | null;
+  print_status: Transaction["printStatus"];
+  print_attempts: number;
+  print_last_error: string | null;
   paid_at: string | null;
   duitku_status_code: string | null;
   gateway_response: Record<string, unknown> | null;
@@ -257,12 +257,18 @@ export type PricingProductRow = Omit<
   | "qrisDownload"
   | "livePhotoEnabled"
   | "gifEnabled"
+  | "accessMode"
+  | "eventName"
+  | "eventExpiresAt"
 > & {
   promo_price: number | null;
   print_limit: number;
   qris_download: boolean;
   live_photo_enabled: boolean | null;
   gif_enabled: boolean;
+  access_mode: PricingProduct["accessMode"];
+  event_name: string | null;
+  event_expires_at: string | null;
 };
 
 export type SubscriptionPlanRow = {
@@ -278,9 +284,7 @@ export type SubscriptionPlanRow = {
 };
 
 export function countPhotoSlotsFromLayout(layout?: FrameLayout | null) {
-  return (
-    layout?.nodes.filter((node) => node.type === "photo-slot").length ?? 0
-  );
+  return layout?.nodes.filter((node) => node.type === "photo-slot").length ?? 0;
 }
 
 export type ThemePresetRow = Omit<ThemePreset, "schema"> & {
@@ -298,9 +302,7 @@ export type SubscriptionRow = {
   current_period_end?: string | null;
   device_limit?: number | null;
   subscription_plans?:
-    | SubscriptionPlanMetadata
-    | SubscriptionPlanMetadata[]
-    | null;
+    SubscriptionPlanMetadata | SubscriptionPlanMetadata[] | null;
 };
 
 export type OrganizationRow = {
@@ -401,8 +403,6 @@ export type AssetInput = {
 
 export type PricingProductInput = Omit<PricingProduct, "id">;
 
-
-
 export type BoothInput = Omit<
   Device,
   | "id"
@@ -463,7 +463,8 @@ export const mapTransaction = (row: TransactionRow): Transaction => {
     archivedAt: row.archived_at ?? null,
     archiveReason: row.archive_reason ?? null,
     isArchived: Boolean(row.archived_at) && row.archive_reason !== "testing",
-    isTesting: row.archive_reason === "testing" || row.payout_status === "testing",
+    isTesting:
+      row.archive_reason === "testing" || row.payout_status === "testing",
   };
 };
 
@@ -601,9 +602,14 @@ export const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({
   livePhotoEnabled: row.live_photo_enabled ?? row.gif_enabled,
   gifEnabled: row.live_photo_enabled == null ? false : row.gif_enabled,
   active: row.active,
+  accessMode: row.access_mode === "event" ? "event" : "paid",
+  eventName: row.event_name ?? undefined,
+  eventExpiresAt: row.event_expires_at ?? undefined,
 });
 
-export const mapSubscriptionPlan = (row: SubscriptionPlanRow): SubscriptionPlan => ({
+export const mapSubscriptionPlan = (
+  row: SubscriptionPlanRow,
+): SubscriptionPlan => ({
   id: row.id,
   name: row.name,
   maxDevices: row.max_devices,

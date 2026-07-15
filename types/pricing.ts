@@ -8,6 +8,9 @@ export type PricingProduct = {
   livePhotoEnabled: boolean;
   gifEnabled: boolean;
   active: boolean;
+  accessMode: "paid" | "event";
+  eventName?: string;
+  eventExpiresAt?: string;
 };
 
 export type PricingProductInput = Omit<PricingProduct, "id">;

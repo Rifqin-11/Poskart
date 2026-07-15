@@ -21,7 +21,7 @@ type TransactionBody = {
     packageName?: string;
     amount?: number;
     status?: TransactionStatus;
-    provider?: "QRIS" | "Cash" | "Voucher";
+    provider?: "QRIS" | "Cash" | "Voucher" | "Event";
     templateId?: string;
     printCount?: number;
     printStatus?: "pending" | "printed" | "failed" | "reprinting";
@@ -34,6 +34,7 @@ type TransactionStatus = "paid" | "pending" | "failed" | "refunded";
 
 type ExistingTransaction = {
   status: TransactionStatus | null;
+  provider: "QRIS" | "Cash" | "Voucher" | "Event" | null;
   paid_at: string | null;
   duitku_status_code: string | null;
   gateway_response: Record<string, unknown> | null;
@@ -142,7 +143,7 @@ export async function POST(request: Request) {
     const { data: existingTransaction, error: existingTransactionError } =
       await context.client
         .from("transactions")
-        .select("status,paid_at,duitku_status_code,gateway_response")
+        .select("status,provider,paid_at,duitku_status_code,gateway_response")
         .eq("organization_id", context.organizationId)
         .eq("id", transaction.id)
         .maybeSingle();
@@ -150,12 +151,46 @@ export async function POST(request: Request) {
     if (existingTransactionError) throw existingTransactionError;
 
     const now = new Date().toISOString();
-    const provider =
+    const requestedProvider =
       transaction.provider === "Cash"
         ? "Cash"
         : transaction.provider === "Voucher"
           ? "Voucher"
-          : "QRIS";
+          : transaction.provider === "Event"
+            ? "Event"
+            : "QRIS";
+    if (product.accessMode === "event" && requestedProvider !== "Event") {
+      return jsonOk(
+        {
+          error: "Event access must use the event session flow.",
+          code: "KIOSK_EVENT_PAYMENT_NOT_ALLOWED",
+        },
+        { status: 400 },
+      );
+    }
+    if (product.accessMode === "paid" && requestedProvider === "Event") {
+      return jsonOk(
+        {
+          error: "This package requires payment.",
+          code: "KIOSK_EVENT_PACKAGE_INVALID",
+        },
+        { status: 400 },
+      );
+    }
+    const provider =
+      product.accessMode === "event" ? "Event" : requestedProvider;
+    if (
+      existingTransaction?.provider &&
+      existingTransaction.provider !== provider
+    ) {
+      return jsonOk(
+        {
+          error: "This transaction is already tied to another payment flow.",
+          code: "KIOSK_TRANSACTION_PROVIDER_MISMATCH",
+        },
+        { status: 409 },
+      );
+    }
     if (
       provider === "QRIS" &&
       transaction.status === "paid" &&
@@ -230,7 +265,7 @@ function resolveTransactionStatus({
   requestedStatus,
   existingTransaction,
 }: {
-  provider: "QRIS" | "Cash" | "Voucher";
+  provider: "QRIS" | "Cash" | "Voucher" | "Event";
   requestedStatus?: TransactionStatus;
   existingTransaction: ExistingTransaction | null;
 }): TransactionStatus {
@@ -246,6 +281,8 @@ function resolveTransactionStatus({
     }
     return "pending";
   }
+
+  if (provider === "Event") return "paid";
 
   return requestedStatus ?? "paid";
 }

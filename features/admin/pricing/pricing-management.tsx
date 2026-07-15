@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard, Edit2, Trash2 } from "lucide-react";
+import { CalendarDays, Edit2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +44,15 @@ const EMPTY_PRICING: PricingProductInput = {
   livePhotoEnabled: false,
   gifEnabled: false,
   active: true,
+  accessMode: "paid",
+  eventName: undefined,
+  eventExpiresAt: undefined,
+};
+
+const EMPTY_EVENT: PricingProductInput = {
+  ...EMPTY_PRICING,
+  qrisDownload: false,
+  accessMode: "event",
 };
 
 export function PricingManagement() {
@@ -53,11 +62,8 @@ export function PricingManagement() {
   const updatePricing = useUpdatePricing();
   const deletePricing = useDeletePricing();
   const [editing, setEditing] = useState<PricingProduct | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const [creating, setCreating] = useState<PricingProductInput | null>(null);
   const confirmDelete = useConfirmDialog();
-  const paginatedProducts = data.slice((page - 1) * pageSize, page * pageSize);
 
   const handleToggle = (
     product: PricingProduct,
@@ -76,13 +82,13 @@ export function PricingManagement() {
 
   const handleDelete = (product: PricingProduct) => {
     confirmDelete.confirm({
-      title: "Delete package?",
-      description: `Delete package "${product.name}"?`,
+      title: "Delete access?",
+      description: `Delete "${product.name}"?`,
       confirmLabel: "Delete",
       destructive: true,
       onConfirm: () => {
         deletePricing.mutate(product.id, {
-          onSuccess: () => toast.success("Package deleted"),
+          onSuccess: () => toast.success("Access deleted"),
           onError: (err) =>
             toast.error(err instanceof Error ? err.message : "Delete failed"),
         });
@@ -95,138 +101,51 @@ export function PricingManagement() {
       {confirmDelete.dialog}
       <PageHeader
         title="Pricing & Product Management"
-        description="Configure packages, promos, QR download, Live Photo, multi-slot GIF, and print limits."
-        action={
-          <Button disabled={isReadOnly("pricing")} onClick={() => setCreating(true)}>
-            <CreditCard className="size-4" /> Add package
-          </Button>
-        }
+        description="Configure paid packages and event access for POSKART kiosks."
       />
-      <Card>
-        <CardHeader>
-          <CardTitle>Pricing profiles</CardTitle>
-          <CardDescription>
-            Supabase-backed products for POSKART kiosk packages.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Promo</TableHead>
-                <TableHead>Print limit</TableHead>
-                <TableHead>QR Download</TableHead>
-                <TableHead>Live Photo</TableHead>
-                <TableHead>GIF</TableHead>
-                <TableHead>Active</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedProducts.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>{formatCurrency(product.price)}</TableCell>
-                  <TableCell>
-                    {product.promoPrice
-                      ? formatCurrency(product.promoPrice)
-                      : "-"}
-                  </TableCell>
-                  <TableCell>{product.printLimit}</TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={product.qrisDownload}
-                      disabled={isReadOnly("pricing")}
-                      onCheckedChange={(v) =>
-                        handleToggle(product, "qrisDownload", v)
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={product.livePhotoEnabled}
-                      disabled={isReadOnly("pricing")}
-                      onCheckedChange={(v) =>
-                        handleToggle(product, "livePhotoEnabled", v)
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={product.gifEnabled}
-                      disabled={isReadOnly("pricing")}
-                      onCheckedChange={(v) =>
-                        handleToggle(product, "gifEnabled", v)
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={product.active}
-                      disabled={isReadOnly("pricing")}
-                      onCheckedChange={(v) =>
-                        handleToggle(product, "active", v)
-                      }
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={isReadOnly("pricing")}
-                        onClick={() => setEditing(product)}
-                      >
-                        <Edit2 className="size-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                        disabled={isReadOnly("pricing")}
-                        onClick={() => handleDelete(product)}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {data.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={9}
-                    className="py-8 text-center text-sm text-zinc-400"
-                  >
-                    No packages yet. Click <strong>Add package</strong> to
-                    create one.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-          <TablePagination
-            page={page}
-            pageSize={pageSize}
-            totalItems={data.length}
-            onPageChange={setPage}
-          />
-        </CardContent>
-      </Card>
+
+      <div className="space-y-5">
+        <PricingTableCard
+          title="Pricing packages"
+          description="Paid packages with payment, print, and media settings."
+          products={data.filter((product) => product.accessMode === "paid")}
+          eventMode={false}
+          readOnly={isReadOnly("pricing")}
+          onAdd={() => setCreating({ ...EMPTY_PRICING })}
+          onEdit={setEditing}
+          onDelete={handleDelete}
+          onToggle={handleToggle}
+        />
+        <PricingTableCard
+          title="Event access"
+          description="Complimentary sessions that skip package and payment selection on assigned kiosks."
+          products={data.filter((product) => product.accessMode === "event")}
+          eventMode
+          readOnly={isReadOnly("pricing")}
+          onAdd={() => setCreating({ ...EMPTY_EVENT })}
+          onEdit={setEditing}
+          onDelete={handleDelete}
+          onToggle={handleToggle}
+        />
+      </div>
 
       {creating ? (
         <PricingFormDialog
-          title="Add package"
-          initial={EMPTY_PRICING}
+          title={
+            creating.accessMode === "event" ? "Add event access" : "Add package"
+          }
+          initial={creating}
           submitting={createPricing.isPending}
-          onClose={() => setCreating(false)}
+          onClose={() => setCreating(null)}
           onSubmit={(values) => {
             createPricing.mutate(values, {
               onSuccess: () => {
-                toast.success("Package created");
-                setCreating(false);
+                toast.success(
+                  values.accessMode === "event"
+                    ? "Event access created"
+                    : "Package created",
+                );
+                setCreating(null);
               },
               onError: (err) =>
                 toast.error(
@@ -247,7 +166,7 @@ export function PricingManagement() {
               { id: editing.id, patch: values },
               {
                 onSuccess: () => {
-                  toast.success("Package updated");
+                  toast.success("Access updated");
                   setEditing(null);
                 },
                 onError: (err) =>
@@ -261,4 +180,203 @@ export function PricingManagement() {
       ) : null}
     </div>
   );
+}
+
+type PricingTableCardProps = {
+  title: string;
+  description: string;
+  products: PricingProduct[];
+  eventMode: boolean;
+  readOnly: boolean;
+  onAdd: () => void;
+  onEdit: (product: PricingProduct) => void;
+  onDelete: (product: PricingProduct) => void;
+  onToggle: (
+    product: PricingProduct,
+    field: "qrisDownload" | "livePhotoEnabled" | "gifEnabled" | "active",
+    value: boolean,
+  ) => void;
+};
+
+function PricingTableCard({
+  title,
+  description,
+  products,
+  eventMode,
+  readOnly,
+  onAdd,
+  onEdit,
+  onDelete,
+  onToggle,
+}: PricingTableCardProps) {
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(products.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleProducts = products.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </div>
+        <Button disabled={readOnly} onClick={onAdd}>
+          {eventMode ? (
+            <CalendarDays className="size-4" />
+          ) : (
+            <Plus className="size-4" />
+          )}
+          {eventMode ? "Add event" : "Add package"}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <Table className="min-w-[900px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>{eventMode ? "Event" : "Product"}</TableHead>
+                {eventMode ? (
+                  <TableHead>Expiry</TableHead>
+                ) : (
+                  <>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Promo</TableHead>
+                  </>
+                )}
+                <TableHead>Print limit</TableHead>
+                {!eventMode ? <TableHead>QR Download</TableHead> : null}
+                <TableHead>Live Photo</TableHead>
+                <TableHead>GIF</TableHead>
+                <TableHead>Active</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visibleProducts.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell>
+                    <div className="font-medium">{product.name}</div>
+                    {eventMode && product.eventName ? (
+                      <div className="text-xs text-amber-700">
+                        {product.eventName}
+                      </div>
+                    ) : null}
+                  </TableCell>
+                  {eventMode ? (
+                    <TableCell className="text-sm text-zinc-500">
+                      {formatExpiry(product.eventExpiresAt)}
+                    </TableCell>
+                  ) : (
+                    <>
+                      <TableCell>{formatCurrency(product.price)}</TableCell>
+                      <TableCell>
+                        {product.promoPrice
+                          ? formatCurrency(product.promoPrice)
+                          : "-"}
+                      </TableCell>
+                    </>
+                  )}
+                  <TableCell>{product.printLimit}</TableCell>
+                  {!eventMode ? (
+                    <TableCell>
+                      <Switch
+                        checked={product.qrisDownload}
+                        disabled={readOnly}
+                        onCheckedChange={(value) =>
+                          onToggle(product, "qrisDownload", value)
+                        }
+                      />
+                    </TableCell>
+                  ) : null}
+                  <TableCell>
+                    <Switch
+                      checked={product.livePhotoEnabled}
+                      disabled={readOnly}
+                      onCheckedChange={(value) =>
+                        onToggle(product, "livePhotoEnabled", value)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={product.gifEnabled}
+                      disabled={readOnly}
+                      onCheckedChange={(value) =>
+                        onToggle(product, "gifEnabled", value)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={product.active}
+                      disabled={readOnly}
+                      onCheckedChange={(value) =>
+                        onToggle(product, "active", value)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Edit ${product.name}`}
+                        disabled={readOnly}
+                        onClick={() => onEdit(product)}
+                      >
+                        <Edit2 className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${product.name}`}
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        disabled={readOnly}
+                        onClick={() => onDelete(product)}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {products.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={eventMode ? 7 : 8}
+                    className="py-8 text-center text-sm text-zinc-400"
+                  >
+                    {eventMode
+                      ? "No event access yet. Add an event to enable complimentary sessions."
+                      : "No pricing packages yet. Add a package to enable paid sessions."}
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </div>
+        <TablePagination
+          page={currentPage}
+          pageSize={pageSize}
+          totalItems={products.length}
+          onPageChange={setPage}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatExpiry(value?: string) {
+  if (!value) return "No expiry";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Invalid date";
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
