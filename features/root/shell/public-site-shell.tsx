@@ -14,7 +14,11 @@ const navLinks = [
   { href: "/contact", label: "Contact" },
 ];
 
-export async function PublicHeader() {
+export async function PublicHeader({
+  variant = "default",
+}: {
+  variant?: "default" | "landing";
+}) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const userEmail = typeof data?.claims?.email === "string" ? data.claims.email : null;
@@ -25,11 +29,32 @@ export async function PublicHeader() {
         .toUpperCase()
     : "PK";
 
+  const isLanding = variant === "landing";
+
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-100 bg-white/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header
+      className={cn(
+        "z-40",
+        isLanding
+          ? "fixed inset-x-0 top-0 bg-transparent text-zinc-950"
+          : "sticky top-0 border-b border-zinc-100 bg-white/85 backdrop-blur-xl",
+      )}
+    >
+      <div
+        className={cn(
+          "mx-auto flex max-w-[90rem] items-center justify-between px-5 sm:px-8 lg:px-12",
+          isLanding
+            ? "mt-3 h-14 w-[calc(100%-1.5rem)] rounded-full border border-white/70 bg-white/60 shadow-[0_12px_40px_rgba(24,24,27,0.08)] backdrop-blur-2xl sm:mt-4 sm:w-[calc(100%-2rem)] lg:w-[calc(100%-4rem)]"
+            : "h-[72px]",
+        )}
+      >
         <Link href="/" className="flex items-center gap-3">
-          <div className="grid size-9 place-items-center overflow-hidden rounded-lg">
+          <div
+            className={cn(
+              "grid size-9 place-items-center overflow-hidden rounded-lg",
+              isLanding && "bg-white",
+            )}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/Logo Poskart.png"
@@ -38,17 +63,43 @@ export async function PublicHeader() {
             />
           </div>
           <div>
-            <div className="text-sm font-semibold tracking-tight text-zinc-950">{businessProfile.brandName}</div>
-            <div className="text-[10px] uppercase tracking-widest text-zinc-400">Photobooth OS</div>
+            <div
+              className={cn(
+                "text-sm font-semibold tracking-tight",
+                "text-zinc-950",
+              )}
+            >
+              {businessProfile.brandName}
+            </div>
+            <div
+              className={cn(
+                "text-[10px] uppercase tracking-[0.16em]",
+                "text-zinc-500",
+              )}
+            >
+              Photobooth OS
+            </div>
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-7 text-sm text-zinc-500 md:flex">
+        <nav
+          className={cn(
+            "hidden items-center gap-1 rounded-full p-1 text-xs lg:flex",
+            isLanding
+              ? "text-zinc-600"
+              : "text-zinc-500",
+          )}
+        >
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="transition-colors hover:text-zinc-950"
+              className={cn(
+                "rounded-full px-4 py-2 transition-colors",
+                isLanding
+                  ? "hover:bg-white/55 hover:text-zinc-950"
+                  : "hover:bg-zinc-100 hover:text-zinc-950",
+              )}
             >
               {link.label}
             </Link>
@@ -60,9 +111,11 @@ export async function PublicHeader() {
             <Link
               href="/dashboard"
               className={buttonVariants({
-                size: "sm",
-                className:
-                  "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
+              size: "sm",
+              className:
+                  isLanding
+                    ? "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-700"
+                    : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
               })}
             >
               Dashboard
@@ -78,7 +131,9 @@ export async function PublicHeader() {
             className={buttonVariants({
               size: "sm",
               className:
-                "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
+                isLanding
+                  ? "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-700"
+                  : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
             })}
           >
             Login
@@ -115,7 +170,7 @@ export function PublicFooter({ className }: { className?: string }) {
               <span className="text-sm font-semibold text-zinc-950">{businessProfile.brandName}</span>
             </div>
             <p className="max-w-xs text-xs leading-5 text-zinc-400">
-              SaaS dashboard dan visual builder untuk mengelola photobooth kiosk, template, QRIS, dan analytics.
+              SaaS dashboard and visual builder for photobooth kiosks, templates, QRIS payments, and operations.
             </p>
             <p className="mt-4 text-xs text-zinc-400">
               © 2026 {businessProfile.legalName}. All rights reserved.
@@ -145,7 +200,7 @@ export function PublicFooter({ className }: { className?: string }) {
         <div className="mt-auto w-full select-none overflow-hidden pt-16 sm:pt-20">
           <div
             aria-hidden="true"
-            className="text-center font-sans text-[clamp(5.75rem,21vw,17rem)] font-black uppercase leading-[0.78] tracking-[-0.085em] text-[#f4f4f5] sm:leading-[0.74]"
+            className="text-center font-sans text-7xl font-black uppercase leading-[0.78] tracking-normal text-[#f4f4f5] sm:text-9xl sm:leading-[0.74] lg:text-[13rem] xl:text-[17rem]"
           >
             POSKART
           </div>
