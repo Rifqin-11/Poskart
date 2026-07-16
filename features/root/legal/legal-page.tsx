@@ -1,4 +1,4 @@
-import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
+import { PublicPageShell } from "@/features/root/shell/public-site-shell";
 import { businessProfile } from "@/lib/constants/business";
 
 export type LegalSection = {
@@ -16,22 +16,30 @@ export function LegalPage({
   sections: LegalSection[];
 }) {
   return (
-    <main className="min-h-screen bg-white text-zinc-950">
-      <PublicHeader />
-      <section className="border-b border-zinc-200 bg-zinc-50">
-        <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mb-4 text-xs font-medium uppercase tracking-wide text-zinc-500">
+    <PublicPageShell>
+      <section className="mx-auto max-w-[90rem] px-5 pb-12 pt-32 sm:px-8 lg:px-12 lg:pb-16">
+        <div className="max-w-5xl border-b border-zinc-300 pb-10">
+          <div className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
             Payment gateway readiness
           </div>
-          <h1 className="text-4xl font-semibold tracking-tight">{title}</h1>
-          <p className="mt-4 text-sm leading-7 text-zinc-600">{description}</p>
-          <p className="mt-4 text-xs text-zinc-500">Last updated: May 24, 2026</p>
+          <h1 className="text-5xl font-black uppercase leading-[0.9] tracking-normal sm:text-7xl lg:text-8xl">
+            {title}
+          </h1>
+          <p className="mt-6 max-w-2xl text-base leading-8 text-zinc-600">
+            {description}
+          </p>
+          <p className="mt-4 text-xs text-zinc-500">
+            Last updated: May 24, 2026
+          </p>
         </div>
       </section>
-      <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="space-y-8">
+      <section className="mx-auto max-w-[90rem] px-5 pb-20 sm:px-8 lg:px-12 lg:pb-28">
+        <div className="mx-auto max-w-5xl space-y-3">
           {sections.map((section) => (
-            <article key={section.title} className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+            <article
+              key={section.title}
+              className="border border-zinc-300 bg-white p-6 sm:p-8"
+            >
               <h2 className="text-lg font-semibold">{section.title}</h2>
               <div className="mt-4 space-y-3 text-sm leading-7 text-zinc-600">
                 {section.body.map((paragraph) => (
@@ -41,11 +49,11 @@ export function LegalPage({
             </article>
           ))}
         </div>
-        <div className="mt-10 rounded-lg border border-zinc-200 bg-zinc-50 p-5 text-sm leading-7 text-zinc-600">
-          Untuk pertanyaan terkait dokumen ini, hubungi {businessProfile.email} atau {businessProfile.phone}.
+        <div className="mx-auto mt-8 max-w-5xl border border-zinc-300 bg-white p-5 text-sm leading-7 text-zinc-600 sm:p-6">
+          Untuk pertanyaan terkait dokumen ini, hubungi {businessProfile.email}{" "}
+          atau {businessProfile.phone}.
         </div>
       </section>
-      <PublicFooter />
-    </main>
+    </PublicPageShell>
   );
 }

@@ -21,12 +21,10 @@ export async function PublicHeader({
 }) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
-  const userEmail = typeof data?.claims?.email === "string" ? data.claims.email : null;
+  const userEmail =
+    typeof data?.claims?.email === "string" ? data.claims.email : null;
   const initials = userEmail
-    ? userEmail
-        .split("@")[0]
-        .slice(0, 2)
-        .toUpperCase()
+    ? userEmail.split("@")[0].slice(0, 2).toUpperCase()
     : "PK";
 
   const isLanding = variant === "landing";
@@ -85,9 +83,7 @@ export async function PublicHeader({
         <nav
           className={cn(
             "hidden items-center gap-1 rounded-full p-1 text-xs lg:flex",
-            isLanding
-              ? "text-zinc-600"
-              : "text-zinc-500",
+            isLanding ? "text-zinc-600" : "text-zinc-500",
           )}
         >
           {navLinks.map((link) => (
@@ -111,17 +107,20 @@ export async function PublicHeader({
             <Link
               href="/dashboard"
               className={buttonVariants({
-              size: "sm",
-              className:
-                  isLanding
-                    ? "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-700"
-                    : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
+                size: "sm",
+                className: isLanding
+                  ? "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-700"
+                  : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
               })}
             >
               Dashboard
               <ArrowRight className="size-3.5" />
             </Link>
-            <Link href="/dashboard" aria-label={`Open dashboard as ${userEmail}`} title={userEmail}>
+            <Link
+              href="/dashboard"
+              aria-label={`Open dashboard as ${userEmail}`}
+              title={userEmail}
+            >
               <Avatar name={initials} />
             </Link>
           </div>
@@ -130,10 +129,9 @@ export async function PublicHeader({
             href="/login"
             className={buttonVariants({
               size: "sm",
-              className:
-                isLanding
-                  ? "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-700"
-                  : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
+              className: isLanding
+                ? "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-700"
+                : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
             })}
           >
             Login
@@ -145,6 +143,16 @@ export async function PublicHeader({
   );
 }
 
+export function PublicPageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="min-h-screen overflow-clip bg-[#ececea] text-zinc-950">
+      <PublicHeader variant="landing" />
+      {children}
+      <PublicFooter />
+    </main>
+  );
+}
+
 export function PublicFooter({ className }: { className?: string }) {
   const legalLinks = [
     { href: "/terms", label: "Terms of Service" },
@@ -153,9 +161,7 @@ export function PublicFooter({ className }: { className?: string }) {
   ];
 
   return (
-    <footer
-      className={cn("overflow-hidden bg-white", className)}
-    >
+    <footer className={cn("overflow-hidden bg-white", className)}>
       <div className="section-divider" />
       <div className="mx-auto flex min-h-[300px] max-w-7xl flex-col px-4 py-8 sm:min-h-[360px] sm:px-6 lg:min-h-[384px] lg:px-8">
         <div className="flex flex-col gap-6 text-sm text-zinc-500 sm:flex-row sm:items-start sm:justify-between">
@@ -167,10 +173,13 @@ export function PublicFooter({ className }: { className?: string }) {
                 alt="POSKART Logo"
                 className="size-6 object-contain"
               />
-              <span className="text-sm font-semibold text-zinc-950">{businessProfile.brandName}</span>
+              <span className="text-sm font-semibold text-zinc-950">
+                {businessProfile.brandName}
+              </span>
             </div>
             <p className="max-w-xs text-xs leading-5 text-zinc-400">
-              SaaS dashboard and visual builder for photobooth kiosks, templates, QRIS payments, and operations.
+              SaaS dashboard and visual builder for photobooth kiosks,
+              templates, QRIS payments, and operations.
             </p>
             <p className="mt-4 text-xs text-zinc-400">
               © 2026 {businessProfile.legalName}. All rights reserved.

@@ -1,5 +1,5 @@
 import { FileText, ReceiptText, ShieldCheck } from "lucide-react";
-import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
+import { PublicPageShell } from "@/features/root/shell/public-site-shell";
 import { PricingCards } from "@/features/billing/pricing/pricing-cards";
 import { businessProfile } from "@/lib/constants/business";
 import { getPublicSubscriptionPricingPlans } from "@/server/subscription/pricing";
@@ -8,27 +8,22 @@ export default async function PublicPricingPage() {
   const plans = await getPublicSubscriptionPricingPlans();
 
   return (
-    <main className="min-h-screen bg-white text-zinc-950">
-      <PublicHeader />
-      {/* <section className="border-b border-zinc-200 bg-zinc-50">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-600">
-            <CreditCard className="size-3.5 text-red-500" />
+    <PublicPageShell>
+      <section className="mx-auto max-w-[90rem] px-5 pb-20 pt-32 sm:px-8 lg:px-12 lg:pb-28">
+        <div className="mb-12 border-b border-zinc-300 pb-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
             Public pricing
-          </div>
-          <h1 className="max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl">
-            Transparent POSKART subscription plans.
+          </p>
+          <h1 className="mt-5 max-w-5xl text-5xl font-black uppercase leading-[0.9] tracking-normal sm:text-7xl lg:text-8xl">
+            Choose the operating plan for your booth.
           </h1>
-          <p className="mt-5 max-w-3xl text-sm leading-7 text-zinc-600">
-            Pilih paket SaaS untuk mengelola booth photobooth, visual builder, template, transaksi QRIS,
-            asset library, dan analytics.
+          <p className="mt-6 max-w-2xl text-base leading-8 text-zinc-600">
+            Pilih paket SaaS untuk mengelola booth photobooth, visual builder,
+            template, transaksi QRIS, asset library, dan analytics.
           </p>
         </div>
-      </section> */}
-
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <PricingCards plans={plans} />
-        <div className="mt-8 rounded-[28px] border border-zinc-200 bg-zinc-50/80 p-4 sm:p-5">
+        <div className="mt-12 border-y border-zinc-300 py-8">
           <div className="space-y-3">
             {[
               {
@@ -52,7 +47,7 @@ export default async function PublicPricingPage() {
               return (
                 <div
                   key={item.title}
-                  className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm"
+                  className="border border-zinc-300 bg-white p-5 sm:p-6"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                     <span className="grid size-10 place-items-center rounded-full bg-zinc-950 text-white">
@@ -73,7 +68,6 @@ export default async function PublicPricingPage() {
           </div>
         </div>
       </section>
-      <PublicFooter />
-    </main>
+    </PublicPageShell>
   );
 }
