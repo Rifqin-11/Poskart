@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
+import {
+  normalizeAssetReferences,
+  normalizeAssetUrl,
+} from "@/lib/assets/asset-url";
 import { getPublicGalleryBaseUrl } from "@/lib/gallery/urls";
 import { createClient } from "@/lib/supabase/server";
 import type { LayoutSchema } from "@/types/builder";
@@ -52,6 +56,13 @@ export async function GET() {
     const theme = themeResult.data;
     const templates = templatesResult.data ?? [];
 
+    const normalizedLayoutSchema = layout?.schema
+      ? normalizeAssetReferences(layout.schema)
+      : null;
+    const normalizedThemeSchema = theme?.schema
+      ? normalizeAssetReferences(theme.schema)
+      : null;
+
     const flutterConfig = {
       version: 1,
       generatedAt: new Date().toISOString(),
@@ -77,12 +88,12 @@ export async function GET() {
         : null,
 
       // Visual builder schema (nodes per screen)
-      layoutSchema: layout?.schema
-        ? sanitizeLayoutSchema(layout.schema as LayoutSchema)
+      layoutSchema: normalizedLayoutSchema
+        ? sanitizeLayoutSchema(normalizedLayoutSchema as LayoutSchema)
         : null,
 
       // Active design tokens
-      designTokens: theme?.schema ?? null,
+      designTokens: normalizedThemeSchema ?? null,
 
       // Frame templates for the picker
       templates: templates.map((t) => ({
@@ -92,8 +103,8 @@ export async function GET() {
         tagline: t.tagline ?? null,
         photoCount: t.photo_count,
         accentColor: t.accent_color,
-        frameImageUrl: t.frame_image_url ?? null,
-        frameLayout: t.frame_layout ?? null,
+        frameImageUrl: normalizeAssetUrl(t.frame_image_url),
+        frameLayout: normalizeAssetReferences(t.frame_layout),
         isDefault: t.is_default,
         displayOrder: t.display_order,
         usageCount: t.usage_count ?? 0,

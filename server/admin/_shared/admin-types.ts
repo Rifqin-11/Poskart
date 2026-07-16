@@ -18,6 +18,10 @@ import type { FrameLayout } from "@/types/frame-template";
 import { normalizeQrisTransactionStatus } from "@/server/payments/qris-status";
 import type { OrganizationFeatureAccess } from "@/lib/organization-features";
 import {
+  normalizeAssetReferences,
+  normalizeAssetUrl,
+} from "@/lib/assets/asset-url";
+import {
   isSubscriptionActive,
   subscriptionExpiryTime,
 } from "@/lib/subscription-policy";
@@ -245,8 +249,8 @@ export type TemplateRow = Omit<
   tagline: string | null;
   photo_count: number;
   accent_color: string;
-  frame_image_url: string | null;
-  frame_layout: Template["frameLayout"] | null;
+  frame_image_url: unknown;
+  frame_layout: unknown;
   is_default: boolean;
 };
 
@@ -587,8 +591,9 @@ export const mapTemplate = (row: TemplateRow): Template => ({
   tagline: row.tagline ?? undefined,
   photoCount: row.photo_count ?? 4,
   accentColor: row.accent_color ?? "#C4121A",
-  frameImageUrl: row.frame_image_url ?? undefined,
-  frameLayout: row.frame_layout ?? null,
+  frameImageUrl: normalizeAssetUrl(row.frame_image_url) ?? undefined,
+  frameLayout: normalizeAssetReferences(row.frame_layout) as
+    Template["frameLayout"] | null,
   isDefault: row.is_default ?? false,
 });
 

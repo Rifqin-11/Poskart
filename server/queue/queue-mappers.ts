@@ -7,6 +7,10 @@ import type {
   QueueEvent,
 } from "@/types/queue";
 import type { FrameLayout } from "@/types/frame-template";
+import {
+  normalizeAssetReferences,
+  normalizeAssetUrl,
+} from "@/lib/assets/asset-url";
 
 export type QueueEventRow = {
   id: string;
@@ -48,8 +52,8 @@ export type PublicTemplateRow = {
   name: string;
   tagline: string | null;
   photo_count: number | null;
-  frame_image_url: string | null;
-  frame_layout: FrameLayout | null;
+  frame_image_url: unknown;
+  frame_layout: unknown;
   accent_color: string | null;
 };
 
@@ -138,8 +142,10 @@ export function mapPublicTemplate(row: PublicTemplateRow): PublicQueueTemplate {
     name: row.name,
     tagline: row.tagline,
     photoCount: row.photo_count ?? 1,
-    frameImageUrl: row.frame_image_url,
-    frameLayout: row.frame_layout,
+    frameImageUrl: normalizeAssetUrl(row.frame_image_url),
+    frameLayout: normalizeAssetReferences(
+      row.frame_layout,
+    ) as FrameLayout | null,
     accentColor: row.accent_color ?? "#18181b",
   };
 }

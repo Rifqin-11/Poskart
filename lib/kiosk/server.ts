@@ -11,6 +11,10 @@ import {
   collectAssetUrls,
   getKioskAssetManifest,
 } from "@/lib/assets/asset-manifest";
+import {
+  normalizeAssetReferences,
+  normalizeAssetUrl,
+} from "@/lib/assets/asset-url";
 import { getPublicGalleryBaseUrl } from "@/lib/gallery/urls";
 import type { LayoutSchema } from "@/types/builder";
 
@@ -516,14 +520,25 @@ export async function buildKioskBootstrap(
   ]);
 
   const allTemplates = templatesResult.data ?? [];
+  const normalizedLayoutSchema = layout?.schema
+    ? normalizeAssetReferences(layout.schema)
+    : null;
+  const normalizedThemeSchema = themeResult.data?.schema
+    ? normalizeAssetReferences(themeResult.data.schema)
+    : null;
+  const normalizedTemplates = allTemplates.map((template) => ({
+    ...template,
+    frame_image_url: normalizeAssetUrl(template.frame_image_url),
+    frame_layout: normalizeAssetReferences(template.frame_layout),
+  }));
   // When a device has specific templates assigned, only return those.
   // Otherwise return all published templates (backward compatible).
   const templates =
     assignedTemplates.size > 0
-      ? allTemplates.filter(
+      ? normalizedTemplates.filter(
           (t) => assignedTemplates.has(t.id) || assignedTemplates.has(t.name),
         )
-      : allTemplates;
+      : normalizedTemplates;
   const pricingProducts = (pricingResult.data ?? []).filter(
     (product) =>
       assignedPricing.size === 0 ||
@@ -531,7 +546,7 @@ export async function buildKioskBootstrap(
       assignedPricing.has(product.name),
   );
   const assetReferences = collectAssetUrls({
-    layoutSchema: layout?.schema,
+    layoutSchema: normalizedLayoutSchema,
     templates,
   });
   const assetManifest = await getKioskAssetManifest(
@@ -572,8 +587,8 @@ export async function buildKioskBootstrap(
             config.gallery_storage_provider ?? "cloudinary",
         }
       : null,
-    layoutSchema: layout?.schema
-      ? sanitizeLayoutSchema(layout.schema as LayoutSchema)
+    layoutSchema: normalizedLayoutSchema
+      ? sanitizeLayoutSchema(normalizedLayoutSchema as LayoutSchema)
       : null,
     availableLayouts: layouts.map((l) => ({
       id: l.id,
@@ -584,7 +599,7 @@ export async function buildKioskBootstrap(
       schema: null,
     })),
     assetManifest,
-    designTokens: themeResult.data?.schema ?? null,
+    designTokens: normalizedThemeSchema ?? null,
     templates: templates.map((template) => ({
       id: template.id,
       name: template.name,
@@ -592,8 +607,8 @@ export async function buildKioskBootstrap(
       tagline: template.tagline ?? null,
       photoCount: template.photo_count,
       accentColor: template.accent_color,
-      frameImageUrl: template.frame_image_url ?? null,
-      frameLayout: template.frame_layout ?? null,
+      frameImageUrl: normalizeAssetUrl(template.frame_image_url),
+      frameLayout: normalizeAssetReferences(template.frame_layout),
       isDefault: template.is_default,
       displayOrder: template.display_order,
       usageCount: template.usage_count ?? 0,
@@ -605,8 +620,8 @@ export async function buildKioskBootstrap(
       tagline: template.tagline ?? null,
       photoCount: template.photo_count,
       accentColor: template.accent_color,
-      frameImageUrl: template.frame_image_url ?? null,
-      frameLayout: template.frame_layout ?? null,
+      frameImageUrl: normalizeAssetUrl(template.frame_image_url),
+      frameLayout: normalizeAssetReferences(template.frame_layout),
       isDefault: template.is_default,
       displayOrder: template.display_order,
       usageCount: template.usage_count ?? 0,

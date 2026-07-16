@@ -2,6 +2,7 @@
 
 import { getAdminContext, verifyRole } from "@/server/admin/context";
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
+import { normalizeAssetReferences } from "@/lib/assets/asset-url";
 import {
   assertSupabaseResult,
   type LayoutSchema,
@@ -22,7 +23,10 @@ export async function getLayoutSchemas(): Promise<LayoutSchemaRow[]> {
     .order("updated_at", { ascending: false });
 
   if (error) throw new Error(`Unable to load layout schemas: ${error.message}`);
-  return (data ?? []) as LayoutSchemaRow[];
+  return (data ?? []).map((row) => ({
+    ...row,
+    schema: normalizeAssetReferences(row.schema) as LayoutSchema,
+  })) as LayoutSchemaRow[];
 }
 
 export async function getActiveThemeStatistics(
@@ -169,7 +173,12 @@ export async function getLayoutSchema(): Promise<LayoutSchemaRow | null> {
     throw new Error(`Unable to load layout schema: ${error.message}`);
   }
 
-  return (data as LayoutSchemaRow | null) ?? null;
+  return data
+    ? ({
+        ...data,
+        schema: normalizeAssetReferences(data.schema) as LayoutSchema,
+      } as LayoutSchemaRow)
+    : null;
 }
 
 export async function publishLayoutSchema(schema: LayoutSchema): Promise<void> {
@@ -209,9 +218,14 @@ export async function getThemes(): Promise<ThemePreset[]> {
     .select("id,name,status,schema")
     .order("name", { ascending: true });
 
-  return assertSupabaseResult(
+  const presets = assertSupabaseResult(
     data as ThemePresetRow[] | null,
     error,
     "Unable to load theme presets",
   );
+
+  return presets.map((preset) => ({
+    ...preset,
+    schema: normalizeAssetReferences(preset.schema) as ThemeSchema,
+  }));
 }
