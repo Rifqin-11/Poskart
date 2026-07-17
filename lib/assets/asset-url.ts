@@ -17,8 +17,54 @@ type AssetMetadata = {
   data?: unknown;
 };
 
+const assetMetadataKeys = new Set([
+  "deliveryUrl",
+  "delivery_url",
+  "deliveryURL",
+  "sourceUrl",
+  "source_url",
+  "url",
+  "publicUrl",
+  "public_url",
+  "secureUrl",
+  "secure_url",
+  "src",
+  "assetUrl",
+  "asset_url",
+  "asset",
+  "file",
+  "data",
+]);
+
+// Asset metadata can contain bookkeeping fields alongside its URL. Builder
+// props must remain objects, so only collapse records made entirely from
+// metadata fields and known upload bookkeeping fields.
+const assetBookkeepingKeys = new Set([
+  "path",
+  "key",
+  "type",
+  "storage",
+  "contentType",
+  "content_type",
+  "bytes",
+  "byteSize",
+  "size",
+  "name",
+  "id",
+]);
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isAssetMetadataRecord(value: Record<string, unknown>) {
+  const keys = Object.keys(value);
+  return (
+    keys.some((key) => assetMetadataKeys.has(key)) &&
+    keys.every(
+      (key) => assetMetadataKeys.has(key) || assetBookkeepingKeys.has(key),
+    )
+  );
 }
 
 /**
@@ -84,7 +130,9 @@ export function normalizeAssetReferences<T>(value: T): T {
 
   if (isRecord(value)) {
     const directAssetUrl = normalizeAssetUrl(value);
-    if (directAssetUrl) return directAssetUrl as T;
+    if (directAssetUrl && isAssetMetadataRecord(value)) {
+      return directAssetUrl as T;
+    }
 
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
