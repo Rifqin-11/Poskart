@@ -18,6 +18,7 @@ import {
   defaultBuilderCanvas,
 } from "@/stores/builder-defaults";
 import { initialBuilderNodes } from "@/stores/builder-initial-nodes";
+import { normalizeAssetReferences } from "@/lib/assets/asset-url";
 
 type BuilderSnapshot = {
   nodes: BuilderNode[];
@@ -284,9 +285,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
             ? 320
             : type === "preview-media-toggle"
               ? 240
-            : type === "qr-link"
-              ? 320
-              : 140;
+              : type === "qr-link"
+                ? 320
+                : 140;
 
       const defaultHeight =
         type === "text"
@@ -295,9 +296,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
             ? 72
             : type === "preview-media-toggle"
               ? 48
-            : type === "qr-link"
-              ? 48
-              : 140;
+              : type === "qr-link"
+                ? 48
+                : 140;
 
       const node: BuilderNode = {
         id,
@@ -411,17 +412,26 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         future: state.future.slice(1),
       };
     }),
-  setSchema: (schema) =>
-    set({
+  setSchema: (rawSchema) => {
+    // Layouts can come from old rows or local drafts where an asset is still
+    // stored as JSON metadata. Normalize once at the store boundary so every
+    // builder page receives a renderable URL.
+    const schema = normalizeAssetReferences(rawSchema) as LayoutSchema;
+    return set({
       nodes: builderPages
         .flatMap((page) => schema.pages[page] ?? [])
         .filter((node) => !isDeprecatedBuilderNode(node)),
-      canvas: { ...defaultBuilderCanvas, ...schema.canvas },
+      canvas: {
+        ...defaultBuilderCanvas,
+        ...schema.canvas,
+        pageBackgrounds: schema.canvas.pageBackgrounds,
+      },
       selectedId: null,
       selectedIds: [],
       history: [],
       future: [],
-    }),
+    });
+  },
   schema: () => {
     const state = get();
     return buildLayoutSchema(state.canvas, state.nodes);

@@ -4,6 +4,7 @@ import { ImageOff, Video } from "lucide-react";
 import { ColorKeyImage } from "@/features/builder/components/color-key-image";
 import type { BuilderPage, LayoutSchema } from "@/types/builder";
 import { cn } from "@/lib/utils";
+import { normalizeAssetUrl } from "@/lib/assets/asset-url";
 
 const FALLBACK_PREVIEW_BG = "#fafafa";
 
@@ -70,8 +71,16 @@ export function ThemeThumbnail({
   const isPortrait = canvas.orientation === "portrait";
   const aspect = isPortrait ? "aspect-[3/4]" : "aspect-[16/9]";
   const pageBackground = canvas.pageBackgrounds?.[page];
-  const landingImage = pageBackground?.image ?? canvas.backgroundImage;
-  const landingVideo = pageBackground?.video ?? canvas.backgroundVideo;
+  const pageImage = normalizeAssetUrl(pageBackground?.image);
+  const pageVideo = normalizeAssetUrl(pageBackground?.video);
+  // The legacy canvas background is only a landing-page fallback. Reusing it
+  // on other pages makes the builder appear to ignore their own backgrounds.
+  const landingImage =
+    pageImage ??
+    (page === "landing" ? normalizeAssetUrl(canvas.backgroundImage) : null);
+  const landingVideo =
+    pageVideo ??
+    (page === "landing" ? normalizeAssetUrl(canvas.backgroundVideo) : null);
   const backgroundColor = safePreviewBackground(canvas.backgroundColor);
 
   return (

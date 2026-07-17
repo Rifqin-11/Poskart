@@ -1,13 +1,25 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Film, Grid2X2, Image as ImageIcon, Smartphone, Type, Upload, X } from "lucide-react";
+import {
+  Film,
+  Grid2X2,
+  Image as ImageIcon,
+  Smartphone,
+  Type,
+  Upload,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { ColorKeyControls } from "@/features/builder/components/color-key-controls";
-import { ColorField, PanelSection } from "@/features/builder/components/visual-properties-primitives";
+import { AssetPreview } from "@/features/builder/components/asset-preview";
+import {
+  ColorField,
+  PanelSection,
+} from "@/features/builder/components/visual-properties-primitives";
 import {
   BUILDER_MEDIA_ACCEPT,
   BUILDER_MEDIA_HELP_TEXT,
@@ -15,6 +27,7 @@ import {
   uploadBuilderMedia,
 } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
+import { normalizeAssetUrl } from "@/lib/assets/asset-url";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { BuilderCanvas } from "@/types/builder";
 
@@ -32,8 +45,8 @@ export function CanvasControls() {
 
   // Resolved background for the current page
   const pageBg = canvas.pageBackgrounds?.[activePage];
-  const bgImage = pageBg?.image;
-  const bgVideo = pageBg?.video;
+  const bgImage = normalizeAssetUrl(pageBg?.image);
+  const bgVideo = normalizeAssetUrl(pageBg?.video);
 
   const applyOrientation = (orientation: "portrait" | "landscape") => {
     updateCanvas(
@@ -332,8 +345,11 @@ export function CanvasControls() {
           </div>
         ) : bgImage ? (
           <div className="relative overflow-hidden rounded-lg border border-zinc-200">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={bgImage} alt="bg" className="h-24 w-full object-cover" />
+            <AssetPreview
+              src={bgImage}
+              alt="Background preview"
+              className="h-24 w-full object-cover"
+            />
             <div className="absolute right-1 top-1 flex items-center gap-1">
               <span className="flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white">
                 <ImageIcon className="size-2.5" /> IMAGE

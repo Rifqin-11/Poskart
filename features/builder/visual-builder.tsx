@@ -10,11 +10,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import {
-  FolderOpen,
-  Plus,
-  Smartphone,
-} from "lucide-react";
+import { FolderOpen, Plus, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useTouchContextMenu } from "@/lib/hooks/use-touch-context-menu";
 import {
@@ -22,11 +18,7 @@ import {
   useLayoutSchemas,
   useSaveLayoutAsTheme,
 } from "@/features/admin/layout/use-layout";
-import {
-  isEditableTextNode,
-  readString,
-  snap,
-} from "@/features/builder/utils";
+import { isEditableTextNode, readString, snap } from "@/features/builder/utils";
 import {
   autoSaveSchema,
   deleteDraft,
@@ -49,11 +41,8 @@ import { VisualPropertiesSidebar } from "@/features/builder/components/visual-pr
 import { VisualLoadDialog } from "@/features/builder/components/visual-load-dialog";
 import { VisualSaveDialog } from "@/features/builder/components/visual-save-dialog";
 import { bakeLayoutSchemaColorKeyAssets } from "@/features/builder/utils/bake-color-key-assets";
-import type {
-  BuilderNode,
-} from "@/types/builder";
-
-
+import { normalizeAssetReferences } from "@/lib/assets/asset-url";
+import type { BuilderNode } from "@/types/builder";
 
 export function VisualBuilder() {
   const router = useRouter();
@@ -231,11 +220,12 @@ export function VisualBuilder() {
     s: import("@/types/builder").LayoutSchema,
     opts?: { themeId?: string; themeName?: string },
   ) {
-    setSchema(s);
+    const normalizedSchema = normalizeAssetReferences(s) as typeof s;
+    setSchema(normalizedSchema);
     setCurrentThemeId(opts?.themeId ?? null);
     setCurrentThemeName(opts?.themeName ?? null);
     lastCommittedSchemaRef.current = opts?.themeId
-      ? JSON.stringify(s)
+      ? JSON.stringify(normalizedSchema)
       : "__local_draft_requires_save__";
     setShowLoadDialog(false);
     toast.success(
@@ -718,9 +708,12 @@ export function VisualBuilder() {
 
   useEffect(() => {
     if (!savedLayout || hydratedLayoutId.current === savedLayout.id) return;
-    setSchema(savedLayout.schema);
+    const normalizedSchema = normalizeAssetReferences(
+      savedLayout.schema,
+    ) as typeof savedLayout.schema;
+    setSchema(normalizedSchema);
     hydratedLayoutId.current = savedLayout.id;
-    lastCommittedSchemaRef.current = JSON.stringify(savedLayout.schema);
+    lastCommittedSchemaRef.current = JSON.stringify(normalizedSchema);
   }, [savedLayout, setSchema]);
 
   useEffect(() => {
@@ -831,9 +824,7 @@ export function VisualBuilder() {
   };
 
   return (
-    <div
-      className="flex h-screen flex-col overflow-hidden"
-    >
+    <div className="flex h-screen flex-col overflow-hidden">
       <BuilderHeader
         onBack={requestBack}
         saveLabel="Save"
@@ -941,9 +932,7 @@ export function VisualBuilder() {
           onCanvasMouseMove={handleCanvasMouseMove}
           onCanvasMouseUp={handleCanvasMouseUp}
           onSelectNode={selectNode}
-          onOpenContextMenu={(x, y, nodeId) =>
-            setContextMenu({ x, y, nodeId })
-          }
+          onOpenContextMenu={(x, y, nodeId) => setContextMenu({ x, y, nodeId })}
           onCanvasToClient={canvasToClient}
           onComputeGuides={computeGuides}
           onUpdateNode={updateNode}

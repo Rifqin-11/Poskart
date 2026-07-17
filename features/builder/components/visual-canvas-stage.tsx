@@ -13,6 +13,7 @@ import {
 import { NodeRenderer } from "@/features/builder/components/visual-node-renderer";
 import { snap } from "@/features/builder/utils";
 import { cn } from "@/lib/utils";
+import { normalizeAssetUrl } from "@/lib/assets/asset-url";
 import type { BuilderCanvas, BuilderNode, BuilderPage } from "@/types/builder";
 
 type Guide = { type: "h" | "v"; pos: number };
@@ -195,10 +196,16 @@ export function VisualCanvasStage({
             <div className="absolute left-1/2 top-3 z-50 h-1 w-20 -translate-x-1/2 rounded-full bg-black/20" />
             <PageBackground canvas={canvas} activePage={activePage} />
             {guides.map((guide, index) => (
-              <VisualGuide key={`${guide.type}-${guide.pos}-${index}`} guide={guide} />
+              <VisualGuide
+                key={`${guide.type}-${guide.pos}-${index}`}
+                guide={guide}
+              />
             ))}
             {snapPreview ? (
-              <VisualSnapPreview preview={snapPreview} canvasWidth={canvas.width} />
+              <VisualSnapPreview
+                preview={snapPreview}
+                canvasWidth={canvas.width}
+              />
             ) : null}
             {visibleNodes.map((node) =>
               node.visible ? (
@@ -226,7 +233,9 @@ export function VisualCanvasStage({
                     onSelectNode(node.id);
                     onOpenContextMenu(event.clientX, event.clientY, node.id);
                   }}
-                  onPointerDown={(event: React.PointerEvent<HTMLDivElement>) => {
+                  onPointerDown={(
+                    event: React.PointerEvent<HTMLDivElement>,
+                  ) => {
                     onSetLongPressNode(node.id);
                     onSelectNode(node.id);
                     nodeTouchMenu.onPointerDown(event);
@@ -299,8 +308,8 @@ export function VisualCanvasStage({
       </div>
 
       <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/80 px-3 py-1 text-[10px] text-zinc-400 shadow-sm backdrop-blur-sm">
-        Ctrl+scroll to zoom - Space+drag to pan - Shift+1 Fit - Shift+2 100% -
-        F Pan to selection
+        Ctrl+scroll to zoom - Space+drag to pan - Shift+1 Fit - Shift+2 100% - F
+        Pan to selection
       </div>
     </div>
   );
@@ -314,12 +323,16 @@ function PageBackground({
   activePage: BuilderPage;
 }) {
   const background = canvas.pageBackgrounds?.[activePage];
+  if (!background) return null;
+
+  const image = normalizeAssetUrl(background?.image);
+  const video = normalizeAssetUrl(background?.video);
 
   return (
     <>
-      {background?.image ? (
+      {image ? (
         <ColorKeyImage
-          src={background.image}
+          src={image}
           fit="cover"
           radius={28}
           colorKey={background.colorKey}
@@ -329,9 +342,9 @@ function PageBackground({
           }}
         />
       ) : null}
-      {background?.video ? (
+      {video ? (
         <video
-          src={background.video}
+          src={video}
           autoPlay
           loop
           muted

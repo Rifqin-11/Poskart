@@ -1,9 +1,20 @@
 type AssetMetadata = {
   deliveryUrl?: unknown;
   delivery_url?: unknown;
+  deliveryURL?: unknown;
   sourceUrl?: unknown;
   source_url?: unknown;
   url?: unknown;
+  publicUrl?: unknown;
+  public_url?: unknown;
+  secureUrl?: unknown;
+  secure_url?: unknown;
+  src?: unknown;
+  assetUrl?: unknown;
+  asset_url?: unknown;
+  asset?: unknown;
+  file?: unknown;
+  data?: unknown;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -40,9 +51,20 @@ export function normalizeAssetUrl(value: unknown): string | null {
   for (const candidate of [
     metadata.deliveryUrl,
     metadata.delivery_url,
+    metadata.deliveryURL,
     metadata.url,
     metadata.sourceUrl,
     metadata.source_url,
+    metadata.publicUrl,
+    metadata.public_url,
+    metadata.secureUrl,
+    metadata.secure_url,
+    metadata.src,
+    metadata.assetUrl,
+    metadata.asset_url,
+    metadata.asset,
+    metadata.file,
+    metadata.data,
   ]) {
     const normalized = normalizeAssetUrl(candidate);
     if (normalized) return normalized;
