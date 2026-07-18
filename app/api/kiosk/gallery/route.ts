@@ -17,10 +17,7 @@ function encodeGalleryCursor(createdAt: string, id: string) {
 function decodeGalleryCursor(value: string) {
   try {
     const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
-    if (
-      typeof parsed.createdAt === "string" &&
-      typeof parsed.id === "string"
-    ) {
+    if (typeof parsed.createdAt === "string" && typeof parsed.id === "string") {
       return parsed as { createdAt: string; id: string };
     }
   } catch {}
@@ -33,7 +30,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const deviceId = searchParams.get("deviceId") ?? "";
     const sessionId = searchParams.get("sessionId")?.trim() ?? "";
-    const summaryOnly = searchParams.get("summaryOnly") !== "false" && !sessionId;
+    const summaryOnly =
+      searchParams.get("summaryOnly") !== "false" && !sessionId;
     const cursor = searchParams.get("cursor")?.trim() ?? "";
     const requestedLimit = Number(searchParams.get("limit") ?? 24);
     const limit = Math.min(
@@ -69,7 +67,7 @@ export async function GET(request: Request) {
     if (sessionsError) throw sessionsError;
     const hasMore = !sessionId && (sessionRows ?? []).length > limit;
     const sessions = sessionId
-      ? sessionRows ?? []
+      ? (sessionRows ?? [])
       : (sessionRows ?? []).slice(0, limit);
     const lastSession = sessions[sessions.length - 1];
     const nextCursor =
@@ -113,20 +111,9 @@ export async function GET(request: Request) {
     const transactionBySessionId = new Map(
       (transactions ?? []).map((transaction) => [transaction.id, transaction]),
     );
-    const testSessionIds = new Set(
-      (sessions ?? [])
-        .filter((session) => session.test_mode === true)
-        .map((session) => session.id),
-    );
     const photoCountBySessionId = new Map<string, number>();
     for (const photo of photos ?? []) {
-      if (
-        !isDisplayableGalleryPhoto(photo, {
-          hasValidTransaction:
-            transactionBySessionId.has(photo.session_id) ||
-            testSessionIds.has(photo.session_id),
-        })
-      ) {
+      if (!isDisplayableGalleryPhoto(photo)) {
         continue;
       }
       photoCountBySessionId.set(
@@ -134,19 +121,14 @@ export async function GET(request: Request) {
         (photoCountBySessionId.get(photo.session_id) ?? 0) + 1,
       );
     }
-    const enrichedSessions = (sessions ?? [])
-      .filter(
-        (session) =>
-          transactionBySessionId.has(session.id) || session.test_mode === true,
-      )
-      .map((session) => {
-        const transaction = transactionBySessionId.get(session.id);
-        return {
-          ...session,
-          package_name: transaction?.package_name ?? null,
-          print_count: transaction?.print_count ?? 0,
-        };
-      });
+    const enrichedSessions = (sessions ?? []).map((session) => {
+      const transaction = transactionBySessionId.get(session.id);
+      return {
+        ...session,
+        package_name: transaction?.package_name ?? null,
+        print_count: transaction?.print_count ?? 0,
+      };
+    });
     const now = Date.now();
     const visibleSessions = enrichedSessions.filter((session) =>
       shouldShowGallerySession({
@@ -175,7 +157,9 @@ export async function GET(request: Request) {
             );
           return thumbnail ? [thumbnail] : [];
         })
-      : (photos ?? []).filter((photo) => visibleSessionIds.has(photo.session_id));
+      : (photos ?? []).filter((photo) =>
+          visibleSessionIds.has(photo.session_id),
+        );
 
     return jsonOk({
       sessions: visibleSessions,

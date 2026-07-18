@@ -65,7 +65,10 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   if (membershipError || !membership?.organization_id) {
-    return NextResponse.json({ error: "Organization not found" }, { status: 403 });
+    return NextResponse.json(
+      { error: "Organization not found" },
+      { status: 403 },
+    );
   }
 
   const limit = clampLimit(request.nextUrl.searchParams.get("limit"));
@@ -99,26 +102,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: [], nextCursor: null, hasMore: false });
   }
 
-  const [{ data: transactions }, { data: primaryFrames }, { data: livePhotoJobs }] =
-    await Promise.all([
-      supabase
-        .from("transactions")
-        .select("id,status,provider,merchant_order_id")
-        .eq("organization_id", membership.organization_id)
-        .in("id", sessionIds),
-      supabase
-        .from("gallery_photos")
-        .select("id,session_id,kind,photo_index,secure_url,format")
-        .eq("organization_id", membership.organization_id)
-        .in("session_id", sessionIds)
-        .eq("kind", "framed")
-        .eq("photo_index", 0),
-      supabase
-        .from("live_photo_render_jobs")
-        .select("session_id,status,updated_at")
-        .eq("organization_id", membership.organization_id)
-        .in("session_id", sessionIds),
-    ]);
+  const [
+    { data: transactions },
+    { data: primaryFrames },
+    { data: livePhotoJobs },
+  ] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("id,status,provider,merchant_order_id")
+      .eq("organization_id", membership.organization_id)
+      .in("id", sessionIds),
+    supabase
+      .from("gallery_photos")
+      .select("id,session_id,kind,photo_index,secure_url,format")
+      .eq("organization_id", membership.organization_id)
+      .in("session_id", sessionIds)
+      .eq("kind", "framed")
+      .eq("photo_index", 0),
+    supabase
+      .from("live_photo_render_jobs")
+      .select("session_id,status,updated_at")
+      .eq("organization_id", membership.organization_id)
+      .in("session_id", sessionIds),
+  ]);
 
   const transactionRows = (transactions ?? []) as TransactionRow[];
   const transactionIds = new Set(
@@ -138,7 +144,6 @@ export async function GET(request: NextRequest) {
   );
 
   const items = rows
-    .filter((session) => transactionIds.has(session.id) || session.test_mode)
     .filter((session) => {
       const livePhotoJob = livePhotoJobBySessionId.get(session.id);
       if (
@@ -158,8 +163,12 @@ export async function GET(request: NextRequest) {
     })
     .map((session) => ({
       ...session,
-      transaction_id: session.test_mode ? null : session.id,
-      framed: photoRows.find((photo) => photo.session_id === session.id) ?? null,
+      transaction_id:
+        !session.test_mode && transactionIds.has(session.id)
+          ? session.id
+          : null,
+      framed:
+        photoRows.find((photo) => photo.session_id === session.id) ?? null,
       isLivePhotoProcessing: isActiveLivePhotoJob(
         livePhotoJobBySessionId.get(session.id),
       ),
@@ -194,10 +203,7 @@ function decodeCursor(value: string | null): GalleryCursor | null {
     const parsed = JSON.parse(
       Buffer.from(value, "base64url").toString("utf8"),
     ) as Partial<GalleryCursor>;
-    if (
-      typeof parsed.createdAt !== "string" ||
-      typeof parsed.id !== "string"
-    ) {
+    if (typeof parsed.createdAt !== "string" || typeof parsed.id !== "string") {
       return null;
     }
     return { createdAt: parsed.createdAt, id: parsed.id };

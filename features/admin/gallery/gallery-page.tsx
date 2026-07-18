@@ -137,15 +137,11 @@ export async function GalleryPage() {
       .filter((transaction) => !isOrphanQrisPendingTransaction(transaction))
       .map((transaction) => transaction.id),
   );
-  const testSessionIds = new Set(
-    rows.filter((session) => session.test_mode).map((session) => session.id),
-  );
-  const enrichedRows = rows
-    .filter((session) => transactionIds.has(session.id) || session.test_mode)
-    .map((session) => ({
-      ...session,
-      transaction_id: session.test_mode ? null : session.id,
-    }));
+  const enrichedRows = rows.map((session) => ({
+    ...session,
+    transaction_id:
+      !session.test_mode && transactionIds.has(session.id) ? session.id : null,
+  }));
   const { data: primaryFrames } = sessionIds.length
     ? await supabase
         .from("gallery_photos")
@@ -176,12 +172,7 @@ export async function GalleryPage() {
   );
   const visiblePhotoCountBySessionId = new Map(
     photoRows
-      .filter(
-        (photo) =>
-          Boolean(photo.secure_url) &&
-          (transactionIds.has(photo.session_id) ||
-            testSessionIds.has(photo.session_id)),
-      )
+      .filter((photo) => Boolean(photo.secure_url))
       .map((photo) => [photo.session_id, 1] as const),
   );
   const hasPrimaryFrameBySessionId = photoRows.reduce<Map<string, boolean>>(

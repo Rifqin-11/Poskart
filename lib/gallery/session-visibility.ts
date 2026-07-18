@@ -57,16 +57,13 @@ export function shouldShowGallerySession({
   );
 }
 
-export function isDisplayableGalleryPhoto(
-  photo: GalleryPhotoVisibilityInput,
-  options: { hasValidTransaction?: boolean } = {},
-) {
+export function isDisplayableGalleryPhoto(photo: GalleryPhotoVisibilityInput) {
   if (!photo.secure_url) return false;
   const index = Number(photo.photo_index ?? -1);
   if (!Number.isFinite(index)) return false;
 
   if (photo.kind === "framed") {
-    return index === 0 && options.hasValidTransaction === true;
+    return index === 0;
   }
 
   if (photo.kind === "raw") {
