@@ -1,5 +1,8 @@
 export const adminQueryKeys = {
   dashboard: ["dashboard"] as const,
+  posSalesRoot: ["pos-sales"] as const,
+  posSales: (filters: Record<string, unknown>) =>
+    ["pos-sales", filters] as const,
   transactionsRoot: ["transactions"] as const,
   transactions: (filters: Record<string, unknown> = {}) =>
     ["transactions", filters] as const,

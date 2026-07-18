@@ -21,6 +21,29 @@ export type PosSale = {
   createdAt: string;
 };
 
+export type PosSaleFilters = {
+  page: number;
+  pageSize: number;
+  search: string;
+  packageCode: string;
+  paymentMethod: "all" | PosPaymentMethod;
+  date: string;
+};
+
+export type PosSalesSummary = {
+  revenue: number;
+  prints: number;
+  transactions: number;
+};
+
+export type PosSalesPage = {
+  sales: PosSale[];
+  total: number;
+  page: number;
+  pageSize: number;
+  summary: PosSalesSummary;
+};
+
 export type PosActionState = {
   success: boolean;
   error?: string;

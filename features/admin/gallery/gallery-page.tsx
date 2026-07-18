@@ -5,6 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { GallerySessionCard } from "@/features/admin/gallery/gallery-session-card";
 import { GalleryLoadMore } from "@/features/admin/gallery/gallery-load-more";
 import {
+  GalleryShareHeaderActions,
+  GalleryShareProvider,
+} from "@/features/admin/gallery/gallery-share-manager";
+import type { SharedGallerySummary } from "@/features/admin/gallery/gallery-share-types";
+import { getSiteUrl } from "@/lib/auth/site-url";
+import {
   isActiveLivePhotoJob,
   shouldShowGallerySession,
 } from "@/lib/gallery/session-visibility";
@@ -42,6 +48,17 @@ type TransactionRow = {
   merchant_order_id: string | null;
 };
 
+type SharedGalleryRow = {
+  id: string;
+  name: string;
+  public_token: string;
+  created_at: string;
+};
+
+type SharedGallerySessionRow = {
+  shared_gallery_id: string;
+};
+
 export async function GalleryPage() {
   const supabase = await createClient();
   const {
@@ -63,16 +80,49 @@ export async function GalleryPage() {
     return <GalleryEmpty message="Akun ini belum terhubung ke organisasi." />;
   }
 
-  const { data: sessions } = await supabase
-    .from("gallery_sessions")
-    .select(
-      "id,device_id,template_name,social_media_consent,test_mode,share_url,created_at",
-    )
-    .eq("organization_id", organizationId)
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(100);
+  const [{ data: sessions }, { data: sharedGalleryRows }] = await Promise.all([
+    supabase
+      .from("gallery_sessions")
+      .select(
+        "id,device_id,template_name,social_media_consent,test_mode,share_url,created_at",
+      )
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(100),
+    supabase
+      .from("shared_galleries")
+      .select("id,name,public_token,created_at")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false }),
+  ]);
   const rows = (sessions ?? []) as GallerySessionRow[];
+  const sharedRows = (sharedGalleryRows ?? []) as SharedGalleryRow[];
+  const sharedGalleryIds = sharedRows.map((gallery) => gallery.id);
+  const { data: sharedGallerySessionRows } = sharedGalleryIds.length
+    ? await supabase
+        .from("shared_gallery_sessions")
+        .select("shared_gallery_id")
+        .in("shared_gallery_id", sharedGalleryIds)
+    : { data: [] };
+  const sessionCountBySharedGallery = (
+    (sharedGallerySessionRows ?? []) as SharedGallerySessionRow[]
+  ).reduce<Map<string, number>>((counts, row) => {
+    counts.set(
+      row.shared_gallery_id,
+      (counts.get(row.shared_gallery_id) ?? 0) + 1,
+    );
+    return counts;
+  }, new Map());
+  const siteUrl = await getSiteUrl();
+  const sharedGalleries: SharedGallerySummary[] = sharedRows.map((gallery) => ({
+    id: gallery.id,
+    name: gallery.name,
+    publicToken: gallery.public_token,
+    publicUrl: `${siteUrl}/g/${gallery.public_token}`,
+    sessionCount: sessionCountBySharedGallery.get(gallery.id) ?? 0,
+    createdAt: gallery.created_at,
+  }));
   const sessionIds = rows.map((session) => session.id);
   const { data: transactions } = sessionIds.length
     ? await supabase
@@ -173,7 +223,9 @@ export async function GalleryPage() {
 
   if (visibleRows.length === 0) {
     return (
-      <GalleryEmpty message="Hasil photobooth akan muncul setelah kiosk membuat QR dan menyelesaikan upload." />
+      <GalleryShareProvider initialSharedGalleries={sharedGalleries}>
+        <GalleryEmpty message="Hasil photobooth akan muncul setelah kiosk membuat QR dan menyelesaikan upload." />
+      </GalleryShareProvider>
     );
   }
 
@@ -214,48 +266,53 @@ export async function GalleryPage() {
   }, new Map());
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
-          Gallery
-        </h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          Hasil raw dan framed photo yang diunggah kiosk ke cloud gallery.
-        </p>
-      </header>
-
-      {[...sessionsByDate.entries()].map(([dateKey, group]) => (
-        <section key={dateKey}>
-          <div className="mb-3 flex items-center gap-2">
-            <CalendarDays className="size-4 text-zinc-400" />
-            <h2 className="text-sm font-semibold capitalize text-zinc-800">
-              {group.label}
-            </h2>
-            <span className="text-xs text-zinc-400">
-              {group.sessions.length} sesi
-            </span>
+    <GalleryShareProvider initialSharedGalleries={sharedGalleries}>
+      <div className="space-y-8">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950">
+              Gallery
+            </h1>
+            <p className="mt-2 text-sm text-zinc-500">
+              Hasil raw dan framed photo yang diunggah kiosk ke cloud gallery.
+            </p>
           </div>
+          <GalleryShareHeaderActions />
+        </header>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-            {group.sessions.map((session) => {
-              const framed = photosBySessionId.get(session.id)?.[0] ?? null;
-              const livePhotoJob = livePhotoJobBySessionId.get(session.id);
+        {[...sessionsByDate.entries()].map(([dateKey, group]) => (
+          <section key={dateKey}>
+            <div className="mb-3 flex items-center gap-2">
+              <CalendarDays className="size-4 text-zinc-400" />
+              <h2 className="text-sm font-semibold capitalize text-zinc-800">
+                {group.label}
+              </h2>
+              <span className="text-xs text-zinc-400">
+                {group.sessions.length} sesi
+              </span>
+            </div>
 
-              return (
-                <GallerySessionCard
-                  key={session.id}
-                  session={session}
-                  framed={framed}
-                  isLivePhotoProcessing={isActiveLivePhotoJob(livePhotoJob)}
-                />
-              );
-            })}
-          </div>
-        </section>
-      ))}
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              {group.sessions.map((session) => {
+                const framed = photosBySessionId.get(session.id)?.[0] ?? null;
+                const livePhotoJob = livePhotoJobBySessionId.get(session.id);
 
-      <GalleryLoadMore initialCursor={initialCursor} />
-    </div>
+                return (
+                  <GallerySessionCard
+                    key={session.id}
+                    session={session}
+                    framed={framed}
+                    isLivePhotoProcessing={isActiveLivePhotoJob(livePhotoJob)}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        ))}
+
+        <GalleryLoadMore initialCursor={initialCursor} />
+      </div>
+    </GalleryShareProvider>
   );
 }
 
@@ -274,13 +331,16 @@ function isOrphanQrisPendingTransaction(transaction: TransactionRow) {
 function GalleryEmpty({ message }: { message: string }) {
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
-          Gallery
-        </h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          Hasil raw dan framed photo dari kiosk.
-        </p>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-950">
+            Gallery
+          </h1>
+          <p className="mt-2 text-sm text-zinc-500">
+            Hasil raw dan framed photo dari kiosk.
+          </p>
+        </div>
+        <GalleryShareHeaderActions />
       </header>
       <Card className="grid min-h-80 place-items-center rounded-2xl border-dashed p-10 text-center">
         <div>

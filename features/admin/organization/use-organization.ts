@@ -8,6 +8,7 @@ export function useTenantDetails() {
   return useQuery<Awaited<ReturnType<typeof organizationApi.getMyOrganizationDetails>>, Error>({
     queryKey: adminQueryKeys.organizationDetails,
     queryFn: organizationApi.getMyOrganizationDetails,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -39,6 +40,7 @@ export function usePaymentGatewaySettings() {
   >({
     queryKey: adminQueryKeys.organizationPaymentGateway,
     queryFn: organizationApi.getMyPaymentGatewaySettings,
+    staleTime: 2 * 60_000,
   });
 }
 
@@ -58,6 +60,7 @@ export function useTenantMembers() {
   return useQuery<Awaited<ReturnType<typeof organizationApi.getMyOrganizationMembers>>, Error>({
     queryKey: adminQueryKeys.organizationMembers,
     queryFn: organizationApi.getMyOrganizationMembers,
+    staleTime: 2 * 60_000,
   });
 }
 

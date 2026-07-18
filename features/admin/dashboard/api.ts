@@ -2,6 +2,7 @@ import { dashboardService } from "@/server/admin/dashboard-service";
 import { subscriptionService } from "@/server/subscription/subscription-service";
 import type {
   DashboardData,
+  DashboardTransactionStat,
   Device,
   EventBreakdownItem,
   EventPeriodKey,
@@ -17,6 +18,7 @@ export const dashboardApi = {
 
 export type {
   DashboardData,
+  DashboardTransactionStat,
   Device,
   EventBreakdownItem,
   EventPeriodKey,

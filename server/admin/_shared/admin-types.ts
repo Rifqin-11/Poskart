@@ -91,6 +91,16 @@ export type RawTransactionRow = {
   gateway_response: Record<string, unknown> | null;
 };
 
+export type DashboardTransactionStat = {
+  periodDay: string;
+  provider: string;
+  packageName: string;
+  transactionCount: number;
+  paidCount: number;
+  printCount: number;
+  grossRevenue: number;
+};
+
 export type RetryPrintTransactionRow = {
   id: string;
   organization_id: string;
@@ -107,6 +117,15 @@ export type PosDashboardSaleRow = {
   payment_method: "Cash" | "QRIS";
   notes: string | null;
   created_at: string;
+};
+
+export type PosDashboardStatRow = {
+  period_day: string;
+  package_name: string;
+  payment_method: "Cash" | "QRIS";
+  transaction_count: number | string;
+  print_count: number | string;
+  revenue: number | string;
 };
 
 export type PosRecentSale = {
@@ -428,6 +447,7 @@ export type DashboardData = {
   kpiMetrics: KpiMetric[];
   weeklyChart: ChartPoint[];
   monthlyChart: ChartPoint[];
+  transactionStats: DashboardTransactionStat[];
   transactions: Transaction[];
   devices: Device[];
   posSummary: PosDashboardSummary;

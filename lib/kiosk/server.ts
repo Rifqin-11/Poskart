@@ -8,6 +8,7 @@ import {
 
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
 import {
+  applyAssetManifestDeliveryUrls,
   collectAssetUrls,
   getKioskAssetManifest,
 } from "@/lib/assets/asset-manifest";
@@ -549,11 +550,24 @@ export async function buildKioskBootstrap(
   });
   const assetReferences = collectAssetUrls({
     layoutSchema: normalizedLayoutSchema,
+    designTokens: normalizedThemeSchema,
     templates,
   });
   const assetManifest = await getKioskAssetManifest(
     context.organizationId,
     assetReferences,
+  );
+  const deliveredLayoutSchema = applyAssetManifestDeliveryUrls(
+    normalizedLayoutSchema,
+    assetManifest,
+  );
+  const deliveredThemeSchema = applyAssetManifestDeliveryUrls(
+    normalizedThemeSchema,
+    assetManifest,
+  );
+  const deliveredTemplates = applyAssetManifestDeliveryUrls(
+    templates,
+    assetManifest,
   );
 
   return {
@@ -589,8 +603,8 @@ export async function buildKioskBootstrap(
             config.gallery_storage_provider ?? "cloudinary",
         }
       : null,
-    layoutSchema: normalizedLayoutSchema
-      ? sanitizeLayoutSchema(normalizedLayoutSchema as LayoutSchema)
+    layoutSchema: deliveredLayoutSchema
+      ? sanitizeLayoutSchema(deliveredLayoutSchema as LayoutSchema)
       : null,
     availableLayouts: layouts.map((l) => ({
       id: l.id,
@@ -601,8 +615,8 @@ export async function buildKioskBootstrap(
       schema: null,
     })),
     assetManifest,
-    designTokens: normalizedThemeSchema ?? null,
-    templates: templates.map((template) => ({
+    designTokens: deliveredThemeSchema ?? null,
+    templates: deliveredTemplates.map((template) => ({
       id: template.id,
       name: template.name,
       category: template.category,
@@ -615,7 +629,7 @@ export async function buildKioskBootstrap(
       displayOrder: template.display_order,
       usageCount: template.usage_count ?? 0,
     })),
-    availableTemplates: templates.map((template) => ({
+    availableTemplates: deliveredTemplates.map((template) => ({
       id: template.id,
       name: template.name,
       category: template.category,

@@ -18,8 +18,8 @@ import {
   useTenantMembers,
   useUpdatePaymentCollectionMode,
 } from "@/features/admin/organization/use-organization";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import type { AppConfigRow } from "@/types/app-config";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import { ProfileCard } from "./_components/profile-card";
@@ -110,7 +110,20 @@ const DEFAULT_SETTINGS_FORM: SettingsForm = {
   maintenance_mode: false,
 };
 
-export function SettingsPanel() {
+type SettingsAccount = {
+  email: string;
+  systemRole: string;
+  fullName: string;
+  phone: string;
+  jobTitle: string;
+  timezone: string;
+};
+
+export function SettingsPanel({
+  initialAccount,
+}: {
+  initialAccount: SettingsAccount;
+}) {
   const searchParams = useSearchParams();
   const { data: config } = useAppConfig();
   const saveConfig = useSaveAppConfig();
@@ -123,21 +136,7 @@ export function SettingsPanel() {
   const [editOrganizationOpen, setEditOrganizationOpen] = useState(false);
   const [editMediaOpen, setEditMediaOpen] = useState(false);
   const [form, setForm] = useState<SettingsForm>(DEFAULT_SETTINGS_FORM);
-  const [account, setAccount] = useState<{
-    email: string;
-    systemRole: string;
-    fullName: string;
-    phone: string;
-    jobTitle: string;
-    timezone: string;
-  }>({
-    email: "",
-    systemRole: "authenticated",
-    fullName: "",
-    phone: "",
-    jobTitle: "",
-    timezone: "Asia/Jakarta",
-  });
+  const [account, setAccount] = useState<SettingsAccount>(initialAccount);
   const [profileDraft, setProfileDraft] = useState({
     fullName: "",
     phone: "",
@@ -200,64 +199,6 @@ export function SettingsPanel() {
       cancelled = true;
     };
   }, [config, tenant?.payment_collection_mode]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const supabase = createClient();
-    supabase.auth
-      .getUser()
-      .then(
-        (res: {
-          data: {
-            user: {
-              email?: string | null;
-              role?: string | null;
-              app_metadata?: Record<string, unknown>;
-              user_metadata?: Record<string, unknown>;
-            } | null;
-          };
-        }) => {
-          if (cancelled) return;
-          const user = res.data.user;
-          const fullName =
-            typeof user?.user_metadata?.full_name === "string"
-              ? user.user_metadata.full_name
-              : typeof user?.user_metadata?.name === "string"
-                ? user.user_metadata.name
-                : "";
-          const appRole =
-            typeof user?.app_metadata?.role === "string"
-              ? user.app_metadata.role
-              : user?.role || "authenticated";
-          const phone =
-            typeof user?.user_metadata?.phone === "string"
-              ? user.user_metadata.phone
-              : "";
-          const jobTitle =
-            typeof user?.user_metadata?.job_title === "string"
-              ? user.user_metadata.job_title
-              : "";
-          const timezone =
-            typeof user?.user_metadata?.timezone === "string"
-              ? user.user_metadata.timezone
-              : "Asia/Jakarta";
-          setAccount({
-            email: user?.email || "",
-            systemRole: appRole,
-            fullName,
-            phone,
-            jobTitle,
-            timezone,
-          });
-        },
-      )
-      .catch(() => {
-        // ignore
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!privateGateway) return;

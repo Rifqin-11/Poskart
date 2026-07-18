@@ -1,21 +1,16 @@
 import { createClient } from "@/lib/supabase/client";
+import {
+  APP_CONFIG_ID,
+  APP_CONFIG_SELECT_COLUMNS,
+} from "@/lib/app-config";
 import type { AppConfigRow, FlutterAppConfig } from "@/types/app-config";
-
-const CONFIG_ID = "default";
-
-const SELECT_COLUMNS =
-  "id,merchant_name,qris_payload_prefix,share_base_url,countdown_duration_seconds,flash_duration_ms,auto_return_duration_seconds,default_template_id," +
-  "qris_provider_merchant_id,qris_webhook_secret,qris_auto_retry,subscription_payment_gateway,gateway_fee_type,gateway_fee_percentage,gateway_fee_fixed_amount,platform_fee_type,platform_fee_percentage,platform_fee_fixed_amount,payout_adjustment_amount,minimum_payout_amount," +
-  "printer_name,booth_timeout_seconds," +
-  "download_expiry_hours,gallery_retention_days,storage_provider,watermark_enabled," +
-  "maintenance_mode,updated_at";
 
 async function getAppConfig(): Promise<AppConfigRow | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("app_configs")
-    .select(SELECT_COLUMNS)
-    .eq("id", CONFIG_ID)
+    .select(APP_CONFIG_SELECT_COLUMNS)
+    .eq("id", APP_CONFIG_ID)
     .maybeSingle();
 
   if (error) {
@@ -30,7 +25,7 @@ async function saveAppConfig(
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("app_configs").upsert({
-    id: CONFIG_ID,
+    id: APP_CONFIG_ID,
     ...patch,
     updated_at: new Date().toISOString(),
   });

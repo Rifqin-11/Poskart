@@ -7,6 +7,11 @@ import { CircleCheck, ExternalLink, ImageIcon, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { DeleteSessionButton } from "@/app/(admin)/gallery/delete-button";
 import { PrintSessionButton } from "@/app/(admin)/gallery/print-button";
+import {
+  GallerySelectionButton,
+  useGalleryShareSelection,
+} from "@/features/admin/gallery/gallery-share-manager";
+import { cn } from "@/lib/utils";
 
 type GalleryPhoto = {
   id: string;
@@ -43,6 +48,8 @@ export function GallerySessionCard({
   isLivePhotoProcessing: boolean;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const shareSelection = useGalleryShareSelection();
+  const selected = shareSelection?.isSelected(session.id) ?? false;
   const [details, setDetails] = useState<GalleryDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
@@ -115,8 +122,16 @@ export function GallerySessionCard({
 
   return (
     <div ref={cardRef}>
-      <Card className="group overflow-hidden rounded-xl border-zinc-200 py-0 shadow-sm transition-shadow hover:shadow-md">
+      <Card
+        className={cn(
+          "group overflow-hidden rounded-xl py-0 shadow-sm transition hover:shadow-md",
+          selected
+            ? "border-zinc-950 ring-2 ring-zinc-950 ring-offset-2"
+            : "border-zinc-200",
+        )}
+      >
         <div className="relative aspect-[4/3] bg-zinc-100">
+          <GallerySelectionButton sessionId={session.id} />
           {framed ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

@@ -1,7 +1,10 @@
 "use server";
 
-import { getAdminContext } from "@/server/admin/context";
-import { isSuperAdminProfile } from "@/lib/auth/admin";
+import {
+  getAdminContext,
+  getAdminMembership,
+  getAdminProfileRole,
+} from "@/server/admin/context";
 import { getServiceRoleClient } from "@/lib/supabase/server";
 import type {
   AdminNotification,
@@ -138,27 +141,15 @@ export async function getMyAdminNotifications(): Promise<AdminNotification[]> {
     .order("created_at", { ascending: false })
     .limit(30);
 
-  if (await isSuperAdminProfile(supabase, user.id)) {
+  if ((await getAdminProfileRole()) === "admin") {
     query = query.or(
       `recipient_profile_id.eq.${user.id},audience.eq.superadmin`,
     );
   } else {
-    const { data: memberships, error: membershipError } = await supabase
-      .from("organization_members")
-      .select("organization_id")
-      .eq("profile_id", user.id);
-
-    if (membershipError) {
-      throw new Error(`Gagal memuat organisasi notifikasi: ${membershipError.message}`);
-    }
-
-    const organizationIds = (memberships ?? [])
-      .map((row) => row.organization_id as string | null)
-      .filter((id): id is string => Boolean(id));
-
+    const membership = await getAdminMembership();
     const filters = [`recipient_profile_id.eq.${user.id}`];
-    if (organizationIds.length > 0) {
-      filters.push(`organization_id.in.(${organizationIds.join(",")})`);
+    if (membership) {
+      filters.push(`organization_id.eq.${membership.organizationId}`);
     }
     query = query.or(filters.join(","));
   }

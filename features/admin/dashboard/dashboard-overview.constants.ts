@@ -56,6 +56,7 @@ export const emptyDashboardData: DashboardData = {
   kpiMetrics: [],
   weeklyChart: [],
   monthlyChart: [],
+  transactionStats: [],
   transactions: [],
   devices: [],
   posSummary: {

@@ -1,6 +1,10 @@
 "use server";
 
-import { getAdminContext } from "@/server/admin/context";
+import {
+  getAdminContext,
+  getAdminMembership,
+} from "@/server/admin/context";
+import { cache } from "react";
 import {
   subscriptionPlanMeta,
   subscriptionDisplayName,
@@ -183,23 +187,24 @@ export async function deleteOrganization(id: string): Promise<void> {
   if (error) throw new Error(`Unable to delete organization: ${error.message}`);
 }
 
-export async function getMyOrganizationDetails() {
-  const { supabase, user } = await getAdminContext();
-
-  const { data: profile, error: pErr } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("profile_id", user.id)
-    .limit(1)
-    .single();
-  if (pErr || !profile?.organization_id)
-    throw new Error("No organization associated");
+const getCachedMyOrganizationDetails = cache(async () => {
+  const { supabase } = await getAdminContext();
+  const membership = await getAdminMembership();
+  if (!membership) throw new Error("No organization associated");
 
   const { data: organization, error: tErr } = await supabase
     .from("organizations")
     .select(
       `
-      *,
+      id,
+      name,
+      status,
+      renewal_date,
+      join_code,
+      features,
+      payment_collection_mode,
+      created_at,
+      updated_at,
       subscriptions (
         plan_id,
         status,
@@ -215,7 +220,7 @@ export async function getMyOrganizationDetails() {
       )
     `,
     )
-    .eq("id", profile.organization_id)
+    .eq("id", membership.organizationId)
     .single();
   if (tErr) throw tErr;
   const sub = Array.isArray(organization.subscriptions)
@@ -237,6 +242,10 @@ export async function getMyOrganizationDetails() {
     device_limit: sub?.device_limit ?? planMeta?.included_devices ?? 1,
     subscription_is_active: subscriptionIsActive,
   };
+});
+
+export async function getMyOrganizationDetails() {
+  return getCachedMyOrganizationDetails();
 }
 
 export async function updateMyOrganizationName(name: string) {
@@ -325,22 +334,16 @@ export async function saveMyPaymentGatewaySettings(
 }
 
 export async function getMyOrganizationMembers() {
-  const { supabase, user } = await getAdminContext();
-
-  const { data: profile } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("profile_id", user.id)
-    .limit(1)
-    .single();
-  if (!profile?.organization_id) throw new Error("No organization associated");
+  const { supabase } = await getAdminContext();
+  const membership = await getAdminMembership();
+  if (!membership) throw new Error("No organization associated");
 
   const { data, error } = await supabase
     .from("organization_members")
     .select(
       "id, role, created_at, profile_id, profiles(id, email, role, created_at)",
     )
-    .eq("organization_id", profile.organization_id)
+    .eq("organization_id", membership.organizationId)
     .order("created_at", { ascending: true });
   if (error) throw error;
 
@@ -383,20 +386,14 @@ async function getMyManageableOrganizationMembership(
 }
 
 export async function getMyOrganizationInvitations() {
-  const { supabase, user } = await getAdminContext();
-
-  const { data: profile } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("profile_id", user.id)
-    .limit(1)
-    .single();
-  if (!profile?.organization_id) throw new Error("No organization associated");
+  const { supabase } = await getAdminContext();
+  const membership = await getAdminMembership();
+  if (!membership) throw new Error("No organization associated");
 
   const { data, error } = await supabase
     .from("organization_invitations")
-    .select("*")
-    .eq("organization_id", profile.organization_id)
+    .select("id,email,created_at")
+    .eq("organization_id", membership.organizationId)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data;

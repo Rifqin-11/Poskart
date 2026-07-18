@@ -27,10 +27,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
-import {
-  useTenantDetails,
-  useTenantMembers,
-} from "@/features/admin/organization/use-organization";
+import { useTenantDetails } from "@/features/admin/organization/use-organization";
 import { useRealtimeSync } from "@/features/admin/hooks/use-realtime-sync";
 import {
   useAdminNotifications,
@@ -343,11 +340,13 @@ export function AdminShell({
   children,
   userEmail,
   userName,
+  userRole,
   isSuperAdmin = false,
 }: {
   children: React.ReactNode;
   userEmail?: string;
   userName?: string;
+  userRole?: string | null;
   isSuperAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -357,10 +356,8 @@ export function AdminShell({
   const { locale, setLocale, t } = useI18n();
   const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
   const builderFullView = useBuilderStore((s) => s.builderFullView);
-  const { data: members = [] } = useTenantMembers();
-  const currentMember = members.find((member) => member.email === userEmail);
   const accountName = userName || userEmail || "POSKART User";
-  const accountRole = formatAccountRole(currentMember?.role, isSuperAdmin);
+  const accountRole = formatAccountRole(userRole, isSuperAdmin);
 
   // Subscribe to Supabase Realtime so layout_schemas + devices queries
   // auto-refresh when the Flutter kiosk app pushes changes (e.g. active theme)

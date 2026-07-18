@@ -1,13 +1,56 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { hasOrganizationFeatureAccess } from "@/server/admin/organization-feature-access";
+import { getAdminContext, getAdminMembership } from "@/server/admin/context";
+import {
+  getPosSalesForExport,
+  getPosSalesPage,
+} from "@/server/pos/pos-service";
 import type {
   PosActionState,
   PosPackageCode,
   PosPaymentMethod,
+  PosSaleFilters,
+  PosSalesPage,
   PosSaleUpdate,
 } from "@/types/pos";
+
+async function getPosActionContext() {
+  const [{ supabase, user }, membership, hasAccess] = await Promise.all([
+    getAdminContext(),
+    getAdminMembership(),
+    hasOrganizationFeatureAccess("posKasir"),
+  ]);
+
+  if (!membership || !hasAccess) {
+    return null;
+  }
+
+  return {
+    supabase,
+    user,
+    organizationId: membership.organizationId,
+  };
+}
+
+export async function getPosSalesPageAction(
+  filters: Partial<PosSaleFilters>,
+): Promise<PosSalesPage> {
+  if (!(await hasOrganizationFeatureAccess("posKasir"))) {
+    throw new Error("Anda tidak memiliki akses ke POS Kasir.");
+  }
+  return getPosSalesPage(filters);
+}
+
+export async function getPosSalesExportAction(
+  filters: Partial<PosSaleFilters>,
+) {
+  if (!(await hasOrganizationFeatureAccess("posKasir"))) {
+    throw new Error("Anda tidak memiliki akses ke POS Kasir.");
+  }
+  return getPosSalesForExport(filters);
+}
 
 export async function createPosSale(
   formData: FormData,
@@ -28,34 +71,17 @@ export async function createPosSale(
     return { success: false, error: "Catatan maksimal 500 karakter." };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return {
-      success: false,
-      error: "Sesi login tidak valid. Silakan login kembali.",
-    };
-  }
-
-  const { data: membership, error: membershipError } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("profile_id", user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (membershipError || !membership?.organization_id) {
+  const context = await getPosActionContext();
+  if (!context) {
     return { success: false, error: "Akun belum terhubung ke organisasi." };
   }
+  const { supabase, user, organizationId } = context;
 
   const { data: selectedPackage, error: packageError } = await supabase
     .from("pricing_products")
     .select("id,name,price,promo_price,print_limit,active")
     .eq("id", packageCode)
+    .eq("organization_id", organizationId)
     .eq("active", true)
     .maybeSingle();
 
@@ -71,7 +97,7 @@ export async function createPosSale(
   }
 
   const { error } = await supabase.from("pos_sales").insert({
-    organization_id: membership.organization_id,
+    organization_id: organizationId,
     package_code: packageCode,
     package_name: selectedPackage.name,
     print_count: Math.max(1, Number(selectedPackage.print_limit) || 1),
@@ -97,23 +123,15 @@ export async function deletePosSale(saleId: string): Promise<PosActionState> {
     return { success: false, error: "ID transaksi tidak valid." };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return {
-      success: false,
-      error: "Sesi login tidak valid. Silakan login kembali.",
-    };
-  }
+  const context = await getPosActionContext();
+  if (!context) return { success: false, error: "Akses POS tidak valid." };
+  const { supabase, organizationId } = context;
 
   const { data, error } = await supabase
     .from("pos_sales")
     .delete()
     .eq("id", saleId)
+    .eq("organization_id", organizationId)
     .select("id")
     .maybeSingle();
 
@@ -158,26 +176,15 @@ export async function updatePosSale(
     return { success: false, error: "Catatan maksimal 500 karakter." };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Sesi login tidak valid." };
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("profile_id", user.id)
-    .limit(1)
-    .maybeSingle();
-  if (!membership?.organization_id) {
-    return { success: false, error: "Akun belum terhubung ke organisasi." };
-  }
+  const context = await getPosActionContext();
+  if (!context) return { success: false, error: "Akses POS tidak valid." };
+  const { supabase, organizationId } = context;
 
   const { data: selectedPackage, error: packageError } = await supabase
     .from("pricing_products")
     .select("id,name")
     .eq("id", values.packageCode)
+    .eq("organization_id", organizationId)
     .maybeSingle();
   if (packageError || !selectedPackage) {
     return { success: false, error: "Paket print tidak ditemukan." };
@@ -194,7 +201,7 @@ export async function updatePosSale(
       notes: notes || null,
     })
     .eq("id", values.saleId)
-    .eq("organization_id", membership.organization_id)
+    .eq("organization_id", organizationId)
     .select("id")
     .maybeSingle();
 
@@ -216,20 +223,15 @@ export async function deletePosSales(
     return { success: false, error: "ID transaksi tidak valid." };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const context = await getPosActionContext();
+  if (!context) return { success: false, error: "Akses POS tidak valid." };
+  const { supabase, organizationId } = context;
 
-  if (userError || !user) {
-    return {
-      success: false,
-      error: "Sesi login tidak valid. Silakan login kembali.",
-    };
-  }
-
-  const { error } = await supabase.from("pos_sales").delete().in("id", saleIds);
+  const { error } = await supabase
+    .from("pos_sales")
+    .delete()
+    .eq("organization_id", organizationId)
+    .in("id", saleIds.slice(0, 100));
 
   if (error) {
     return {

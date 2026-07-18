@@ -8,6 +8,7 @@ export function useAdminNotifications() {
   return useQuery({
     queryKey: adminQueryKeys.adminNotifications,
     queryFn: adminNotificationsApi.getMyAdminNotifications,
+    staleTime: 20_000,
     refetchInterval: 30_000,
   });
 }

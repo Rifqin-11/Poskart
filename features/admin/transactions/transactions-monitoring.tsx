@@ -30,6 +30,7 @@ import {
   useTransactions,
   useUnmarkTransactionAsTesting,
 } from "@/features/admin/transactions/use-transactions";
+import { TRANSACTION_PAGE_SIZE } from "@/features/admin/transactions/transaction-list-defaults";
 import { useAppConfig } from "@/features/admin/settings/use-settings";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
@@ -364,7 +365,7 @@ export function TransactionsMonitoring() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = TRANSACTION_PAGE_SIZE;
   const debouncedSearch = useDebouncedValue(search);
   const debouncedPackageFilter = useDebouncedValue(packageFilter);
 

@@ -40,6 +40,7 @@ import {
 import { useDashboardData, useSubscriptionStatus } from "@/features/admin/dashboard/use-dashboard";
 import type {
   Device,
+  DashboardTransactionStat,
   EventBreakdownItem,
   EventPeriodKey,
   EventPeriodStatistics,
@@ -58,15 +59,10 @@ const dashboardMonthFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 function getDashboardMonthKey(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.slice(0, 7);
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function getDashboardDateKey(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function formatDashboardMonthLabel(monthKey: string) {
@@ -77,28 +73,25 @@ function formatDashboardMonthLabel(monthKey: string) {
 
 function buildMonthEventPeriod(
   monthKey: string,
-  transactions: Transaction[],
+  stats: DashboardTransactionStat[],
 ): EventPeriodStatistics {
   const label =
     monthKey === "all" ? "Monthly" : formatDashboardMonthLabel(monthKey);
-  const paidRows = transactions.filter(
-    (transaction) => transaction.status === "paid",
+  const qrisRows = stats.filter((stat) => stat.provider === "QRIS");
+  const qrisTotal = qrisRows.reduce(
+    (sum, stat) => sum + stat.transactionCount,
+    0,
   );
-  const qrisRows = transactions.filter(
-    (transaction) => transaction.provider === "QRIS",
+  const qrisPaid = qrisRows.reduce((sum, stat) => sum + stat.paidCount, 0);
+  const paymentMethods = buildStatBreakdown(
+    stats,
+    (stat) => stat.provider,
   );
-  const qrisPaid = qrisRows.filter(
-    (transaction) => transaction.status === "paid",
-  ).length;
-  const paymentMethods = buildTransactionBreakdown(
-    paidRows,
-    (transaction) => transaction.provider,
-  );
-  const topFrames = buildTransactionBreakdown(
-    paidRows,
-    (transaction) => transaction.packageName || "No package",
+  const topFrames = buildStatBreakdown(
+    stats,
+    (stat) => stat.packageName || "No package",
   ).slice(0, 5);
-  const revenueSeries = buildMonthRevenueSeries(monthKey, paidRows);
+  const revenueSeries = buildMonthRevenueSeries(monthKey, stats);
 
   return {
     key: "monthly",
@@ -107,33 +100,27 @@ function buildMonthEventPeriod(
       monthKey === "all"
         ? new Date().toISOString()
         : new Date(`${monthKey}-01T00:00:00`).toISOString(),
-    totalSessions: paidRows.length,
-    totalPrints: paidRows.reduce(
-      (sum, transaction) => sum + (transaction.printCount ?? 0),
-      0,
-    ),
-    totalRevenue: paidRows.reduce(
-      (sum, transaction) => sum + transaction.amount,
-      0,
-    ),
-    qrisTotal: qrisRows.length,
+    totalSessions: stats.reduce((sum, stat) => sum + stat.paidCount, 0),
+    totalPrints: stats.reduce((sum, stat) => sum + stat.printCount, 0),
+    totalRevenue: stats.reduce((sum, stat) => sum + stat.grossRevenue, 0),
+    qrisTotal,
     qrisPaid,
-    qrisFailed: qrisRows.length - qrisPaid,
-    qrisSuccessRate: qrisRows.length > 0 ? (qrisPaid / qrisRows.length) * 100 : 0,
+    qrisFailed: qrisTotal - qrisPaid,
+    qrisSuccessRate: qrisTotal > 0 ? (qrisPaid / qrisTotal) * 100 : 0,
     paymentMethods,
     topFrames,
     revenueSeries,
   };
 }
 
-function buildTransactionBreakdown(
-  transactions: Transaction[],
-  getLabel: (transaction: Transaction) => string,
+function buildStatBreakdown(
+  stats: DashboardTransactionStat[],
+  getLabel: (stat: DashboardTransactionStat) => string,
 ): EventBreakdownItem[] {
   const totals = new Map<string, EventBreakdownItem>();
 
-  for (const transaction of transactions) {
-    const label = getLabel(transaction);
+  for (const stat of stats) {
+    const label = getLabel(stat);
     const current = totals.get(label) ?? {
       label,
       value: 0,
@@ -141,10 +128,10 @@ function buildTransactionBreakdown(
       sessions: 0,
       prints: 0,
     };
-    current.value += 1;
-    current.revenue += transaction.amount;
-    current.sessions += 1;
-    current.prints += transaction.printCount ?? 0;
+    current.value += stat.paidCount;
+    current.revenue += stat.grossRevenue;
+    current.sessions += stat.paidCount;
+    current.prints += stat.printCount;
     totals.set(label, current);
   }
 
@@ -153,7 +140,7 @@ function buildTransactionBreakdown(
 
 function buildMonthRevenueSeries(
   monthKey: string,
-  transactions: Transaction[],
+  stats: DashboardTransactionStat[],
 ) {
   if (monthKey === "all") return [];
   const [year, month] = monthKey.split("-").map(Number);
@@ -163,21 +150,13 @@ function buildMonthRevenueSeries(
   return Array.from({ length: daysInMonth }, (_, index) => {
     const day = index + 1;
     const dayKey = `${monthKey}-${String(day).padStart(2, "0")}`;
-    const dayTransactions = transactions.filter((transaction) =>
-      getDashboardDateKey(transaction.createdAtRaw) === dayKey,
-    );
+    const dayStats = stats.filter((stat) => stat.periodDay === dayKey);
 
     return {
       label: String(day),
-      revenue: dayTransactions.reduce(
-        (sum, transaction) => sum + transaction.amount,
-        0,
-      ),
-      sessions: dayTransactions.length,
-      prints: dayTransactions.reduce(
-        (sum, transaction) => sum + (transaction.printCount ?? 0),
-        0,
-      ),
+      revenue: dayStats.reduce((sum, stat) => sum + stat.grossRevenue, 0),
+      sessions: dayStats.reduce((sum, stat) => sum + stat.paidCount, 0),
+      prints: dayStats.reduce((sum, stat) => sum + stat.printCount, 0),
     };
   });
 }
@@ -204,28 +183,25 @@ export function DashboardOverview() {
       Array.from(
         new Set([
           getDashboardMonthKey(new Date().toISOString()),
-          ...dashboardData.transactions
-            .map((transaction) =>
-              getDashboardMonthKey(transaction.createdAtRaw),
-            )
+          ...dashboardData.transactionStats
+            .map((stat) => getDashboardMonthKey(stat.periodDay))
             .filter(Boolean),
         ]),
       ).sort((a, b) => b.localeCompare(a)),
-    [dashboardData.transactions],
+    [dashboardData.transactionStats],
   );
-  const selectedMonthTransactions = useMemo(
+  const selectedMonthStats = useMemo(
     () =>
       selectedMonth === "all"
-        ? dashboardData.transactions
-        : dashboardData.transactions.filter(
-            (transaction) =>
-              getDashboardMonthKey(transaction.createdAtRaw) === selectedMonth,
+        ? dashboardData.transactionStats
+        : dashboardData.transactionStats.filter(
+            (stat) => getDashboardMonthKey(stat.periodDay) === selectedMonth,
           ),
-    [dashboardData.transactions, selectedMonth],
+    [dashboardData.transactionStats, selectedMonth],
   );
   const selectedMonthPeriod = useMemo(
-    () => buildMonthEventPeriod(selectedMonth, selectedMonthTransactions),
-    [selectedMonth, selectedMonthTransactions],
+    () => buildMonthEventPeriod(selectedMonth, selectedMonthStats),
+    [selectedMonth, selectedMonthStats],
   );
   const eventPeriod =
     selectedMonth === "all"
@@ -234,12 +210,17 @@ export function DashboardOverview() {
   const feedTransactions =
     selectedMonth === "all"
       ? dashboardData.transactions
-      : selectedMonthTransactions;
+      : dashboardData.transactions.filter(
+          (transaction) =>
+            getDashboardMonthKey(transaction.createdAtRaw) === selectedMonth,
+        );
   const activeBooths = dashboardData.devices.filter((device: Device) => device.status === "online").length;
   const hasWeeklyChart = dashboardData.weeklyChart.length > 0;
   const hasMonthlyChart = dashboardData.monthlyChart.length > 0;
   const hasDevices = dashboardData.devices.length > 0;
-  const hasTransactions = dashboardData.transactions.length > 0;
+  const hasTransactions = dashboardData.transactionStats.some(
+    (stat) => stat.transactionCount > 0,
+  );
   const hasFeedTransactions = feedTransactions.length > 0;
   const hasPosSales = dashboardData.posSummary.totalTransactions > 0;
   const isEmptyWorkspace =

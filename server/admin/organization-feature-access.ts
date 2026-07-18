@@ -1,35 +1,32 @@
 import { redirect } from "next/navigation";
-import { isSuperAdminProfile } from "@/lib/auth/admin";
 import {
   normalizeOrganizationFeatures,
   type OrganizationFeatureKey,
 } from "@/lib/organization-features";
-import { getAdminContext } from "@/server/admin/context";
+import {
+  getAdminContext,
+  getAdminMembership,
+  getAdminProfileRole,
+} from "@/server/admin/context";
 
 export async function hasOrganizationFeatureAccess(
   feature: OrganizationFeatureKey,
 ) {
-  const { supabase, user } = await getAdminContext();
+  const { supabase } = await getAdminContext();
 
-  if (await isSuperAdminProfile(supabase, user.id)) {
+  if ((await getAdminProfileRole()) === "admin") {
     return true;
   }
 
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("profile_id", user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (!membership?.organization_id) {
+  const membership = await getAdminMembership();
+  if (!membership) {
     return false;
   }
 
   const { data: organization } = await supabase
     .from("organizations")
     .select("features")
-    .eq("id", membership.organization_id)
+    .eq("id", membership.organizationId)
     .maybeSingle();
 
   return normalizeOrganizationFeatures(organization?.features)[feature];

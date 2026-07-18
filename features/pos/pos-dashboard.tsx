@@ -10,13 +10,14 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useMemo, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   createPosSale,
   deletePosSale,
   deletePosSales,
+  getPosSalesExportAction,
   updatePosSale,
 } from "@/app/(admin)/pos/actions";
 import { StatCard } from "@/features/admin/_components/stat-card";
@@ -47,22 +48,27 @@ import {
   getLocalDateKey,
 } from "@/features/pos/pos-dashboard.utils";
 import { EditPosSaleDialog } from "@/features/pos/components/edit-pos-sale-dialog";
+import { adminQueryKeys } from "@/features/admin/query-keys";
+import {
+  DEFAULT_POS_SALE_FILTERS,
+  POS_SALE_PAGE_SIZE,
+} from "@/features/pos/pos-list-defaults";
+import { usePosSales } from "@/features/pos/use-pos-sales";
 import { cn, formatCurrency } from "@/lib/utils";
 import type {
   PosPackageCode,
   PosPackageOption,
   PosPaymentMethod,
   PosSale,
+  PosSaleFilters,
 } from "@/types/pos";
 
 export function PosDashboard({
   packages,
-  sales,
 }: {
   packages: PosPackageOption[];
-  sales: PosSale[];
 }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const confirmDelete = useConfirmDialog();
@@ -70,6 +76,7 @@ export function PosDashboard({
     packages[0]?.code ?? "",
   );
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [packageFilter, setPackageFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState<"all" | PosPaymentMethod>(
     "all",
@@ -81,48 +88,58 @@ export function PosDashboard({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingSale, setEditingSale] = useState<PosSale | null>(null);
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = POS_SALE_PAGE_SIZE;
   const hasPackages = packages.length > 0;
 
-  const filteredSales = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+      setSelectedIds([]);
+    }, 300);
 
-    return sales.filter((sale) => {
-      const matchesSearch =
-        !normalizedSearch ||
-        sale.id.toLowerCase().includes(normalizedSearch) ||
-        sale.notes?.toLowerCase().includes(normalizedSearch);
-      const matchesPackage =
-        packageFilter === "all" || sale.packageCode === packageFilter;
-      const matchesPayment =
-        paymentFilter === "all" || sale.paymentMethod === paymentFilter;
-      const matchesDate =
-        dateMode === "all" || getLocalDateKey(sale.createdAt) === selectedDate;
+    return () => window.clearTimeout(timeoutId);
+  }, [search]);
 
-      return matchesSearch && matchesPackage && matchesPayment && matchesDate;
-    });
-  }, [dateMode, packageFilter, paymentFilter, sales, search, selectedDate]);
-
-  const metrics = useMemo(
+  const filters = useMemo<PosSaleFilters>(
     () => ({
-      revenue: filteredSales.reduce((total, sale) => total + sale.amount, 0),
-      prints: filteredSales.reduce((total, sale) => total + sale.printCount, 0),
-      transactions: filteredSales.length,
+      ...DEFAULT_POS_SALE_FILTERS,
+      page,
+      pageSize,
+      search: debouncedSearch,
+      packageCode: packageFilter,
+      paymentMethod: paymentFilter,
+      date: dateMode === "date" ? selectedDate : "",
     }),
-    [filteredSales],
+    [
+      dateMode,
+      debouncedSearch,
+      packageFilter,
+      page,
+      pageSize,
+      paymentFilter,
+      selectedDate,
+    ],
   );
+  const { data: salesPage, isFetching } = usePosSales(filters);
+  const sales = salesPage?.sales ?? [];
+  const metrics = salesPage?.summary ?? {
+    revenue: 0,
+    prints: 0,
+    transactions: 0,
+  };
+  const totalSales = salesPage?.total ?? 0;
   const activePage = Math.min(
     page,
-    Math.max(1, Math.ceil(filteredSales.length / pageSize)),
+    Math.max(1, Math.ceil(totalSales / pageSize)),
   );
-  const paginatedSales = useMemo(
-    () =>
-      filteredSales.slice(
-        (activePage - 1) * pageSize,
-        activePage * pageSize,
-      ),
-    [activePage, filteredSales],
-  );
+
+  async function refreshPosData() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.posSalesRoot }),
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard }),
+    ]);
+  }
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -135,44 +152,56 @@ export function PosDashboard({
       toast.success("Transaksi POS berhasil disimpan.");
       formRef.current?.reset();
       setSelectedPackage(packages[0]?.code ?? "");
-      router.refresh();
+      setPage(1);
+      await refreshPosData();
     });
   }
 
   function exportCsv() {
-    if (filteredSales.length === 0) {
+    if (totalSales === 0) {
       toast.error("Belum ada data untuk diekspor.");
       return;
     }
 
-    const rows = [
-      [
-        "ID",
-        "Tanggal",
-        "Paket",
-        "Jumlah Print",
-        "Pendapatan",
-        "Pembayaran",
-        "Catatan",
-      ],
-      ...filteredSales.map((sale) => [
-        sale.id,
-        formatDate(sale.createdAt),
-        sale.packageName,
-        sale.printCount,
-        sale.amount,
-        sale.paymentMethod,
-        sale.notes ?? "",
-      ]),
-    ];
-    const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
-    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `laporan-pos-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    startTransition(async () => {
+      try {
+        const exportSales = await getPosSalesExportAction(filters);
+        const rows = [
+          [
+            "ID",
+            "Tanggal",
+            "Paket",
+            "Jumlah Print",
+            "Pendapatan",
+            "Pembayaran",
+            "Catatan",
+          ],
+          ...exportSales.map((sale) => [
+            sale.id,
+            formatDate(sale.createdAt),
+            sale.packageName,
+            sale.printCount,
+            sale.amount,
+            sale.paymentMethod,
+            sale.notes ?? "",
+          ]),
+        ];
+        const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+        const blob = new Blob(["\uFEFF", csv], {
+          type: "text/csv;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `laporan-pos-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Laporan gagal diekspor.",
+        );
+      }
+    });
   }
 
   function handleDelete(sale: PosSale) {
@@ -191,7 +220,7 @@ export function PosDashboard({
 
           toast.success("Transaksi berhasil dihapus.");
           setSelectedIds((prev) => prev.filter((id) => id !== sale.id));
-          router.refresh();
+          await refreshPosData();
         });
       },
     });
@@ -213,7 +242,7 @@ export function PosDashboard({
 
           toast.success("Transaksi berhasil dihapus.");
           setSelectedIds([]);
-          router.refresh();
+          await refreshPosData();
         });
       },
     });
@@ -237,7 +266,7 @@ export function PosDashboard({
               }
               toast.success("Transaksi POS berhasil diubah.");
               setEditingSale(null);
-              router.refresh();
+              await refreshPosData();
             });
           }}
         />
@@ -254,9 +283,11 @@ export function PosDashboard({
         <div className="flex flex-col gap-2 sm:flex-row">
           <Select
             value={dateMode}
-            onChange={(event) =>
-              setDateMode(event.target.value as "all" | "date")
-            }
+            onChange={(event) => {
+              setDateMode(event.target.value as "all" | "date");
+              setPage(1);
+              setSelectedIds([]);
+            }}
             className="sm:w-40"
             aria-label="Filter periode dashboard"
           >
@@ -267,7 +298,11 @@ export function PosDashboard({
             <Input
               type="date"
               value={selectedDate}
-              onChange={(event) => setSelectedDate(event.target.value)}
+              onChange={(event) => {
+                setSelectedDate(event.target.value);
+                setPage(1);
+                setSelectedIds([]);
+              }}
               className="sm:w-40"
               aria-label="Tanggal dashboard"
             />
@@ -283,7 +318,7 @@ export function PosDashboard({
         <StatCard
           title="Total pendapatan"
           value={formatCurrency(metrics.revenue)}
-          description={`${filteredSales.length} transaksi tercatat`}
+          description={`${metrics.transactions.toLocaleString("id-ID")} transaksi tercatat`}
           icon={Banknote}
           className="min-w-[78vw] snap-start sm:min-w-[280px] md:min-w-0"
         />
@@ -473,7 +508,11 @@ export function PosDashboard({
                 </div>
                 <Select
                   value={packageFilter}
-                  onChange={(event) => setPackageFilter(event.target.value)}
+                  onChange={(event) => {
+                    setPackageFilter(event.target.value);
+                    setPage(1);
+                    setSelectedIds([]);
+                  }}
                   aria-label="Filter paket"
                 >
                   <option value="all">Semua paket</option>
@@ -485,11 +524,13 @@ export function PosDashboard({
                 </Select>
                 <Select
                   value={paymentFilter}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setPaymentFilter(
                       event.target.value as "all" | PosPaymentMethod,
-                    )
-                  }
+                    );
+                    setPage(1);
+                    setSelectedIds([]);
+                  }}
                   aria-label="Filter metode pembayaran"
                 >
                   <option value="all">Semua bayar</option>
@@ -500,8 +541,13 @@ export function PosDashboard({
             </div>
           </CardHeader>
           <CardContent>
-            {filteredSales.length > 0 ? (
-              <div className="overflow-x-auto">
+            {sales.length > 0 ? (
+              <div
+                className={cn(
+                  "overflow-x-auto transition-opacity",
+                  isFetching && "opacity-60",
+                )}
+              >
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -510,8 +556,8 @@ export function PosDashboard({
                           type="checkbox"
                           className="size-4 rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950 accent-zinc-950 cursor-pointer"
                           checked={
-                            filteredSales.length > 0 &&
-                            filteredSales.every((t) =>
+                            sales.length > 0 &&
+                            sales.every((t) =>
                               selectedIds.includes(t.id),
                             )
                           }
@@ -519,7 +565,7 @@ export function PosDashboard({
                             if (e.target.checked) {
                               setSelectedIds((prev) => {
                                 const newIds = [...prev];
-                                filteredSales.forEach((t) => {
+                                sales.forEach((t) => {
                                   if (!newIds.includes(t.id)) newIds.push(t.id);
                                 });
                                 return newIds;
@@ -528,7 +574,7 @@ export function PosDashboard({
                               setSelectedIds((prev) =>
                                 prev.filter(
                                   (id) =>
-                                    !filteredSales.some((t) => t.id === id),
+                                    !sales.some((t) => t.id === id),
                                 ),
                               );
                             }
@@ -545,7 +591,7 @@ export function PosDashboard({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedSales.map((sale) => (
+                    {sales.map((sale) => (
                       <TableRow
                         key={sale.id}
                         className={
@@ -631,8 +677,11 @@ export function PosDashboard({
                 <TablePagination
                   page={activePage}
                   pageSize={pageSize}
-                  totalItems={filteredSales.length}
-                  onPageChange={setPage}
+                  totalItems={totalSales}
+                  onPageChange={(nextPage) => {
+                    setPage(nextPage);
+                    setSelectedIds([]);
+                  }}
                 />
               </div>
             ) : (

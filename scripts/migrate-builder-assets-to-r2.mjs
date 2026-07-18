@@ -42,23 +42,71 @@ function assertEnvironment() {
 
 function extractLegacyPath(value) {
   if (typeof value !== "string") return null;
-  const index = value.indexOf(legacyMarker);
-  if (index === -1) return null;
-  return decodeURIComponent(value.slice(index + legacyMarker.length).split("?", 1)[0]);
+  try {
+    const url = new URL(value);
+    if (!/^https?:$/.test(url.protocol)) return null;
+    const index = url.pathname.indexOf(legacyMarker);
+    if (index === -1) return null;
+    return decodeURIComponent(url.pathname.slice(index + legacyMarker.length));
+  } catch {
+    return null;
+  }
+}
+
+function parseEmbeddedMigrationRecord(value) {
+  if (typeof value !== "string" || !value.trim().startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(value);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof parsed.sourceUrl === "string" &&
+      typeof parsed.deliveryUrl === "string"
+    ) {
+      return parsed;
+    }
+  } catch {
+    // It is a normal string value, not a previously serialized migration row.
+  }
+  return null;
+}
+
+function isMigrationRecord(value) {
+  return (
+    value &&
+    typeof value === "object" &&
+    typeof value.sourceUrl === "string" &&
+    typeof value.deliveryUrl === "string"
+  );
 }
 
 function collectLegacyUrls(value, result = new Set()) {
-  if (typeof value === "string" && extractLegacyPath(value)) result.add(value);
-  else if (Array.isArray(value)) value.forEach((item) => collectLegacyUrls(item, result));
-  else if (value && typeof value === "object") {
+  if (typeof value === "string") {
+    const embedded = parseEmbeddedMigrationRecord(value);
+    if (embedded) collectLegacyUrls(embedded.sourceUrl, result);
+    else if (extractLegacyPath(value)) result.add(value);
+  } else if (Array.isArray(value)) {
+    value.forEach((item) => collectLegacyUrls(item, result));
+  } else if (isMigrationRecord(value)) {
+    collectLegacyUrls(value.sourceUrl, result);
+  } else if (value && typeof value === "object") {
     Object.values(value).forEach((item) => collectLegacyUrls(item, result));
   }
   return result;
 }
 
 function replaceLegacyUrls(value, replacements) {
-  if (typeof value === "string") return replacements.get(value) || value;
+  if (typeof value === "string") {
+    const embedded = parseEmbeddedMigrationRecord(value);
+    if (embedded) {
+      return replacements.get(embedded.sourceUrl)?.deliveryUrl || embedded.deliveryUrl;
+    }
+    return replacements.get(value)?.deliveryUrl || value;
+  }
   if (Array.isArray(value)) return value.map((item) => replaceLegacyUrls(item, replacements));
+  if (isMigrationRecord(value)) {
+    return replacements.get(value.sourceUrl)?.deliveryUrl || value.deliveryUrl;
+  }
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [key, replaceLegacyUrls(item, replacements)]),
@@ -195,9 +243,9 @@ async function main() {
       const { error } = await supabase.from("kiosk_asset_manifest").upsert(
         {
           organization_id: row.organization_id,
-          // The database is rewritten to the R2 URL below, so the manifest
-          // key must match the URL the kiosk receives after migration.
-          source_url: item.deliveryUrl,
+          // Keep the legacy source so an older cached kiosk config can resolve
+          // the same immutable R2 object and revision after migration.
+          source_url: sourceUrl,
           delivery_url: item.deliveryUrl,
           revision: item.revision,
           content_hash: item.contentHash,
@@ -218,7 +266,7 @@ async function main() {
       const { error } = await supabase.from("kiosk_asset_manifest").upsert(
         {
           organization_id: row.organization_id,
-          source_url: item.deliveryUrl,
+          source_url: sourceUrl,
           delivery_url: item.deliveryUrl,
           revision: item.revision,
           content_hash: item.contentHash,

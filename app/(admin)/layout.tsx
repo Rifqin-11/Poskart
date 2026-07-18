@@ -1,36 +1,53 @@
 import { AdminShell } from "@/features/admin/shell/admin-shell";
+import { AdminPermissionProvider } from "@/features/admin/hooks/admin-permission-provider";
 import { PrintQueuePanel } from "@/features/admin/printing/print-queue-panel";
-import { createClient } from "@/lib/supabase/server";
-import { isSuperAdminProfile } from "@/lib/auth/admin";
+import { adminQueryKeys } from "@/features/admin/query-keys";
+import { getQueryClient } from "@/lib/query-client.server";
+import { getAdminBootstrap } from "@/server/admin/bootstrap";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { connection } from "next/server";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  const isSuperAdmin = await isSuperAdminProfile(supabase, data.user?.id);
-  const metadata = data.user?.user_metadata as
-    | Record<string, unknown>
-    | undefined;
-  const userName =
-    (typeof metadata?.full_name === "string" && metadata.full_name.trim()) ||
-    (typeof metadata?.name === "string" && metadata.name.trim()) ||
-    (typeof metadata?.display_name === "string" && metadata.display_name.trim()) ||
-    data.user?.email ||
-    "POSKART User";
+  await connection();
+
+  const bootstrap = await getAdminBootstrap();
+  const queryClient = getQueryClient();
+
+  queryClient.setQueryData(
+    adminQueryKeys.organizationDetails,
+    bootstrap.organization,
+  );
+  queryClient.setQueryData(
+    adminQueryKeys.subscriptionStatus,
+    bootstrap.subscription,
+  );
+  queryClient.setQueryData(
+    adminQueryKeys.adminNotifications,
+    bootstrap.notifications,
+  );
 
   return (
     <>
-      <AdminShell
-        userEmail={data.user?.email}
-        userName={userName}
-        isSuperAdmin={isSuperAdmin}
-      >
-        {children}
-      </AdminShell>
-      <PrintQueuePanel />
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <AdminPermissionProvider
+          role={bootstrap.userRole}
+          isSuperAdmin={bootstrap.isSuperAdmin}
+        >
+          <AdminShell
+            userEmail={bootstrap.userEmail}
+            userName={bootstrap.userName}
+            userRole={bootstrap.userRole}
+            isSuperAdmin={bootstrap.isSuperAdmin}
+          >
+            {children}
+          </AdminShell>
+        </AdminPermissionProvider>
+        <PrintQueuePanel />
+      </HydrationBoundary>
     </>
   );
 }

@@ -8,6 +8,7 @@ export function useSubscriptionStatus() {
   return useQuery<Awaited<ReturnType<typeof subscriptionApi.getStatus>>, Error>({
     queryKey: adminQueryKeys.subscriptionStatus,
     queryFn: subscriptionApi.getStatus,
+    staleTime: 5 * 60_000,
   });
 }
 

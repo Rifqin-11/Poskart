@@ -45,6 +45,31 @@ export function collectAssetUrls(value: unknown): string[] {
   return Array.from(urls);
 }
 
+export function applyAssetManifestDeliveryUrls<T>(
+  value: T,
+  manifest: KioskAssetManifestEntry[],
+): T {
+  if (manifest.length === 0) return value;
+  const deliveryBySource = new Map(
+    manifest.map((entry) => [entry.source_url, entry.delivery_url]),
+  );
+
+  const visit = (current: unknown): unknown => {
+    if (typeof current === "string") {
+      return deliveryBySource.get(current.trim()) ?? current;
+    }
+    if (Array.isArray(current)) return current.map(visit);
+    if (current && typeof current === "object") {
+      return Object.fromEntries(
+        Object.entries(current).map(([key, item]) => [key, visit(item)]),
+      );
+    }
+    return current;
+  };
+
+  return visit(value) as T;
+}
+
 export async function recordKioskAssetManifest(input: {
   organizationId: string;
   sourceUrl: string;
@@ -87,18 +112,35 @@ export async function getKioskAssetManifest(
   if (references.length === 0) return [];
 
   const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("kiosk_asset_manifest")
-    .select(
-      "source_url,delivery_url,revision,content_hash,byte_size,content_type,updated_at",
-    )
-    .eq("organization_id", organizationId)
-    .in("source_url", references);
+  const columns =
+    "source_url,delivery_url,revision,content_hash,byte_size,content_type,updated_at";
+  const [sourceResult, deliveryResult] = await Promise.all([
+    supabase
+      .from("kiosk_asset_manifest")
+      .select(columns)
+      .eq("organization_id", organizationId)
+      .in("source_url", references),
+    supabase
+      .from("kiosk_asset_manifest")
+      .select(columns)
+      .eq("organization_id", organizationId)
+      .in("delivery_url", references),
+  ]);
 
-  if (error) {
-    if (error.code === "42P01") return [];
-    throw new Error(`Unable to load kiosk asset manifest: ${error.message}`);
+  for (const result of [sourceResult, deliveryResult]) {
+    if (!result.error) continue;
+    if (result.error.code === "42P01") return [];
+    throw new Error(
+      `Unable to load kiosk asset manifest: ${result.error.message}`,
+    );
   }
 
-  return (data ?? []) as KioskAssetManifestEntry[];
+  const entries = new Map<string, KioskAssetManifestEntry>();
+  for (const row of [
+    ...(sourceResult.data ?? []),
+    ...(deliveryResult.data ?? []),
+  ] as KioskAssetManifestEntry[]) {
+    entries.set(row.source_url, row);
+  }
+  return Array.from(entries.values());
 }

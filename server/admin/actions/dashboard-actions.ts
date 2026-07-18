@@ -1,8 +1,10 @@
 "use server";
 
-import { getAdminContext } from "@/server/admin/context";
-import { createClient } from "@/lib/supabase/server";
-import { getTransactions } from "./transaction-actions";
+import {
+  getAdminContext,
+  getAdminMembership,
+} from "@/server/admin/context";
+import { cache } from "react";
 import { getDevices } from "./device-actions";
 import {
   EMPTY_EVENT_STATISTICS,
@@ -16,11 +18,14 @@ import {
   type DashboardData,
   type KpiMetric,
   type ChartPoint,
+  type DashboardTransactionStat,
   type PosDashboardSummary,
   type PosDashboardSaleRow,
-  type RawTransactionRow,
+  type PosDashboardStatRow,
+  type TransactionRow,
+  TRANSACTION_COLUMNS,
+  mapTransaction,
 } from "../_shared/admin-types";
-import { normalizeQrisTransactionStatus } from "@/server/payments/qris-status";
 
 const EMPTY_POS_SUMMARY: PosDashboardSummary = {
   totalRevenue: 0,
@@ -36,80 +41,213 @@ const EMPTY_POS_SUMMARY: PosDashboardSummary = {
   recentSales: [],
 };
 
-async function getKpiMetrics(): Promise<KpiMetric[]> {
-  try {
-    const supabase = await createClient();
+const getDashboardScope = cache(async () => {
+  const [{ supabase }, membership] = await Promise.all([
+    getAdminContext(),
+    getAdminMembership(),
+  ]);
 
-    // Get user's organization for filtering
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id;
-    if (!userId) return [];
+  return {
+    supabase,
+    organizationId: membership?.organizationId ?? null,
+  };
+});
 
-    const { data: membership } = await supabase
-      .from("organization_members")
-      .select("organization_id")
-      .eq("profile_id", userId)
-      .limit(1)
-      .maybeSingle();
+type DashboardTransactionStatRow = {
+  period_day: string;
+  provider: string | null;
+  package_name: string | null;
+  transaction_count: number | string | null;
+  paid_count: number | string | null;
+  print_count: number | string | null;
+  gross_revenue: number | string | null;
+};
 
-    const organizationId = membership?.organization_id;
+type DashboardTransactionFallbackRow = {
+  amount: number | string | null;
+  status: string | null;
+  provider: string | null;
+  package_name: string | null;
+  created_at: string;
+  print_count: number | null;
+  paid_at: string | null;
+};
 
-    const now = new Date();
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    ).toISOString();
-    const startOfThisMonth = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      1,
-    ).toISOString();
-    const startOfLastMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() - 1,
-      1,
-    ).toISOString();
-    const endOfLastMonth = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      0,
-      23,
-      59,
-      59,
-    ).toISOString();
+const jakartaDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Jakarta",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 
-    let query = supabase
+function getJakartaDateKey(value: Date | string) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const parts = jakartaDateFormatter.formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+  return `${year}-${month}-${day}`;
+}
+
+function getMonthKey(dateKey: string) {
+  return dateKey.slice(0, 7);
+}
+
+function mapDashboardTransactionStat(
+  row: DashboardTransactionStatRow,
+): DashboardTransactionStat {
+  return {
+    periodDay: row.period_day,
+    provider: row.provider || "Unknown",
+    packageName: row.package_name || "No package",
+    transactionCount: Number(row.transaction_count ?? 0),
+    paidCount: Number(row.paid_count ?? 0),
+    printCount: Number(row.print_count ?? 0),
+    grossRevenue: Number(row.gross_revenue ?? 0),
+  };
+}
+
+function aggregateDashboardFallbackRows(
+  rows: DashboardTransactionFallbackRow[],
+): DashboardTransactionStat[] {
+  const totals = new Map<string, DashboardTransactionStat>();
+
+  for (const row of rows) {
+    const periodDay = getJakartaDateKey(row.created_at);
+    const provider = row.provider || "Unknown";
+    const packageName = row.package_name?.trim() || "No package";
+    const key = `${periodDay}\u0000${provider}\u0000${packageName}`;
+    const current = totals.get(key) ?? {
+      periodDay,
+      provider,
+      packageName,
+      transactionCount: 0,
+      paidCount: 0,
+      printCount: 0,
+      grossRevenue: 0,
+    };
+    const isPaid = row.status === "paid" || Boolean(row.paid_at);
+
+    current.transactionCount += 1;
+    if (isPaid) {
+      current.paidCount += 1;
+      current.printCount += Number(row.print_count ?? 0);
+      current.grossRevenue += Number(row.amount ?? 0);
+    }
+    totals.set(key, current);
+  }
+
+  return Array.from(totals.values()).sort((a, b) =>
+    b.periodDay.localeCompare(a.periodDay),
+  );
+}
+
+const getDashboardTransactionStats = cache(
+  async (): Promise<DashboardTransactionStat[]> => {
+    const { supabase, organizationId } = await getDashboardScope();
+    if (!organizationId) return [];
+
+    const { data, error } = await supabase.rpc(
+      "get_dashboard_transaction_stats",
+    );
+    if (!error) {
+      return ((data ?? []) as DashboardTransactionStatRow[]).map(
+        mapDashboardTransactionStat,
+      );
+    }
+
+    // Keep the dashboard usable while a new migration is being deployed. The
+    // fallback is bounded; the RPC remains the production path for all history.
+    if (error.code !== "PGRST202" && error.code !== "42883") {
+      throw new Error(`Unable to load dashboard statistics: ${error.message}`);
+    }
+
+    const cutoff = new Date();
+    cutoff.setUTCMonth(cutoff.getUTCMonth() - 13, 1);
+    cutoff.setUTCHours(0, 0, 0, 0);
+    const { data: fallbackData, error: fallbackError } = await supabase
       .from("transactions")
       .select(
-        "id,amount,status,provider,created_at,paid_at,duitku_status_code,gateway_response",
+        "amount,status,provider,package_name,created_at,print_count,paid_at",
       )
+      .eq("organization_id", organizationId)
       .is("archived_at", null)
-      .or("archive_reason.is.null,archive_reason.neq.testing");
-    if (organizationId) query = query.eq("organization_id", organizationId);
+      .is("archive_reason", null)
+      .or("payout_status.is.null,payout_status.neq.testing")
+      .neq("provider", "Event")
+      .or(
+        "provider.neq.QRIS,status.neq.pending,merchant_order_id.not.is.null",
+      )
+      .gte("created_at", cutoff.toISOString());
 
-    const { data: allTx } = await query;
-    const rows = ((allTx ?? []) as RawTransactionRow[])
-      .map(normalizeQrisTransactionStatus)
-      .filter((row) => row.provider !== "Event");
+    if (fallbackError) {
+      throw new Error(
+        `Unable to load dashboard fallback statistics: ${fallbackError.message}`,
+      );
+    }
 
-    const todayRows = rows.filter((r) => r.created_at >= startOfToday);
-    const monthRows = rows.filter((r) => r.created_at >= startOfThisMonth);
-    const lastMonthRows = rows.filter(
-      (r) => r.created_at >= startOfLastMonth && r.created_at <= endOfLastMonth,
+    return aggregateDashboardFallbackRows(
+      (fallbackData ?? []) as DashboardTransactionFallbackRow[],
     );
+  },
+);
 
-    const paidRows = rows.filter((r) => r.status === "paid");
-    const todayRevenue = todayRows
-      .filter((r) => r.status === "paid")
-      .reduce((sum, r) => sum + r.amount, 0);
-    const monthRevenue = monthRows
-      .filter((r) => r.status === "paid")
-      .reduce((sum, r) => sum + r.amount, 0);
-    const lastMonthRevenue = lastMonthRows
-      .filter((r) => r.status === "paid")
-      .reduce((sum, r) => sum + r.amount, 0);
-    const todayCount = todayRows.length;
+const getRecentDashboardTransactions = cache(async () => {
+  const { supabase, organizationId } = await getDashboardScope();
+  if (!organizationId) return [];
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(TRANSACTION_COLUMNS)
+    .eq("organization_id", organizationId)
+    .is("archived_at", null)
+    .is("archive_reason", null)
+    .or("payout_status.is.null,payout_status.neq.testing")
+    .neq("provider", "Event")
+    .or("provider.neq.QRIS,status.neq.pending,merchant_order_id.not.is.null")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (error) {
+    throw new Error(`Unable to load recent transactions: ${error.message}`);
+  }
+
+  return ((data ?? []) as TransactionRow[]).map(mapTransaction);
+});
+
+function getKpiMetrics(stats: DashboardTransactionStat[]): KpiMetric[] {
+  try {
+    const todayKey = getJakartaDateKey(new Date());
+    const thisMonthKey = getMonthKey(todayKey);
+    const [year, month] = thisMonthKey.split("-").map(Number);
+    const lastMonthKey = `${month === 1 ? year - 1 : year}-${String(
+      month === 1 ? 12 : month - 1,
+    ).padStart(2, "0")}`;
+
+    const todayRows = stats.filter((row) => row.periodDay === todayKey);
+    const monthRows = stats.filter(
+      (row) => getMonthKey(row.periodDay) === thisMonthKey,
+    );
+    const lastMonthRows = stats.filter(
+      (row) => getMonthKey(row.periodDay) === lastMonthKey,
+    );
+    const paidCount = stats.reduce((sum, row) => sum + row.paidCount, 0);
+    const todayRevenue = todayRows.reduce(
+      (sum, row) => sum + row.grossRevenue,
+      0,
+    );
+    const monthRevenue = monthRows.reduce(
+      (sum, row) => sum + row.grossRevenue,
+      0,
+    );
+    const lastMonthRevenue = lastMonthRows.reduce(
+      (sum, row) => sum + row.grossRevenue,
+      0,
+    );
+    const todayCount = todayRows.reduce(
+      (sum, row) => sum + row.transactionCount,
+      0,
+    );
 
     // Monthly revenue delta
     const monthDelta =
@@ -126,13 +264,20 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
       monthDelta >= 0 ? "positive" : "warning";
 
     // QRIS success rate
-    const qrisRows = rows.filter((r) => r.provider === "QRIS");
-    const qrisSuccess = qrisRows.filter((r) => r.status === "paid").length;
+    const qrisRows = stats.filter((row) => row.provider === "QRIS");
+    const qrisTotal = qrisRows.reduce(
+      (sum, row) => sum + row.transactionCount,
+      0,
+    );
+    const qrisSuccess = qrisRows.reduce(
+      (sum, row) => sum + row.paidCount,
+      0,
+    );
     const qrisRate =
-      qrisRows.length > 0
-        ? ((qrisSuccess / qrisRows.length) * 100).toFixed(1)
+      qrisTotal > 0
+        ? ((qrisSuccess / qrisTotal) * 100).toFixed(1)
         : "0.0";
-    const qrisFailed = qrisRows.length - qrisSuccess;
+    const qrisFailed = qrisTotal - qrisSuccess;
     const qrisTone: KpiMetric["tone"] =
       Number(qrisRate) >= 90
         ? "positive"
@@ -151,8 +296,8 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
         label: "Revenue today",
         value: formatRp(todayRevenue),
         delta:
-          todayRows.length > 0
-            ? `${todayRows.length} transactions`
+          todayCount > 0
+            ? `${todayCount} transactions`
             : "No transactions yet",
         tone: todayRevenue > 0 ? "positive" : "neutral",
       },
@@ -166,8 +311,8 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
         label: "Transactions today",
         value: String(todayCount),
         delta:
-          paidRows.length > 0
-            ? `${paidRows.length} paid total`
+          paidCount > 0
+            ? `${paidCount} paid total`
             : "Waiting for first session",
         tone: todayCount > 0 ? "positive" : "neutral",
       },
@@ -175,7 +320,7 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
         label: "QRIS success rate",
         value: `${qrisRate}%`,
         delta:
-          qrisRows.length > 0
+          qrisTotal > 0
             ? `${qrisFailed} failed QRIS`
             : "No QRIS transactions yet",
         tone: qrisTone,
@@ -187,82 +332,31 @@ async function getKpiMetrics(): Promise<KpiMetric[]> {
   }
 }
 
-async function getChartPoints(
+function getChartPoints(
   period: "weekly" | "monthly",
-): Promise<ChartPoint[]> {
+  stats: DashboardTransactionStat[],
+): ChartPoint[] {
   try {
-    const supabase = await createClient();
-
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id;
-    if (!userId) return [];
-
-    const { data: membership } = await supabase
-      .from("organization_members")
-      .select("organization_id")
-      .eq("profile_id", userId)
-      .limit(1)
-      .maybeSingle();
-
-    const organizationId = membership?.organization_id;
-
     const now = new Date();
 
     if (period === "weekly") {
-      // Last 7 days grouped by day
-      const cutoff = new Date(now);
-      cutoff.setDate(now.getDate() - 6);
-      cutoff.setHours(0, 0, 0, 0);
-
-      let query = supabase
-        .from("transactions")
-        .select(
-          "amount,status,provider,created_at,paid_at,duitku_status_code,gateway_response",
-        )
-        .is("archived_at", null)
-        .or("archive_reason.is.null,archive_reason.neq.testing")
-        .gte("created_at", cutoff.toISOString());
-      if (organizationId) query = query.eq("organization_id", organizationId);
-
-      const { data } = await query;
-      const rows = (data ?? []) as {
-        amount: number;
-        status: string;
-        provider: string | null;
-        created_at: string;
-        paid_at: string | null;
-        duitku_status_code: string | null;
-        gateway_response: Record<string, unknown> | null;
-      }[];
-      const normalizedRows = rows
-        .map(normalizeQrisTransactionStatus)
-        .filter((row) => row.provider !== "Event");
-
       return Array.from({ length: 7 }, (_, i) => {
         const day = new Date(now);
-        day.setDate(now.getDate() - (6 - i));
+        day.setUTCDate(now.getUTCDate() - (6 - i));
+        const dayKey = getJakartaDateKey(day);
         const dayLabel = new Intl.DateTimeFormat("id-ID", {
           weekday: "short",
+          timeZone: "Asia/Jakarta",
         }).format(day);
-        const dayStart = new Date(
-          day.getFullYear(),
-          day.getMonth(),
-          day.getDate(),
-        );
-        const dayEnd = new Date(dayStart);
-        dayEnd.setDate(dayStart.getDate() + 1);
-
-        const dayRows = normalizedRows.filter((r) => {
-          const d = new Date(r.created_at);
-          return d >= dayStart && d < dayEnd;
-        });
+        const dayRows = stats.filter((row) => row.periodDay === dayKey);
 
         return {
           label: dayLabel,
-          revenue: dayRows
-            .filter((r) => r.status === "paid")
-            .reduce((s, r) => s + r.amount, 0),
-          transactions: dayRows.length,
+          revenue: dayRows.reduce((sum, row) => sum + row.grossRevenue, 0),
+          transactions: dayRows.reduce(
+            (sum, row) => sum + row.transactionCount,
+            0,
+          ),
         };
       });
     } else {
@@ -281,51 +375,33 @@ async function getChartPoints(
         "Nov",
         "Des",
       ];
-      const cutoff = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-
-      let query = supabase
-        .from("transactions")
-        .select(
-          "amount,status,provider,created_at,paid_at,duitku_status_code,gateway_response",
-        )
-        .is("archived_at", null)
-        .or("archive_reason.is.null,archive_reason.neq.testing")
-        .gte("created_at", cutoff.toISOString());
-      if (organizationId) query = query.eq("organization_id", organizationId);
-
-      const { data } = await query;
-      const rows = (data ?? []) as {
-        amount: number;
-        status: string;
-        provider: string | null;
-        created_at: string;
-        paid_at: string | null;
-        duitku_status_code: string | null;
-        gateway_response: Record<string, unknown> | null;
-      }[];
-      const normalizedRows = rows
-        .map(normalizeQrisTransactionStatus)
-        .filter((row) => row.provider !== "Event");
+      const currentDateKey = getJakartaDateKey(now);
+      const [currentYear, currentMonth] = currentDateKey
+        .slice(0, 7)
+        .split("-")
+        .map(Number);
 
       return Array.from({ length: 6 }, (_, i) => {
-        const month = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-        const nextMonth = new Date(
-          now.getFullYear(),
-          now.getMonth() - (5 - i) + 1,
-          1,
+        const monthDate = new Date(
+          Date.UTC(currentYear, currentMonth - 1 - (5 - i), 1),
+        );
+        const monthKey = `${monthDate.getUTCFullYear()}-${String(
+          monthDate.getUTCMonth() + 1,
+        ).padStart(2, "0")}`;
+        const monthRows = stats.filter(
+          (row) => getMonthKey(row.periodDay) === monthKey,
         );
 
-        const monthRows = normalizedRows.filter((r) => {
-          const d = new Date(r.created_at);
-          return d >= month && d < nextMonth;
-        });
-
         return {
-          label: monthNames[month.getMonth()],
-          revenue: monthRows
-            .filter((r) => r.status === "paid")
-            .reduce((s, r) => s + r.amount, 0),
-          transactions: monthRows.length,
+          label: monthNames[monthDate.getUTCMonth()],
+          revenue: monthRows.reduce(
+            (sum, row) => sum + row.grossRevenue,
+            0,
+          ),
+          transactions: monthRows.reduce(
+            (sum, row) => sum + row.transactionCount,
+            0,
+          ),
         };
       });
     }
@@ -337,67 +413,78 @@ async function getChartPoints(
 
 async function getPosDashboardSummary(): Promise<PosDashboardSummary> {
   try {
-    const supabase = await createClient();
+    const { supabase, organizationId } = await getDashboardScope();
+    const [{ data: statsData, error: statsError }, recentResult] =
+      await Promise.all([
+        supabase.rpc("get_pos_dashboard_stats"),
+        (() => {
+          let recentQuery = supabase
+            .from("pos_sales")
+            .select(
+              "id,package_name,print_count,amount,payment_method,notes,created_at",
+            )
+            .order("created_at", { ascending: false })
+            .limit(5);
+          if (organizationId) {
+            recentQuery = recentQuery.eq("organization_id", organizationId);
+          }
+          return recentQuery;
+        })(),
+      ]);
 
-    // Resolve current user's organization for explicit filtering
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id;
-    if (!userId) return EMPTY_POS_SUMMARY;
-
-    const { data: membership } = await supabase
-      .from("organization_members")
-      .select("organization_id")
-      .eq("profile_id", userId)
-      .limit(1)
-      .maybeSingle();
-
-    const organizationId = membership?.organization_id;
-
-    let queryBuilder = supabase
-      .from("pos_sales")
-      .select(
-        "id,package_name,print_count,amount,payment_method,notes,created_at",
-      )
-      .order("created_at", { ascending: false })
-      .limit(1000);
-
-    // Always filter by org when available — do not rely solely on RLS
-    if (organizationId) {
-      queryBuilder = queryBuilder.eq("organization_id", organizationId);
+    if (statsError) {
+      console.error("[getPosDashboardSummary] stats", statsError.message);
+      return EMPTY_POS_SUMMARY;
     }
-
-    const { data, error } = await queryBuilder;
-    if (error) {
-      console.error("[getPosDashboardSummary]", error.message);
+    if (recentResult.error) {
+      console.error(
+        "[getPosDashboardSummary] recent",
+        recentResult.error.message,
+      );
       return EMPTY_POS_SUMMARY;
     }
 
-    const sales = (data ?? []) as PosDashboardSaleRow[];
-
+    const stats = (statsData ?? []) as PosDashboardStatRow[];
+    const recentSales = (recentResult.data ?? []) as PosDashboardSaleRow[];
     const now = new Date();
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const todayKey = getJakartaDateKey(now);
+    const monthKey = todayKey.slice(0, 7);
     const currencyDateFormatter = new Intl.DateTimeFormat("id-ID", {
       dateStyle: "medium",
       timeStyle: "short",
+      timeZone: "Asia/Jakarta",
     });
     const weekdayFormatter = new Intl.DateTimeFormat("id-ID", {
       weekday: "short",
+      timeZone: "Asia/Jakarta",
     });
+    const normalizedStats = stats.map((row) => ({
+      periodDay: row.period_day,
+      packageName: row.package_name,
+      paymentMethod: row.payment_method,
+      transactions: Number(row.transaction_count) || 0,
+      prints: Number(row.print_count) || 0,
+      revenue: Number(row.revenue) || 0,
+    }));
 
-    const totalRevenue = sales.reduce((sum, sale) => sum + sale.amount, 0);
-    const totalPrints = sales.reduce((sum, sale) => sum + sale.print_count, 0);
-    const todaySales = sales.filter(
-      (sale) => new Date(sale.created_at) >= startOfToday,
+    const totalRevenue = normalizedStats.reduce(
+      (sum, row) => sum + row.revenue,
+      0,
     );
-    const monthlySales = sales.filter(
-      (sale) => new Date(sale.created_at) >= startOfMonth,
+    const totalTransactions = normalizedStats.reduce(
+      (sum, row) => sum + row.transactions,
+      0,
     );
-
+    const totalPrints = normalizedStats.reduce(
+      (sum, row) => sum + row.prints,
+      0,
+    );
+    const todayStats = normalizedStats.filter(
+      (row) => row.periodDay === todayKey,
+    );
+    const monthlyStats = normalizedStats.filter((row) =>
+      row.periodDay.startsWith(monthKey),
+    );
     const packageTotals = new Map<
       string,
       { transactions: number; revenue: number; prints: number }
@@ -407,74 +494,67 @@ async function getPosDashboardSummary(): Promise<PosDashboardSummary> {
       { transactions: number; revenue: number }
     >();
 
-    for (const sale of sales) {
-      const packageTotal = packageTotals.get(sale.package_name) ?? {
+    for (const row of normalizedStats) {
+      const packageTotal = packageTotals.get(row.packageName) ?? {
         transactions: 0,
         revenue: 0,
         prints: 0,
       };
-      packageTotal.transactions += 1;
-      packageTotal.revenue += sale.amount;
-      packageTotal.prints += sale.print_count;
-      packageTotals.set(sale.package_name, packageTotal);
+      packageTotal.transactions += row.transactions;
+      packageTotal.revenue += row.revenue;
+      packageTotal.prints += row.prints;
+      packageTotals.set(row.packageName, packageTotal);
 
-      const paymentTotal = paymentTotals.get(sale.payment_method) ?? {
+      const paymentTotal = paymentTotals.get(row.paymentMethod) ?? {
         transactions: 0,
         revenue: 0,
       };
-      paymentTotal.transactions += 1;
-      paymentTotal.revenue += sale.amount;
-      paymentTotals.set(sale.payment_method, paymentTotal);
+      paymentTotal.transactions += row.transactions;
+      paymentTotal.revenue += row.revenue;
+      paymentTotals.set(row.paymentMethod, paymentTotal);
     }
 
     const dailySales = Array.from({ length: 7 }, (_, index) => {
-      const date = new Date(now);
-      date.setDate(now.getDate() - (6 - index));
-      const nextDate = new Date(date);
-      nextDate.setDate(date.getDate() + 1);
-      const dayStart = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
+      const day = new Date(now);
+      day.setUTCDate(day.getUTCDate() - (6 - index));
+      const dayKey = getJakartaDateKey(day);
+      const dayStats = normalizedStats.filter(
+        (row) => row.periodDay === dayKey,
       );
-      const dayEnd = new Date(
-        nextDate.getFullYear(),
-        nextDate.getMonth(),
-        nextDate.getDate(),
-      );
-      const daySales = sales.filter((sale) => {
-        const createdAt = new Date(sale.created_at);
-        return createdAt >= dayStart && createdAt < dayEnd;
-      });
 
       return {
-        label: weekdayFormatter.format(dayStart),
-        revenue: daySales.reduce((sum, sale) => sum + sale.amount, 0),
-        transactions: daySales.length,
+        label: weekdayFormatter.format(day),
+        revenue: dayStats.reduce((sum, row) => sum + row.revenue, 0),
+        transactions: dayStats.reduce(
+          (sum, row) => sum + row.transactions,
+          0,
+        ),
       };
     });
 
     return {
       totalRevenue,
-      todayRevenue: todaySales.reduce((sum, sale) => sum + sale.amount, 0),
-      monthlyRevenue: monthlySales.reduce((sum, sale) => sum + sale.amount, 0),
-      totalTransactions: sales.length,
-      todayTransactions: todaySales.length,
+      todayRevenue: todayStats.reduce((sum, row) => sum + row.revenue, 0),
+      monthlyRevenue: monthlyStats.reduce((sum, row) => sum + row.revenue, 0),
+      totalTransactions,
+      todayTransactions: todayStats.reduce(
+        (sum, row) => sum + row.transactions,
+        0,
+      ),
       totalPrints,
       averageTransaction:
-        sales.length > 0 ? Math.round(totalRevenue / sales.length) : 0,
+        totalTransactions > 0
+          ? Math.round(totalRevenue / totalTransactions)
+          : 0,
       topPackages: Array.from(packageTotals.entries())
         .map(([name, total]) => ({ name, ...total }))
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5),
       paymentBreakdown: Array.from(paymentTotals.entries()).map(
-        ([method, total]) => ({
-          method,
-          ...total,
-        }),
+        ([method, total]) => ({ method, ...total }),
       ),
       dailySales,
-      recentSales: sales.slice(0, 5).map((sale) => ({
+      recentSales: recentSales.map((sale) => ({
         id: sale.id,
         packageName: sale.package_name,
         printCount: sale.print_count,
@@ -484,34 +564,16 @@ async function getPosDashboardSummary(): Promise<PosDashboardSummary> {
         createdAt: currencyDateFormatter.format(new Date(sale.created_at)),
       })),
     };
+
   } catch (err) {
     console.error("[getPosDashboardSummary] Unexpected error:", err);
     return EMPTY_POS_SUMMARY;
   }
 }
 
-async function getCurrentUserOrganizationId() {
-  const supabase = await createClient();
-  const { data: authData } = await supabase.auth.getUser();
-  const userId = authData?.user?.id;
-  if (!userId) return { supabase, organizationId: null };
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("profile_id", userId)
-    .limit(1)
-    .maybeSingle();
-
-  return {
-    supabase,
-    organizationId: membership?.organization_id ?? null,
-  };
-}
-
 async function getDashboardEventStatistics() {
   try {
-    const { supabase, organizationId } = await getCurrentUserOrganizationId();
+    const { supabase, organizationId } = await getDashboardScope();
     if (!organizationId) return EMPTY_EVENT_STATISTICS;
     return await getEventStatisticsForOrganization(supabase, organizationId);
   } catch (err) {
@@ -522,29 +584,24 @@ async function getDashboardEventStatistics() {
 
 export async function getDashboard(): Promise<DashboardData> {
   const [
-    kpiResult,
-    weeklyResult,
-    monthlyResult,
+    transactionStatsResult,
     transactionsResult,
     devicesResult,
     posSummaryResult,
     eventStatsResult,
   ] = await Promise.allSettled([
-    getKpiMetrics(),
-    getChartPoints("weekly"),
-    getChartPoints("monthly"),
-    getTransactions(),
+    getDashboardTransactionStats(),
+    getRecentDashboardTransactions(),
     getDevices(),
     getPosDashboardSummary(),
     getDashboardEventStatistics(),
   ]);
 
-  if (kpiResult.status === "rejected")
-    console.error("[getDashboard] kpiMetrics failed:", kpiResult.reason);
-  if (weeklyResult.status === "rejected")
-    console.error("[getDashboard] weeklyChart failed:", weeklyResult.reason);
-  if (monthlyResult.status === "rejected")
-    console.error("[getDashboard] monthlyChart failed:", monthlyResult.reason);
+  if (transactionStatsResult.status === "rejected")
+    console.error(
+      "[getDashboard] transactionStats failed:",
+      transactionStatsResult.reason,
+    );
   if (transactionsResult.status === "rejected")
     console.error(
       "[getDashboard] transactions failed:",
@@ -557,16 +614,19 @@ export async function getDashboard(): Promise<DashboardData> {
   if (eventStatsResult.status === "rejected")
     console.error("[getDashboard] eventStats failed:", eventStatsResult.reason);
 
+  const transactionStats =
+    transactionStatsResult.status === "fulfilled"
+      ? transactionStatsResult.value
+      : [];
+
   return {
-    kpiMetrics: kpiResult.status === "fulfilled" ? kpiResult.value : [],
-    weeklyChart: weeklyResult.status === "fulfilled" ? weeklyResult.value : [],
-    monthlyChart:
-      monthlyResult.status === "fulfilled" ? monthlyResult.value : [],
+    kpiMetrics: getKpiMetrics(transactionStats),
+    weeklyChart: getChartPoints("weekly", transactionStats),
+    monthlyChart: getChartPoints("monthly", transactionStats),
+    transactionStats,
     transactions:
       transactionsResult.status === "fulfilled"
-        ? transactionsResult.value.filter(
-            (transaction) => !transaction.isTesting,
-          )
+        ? transactionsResult.value
         : [],
     devices: devicesResult.status === "fulfilled" ? devicesResult.value : [],
     posSummary:
@@ -590,29 +650,8 @@ export async function getSubscriptionStatus(): Promise<{
   planName: string;
   deviceLimit: number;
 }> {
-  const supabase = await createClient();
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData?.user?.id) {
-    return {
-      tier: "Free",
-      expiry: null,
-      isActive: false,
-      status: null,
-      currentPeriodEnd: null,
-      planId: null,
-      planName: "Free",
-      deviceLimit: 1,
-    };
-  }
-
-  const { data: profile } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("profile_id", userData.user.id)
-    .limit(1)
-    .single();
-
-  if (!profile?.organization_id) {
+  const { supabase, organizationId } = await getDashboardScope();
+  if (!organizationId) {
     return {
       tier: "Free",
       expiry: null,
@@ -639,7 +678,7 @@ export async function getSubscriptionStatus(): Promise<{
       )
     `,
     )
-    .eq("organization_id", profile.organization_id)
+    .eq("organization_id", organizationId)
     .maybeSingle();
 
   const planMeta = subscriptionPlanMeta(sub);

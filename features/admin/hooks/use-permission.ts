@@ -1,26 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTenantMembers } from "@/features/admin/organization/use-organization";
-import { createClient } from "@/lib/supabase/client";
-
-export type Role = "owner" | "admin" | "designer" | "akuntan" | "partner";
+import { useAdminPermissionContext } from "@/features/admin/hooks/admin-permission-provider";
+export type { Role } from "@/features/admin/hooks/permission-types";
 
 export function usePermission() {
-  const { data: members = [] } = useTenantMembers();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then((res: Awaited<ReturnType<typeof supabase.auth.getUser>>) => {
-      setUserEmail(res.data?.user?.email ?? null);
-    });
-  }, []);
-
-  const currentMember = members.find((m) => m.email === userEmail);
-  const role = (currentMember?.role as Role) ?? "partner"; // Default to partner (read-only)
-
-  const isOwnerOrAdmin = role === "owner" || role === "admin";
+  const { role, isSuperAdmin } = useAdminPermissionContext();
+  const isOwnerOrAdmin =
+    isSuperAdmin || role === "owner" || role === "admin";
 
   const isReadOnly = (
     feature:
@@ -60,7 +46,7 @@ export function usePermission() {
   return {
     role,
     isOwner: role === "owner",
-    isAdmin: role === "admin",
+    isAdmin: isSuperAdmin || role === "admin",
     isOwnerOrAdmin,
     isReadOnly,
   };

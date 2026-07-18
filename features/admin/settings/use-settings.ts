@@ -9,6 +9,7 @@ export function useAppConfig() {
   return useQuery<Awaited<ReturnType<typeof settingsApi.getAppConfig>>, Error>({
     queryKey: adminQueryKeys.appConfig,
     queryFn: settingsApi.getAppConfig,
+    staleTime: 5 * 60_000,
   });
 }
 
