@@ -156,81 +156,59 @@ export function BoothFormDialog({
         <Tabs defaultValue="general" className="w-full">
           <TabsList className="mb-4 grid h-auto w-full grid-cols-3 gap-1 rounded-2xl">
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="experience">Experience</TabsTrigger>
+            <TabsTrigger value="frame">Frame</TabsTrigger>
             <TabsTrigger value="system">System</TabsTrigger>
           </TabsList>
 
           {/* TAB 1: GENERAL */}
           <TabsContent
             value="general"
-            className="grid min-h-[340px] gap-3 md:grid-cols-2"
+            className="min-h-[340px] max-h-[480px] space-y-4 overflow-y-auto pr-1"
           >
-            <label className="block text-xs font-medium text-zinc-600">
-              Name
-              <Input
-                className="mt-1"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Device 01"
-                disabled={readOnly}
-              />
-            </label>
-            <label className="block text-xs font-medium text-zinc-600">
-              Location
-              <Input
-                className="mt-1"
-                value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
-                placeholder="PVJ Bandung"
-                disabled={readOnly}
-              />
-            </label>
-            <div className="block text-xs font-medium text-zinc-600">
-              Runtime status
-              <div className="mt-1 flex items-center justify-between rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
-                <Badge
-                  variant={
-                    runtimeStatus === "online"
-                      ? "success"
-                      : runtimeStatus === "maintenance"
-                        ? "warning"
-                        : "destructive"
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="block text-xs font-medium text-zinc-600">
+                Name
+                <Input
+                  className="mt-1"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Device 01"
+                  disabled={readOnly}
+                />
+              </label>
+              <label className="block text-xs font-medium text-zinc-600">
+                Location
+                <Input
+                  className="mt-1"
+                  value={form.location}
+                  onChange={(e) =>
+                    setForm({ ...form, location: e.target.value })
                   }
-                >
-                  {runtimeStatus}
-                </Badge>
-                <span className="text-[11px] font-normal text-zinc-400">
-                  Based on kiosk heartbeat
-                </span>
+                  placeholder="PVJ Bandung"
+                  disabled={readOnly}
+                />
+              </label>
+              <div className="block text-xs font-medium text-zinc-600">
+                App version
+                <div className="mt-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700">
+                  {form.appVersion || "Waiting for device sync"}
+                </div>
+                <p className="mt-1 text-[10px] font-normal text-zinc-400">
+                  App version is reported by the kiosk device and cannot be
+                  edited manually.
+                </p>
               </div>
-              <p className="mt-1 text-[10px] font-normal text-zinc-400">
-                Online/offline is detected from the app heartbeat. Use System to
-                enable maintenance mode.
-              </p>
-            </div>
-            <div className="block text-xs font-medium text-zinc-600">
-              App version
-              <div className="mt-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700">
-                {form.appVersion || "Waiting for device sync"}
+              <div className="block text-xs font-medium text-zinc-600">
+                Last sync
+                <div className="mt-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700">
+                  {form.lastSync || "Waiting for device sync"}
+                </div>
+                <p className="mt-1 text-[10px] font-normal text-zinc-400">
+                  Sync time is reported by the kiosk device.
+                </p>
               </div>
-              <p className="mt-1 text-[10px] font-normal text-zinc-400">
-                App version is reported by the kiosk device and cannot be edited
-                manually.
-              </p>
             </div>
-            <div className="block text-xs font-medium text-zinc-600">
-              Last sync
-              <div className="mt-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700">
-                {form.lastSync || "Waiting for device sync"}
-              </div>
-              <p className="mt-1 text-[10px] font-normal text-zinc-400">
-                Sync time is reported by the kiosk device.
-              </p>
-            </div>
-          </TabsContent>
 
-          {/* TAB 2: EXPERIENCE */}
-          <TabsContent value="experience" className="min-h-[340px] space-y-4">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
               <section className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
                 <div className="flex items-start gap-3">
@@ -267,150 +245,154 @@ export function BoothFormDialog({
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-600 shadow-sm ring-1 ring-zinc-200">
-                      <ImageIcon className="size-4" />
+                      <CreditCard className="size-4" />
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold text-zinc-900">
-                        Frame templates
+                        Session access
                       </h3>
                       <p className="mt-1 text-xs leading-5 text-zinc-500">
-                        Select which frames visitors can use on this booth.
+                        Choose one simple flow for visitors on this device.
                       </p>
                     </div>
                   </div>
                   <Badge variant="secondary" className="shrink-0">
-                    {form.frameTemplates.length} selected
+                    {sessionMode === "event"
+                      ? "Event"
+                      : sessionMode === "paid"
+                        ? "Pricing"
+                        : "Not selected"}
                   </Badge>
                 </div>
-                <DeviceMultiSelect
-                  className="mt-4"
-                  values={form.frameTemplates}
-                  emptyLabel="No frame templates yet"
-                  options={includeCurrentOptions(
-                    options.frameTemplates,
-                    form.frameTemplates,
-                  )}
-                  disabled={readOnly}
-                  onChange={(values) =>
-                    setForm({
-                      ...form,
-                      frameTemplates: values,
-                      template: values[0] ?? "",
-                    })
-                  }
-                />
+
+                <label className="mt-4 block text-xs font-medium text-zinc-600">
+                  Session type
+                  <Select
+                    className="mt-1 bg-white"
+                    value={sessionMode}
+                    disabled={readOnly}
+                    onChange={(event) => {
+                      const mode = event.target.value as SessionAccessMode;
+                      setSessionMode(mode);
+                      const selections =
+                        mode === "paid"
+                          ? paidSelections
+                          : eventSelection
+                            ? [eventSelection]
+                            : [];
+                      setForm({
+                        ...form,
+                        pricingProfile: selections[0] ?? "",
+                        pricingProfiles: selections,
+                      });
+                    }}
+                  >
+                    <option value="" disabled>
+                      Choose Pricing or Event
+                    </option>
+                    <option value="paid" disabled={paidProducts.length === 0}>
+                      Pricing
+                    </option>
+                    <option
+                      value="event"
+                      disabled={
+                        !initialEventProduct &&
+                        !eventProducts.some(
+                          (product) =>
+                            product.active && !isEventExpired(product),
+                        )
+                      }
+                    >
+                      Event
+                    </option>
+                  </Select>
+                </label>
+
+                {sessionMode === "paid" ? (
+                  <div className="mt-3">
+                    <p className="mb-1 text-xs font-medium text-zinc-600">
+                      Available packages
+                    </p>
+                    <DeviceMultiSelect
+                      values={paidSelections}
+                      emptyLabel="No active paid packages yet"
+                      options={includeCurrentOptions(
+                        paidProducts.map((product) => product.name),
+                        paidSelections,
+                      )}
+                      disabled={readOnly}
+                      onChange={(values) => {
+                        setPaidSelections(values);
+                        setForm({
+                          ...form,
+                          pricingProfile: values[0] ?? "",
+                          pricingProfiles: values,
+                        });
+                      }}
+                    />
+                  </div>
+                ) : sessionMode === "event" ? (
+                  <EventProductSelect
+                    className="mt-3"
+                    value={eventSelection}
+                    products={eventProducts}
+                    disabled={readOnly}
+                    onChange={(value) => {
+                      setEventSelection(value);
+                      setForm({
+                        ...form,
+                        pricingProfile: value,
+                        pricingProfiles: value ? [value] : [],
+                      });
+                    }}
+                  />
+                ) : (
+                  <p className="mt-3 rounded-lg border border-dashed border-zinc-200 bg-white px-3 py-4 text-xs text-zinc-500">
+                    Select a session type to configure visitor access.
+                  </p>
+                )}
               </section>
             </div>
+          </TabsContent>
 
+          {/* TAB 2: FRAME */}
+          <TabsContent value="frame" className="min-h-[340px]">
             <section className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-600 shadow-sm ring-1 ring-zinc-200">
-                    <CreditCard className="size-4" />
+                    <ImageIcon className="size-4" />
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-zinc-900">
-                      Session access
+                      Frame templates
                     </h3>
                     <p className="mt-1 text-xs leading-5 text-zinc-500">
-                      Choose one simple flow for visitors on this device.
+                      Select which frames visitors can use on this booth.
                     </p>
                   </div>
                 </div>
                 <Badge variant="secondary" className="shrink-0">
-                  {sessionMode === "event"
-                    ? "Event"
-                    : sessionMode === "paid"
-                      ? "Pricing"
-                      : "Not selected"}
+                  {form.frameTemplates.length} selected
                 </Badge>
               </div>
-
-              <label className="mt-4 block text-xs font-medium text-zinc-600">
-                Session type
-                <Select
-                  className="mt-1 bg-white"
-                  value={sessionMode}
-                  disabled={readOnly}
-                  onChange={(event) => {
-                    const mode = event.target.value as SessionAccessMode;
-                    setSessionMode(mode);
-                    const selections =
-                      mode === "paid"
-                        ? paidSelections
-                        : eventSelection
-                          ? [eventSelection]
-                          : [];
-                    setForm({
-                      ...form,
-                      pricingProfile: selections[0] ?? "",
-                      pricingProfiles: selections,
-                    });
-                  }}
-                >
-                  <option value="" disabled>
-                    Choose Pricing or Event
-                  </option>
-                  <option value="paid" disabled={paidProducts.length === 0}>
-                    Pricing
-                  </option>
-                  <option
-                    value="event"
-                    disabled={
-                      !initialEventProduct &&
-                      !eventProducts.some(
-                        (product) => product.active && !isEventExpired(product),
-                      )
-                    }
-                  >
-                    Event
-                  </option>
-                </Select>
-              </label>
-
-              {sessionMode === "paid" ? (
-                <div className="mt-3">
-                  <p className="mb-1 text-xs font-medium text-zinc-600">
-                    Available packages
-                  </p>
-                  <DeviceMultiSelect
-                    values={paidSelections}
-                    emptyLabel="No active paid packages yet"
-                    options={includeCurrentOptions(
-                      paidProducts.map((product) => product.name),
-                      paidSelections,
-                    )}
-                    disabled={readOnly}
-                    onChange={(values) => {
-                      setPaidSelections(values);
-                      setForm({
-                        ...form,
-                        pricingProfile: values[0] ?? "",
-                        pricingProfiles: values,
-                      });
-                    }}
-                  />
-                </div>
-              ) : sessionMode === "event" ? (
-                <EventProductSelect
-                  className="mt-3"
-                  value={eventSelection}
-                  products={eventProducts}
-                  disabled={readOnly}
-                  onChange={(value) => {
-                    setEventSelection(value);
-                    setForm({
-                      ...form,
-                      pricingProfile: value,
-                      pricingProfiles: value ? [value] : [],
-                    });
-                  }}
-                />
-              ) : (
-                <p className="mt-3 rounded-lg border border-dashed border-zinc-200 bg-white px-3 py-4 text-xs text-zinc-500">
-                  Select a session type to configure visitor access.
-                </p>
-              )}
+              <DeviceMultiSelect
+                className="mt-4"
+                values={form.frameTemplates}
+                emptyLabel="No frame templates yet"
+                options={includeCurrentOptions(
+                  options.frameTemplates,
+                  form.frameTemplates,
+                )}
+                disabled={readOnly}
+                onChange={(values) =>
+                  setForm({
+                    ...form,
+                    frameTemplates: values,
+                    template: values[0] ?? "",
+                  })
+                }
+              />
             </section>
           </TabsContent>
 
