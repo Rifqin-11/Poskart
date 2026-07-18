@@ -44,7 +44,7 @@ import { bakeLayoutSchemaColorKeyAssets } from "@/features/builder/utils/bake-co
 import { normalizeAssetReferences } from "@/lib/assets/asset-url";
 import type { BuilderNode } from "@/types/builder";
 
-export function VisualBuilder() {
+export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   const router = useRouter();
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -707,6 +707,23 @@ export function VisualBuilder() {
   // ── end Smart guides ──────────────────────────────────────────
 
   useEffect(() => {
+    if (!initialThemeId) return;
+
+    const initialTheme = dbThemes.find((theme) => theme.id === initialThemeId);
+    if (!initialTheme || hydratedLayoutId.current === initialTheme.id) return;
+
+    const normalizedSchema = normalizeAssetReferences(
+      initialTheme.schema,
+    ) as typeof initialTheme.schema;
+    setSchema(normalizedSchema);
+    setCurrentThemeId(initialTheme.id);
+    setCurrentThemeName(initialTheme.name);
+    hydratedLayoutId.current = initialTheme.id;
+    lastCommittedSchemaRef.current = JSON.stringify(normalizedSchema);
+  }, [dbThemes, initialThemeId, setSchema]);
+
+  useEffect(() => {
+    if (initialThemeId) return;
     if (!savedLayout || hydratedLayoutId.current === savedLayout.id) return;
     const normalizedSchema = normalizeAssetReferences(
       savedLayout.schema,
@@ -714,7 +731,7 @@ export function VisualBuilder() {
     setSchema(normalizedSchema);
     hydratedLayoutId.current = savedLayout.id;
     lastCommittedSchemaRef.current = JSON.stringify(normalizedSchema);
-  }, [savedLayout, setSchema]);
+  }, [initialThemeId, savedLayout, setSchema]);
 
   useEffect(() => {
     const close = () => setContextMenu(null);

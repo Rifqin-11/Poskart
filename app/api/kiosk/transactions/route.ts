@@ -38,6 +38,7 @@ type ExistingTransaction = {
   paid_at: string | null;
   duitku_status_code: string | null;
   gateway_response: Record<string, unknown> | null;
+  print_count: number | null;
 };
 
 export async function POST(request: Request) {
@@ -143,7 +144,9 @@ export async function POST(request: Request) {
     const { data: existingTransaction, error: existingTransactionError } =
       await context.client
         .from("transactions")
-        .select("status,provider,paid_at,duitku_status_code,gateway_response")
+        .select(
+          "status,provider,paid_at,duitku_status_code,gateway_response,print_count",
+        )
         .eq("organization_id", context.organizationId)
         .eq("id", transaction.id)
         .maybeSingle();
@@ -224,7 +227,12 @@ export async function POST(request: Request) {
         provider,
         collection_mode: collectionMode,
         template_id: templateId,
-        print_count: product.printCount,
+        // A final session sync must never erase additional prints already
+        // recorded by the idempotent print-event ledger.
+        print_count: Math.max(
+          product.printCount,
+          existingTransaction?.print_count ?? 0,
+        ),
         created_at_label: now,
         print_status: transaction.printStatus ?? "pending",
         print_attempts: Math.max(0, transaction.printAttempts ?? 0),

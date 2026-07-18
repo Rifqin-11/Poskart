@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -8,6 +9,7 @@ import {
   Loader2,
   MoreVertical,
   Monitor,
+  Pencil,
   Power,
   PowerOff,
   Printer,
@@ -236,8 +238,8 @@ function AssignDevicesModal({
               <Power className="size-3.5" />
             )}
             {activating
-              ? "Activating…"
-              : `Activate${selected.size > 0 ? ` & assign (${selected.size})` : ""}`}
+              ? "Assigning…"
+              : `Assign${selected.size > 0 ? ` to ${selected.size} device${selected.size > 1 ? "s" : ""}` : ""}`}
           </button>
         </div>
       </div>
@@ -258,7 +260,7 @@ function AssignDevicesModal({
       toast.success(
         selected.size > 0
           ? `Theme "${layout.name}" assigned to ${selected.size} device${selected.size > 1 ? "s" : ""}.`
-          : `Theme "${layout.name}" activated.`,
+          : `Theme "${layout.name}" assigned as the active theme.`,
       );
       onDone();
     } catch (err) {
@@ -348,18 +350,18 @@ export function BuilderThemesPage() {
             Builder Themes
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Layouts saved from the Visual Builder. Activate one to deploy it to
+            Layouts saved from the Visual Builder. Assign one to deploy it to
             the kiosk.
           </p>
         </div>
         {!isReadOnly("themes") && (
-          <a
+          <Link
             href="/themes/builder/new"
             className="inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800"
           >
             <Plus className="size-4" />
             Create Theme
-          </a>
+          </Link>
         )}
       </div>
 
@@ -464,13 +466,13 @@ export function BuilderThemesPage() {
             it to this library.
           </p>
           {!isReadOnly("themes") && (
-            <a
+            <Link
               href="/themes/builder/new"
               className="mt-4 inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
             >
               <Plus className="size-4" />
               Create Theme
-            </a>
+            </Link>
           )}
         </div>
       )}
@@ -483,7 +485,7 @@ export function BuilderThemesPage() {
             layout={layout}
             isLoading={loadingId === layout.id}
             confirmingDelete={confirmDelete === layout.id}
-            onActivate={() => setAssignModal(layout)}
+            onAssign={() => setAssignModal(layout)}
             onDeactivate={() => void handleDeactivate(layout.id)}
             onRequestDelete={() => setConfirmDelete(layout.id)}
             onCancelDelete={() => setConfirmDelete(null)}
@@ -510,7 +512,7 @@ interface ThemeCardProps {
   layout: LayoutSchemaRow;
   isLoading: boolean;
   confirmingDelete: boolean;
-  onActivate: () => void;
+  onAssign: () => void;
   onDeactivate: () => void;
   onRequestDelete: () => void;
   onCancelDelete: () => void;
@@ -521,7 +523,7 @@ function ThemeCard({
   layout,
   isLoading,
   confirmingDelete,
-  onActivate,
+  onAssign,
   onDeactivate,
   onRequestDelete,
   onCancelDelete,
@@ -590,15 +592,22 @@ function ThemeCard({
                     onClick={() => setMenuOpen(false)}
                   />
                   <div className="absolute right-0 top-7 z-20 min-w-[140px] rounded-lg border border-zinc-200 bg-white py-1 shadow-lg">
+                    <Link
+                      href={`/themes/builder/${layout.id}`}
+                      onClick={() => setMenuOpen(false)}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
+                    >
+                      <Pencil className="size-3.5" /> Edit
+                    </Link>
                     {!isActive && (
                       <button
                         onClick={() => {
                           setMenuOpen(false);
-                          onActivate();
+                          onAssign();
                         }}
                         className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
                       >
-                        <Power className="size-3.5 text-emerald-600" /> Activate
+                        <Monitor className="size-3.5 text-emerald-600" /> Assign
                       </button>
                     )}
                     {isActive && (
@@ -660,29 +669,40 @@ function ThemeCard({
             </div>
           </div>
         ) : (
-          /* Main action */
-          <button
-            onClick={isActive ? onDeactivate : onActivate}
-            disabled={isLoading || isReadOnly("themes")}
-            className={cn(
-              "mt-auto flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors disabled:opacity-50",
-              isActive
-                ? "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-                : "bg-zinc-900 text-white hover:bg-zinc-700",
+          /* Main actions */
+          <div className="mt-auto grid grid-cols-2 gap-2">
+            {!isReadOnly("themes") && (
+              <Link
+                href={`/themes/builder/${layout.id}`}
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+              >
+                <Pencil className="size-3.5" /> Edit
+              </Link>
             )}
-          >
-            {isLoading ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : isActive ? (
-              <>
-                <PowerOff className="size-3.5" /> Deactivate
-              </>
-            ) : (
-              <>
-                <Power className="size-3.5" /> Activate
-              </>
-            )}
-          </button>
+            <button
+              onClick={isActive ? onDeactivate : onAssign}
+              disabled={isLoading || isReadOnly("themes")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors disabled:opacity-50",
+                isReadOnly("themes") && "col-span-2",
+                isActive
+                  ? "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                  : "bg-zinc-900 text-white hover:bg-zinc-700",
+              )}
+            >
+              {isLoading ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : isActive ? (
+                <>
+                  <PowerOff className="size-3.5" /> Deactivate
+                </>
+              ) : (
+                <>
+                  <Monitor className="size-3.5" /> Assign
+                </>
+              )}
+            </button>
+          </div>
         )}
       </div>
     </Card>

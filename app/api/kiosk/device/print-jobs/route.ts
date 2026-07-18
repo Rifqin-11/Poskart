@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       .eq("organization_id", context.organizationId)
       .eq("device_id", device.id)
       .eq("status", "processing")
-      .select("id")
+      .select("id,gallery_session_id,copies")
       .maybeSingle();
     if (error) throw error;
     if (!data) {
@@ -126,6 +126,21 @@ export async function POST(request: Request) {
         409,
         "KIOSK_PRINT_JOB_STATE_CONFLICT",
       );
+    }
+
+    if (body.status === "printed" && data.gallery_session_id) {
+      const { error: printEventError } = await context.client.rpc(
+        "record_transaction_additional_print",
+        {
+          p_event_id: `remote-print:${data.id}`,
+          p_organization_id: context.organizationId,
+          p_transaction_id: data.gallery_session_id,
+          p_device_id: device.id,
+          p_copies: Math.max(1, data.copies ?? 1),
+          p_source: "remote_print",
+        },
+      );
+      if (printEventError) throw printEventError;
     }
 
     return jsonOk({ success: true });
