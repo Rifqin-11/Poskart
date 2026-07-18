@@ -36,7 +36,12 @@ import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscri
 import { useTemplates } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
-import type { BoothInput, LayoutSchemaRow, Template, PricingProduct } from "@/features/admin/devices/api";
+import type {
+  BoothInput,
+  LayoutSchemaRow,
+  PricingProduct,
+  Template,
+} from "@/features/admin/devices/api";
 import type { Device } from "@/types/device";
 
 import { BoothFormDialog } from "./_components/booth-form-dialog";
@@ -51,9 +56,9 @@ const EMPTY_BOOTH: BoothInput = {
   lastSync: "just now",
   theme: "",
   template: "",
-  pricingProfile: "Standard",
+  pricingProfile: "",
   frameTemplates: [],
-  pricingProfiles: ["Standard"],
+  pricingProfiles: [],
   sessionCountdownSeconds: null,
   paymentCountdownSeconds: null,
   printerBottomSafeZoneMm: 0,
@@ -65,7 +70,7 @@ const EMPTY_BOOTH: BoothInput = {
 type DeviceFormOptions = {
   themes: string[];
   frameTemplates: string[];
-  pricingProfiles: string[];
+  pricingProducts: PricingProduct[];
 };
 
 export function BoothManagement() {
@@ -91,15 +96,14 @@ export function BoothManagement() {
 
   const deviceFormOptions = useMemo<DeviceFormOptions>(
     () => ({
-      themes: layouts.map((layout: LayoutSchemaRow) => layout.name).filter(Boolean),
+      themes: layouts
+        .map((layout: LayoutSchemaRow) => layout.name)
+        .filter(Boolean),
       frameTemplates: templates
         .filter((template: Template) => template.category === "frame")
         .map((template: Template) => template.name)
         .filter(Boolean),
-      pricingProfiles: pricingProducts
-        .filter((product: PricingProduct) => product.active)
-        .map((product: PricingProduct) => product.name)
-        .filter(Boolean),
+      pricingProducts,
     }),
     [layouts, pricingProducts, templates],
   );

@@ -170,11 +170,13 @@ async function assertPricingAssignmentModes(
   const normalizedAssignments = assignments
     .map((assignment) => assignment.trim())
     .filter(Boolean);
-  if (normalizedAssignments.length === 0) return;
+  if (normalizedAssignments.length === 0) {
+    throw new Error("Assign a paid package or one active event to the device.");
+  }
 
   const { data, error } = await supabase
     .from("pricing_products")
-    .select("id,name,access_mode");
+    .select("id,name,access_mode,active,event_expires_at");
   if (error)
     throw new Error(`Unable to validate pricing assignment: ${error.message}`);
 
@@ -183,6 +185,25 @@ async function assertPricingAssignmentModes(
       normalizedAssignments.includes(product.id) ||
       normalizedAssignments.includes(product.name),
   );
+  const unknownAssignments = normalizedAssignments.filter(
+    (assignment) =>
+      !products.some(
+        (product) => product.id === assignment || product.name === assignment,
+      ),
+  );
+  if (unknownAssignments.length > 0) {
+    throw new Error(
+      `Unknown pricing assignment: ${unknownAssignments.join(", ")}.`,
+    );
+  }
+
+  const inactiveProducts = products.filter((product) => !product.active);
+  if (inactiveProducts.length > 0) {
+    throw new Error(
+      `Inactive pricing cannot be assigned: ${inactiveProducts.map((product) => product.name).join(", ")}.`,
+    );
+  }
+
   const eventProducts = products.filter(
     (product) => product.access_mode === "event",
   );
@@ -192,6 +213,14 @@ async function assertPricingAssignmentModes(
 
   if (eventProducts.length > 1) {
     throw new Error("Assign only one Event access package to a device.");
+  }
+  const expiredEvent = eventProducts.find((product) => {
+    if (!product.event_expires_at) return false;
+    const expiryTime = Date.parse(product.event_expires_at);
+    return Number.isFinite(expiryTime) && expiryTime <= Date.now();
+  });
+  if (expiredEvent) {
+    throw new Error(`Event access "${expiredEvent.name}" has expired.`);
   }
   if (eventProducts.length > 0 && paidProducts.length > 0) {
     throw new Error(

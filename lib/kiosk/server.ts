@@ -539,12 +539,14 @@ export async function buildKioskBootstrap(
           (t) => assignedTemplates.has(t.id) || assignedTemplates.has(t.name),
         )
       : normalizedTemplates;
-  const pricingProducts = (pricingResult.data ?? []).filter(
-    (product) =>
-      assignedPricing.size === 0 ||
-      assignedPricing.has(product.id) ||
-      assignedPricing.has(product.name),
-  );
+  const pricingProducts = (pricingResult.data ?? []).filter((product) => {
+    if (assignedPricing.size === 0) {
+      // Legacy devices without an explicit assignment may use paid packages,
+      // but must never enter an event flow accidentally.
+      return product.access_mode !== "event";
+    }
+    return assignedPricing.has(product.id) || assignedPricing.has(product.name);
+  });
   const assetReferences = collectAssetUrls({
     layoutSchema: normalizedLayoutSchema,
     templates,

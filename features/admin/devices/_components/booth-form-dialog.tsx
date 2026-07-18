@@ -1,7 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Wrench, Printer, Timer, Trash2, Check } from "lucide-react";
+import {
+  Check,
+  CreditCard,
+  ImageIcon,
+  Layers3,
+  Printer,
+  Timer,
+  Trash2,
+  Wrench,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +20,7 @@ import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DialogActions } from "@/features/admin/_components/dialog-actions";
-import type { BoothInput } from "@/features/admin/devices/api";
+import type { BoothInput, PricingProduct } from "@/features/admin/devices/api";
 import { PRINTER_TUNING_LIMITS } from "@/lib/printer-tuning";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
@@ -20,8 +29,10 @@ import type { Device } from "@/types/device";
 type DeviceFormOptions = {
   themes: string[];
   frameTemplates: string[];
-  pricingProfiles: string[];
+  pricingProducts: PricingProduct[];
 };
+
+type SessionAccessMode = "" | "paid" | "event";
 
 type BoothFormDialogProps = {
   title: string;
@@ -44,16 +55,54 @@ export function BoothFormDialog({
 }: BoothFormDialogProps) {
   const { isReadOnly } = usePermission();
   const readOnly = isReadOnly("devices");
+  const initialDevice = initial as Partial<Device>;
+  const initialPricingAssignments = normalizeStringList(
+    initialDevice.pricingProfiles,
+    initialDevice.pricingProfile,
+  );
+  const paidProducts = options.pricingProducts.filter(
+    (product) => product.active && product.accessMode === "paid",
+  );
+  const eventProducts = options.pricingProducts.filter(
+    (product) => product.accessMode === "event",
+  );
+  const initialEventProduct = findAssignedProduct(
+    eventProducts,
+    initialPricingAssignments,
+  );
+  const initialPaidSelections = initialPricingAssignments
+    .filter(
+      (assignment) =>
+        assignment !== initialEventProduct?.id &&
+        assignment !== initialEventProduct?.name,
+    )
+    .map(
+      (assignment) =>
+        findAssignedProduct(paidProducts, [assignment])?.name ?? assignment,
+    );
+  const defaultPaidSelections = initialPaidSelections;
+  const [sessionMode, setSessionMode] = useState<SessionAccessMode>(
+    initialEventProduct
+      ? "event"
+      : initialPaidSelections.length > 0
+        ? "paid"
+        : "",
+  );
+  const [paidSelections, setPaidSelections] = useState(defaultPaidSelections);
+  const [eventSelection, setEventSelection] = useState(
+    initialEventProduct?.name ?? "",
+  );
   const [form, setForm] = useState<BoothInput>(() => {
     const { id: _ignored, ...rest } = initial as Device;
     void _ignored;
+    const pricingProfiles = initialEventProduct
+      ? [initialEventProduct.name]
+      : defaultPaidSelections;
     return {
       ...rest,
       frameTemplates: normalizeStringList(rest.frameTemplates, rest.template),
-      pricingProfiles: normalizeStringList(
-        rest.pricingProfiles,
-        rest.pricingProfile,
-      ),
+      pricingProfile: pricingProfiles[0] ?? "",
+      pricingProfiles,
     } as BoothInput;
   });
 
@@ -75,6 +124,30 @@ export function BoothFormDialog({
           e.preventDefault();
           if (!form.name.trim() || !form.location.trim()) {
             toast.error("Name and location are required");
+            return;
+          }
+          if (!sessionMode) {
+            toast.error("Choose Pricing or Event access");
+            return;
+          }
+          if (form.pricingProfiles.length === 0) {
+            toast.error(
+              sessionMode === "event"
+                ? "Choose one active event"
+                : "Choose at least one paid package",
+            );
+            return;
+          }
+          if (
+            sessionMode === "event" &&
+            !eventProducts.some(
+              (product) =>
+                product.name === eventSelection &&
+                product.active &&
+                !isEventExpired(product),
+            )
+          ) {
+            toast.error("The selected event is inactive or expired");
             return;
           }
           onSubmit(form);
@@ -157,71 +230,188 @@ export function BoothFormDialog({
           </TabsContent>
 
           {/* TAB 2: EXPERIENCE */}
-          <TabsContent
-            value="experience"
-            className="grid min-h-[340px] gap-3 md:grid-cols-2"
-          >
-            <label className="block text-xs font-medium text-zinc-600">
-              Theme / layout
-              <Select
-                className="mt-1"
-                value={form.theme}
-                onChange={(e) => setForm({ ...form, theme: e.target.value })}
-                disabled={readOnly}
-              >
-                <option value="">Use default theme</option>
-                {includeCurrentOption(options.themes, form.theme).map(
-                  (theme) => (
-                    <option key={theme} value={theme}>
-                      {theme}
-                    </option>
-                  ),
-                )}
-              </Select>
-              <span className="mt-1 block text-[10px] font-normal text-zinc-400">
-                Controls the kiosk visual layout.
-              </span>
-            </label>
-            <div className="block text-xs font-medium text-zinc-600">
-              Frame templates
-              <DeviceMultiSelect
-                className="mt-1"
-                values={form.frameTemplates}
-                emptyLabel="No frame templates yet"
-                options={includeCurrentOptions(
-                  options.frameTemplates,
-                  form.frameTemplates,
-                )}
-                disabled={readOnly}
-                onChange={(values) =>
-                  setForm({
-                    ...form,
-                    frameTemplates: values,
-                    template: values[0] ?? "",
-                  })
-                }
-              />
+          <TabsContent value="experience" className="min-h-[340px] space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
+              <section className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-600 shadow-sm ring-1 ring-zinc-200">
+                    <Layers3 className="size-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-zinc-900">
+                      Theme / layout
+                    </h3>
+                    <p className="mt-1 text-xs leading-5 text-zinc-500">
+                      Choose the visual layout shown on this kiosk.
+                    </p>
+                  </div>
+                </div>
+                <Select
+                  className="mt-4 bg-white"
+                  value={form.theme}
+                  onChange={(e) => setForm({ ...form, theme: e.target.value })}
+                  disabled={readOnly}
+                >
+                  <option value="">Use default theme</option>
+                  {includeCurrentOption(options.themes, form.theme).map(
+                    (theme) => (
+                      <option key={theme} value={theme}>
+                        {theme}
+                      </option>
+                    ),
+                  )}
+                </Select>
+              </section>
+
+              <section className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-600 shadow-sm ring-1 ring-zinc-200">
+                      <ImageIcon className="size-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-zinc-900">
+                        Frame templates
+                      </h3>
+                      <p className="mt-1 text-xs leading-5 text-zinc-500">
+                        Select which frames visitors can use on this booth.
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="shrink-0">
+                    {form.frameTemplates.length} selected
+                  </Badge>
+                </div>
+                <DeviceMultiSelect
+                  className="mt-4"
+                  values={form.frameTemplates}
+                  emptyLabel="No frame templates yet"
+                  options={includeCurrentOptions(
+                    options.frameTemplates,
+                    form.frameTemplates,
+                  )}
+                  disabled={readOnly}
+                  onChange={(values) =>
+                    setForm({
+                      ...form,
+                      frameTemplates: values,
+                      template: values[0] ?? "",
+                    })
+                  }
+                />
+              </section>
             </div>
-            <div className="md:col-span-2 block text-xs font-medium text-zinc-600">
-              Pricing packages
-              <DeviceMultiSelect
-                className="mt-1"
-                values={form.pricingProfiles}
-                emptyLabel="No active pricing packages yet"
-                options={includeCurrentOptions(
-                  options.pricingProfiles,
-                  form.pricingProfiles,
-                )}
-                disabled={readOnly}
-                onChange={(values) =>
-                  setForm({
-                    ...form,
-                    pricingProfiles: values,
-                    pricingProfile: values[0] ?? "",
-                  })
-                }
-              />
-            </div>
+
+            <section className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-600 shadow-sm ring-1 ring-zinc-200">
+                    <CreditCard className="size-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-zinc-900">
+                      Session access
+                    </h3>
+                    <p className="mt-1 text-xs leading-5 text-zinc-500">
+                      Choose one simple flow for visitors on this device.
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="shrink-0">
+                  {sessionMode === "event"
+                    ? "Event"
+                    : sessionMode === "paid"
+                      ? "Pricing"
+                      : "Not selected"}
+                </Badge>
+              </div>
+
+              <label className="mt-4 block text-xs font-medium text-zinc-600">
+                Session type
+                <Select
+                  className="mt-1 bg-white"
+                  value={sessionMode}
+                  disabled={readOnly}
+                  onChange={(event) => {
+                    const mode = event.target.value as SessionAccessMode;
+                    setSessionMode(mode);
+                    const selections =
+                      mode === "paid"
+                        ? paidSelections
+                        : eventSelection
+                          ? [eventSelection]
+                          : [];
+                    setForm({
+                      ...form,
+                      pricingProfile: selections[0] ?? "",
+                      pricingProfiles: selections,
+                    });
+                  }}
+                >
+                  <option value="" disabled>
+                    Choose Pricing or Event
+                  </option>
+                  <option value="paid" disabled={paidProducts.length === 0}>
+                    Pricing
+                  </option>
+                  <option
+                    value="event"
+                    disabled={
+                      !initialEventProduct &&
+                      !eventProducts.some(
+                        (product) => product.active && !isEventExpired(product),
+                      )
+                    }
+                  >
+                    Event
+                  </option>
+                </Select>
+              </label>
+
+              {sessionMode === "paid" ? (
+                <div className="mt-3">
+                  <p className="mb-1 text-xs font-medium text-zinc-600">
+                    Available packages
+                  </p>
+                  <DeviceMultiSelect
+                    values={paidSelections}
+                    emptyLabel="No active paid packages yet"
+                    options={includeCurrentOptions(
+                      paidProducts.map((product) => product.name),
+                      paidSelections,
+                    )}
+                    disabled={readOnly}
+                    onChange={(values) => {
+                      setPaidSelections(values);
+                      setForm({
+                        ...form,
+                        pricingProfile: values[0] ?? "",
+                        pricingProfiles: values,
+                      });
+                    }}
+                  />
+                </div>
+              ) : sessionMode === "event" ? (
+                <EventProductSelect
+                  className="mt-3"
+                  value={eventSelection}
+                  products={eventProducts}
+                  disabled={readOnly}
+                  onChange={(value) => {
+                    setEventSelection(value);
+                    setForm({
+                      ...form,
+                      pricingProfile: value,
+                      pricingProfiles: value ? [value] : [],
+                    });
+                  }}
+                />
+              ) : (
+                <p className="mt-3 rounded-lg border border-dashed border-zinc-200 bg-white px-3 py-4 text-xs text-zinc-500">
+                  Select a session type to configure visitor access.
+                </p>
+              )}
+            </section>
           </TabsContent>
 
           {/* TAB 3: SYSTEM */}
@@ -486,6 +676,83 @@ function normalizeStringList(
   return fallback?.trim() ? [fallback.trim()] : [];
 }
 
+function findAssignedProduct(
+  products: PricingProduct[],
+  assignments: string[],
+) {
+  return products.find((product) =>
+    assignments.some(
+      (assignment) => assignment === product.id || assignment === product.name,
+    ),
+  );
+}
+
+function isEventExpired(product: PricingProduct) {
+  if (!product.eventExpiresAt) return false;
+  const expiryTime = Date.parse(product.eventExpiresAt);
+  return Number.isFinite(expiryTime) && expiryTime <= Date.now();
+}
+
+function EventProductSelect({
+  value,
+  products,
+  className,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  products: PricingProduct[];
+  className?: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const selectableProducts = products.filter(
+    (product) => product.active && !isEventExpired(product),
+  );
+  const currentProduct = products.find((product) => product.name === value);
+  const normalizedProducts =
+    currentProduct &&
+    !selectableProducts.some((product) => product.id === currentProduct.id)
+      ? [currentProduct, ...selectableProducts]
+      : selectableProducts;
+
+  return (
+    <div className={className}>
+      <label className="block text-xs font-medium text-zinc-600">
+        Active event
+        <Select
+          className="mt-1"
+          value={value}
+          disabled={disabled || normalizedProducts.length === 0}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          <option value="" disabled>
+            {normalizedProducts.length === 0
+              ? "No active event available"
+              : "Choose an event"}
+          </option>
+          {normalizedProducts.map((product) => {
+            const unavailable = !product.active || isEventExpired(product);
+            return (
+              <option
+                key={product.id}
+                value={product.name}
+                disabled={unavailable}
+              >
+                {product.eventName || product.name}
+                {unavailable ? " (inactive or expired)" : ""}
+              </option>
+            );
+          })}
+        </Select>
+      </label>
+      <p className="mt-1 text-[10px] leading-4 text-zinc-400">
+        One event only. Visitors go directly from Landing to the frame picker.
+      </p>
+    </div>
+  );
+}
+
 function DeviceMultiSelect({
   label,
   values,
@@ -518,13 +785,13 @@ function DeviceMultiSelect({
   return (
     <div className={cn("block text-xs font-medium text-zinc-600", className)}>
       {label ? <div>{label}</div> : null}
-      <div className="mt-1 max-h-48 overflow-y-auto rounded-md border border-zinc-200 bg-white p-1.5 shadow-sm">
+      <div className="mt-1 max-h-52 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-2 shadow-sm">
         {normalizedOptions.length === 0 ? (
           <div className="px-2 py-1.5 text-xs font-normal text-zinc-400">
             {emptyLabel}
           </div>
         ) : (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {normalizedOptions.map((option) => {
               const selected = selectedValues.includes(option);
               return (
@@ -534,7 +801,7 @@ function DeviceMultiSelect({
                   disabled={disabled}
                   onClick={() => toggleValue(option)}
                   className={cn(
-                    "inline-flex min-h-8 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                    "inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
                     selected
                       ? "border-zinc-950 bg-zinc-950 text-white"
                       : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 hover:text-zinc-950",
