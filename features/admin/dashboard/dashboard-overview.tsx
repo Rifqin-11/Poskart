@@ -441,6 +441,8 @@ export function DashboardOverview() {
                           ? "success"
                           : transaction.status === "pending"
                             ? "warning"
+                            : transaction.status === "cancelled"
+                              ? "secondary"
                             : "destructive"
                       }
                     >

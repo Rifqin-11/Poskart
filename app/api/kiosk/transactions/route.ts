@@ -30,7 +30,12 @@ type TransactionBody = {
   };
 };
 
-type TransactionStatus = "paid" | "pending" | "failed" | "refunded";
+type TransactionStatus =
+  | "paid"
+  | "pending"
+  | "failed"
+  | "refunded"
+  | "cancelled";
 
 type ExistingTransaction = {
   status: TransactionStatus | null;

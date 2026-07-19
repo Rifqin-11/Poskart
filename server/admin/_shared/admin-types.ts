@@ -97,6 +97,7 @@ export type DashboardTransactionStat = {
   packageName: string;
   transactionCount: number;
   paidCount: number;
+  failedCount: number;
   printCount: number;
   grossRevenue: number;
 };

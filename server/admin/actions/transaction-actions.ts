@@ -192,6 +192,7 @@ export async function getTransactionsPage(
     "pending",
     "failed",
     "refunded",
+    "cancelled",
     "archive",
     "testing",
   ]).has(requestedStatus)

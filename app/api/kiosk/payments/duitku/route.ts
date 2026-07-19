@@ -28,10 +28,16 @@ type CreatePaymentBody = {
   customerName?: string | null;
 };
 
+type CancelPaymentBody = {
+  deviceId?: string;
+  sessionId?: string;
+  action?: "cancel";
+};
+
 type TransactionRow = {
   id: string;
   organization_id: string | null;
-  status: "paid" | "pending" | "failed" | "refunded";
+  status: "paid" | "pending" | "failed" | "refunded" | "cancelled";
   amount: number;
   provider: string | null;
   collection_mode: string | null;
@@ -231,6 +237,86 @@ export async function GET(request: Request) {
   }
 }
 
+export async function PATCH(request: Request) {
+  try {
+    const context = await requireKioskContext(request);
+    const body = (await request.json()) as CancelPaymentBody;
+    await requireOrganizationDevice(context, body.deviceId ?? "");
+
+    const sessionId = body.sessionId?.trim() ?? "";
+    if (!sessionId || body.action !== "cancel") {
+      return jsonOk(
+        {
+          error: "A payment session ID is required to cancel QRIS.",
+          code: "KIOSK_DUITKU_CANCEL_INVALID",
+        },
+        { status: 400 },
+      );
+    }
+
+    const transaction = await loadTransaction(context, sessionId);
+    if (!transaction) {
+      return jsonOk(
+        {
+          error: "Payment transaction was not found.",
+          code: "KIOSK_DUITKU_PAYMENT_NOT_FOUND",
+        },
+        { status: 404 },
+      );
+    }
+
+    if (
+      transaction.provider !== "QRIS" ||
+      transaction.payment_gateway !== "duitku"
+    ) {
+      return jsonOk(
+        {
+          error: "Only Duitku QRIS payments can be cancelled.",
+          code: "KIOSK_DUITKU_CANCEL_NOT_ALLOWED",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (transaction.status !== "pending") {
+      return jsonOk(formatStatus(transaction));
+    }
+
+    // Keep the update conditional so a concurrent Duitku callback cannot be
+    // overwritten after it has already finalized the payment.
+    const { data, error } = await context.client
+      .from("transactions")
+      .update({
+        status: "cancelled",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", transaction.id)
+      .eq("organization_id", context.organizationId)
+      .eq("status", "pending")
+      .select(
+        "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response",
+      )
+      .maybeSingle();
+
+    if (error) throw error;
+    if (data) return jsonOk(formatStatus(data as TransactionRow));
+
+    const latest = await loadTransaction(context, sessionId);
+    if (!latest) {
+      return jsonOk(
+        {
+          error: "Payment transaction was not found.",
+          code: "KIOSK_DUITKU_PAYMENT_NOT_FOUND",
+        },
+        { status: 404 },
+      );
+    }
+    return jsonOk(formatStatus(latest));
+  } catch (error) {
+    return jsonError(error);
+  }
+}
+
 async function resolveOrganizationCollectionMode(context: KioskRequestContext) {
   const { data } = await context.client
     .from("organizations")
@@ -308,12 +394,7 @@ async function refreshTransactionStatus(
 }
 
 function shouldRefreshStatus(transaction: TransactionRow) {
-  const expiresAt = transaction.payment_expires_at
-    ? Date.parse(transaction.payment_expires_at)
-    : null;
-  if (expiresAt && Number.isFinite(expiresAt) && expiresAt <= Date.now()) {
-    return true;
-  }
+  if (isExpired(transaction)) return true;
 
   const lastChecked = transaction.gateway_status_checked_at
     ? Date.parse(transaction.gateway_status_checked_at)
@@ -335,17 +416,17 @@ function formatStatus(transaction: TransactionRow) {
   const normalizedStatus = isDuitkuTransactionPaid(transaction)
     ? "paid"
     : transaction.status;
-  const expiresAt = transaction.payment_expires_at;
-  const expired = normalizedStatus === "pending" && isExpired(transaction);
 
   return {
     sessionId: transaction.id,
-    status: expired ? "failed" : normalizedStatus,
+    // An expired local QR code remains pending until Duitku explicitly reports
+    // its terminal result. Only Duitku's verified failed status becomes failed.
+    status: normalizedStatus,
     merchantOrderId: transaction.merchant_order_id,
     reference: transaction.payment_reference,
     qrString: transaction.duitku_qr_string,
     amount: transaction.amount,
-    expiresAt,
+    expiresAt: transaction.payment_expires_at,
   };
 }
 

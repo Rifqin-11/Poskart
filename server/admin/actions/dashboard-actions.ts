@@ -59,6 +59,7 @@ type DashboardTransactionStatRow = {
   package_name: string | null;
   transaction_count: number | string | null;
   paid_count: number | string | null;
+  failed_count: number | string | null;
   print_count: number | string | null;
   gross_revenue: number | string | null;
 };
@@ -102,6 +103,7 @@ function mapDashboardTransactionStat(
     packageName: row.package_name || "No package",
     transactionCount: Number(row.transaction_count ?? 0),
     paidCount: Number(row.paid_count ?? 0),
+    failedCount: Number(row.failed_count ?? 0),
     printCount: Number(row.print_count ?? 0),
     grossRevenue: Number(row.gross_revenue ?? 0),
   };
@@ -123,6 +125,7 @@ function aggregateDashboardFallbackRows(
       packageName,
       transactionCount: 0,
       paidCount: 0,
+      failedCount: 0,
       printCount: 0,
       grossRevenue: 0,
     };
@@ -134,6 +137,7 @@ function aggregateDashboardFallbackRows(
       current.printCount += Number(row.print_count ?? 0);
       current.grossRevenue += Number(row.amount ?? 0);
     }
+    if (row.status === "failed") current.failedCount += 1;
     totals.set(key, current);
   }
 
@@ -265,19 +269,19 @@ function getKpiMetrics(stats: DashboardTransactionStat[]): KpiMetric[] {
 
     // QRIS success rate
     const qrisRows = stats.filter((row) => row.provider === "QRIS");
-    const qrisTotal = qrisRows.reduce(
-      (sum, row) => sum + row.transactionCount,
-      0,
-    );
     const qrisSuccess = qrisRows.reduce(
       (sum, row) => sum + row.paidCount,
       0,
     );
+    const qrisFailed = qrisRows.reduce(
+      (sum, row) => sum + row.failedCount,
+      0,
+    );
+    const qrisTotal = qrisSuccess + qrisFailed;
     const qrisRate =
       qrisTotal > 0
         ? ((qrisSuccess / qrisTotal) * 100).toFixed(1)
         : "0.0";
-    const qrisFailed = qrisTotal - qrisSuccess;
     const qrisTone: KpiMetric["tone"] =
       Number(qrisRate) >= 90
         ? "positive"

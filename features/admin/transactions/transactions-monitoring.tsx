@@ -53,6 +53,8 @@ function renderTransactionStatus(status: Transaction["status"]) {
           ? "success"
           : status === "pending"
             ? "warning"
+            : status === "cancelled"
+              ? "secondary"
             : "destructive"
       }
     >
@@ -668,6 +670,7 @@ export function TransactionsMonitoring() {
                 <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
                 <option value="refunded">Refunded</option>
+                <option value="cancelled">Cancelled</option>
                 <option value="archive">
                   {t("transactions.status.archive")}
                 </option>
@@ -743,6 +746,7 @@ export function TransactionsMonitoring() {
                   <option value="pending">Pending</option>
                   <option value="failed">Failed</option>
                   <option value="refunded">Refunded</option>
+                  <option value="cancelled">Cancelled</option>
                   <option value="archive">
                     {t("transactions.status.archive")}
                   </option>

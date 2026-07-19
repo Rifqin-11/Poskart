@@ -18,7 +18,7 @@ export type Transaction = {
   customer: string;
   packageName: string;
   amount: number;
-  status: "paid" | "pending" | "failed" | "refunded";
+  status: "paid" | "pending" | "failed" | "refunded" | "cancelled";
   provider: TransactionProvider;
   createdAt: string;
   createdAtRaw: string;
