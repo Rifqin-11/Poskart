@@ -5,6 +5,7 @@ import {
   Check,
   Download,
   Edit2,
+  LoaderCircle,
   Printer,
   ReceiptText,
   Search,
@@ -65,8 +66,10 @@ import type {
 
 export function PosDashboard({
   packages,
+  initialLoadError,
 }: {
   packages: PosPackageOption[];
+  initialLoadError?: string | null;
 }) {
   const queryClient = useQueryClient();
   const formRef = useRef<HTMLFormElement>(null);
@@ -121,7 +124,14 @@ export function PosDashboard({
       selectedDate,
     ],
   );
-  const { data: salesPage, isFetching } = usePosSales(filters);
+  const {
+    data: salesPage,
+    isFetching,
+    isLoading,
+    isPlaceholderData,
+    error: salesError,
+    refetch: refetchSales,
+  } = usePosSales(filters);
   const sales = salesPage?.sales ?? [];
   const metrics = salesPage?.summary ?? {
     revenue: 0,
@@ -133,6 +143,8 @@ export function PosDashboard({
     page,
     Math.max(1, Math.ceil(totalSales / pageSize)),
   );
+  const isTableLoading =
+    isLoading || (isFetching && isPlaceholderData);
 
   async function refreshPosData() {
     await Promise.all([
@@ -313,6 +325,23 @@ export function PosDashboard({
           </Button>
         </div>
       </div>
+
+      {initialLoadError ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <span>{initialLoadError}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.reload()}
+          >
+            Muat ulang
+          </Button>
+        </div>
+      ) : null}
 
       <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible md:px-0 md:pb-0">
         <StatCard
@@ -544,10 +573,15 @@ export function PosDashboard({
             {sales.length > 0 ? (
               <div
                 className={cn(
-                  "overflow-x-auto transition-opacity",
-                  isFetching && "opacity-60",
+                  "relative overflow-x-auto transition-opacity",
+                  isTableLoading && "opacity-60",
                 )}
               >
+                {isTableLoading ? (
+                  <div className="absolute inset-0 z-10 grid min-h-72 place-items-center bg-white/80">
+                    <LoaderCircle className="size-6 animate-spin text-zinc-500" />
+                  </div>
+                ) : null}
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -678,11 +712,39 @@ export function PosDashboard({
                   page={activePage}
                   pageSize={pageSize}
                   totalItems={totalSales}
+                  isLoading={isTableLoading}
                   onPageChange={(nextPage) => {
                     setPage(nextPage);
                     setSelectedIds([]);
                   }}
                 />
+              </div>
+            ) : isTableLoading ? (
+              <div className="grid min-h-64 place-items-center rounded-lg border border-dashed border-zinc-200 bg-zinc-50/60 p-8">
+                <LoaderCircle className="size-6 animate-spin text-zinc-500" />
+              </div>
+            ) : salesError ? (
+              <div className="grid min-h-64 place-items-center rounded-lg border border-dashed border-red-200 bg-red-50/60 p-8 text-center">
+                <div>
+                  <div className="mx-auto grid size-11 place-items-center rounded-full bg-white shadow-sm">
+                    <ReceiptText className="size-5 text-red-500" />
+                  </div>
+                  <h3 className="mt-4 text-sm font-semibold">
+                    Riwayat penjualan tidak dapat dimuat
+                  </h3>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    Periksa koneksi lalu coba lagi.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => void refetchSales()}
+                  >
+                    Coba lagi
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="grid min-h-64 place-items-center rounded-lg border border-dashed border-zinc-200 bg-zinc-50/60 p-8 text-center">

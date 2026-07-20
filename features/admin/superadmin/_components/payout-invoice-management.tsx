@@ -7,6 +7,7 @@ import {
   Eye,
   Filter,
   ImageIcon,
+  LoaderCircle,
   Save,
   Send,
   Upload,
@@ -344,7 +345,12 @@ export function PayoutInvoiceManagement({
           <Metric label="Page net" value={formatPayoutCurrency(totals.net)} />
         </div>
 
-        <div className="hidden overflow-x-auto xl:block">
+        <div className="relative hidden overflow-x-auto xl:block">
+          {loading ? (
+            <div className="absolute inset-0 z-10 grid min-h-72 place-items-center bg-white/80">
+              <LoaderCircle className="size-6 animate-spin text-zinc-500" />
+            </div>
+          ) : null}
           <Table className="min-w-[980px]">
             <TableHeader>
               <TableRow>
@@ -388,22 +394,25 @@ export function PayoutInvoiceManagement({
                   </TableCell>
                 </TableRow>
               ))}
-              {invoices.length === 0 ? (
+              {invoices.length === 0 && !loading ? (
                 <TableRow>
                   <TableCell
                     colSpan={8}
                     className="py-8 text-center text-sm text-zinc-500"
                   >
-                    {loading
-                      ? "Loading payouts..."
-                      : "No payouts yet."}
+                    No payouts yet.
                   </TableCell>
                 </TableRow>
               ) : null}
             </TableBody>
           </Table>
         </div>
-        <div className="grid gap-3 xl:hidden">
+        <div className="relative grid gap-3 xl:hidden">
+          {loading ? (
+            <div className="absolute inset-0 z-10 grid min-h-64 place-items-center rounded-3xl bg-white/80">
+              <LoaderCircle className="size-6 animate-spin text-zinc-500" />
+            </div>
+          ) : null}
           {invoices.map((invoice) => (
             <div
               key={invoice.id}
@@ -444,9 +453,9 @@ export function PayoutInvoiceManagement({
               </div>
             </div>
           ))}
-          {invoices.length === 0 ? (
+          {invoices.length === 0 && !loading ? (
             <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500">
-              {loading ? "Loading payouts..." : "No payouts yet."}
+              No payouts yet.
             </div>
           ) : null}
         </div>
@@ -454,6 +463,7 @@ export function PayoutInvoiceManagement({
           page={invoicePage.page}
           pageSize={invoicePage.pageSize}
           totalItems={invoicePage.totalItems}
+          isLoading={loading}
           onPageChange={(page) => void loadInvoices(filters, page)}
         />
       </CardContent>

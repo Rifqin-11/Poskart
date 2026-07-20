@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, LoaderCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,9 +53,12 @@ function statusVariant(status: TransactionActionRequest["status"]) {
 export function TransactionActionRequestManagement() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data, isLoading } = useTransactionActionRequests(page, pageSize);
+  const { data, isFetching, isLoading, isPlaceholderData } =
+    useTransactionActionRequests(page, pageSize);
   const review = useReviewTransactionActionRequest();
   const requests = data?.items ?? [];
+  const isTableLoading =
+    isLoading || (isFetching && isPlaceholderData);
 
   async function submitReview(
     request: TransactionActionRequest,
@@ -87,7 +90,12 @@ export function TransactionActionRequestManagement() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="hidden overflow-x-auto xl:block">
+        <div className="relative hidden overflow-x-auto xl:block">
+          {isTableLoading ? (
+            <div className="absolute inset-0 z-10 grid min-h-72 place-items-center bg-white/80">
+              <LoaderCircle className="size-6 animate-spin text-zinc-500" />
+            </div>
+          ) : null}
           <Table className="min-w-[1040px]">
             <TableHeader>
               <TableRow>
@@ -138,15 +146,13 @@ export function TransactionActionRequestManagement() {
                   </TableCell>
                 </TableRow>
               ))}
-              {requests.length === 0 ? (
+              {requests.length === 0 && !isTableLoading ? (
                 <TableRow>
                   <TableCell
                     colSpan={8}
                     className="py-10 text-center text-sm text-zinc-400"
                   >
-                    {isLoading
-                      ? "Loading transaction requests..."
-                      : "No transaction requests yet."}
+                    No transaction requests yet.
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -154,7 +160,12 @@ export function TransactionActionRequestManagement() {
           </Table>
         </div>
 
-        <div className="grid gap-3 xl:hidden">
+        <div className="relative grid gap-3 xl:hidden">
+          {isTableLoading ? (
+            <div className="absolute inset-0 z-10 grid min-h-72 place-items-center rounded-3xl bg-white/80">
+              <LoaderCircle className="size-6 animate-spin text-zinc-500" />
+            </div>
+          ) : null}
           {requests.map((request) => (
             <div
               key={request.id}
@@ -200,11 +211,9 @@ export function TransactionActionRequestManagement() {
               </div>
             </div>
           ))}
-          {requests.length === 0 ? (
+          {requests.length === 0 && !isTableLoading ? (
             <div className="rounded-3xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-500">
-              {isLoading
-                ? "Loading transaction requests..."
-                : "No transaction requests yet."}
+              No transaction requests yet.
             </div>
           ) : null}
         </div>
@@ -212,6 +221,7 @@ export function TransactionActionRequestManagement() {
           page={data?.page ?? page}
           pageSize={data?.pageSize ?? pageSize}
           totalItems={data?.totalItems ?? 0}
+          isLoading={isTableLoading}
           onPageChange={setPage}
         />
       </CardContent>

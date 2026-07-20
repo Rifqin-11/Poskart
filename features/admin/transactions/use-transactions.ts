@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { transactionsApi } from "@/features/admin/transactions/api";
 import type { TransactionListFilters } from "@/server/admin/actions/transaction-actions";
@@ -9,6 +14,8 @@ export function useTransactions(filters: TransactionListFilters = {}) {
   return useQuery<Awaited<ReturnType<typeof transactionsApi.getTransactionsPage>>, Error>({
     queryKey: adminQueryKeys.transactions(filters),
     queryFn: () => transactionsApi.getTransactionsPage(filters),
+    // Keep the prior page visible while the next page/filter result loads.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -83,6 +90,7 @@ export function useTransactionActionRequests(page = 1, pageSize = 10) {
     queryKey: adminQueryKeys.transactionActionRequests(page, pageSize),
     queryFn: () =>
       transactionsApi.getTransactionActionRequestsForSuperadmin({ page, pageSize }),
+    placeholderData: keepPreviousData,
   });
 }
 

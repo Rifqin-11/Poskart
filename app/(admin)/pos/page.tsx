@@ -15,11 +15,25 @@ export default async function PosPage() {
     queryKey: adminQueryKeys.posSales(DEFAULT_POS_SALE_FILTERS),
     queryFn: () => getPosSalesPage(DEFAULT_POS_SALE_FILTERS),
   });
-  const packages = await packagesPromise;
+  // Keep the POS shell available when the package query has a transient
+  // database/RLS failure. The client can still surface a recoverable state.
+  const packageResult = await packagesPromise
+    .then((packages) => ({ packages, error: null as string | null }))
+    .catch((error: unknown) => {
+      console.error("[pos] Failed to load POS packages", error);
+
+      return {
+        packages: [],
+        error: "Paket POS tidak dapat dimuat. Muat ulang halaman untuk mencoba lagi.",
+      };
+    });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <PosDashboard packages={packages} />
+      <PosDashboard
+        packages={packageResult.packages}
+        initialLoadError={packageResult.error}
+      />
     </HydrationBoundary>
   );
 }

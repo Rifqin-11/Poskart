@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -8,11 +8,13 @@ export function TablePagination({
   page,
   pageSize,
   totalItems,
+  isLoading = false,
   onPageChange,
 }: {
   page: number;
   pageSize: number;
   totalItems: number;
+  isLoading?: boolean;
   onPageChange: (page: number) => void;
 }) {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -31,20 +33,21 @@ export function TablePagination({
           type="button"
           variant="outline"
           size="sm"
-          disabled={page <= 1}
+          disabled={isLoading || page <= 1}
           onClick={() => onPageChange(page - 1)}
         >
           <ChevronLeft className="size-4" />
           Sebelumnya
         </Button>
-        <span className="min-w-20 text-center text-xs font-medium text-zinc-700">
+        <span className="flex min-w-20 items-center justify-center gap-1.5 text-center text-xs font-medium text-zinc-700">
+          {isLoading ? <LoaderCircle className="size-3.5 animate-spin" /> : null}
           {page} / {totalPages}
         </span>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          disabled={page >= totalPages}
+          disabled={isLoading || page >= totalPages}
           onClick={() => onPageChange(page + 1)}
         >
           Berikutnya

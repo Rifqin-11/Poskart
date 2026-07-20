@@ -1,7 +1,13 @@
 "use client";
 
 import { type ComponentType, type ReactNode, useEffect, useState } from "react";
-import { Banknote, ChevronDown, Printer, ReceiptText } from "lucide-react";
+import {
+  Banknote,
+  ChevronDown,
+  LoaderCircle,
+  Printer,
+  ReceiptText,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -429,6 +435,9 @@ export function TransactionsMonitoring() {
     Boolean(dateFilter);
   const activePage = transactionQuery.data?.page ?? page;
   const paginatedTransactions = filtered;
+  const isTableLoading =
+    transactionQuery.isLoading ||
+    (transactionQuery.isFetching && transactionQuery.isPlaceholderData);
   const selectablePageTransactions = paginatedTransactions.filter(
     isArchiveableTransaction,
   );
@@ -815,7 +824,12 @@ export function TransactionsMonitoring() {
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-0 sm:p-5 sm:pt-0">
-          <div className="hidden w-full max-w-full overflow-x-auto overscroll-x-contain rounded-2xl border border-zinc-100 md:block">
+          <div className="relative hidden w-full max-w-full overflow-x-auto overscroll-x-contain rounded-2xl border border-zinc-100 md:block">
+            {isTableLoading ? (
+              <div className="absolute inset-0 z-10 grid min-h-72 place-items-center bg-white/80">
+                <LoaderCircle className="size-6 animate-spin text-zinc-500" />
+              </div>
+            ) : null}
             <Table className="min-w-[1120px]">
               <TableHeader>
                 <TableRow>
@@ -930,7 +944,7 @@ export function TransactionsMonitoring() {
                     </TableRow>
                   );
                 })}
-                {filtered.length === 0 && (
+                {filtered.length === 0 && !isTableLoading && (
                   <TableRow>
                     <TableCell
                       colSpan={9}
@@ -943,7 +957,12 @@ export function TransactionsMonitoring() {
               </TableBody>
             </Table>
           </div>
-          <div className="space-y-3 md:hidden">
+          <div className="relative space-y-3 md:hidden">
+            {isTableLoading ? (
+              <div className="absolute inset-0 z-10 grid min-h-72 place-items-center rounded-2xl bg-white/80">
+                <LoaderCircle className="size-6 animate-spin text-zinc-500" />
+              </div>
+            ) : null}
             {paginatedTransactions.map((transaction: Transaction) => {
               const paymentMethod = getTransactionPaymentMethod(transaction);
               const netAmount = getTransactionNetAmount(transaction, config);
@@ -1053,7 +1072,7 @@ export function TransactionsMonitoring() {
                 </div>
               );
             })}
-            {filtered.length === 0 && (
+            {filtered.length === 0 && !isTableLoading && (
               <div className="rounded-lg border border-dashed border-zinc-200 px-4 py-10 text-center text-sm text-zinc-400">
                 No transactions found.
               </div>
@@ -1063,6 +1082,7 @@ export function TransactionsMonitoring() {
             page={activePage}
             pageSize={pageSize}
             totalItems={totalItems}
+            isLoading={isTableLoading}
             onPageChange={setPage}
           />
         </CardContent>
