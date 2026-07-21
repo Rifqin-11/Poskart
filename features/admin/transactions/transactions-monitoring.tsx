@@ -3,6 +3,7 @@
 import { type ComponentType, type ReactNode, useEffect, useState } from "react";
 import {
   Banknote,
+  CalendarDays,
   ChevronDown,
   LoaderCircle,
   Printer,
@@ -15,6 +16,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Calendar, type DateRange } from "@/components/ui/calendar";
+import { Popover } from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -51,6 +54,21 @@ function getTransactionPaymentMethod(transaction: Transaction) {
   const location = transaction.location.trim().toUpperCase();
   if (location.includes("VOUCHER")) return "Voucher";
   return transaction.provider;
+}
+
+function formatDateRangeLabel(from: string, to: string) {
+  if (!from && !to) return "Filter tanggal";
+  if (from && to) return `${from} – ${to}`;
+  return from ? `Dari ${from}` : `Sampai ${to}`;
+}
+
+function toDate(value: string) {
+  return value ? new Date(`${value}T00:00:00`) : undefined;
+}
+
+function toDateValue(value: Date | undefined) {
+  if (!value) return "";
+  return value.toISOString().slice(0, 10);
 }
 
 function renderTransactionStatus(status: Transaction["status"]) {
@@ -377,6 +395,10 @@ export function TransactionsMonitoring() {
   const [fromDateFilter, setFromDateFilter] = useState("");
   const [toDateFilter, setToDateFilter] = useState("");
   const [boothFilter, setBoothFilter] = useState("all");
+  const dateRange: DateRange | undefined = {
+    from: toDate(fromDateFilter),
+    to: toDate(toDateFilter),
+  };
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
@@ -668,7 +690,7 @@ export function TransactionsMonitoring() {
               />
             </div>
 
-            <div className="hidden min-w-0 gap-2 md:grid md:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_150px_160px] xl:grid-cols-[minmax(260px,1.1fr)_160px_180px_220px_180px_110px]">
+            <div className="hidden min-w-0 gap-2 overflow-hidden md:grid md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.8fr)] xl:grid-cols-[minmax(0,1.25fr)_repeat(4,minmax(0,1fr))_90px]">
               <Input
                 className="min-w-0"
                 placeholder="Search by ID, device, customer…"
@@ -737,24 +759,15 @@ export function TransactionsMonitoring() {
                 <option value="all">All booths</option>
                 {booths.map((booth) => <option key={booth.id} value={booth.name}>{booth.name}</option>)}
               </Select>
-              <Input
-                className="min-w-0"
-                type="date"
-                value={fromDateFilter}
-                onChange={(e) => {
-                  setFromDateFilter(e.target.value);
-                  setSelectedIds(new Set());
-                  setPage(1);
-                }}
-                aria-label="Transaction date from"
-              />
-              <Input
-                className="min-w-0"
-                type="date"
-                value={toDateFilter}
-                onChange={(e) => { setToDateFilter(e.target.value); setSelectedIds(new Set()); setPage(1); }}
-                aria-label="Transaction date to"
-              />
+              <Popover
+                trigger={<span className="flex h-10 min-w-0 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-600"><CalendarDays className="size-4 shrink-0" />{formatDateRangeLabel(fromDateFilter, toDateFilter)}</span>}
+              >
+                <Calendar
+                  selected={dateRange}
+                  mode="range"
+                  onSelect={(range: DateRange | undefined) => { setFromDateFilter(toDateValue(range?.from)); setToDateFilter(toDateValue(range?.to)); setSelectedIds(new Set()); setPage(1); }}
+                />
+              </Popover>
               <Button
                 className="w-full"
                 variant="outline"
@@ -827,14 +840,11 @@ export function TransactionsMonitoring() {
                   {booths.map((booth) => <option key={booth.id} value={booth.name}>{booth.name}</option>)}
                 </Select>
               </MobileFilterField>
-              <MobileFilterField label="From date">
-                <Input
-                  type="date"
-                  value={fromDateFilter}
-                  onChange={(e) => { setFromDateFilter(e.target.value); setSelectedIds(new Set()); setPage(1); }}
-                />
+              <MobileFilterField label="Date range">
+                <Popover trigger={<span className="flex h-10 items-center gap-2 rounded-md border border-zinc-200 px-3 text-sm text-zinc-600"><CalendarDays className="size-4" />{formatDateRangeLabel(fromDateFilter, toDateFilter)}</span>}>
+                  <Calendar mode="range" selected={dateRange} onSelect={(range: DateRange | undefined) => { setFromDateFilter(toDateValue(range?.from)); setToDateFilter(toDateValue(range?.to)); setSelectedIds(new Set()); setPage(1); }} />
+                </Popover>
               </MobileFilterField>
-              <MobileFilterField label="To date"><Input type="date" value={toDateFilter} onChange={(e) => { setToDateFilter(e.target.value); setSelectedIds(new Set()); setPage(1); }} /></MobileFilterField>
             </MobileFilterDrawer>
             <div className="flex min-w-0 flex-col gap-2 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
               <span className="whitespace-nowrap">
