@@ -39,6 +39,8 @@ import {
 import { TRANSACTION_PAGE_SIZE } from "@/features/admin/transactions/transaction-list-defaults";
 import { useAppConfig } from "@/features/admin/settings/use-settings";
 import { usePermission } from "@/features/admin/hooks/use-permission";
+import { useBooths } from "@/features/admin/devices/use-devices";
+import { usePricing } from "@/features/admin/pricing/use-pricing";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { AppConfigRow } from "@/types/app-config";
@@ -364,12 +366,17 @@ export function TransactionsMonitoring() {
   const markTesting = useMarkTransactionAsTesting();
   const unmarkTesting = useUnmarkTransactionAsTesting();
   const { isReadOnly } = usePermission();
+  const { data: booths = [] } = useBooths();
+  const { data: pricingPackages = [] } = usePricing();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [packageFilter, setPackageFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
+  const [fromDateFilter, setFromDateFilter] = useState("");
+  const [toDateFilter, setToDateFilter] = useState("");
+  const [boothFilter, setBoothFilter] = useState("all");
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
@@ -385,8 +392,12 @@ export function TransactionsMonitoring() {
     paymentMethod: paymentMethodFilter,
     packageName: debouncedPackageFilter === "all" ? "" : debouncedPackageFilter,
     date: dateFilter,
+    fromDate: fromDateFilter,
+    toDate: toDateFilter,
+    booth: boothFilter === "all" ? "" : boothFilter,
   });
   const data = transactionQuery.data?.items ?? [];
+  const packageOptions = pricingPackages.map((item) => item.name).filter(Boolean);
   const totalItems = transactionQuery.data?.totalItems ?? 0;
   const paymentMethodOptions = ["QRIS", "Cash", "Voucher", "Event"];
 
@@ -396,6 +407,9 @@ export function TransactionsMonitoring() {
     setPaymentMethodFilter("all");
     setPackageFilter("all");
     setDateFilter("");
+    setFromDateFilter("");
+    setToDateFilter("");
+    setBoothFilter("all");
     setSelectedIds(new Set());
     setPage(1);
   }
@@ -427,12 +441,12 @@ export function TransactionsMonitoring() {
     statusFilter !== "all" ||
     paymentMethodFilter !== "all" ||
     packageFilter !== "all" ||
-    dateFilter;
+    dateFilter || fromDateFilter || toDateFilter || boothFilter !== "all";
   const hasAdvancedFilters =
     statusFilter !== "all" ||
     paymentMethodFilter !== "all" ||
     packageFilter !== "all" ||
-    Boolean(dateFilter);
+    Boolean(dateFilter || fromDateFilter || toDateFilter || boothFilter !== "all");
   const activePage = transactionQuery.data?.page ?? page;
   const paginatedTransactions = filtered;
   const isTableLoading =
@@ -703,26 +717,43 @@ export function TransactionsMonitoring() {
                   </option>
                 ))}
               </Select>
-              <Input
+              <Select
                 className="min-w-0"
-                placeholder="Package"
                 value={packageFilter === "all" ? "" : packageFilter}
                 onChange={(e) => {
                   setPackageFilter(e.target.value || "all");
                   setSelectedIds(new Set());
                   setPage(1);
                 }}
+              >
+                <option value="">All packages</option>
+                {packageOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+              </Select>
+              <Select
+                className="min-w-0"
+                value={boothFilter}
+                onChange={(e) => { setBoothFilter(e.target.value); setSelectedIds(new Set()); setPage(1); }}
+              >
+                <option value="all">All booths</option>
+                {booths.map((booth) => <option key={booth.id} value={booth.name}>{booth.name}</option>)}
+              </Select>
+              <Input
+                className="min-w-0"
+                type="date"
+                value={fromDateFilter}
+                onChange={(e) => {
+                  setFromDateFilter(e.target.value);
+                  setSelectedIds(new Set());
+                  setPage(1);
+                }}
+                aria-label="Transaction date from"
               />
               <Input
                 className="min-w-0"
                 type="date"
-                value={dateFilter}
-                onChange={(e) => {
-                  setDateFilter(e.target.value);
-                  setSelectedIds(new Set());
-                  setPage(1);
-                }}
-                aria-label="Filter transaction date"
+                value={toDateFilter}
+                onChange={(e) => { setToDateFilter(e.target.value); setSelectedIds(new Set()); setPage(1); }}
+                aria-label="Transaction date to"
               />
               <Button
                 className="w-full"
@@ -782,28 +813,28 @@ export function TransactionsMonitoring() {
                 </Select>
               </MobileFilterField>
               <MobileFilterField label="Package">
-                <Input
-                  placeholder="Package name"
+                <Select
                   value={packageFilter === "all" ? "" : packageFilter}
-                  onChange={(e) => {
-                    setPackageFilter(e.target.value || "all");
-                    setSelectedIds(new Set());
-                    setPage(1);
-                  }}
-                />
+                  onChange={(e) => { setPackageFilter(e.target.value || "all"); setSelectedIds(new Set()); setPage(1); }}
+                >
+                  <option value="">All packages</option>
+                  {packageOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                </Select>
               </MobileFilterField>
-              <MobileFilterField label="Date">
+              <MobileFilterField label="Booth">
+                <Select value={boothFilter} onChange={(e) => { setBoothFilter(e.target.value); setSelectedIds(new Set()); setPage(1); }}>
+                  <option value="all">All booths</option>
+                  {booths.map((booth) => <option key={booth.id} value={booth.name}>{booth.name}</option>)}
+                </Select>
+              </MobileFilterField>
+              <MobileFilterField label="From date">
                 <Input
                   type="date"
-                  value={dateFilter}
-                  onChange={(e) => {
-                    setDateFilter(e.target.value);
-                    setSelectedIds(new Set());
-                    setPage(1);
-                  }}
-                  aria-label="Filter transaction date"
+                  value={fromDateFilter}
+                  onChange={(e) => { setFromDateFilter(e.target.value); setSelectedIds(new Set()); setPage(1); }}
                 />
               </MobileFilterField>
+              <MobileFilterField label="To date"><Input type="date" value={toDateFilter} onChange={(e) => { setToDateFilter(e.target.value); setSelectedIds(new Set()); setPage(1); }} /></MobileFilterField>
             </MobileFilterDrawer>
             <div className="flex min-w-0 flex-col gap-2 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
               <span className="whitespace-nowrap">

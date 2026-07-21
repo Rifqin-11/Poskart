@@ -83,6 +83,9 @@ export type TransactionListFilters = PaginationInput & {
   paymentMethod?: string;
   packageName?: string;
   date?: string;
+  fromDate?: string;
+  toDate?: string;
+  booth?: string;
 };
 
 export type TransactionPageSummary = {
@@ -209,6 +212,7 @@ export async function getTransactionsPage(
     ? requestedPaymentMethod
     : "all";
   const packageName = filters.packageName?.trim();
+  const booth = filters.booth?.trim();
   const search = filters.search?.trim();
 
   let visibilityFilter: string;
@@ -238,15 +242,16 @@ export async function getTransactionsPage(
     if (packageName && packageName !== "all") {
       query = query.ilike("package_name", `%${packageName}%`);
     }
+    if (booth && booth !== "all") query = query.eq("booth", booth);
     query = query.or(visibilityFilter);
-    if (filters.date) {
-      const start = new Date(`${filters.date}T00:00:00`);
-      if (!Number.isNaN(start.getTime())) {
-        const end = new Date(start);
-        end.setDate(end.getDate() + 1);
-        query = query
-          .gte("created_at", start.toISOString())
-          .lt("created_at", end.toISOString());
+    const fromDate = filters.fromDate || filters.date;
+    const toDate = filters.toDate || filters.date;
+    if (fromDate) query = query.gte("created_at", `${fromDate}T00:00:00`);
+    if (toDate) {
+      const end = new Date(`${toDate}T00:00:00Z`);
+      if (!Number.isNaN(end.getTime())) {
+        end.setUTCDate(end.getUTCDate() + 1);
+        query = query.lt("created_at", end.toISOString());
       }
     }
     return query;
