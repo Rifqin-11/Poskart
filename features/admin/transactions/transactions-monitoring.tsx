@@ -68,7 +68,10 @@ function toDate(value: string) {
 
 function toDateValue(value: Date | undefined) {
   if (!value) return "";
-  return value.toISOString().slice(0, 10);
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function renderTransactionStatus(status: Transaction["status"]) {
@@ -690,7 +693,24 @@ export function TransactionsMonitoring() {
               />
             </div>
 
-            <div className="hidden min-w-0 gap-2 overflow-hidden md:grid md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.8fr)] xl:grid-cols-[minmax(0,1.25fr)_repeat(4,minmax(0,1fr))_90px]">
+            <div className="hidden min-w-0 gap-2 md:flex">
+              <Input
+                className="min-w-0 flex-1"
+                placeholder="Search by ID, device, customer…"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setSelectedIds(new Set());
+                  setPage(1);
+                }}
+              />
+              <MobileFilterButton
+                active={hasAdvancedFilters}
+                onClick={() => setMobileFilterOpen(true)}
+              />
+            </div>
+
+            <div className="hidden">
               <Input
                 className="min-w-0"
                 placeholder="Search by ID, device, customer…"
@@ -841,8 +861,24 @@ export function TransactionsMonitoring() {
                 </Select>
               </MobileFilterField>
               <MobileFilterField label="Date range">
-                <Popover trigger={<span className="flex h-10 items-center gap-2 rounded-md border border-zinc-200 px-3 text-sm text-zinc-600"><CalendarDays className="size-4" />{formatDateRangeLabel(fromDateFilter, toDateFilter)}</span>}>
-                  <Calendar mode="range" selected={dateRange} onSelect={(range: DateRange | undefined) => { setFromDateFilter(toDateValue(range?.from)); setToDateFilter(toDateValue(range?.to)); setSelectedIds(new Set()); setPage(1); }} />
+                <Popover
+                  trigger={
+                    <span className="flex h-10 w-full items-center gap-2 rounded-md border border-zinc-200 px-3 text-sm text-zinc-600">
+                      <CalendarDays className="size-4" />
+                      {formatDateRangeLabel(fromDateFilter, toDateFilter)}
+                    </span>
+                  }
+                >
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={(range: DateRange | undefined) => {
+                      setFromDateFilter(toDateValue(range?.from));
+                      setToDateFilter(toDateValue(range?.to));
+                      setSelectedIds(new Set());
+                      setPage(1);
+                    }}
+                  />
                 </Popover>
               </MobileFilterField>
             </MobileFilterDrawer>

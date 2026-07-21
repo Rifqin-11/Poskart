@@ -246,9 +246,9 @@ export async function getTransactionsPage(
     query = query.or(visibilityFilter);
     const fromDate = filters.fromDate || filters.date;
     const toDate = filters.toDate || filters.date;
-    if (fromDate) query = query.gte("created_at", `${fromDate}T00:00:00`);
+    if (fromDate) query = query.gte("created_at", `${fromDate}T00:00:00+07:00`);
     if (toDate) {
-      const end = new Date(`${toDate}T00:00:00Z`);
+      const end = new Date(`${toDate}T00:00:00+07:00`);
       if (!Number.isNaN(end.getTime())) {
         end.setUTCDate(end.getUTCDate() + 1);
         query = query.lt("created_at", end.toISOString());
@@ -267,32 +267,47 @@ export async function getTransactionsPage(
   const query = buildFilteredQuery(TRANSACTION_COLUMNS)
     .order("created_at", { ascending: false })
     .range(pagination.from, pagination.to);
-  const summaryRequest = supabase.rpc("get_transaction_summary", {
-    p_status: status,
-    p_payment_method: paymentMethod,
-    p_package_name: packageName ?? "",
-    p_search: search ?? "",
-    p_date: filters.date || null,
-  });
+  const summaryQuery = buildFilteredQuery(
+    "status,paid_at,print_count,amount,provider,archived_at,archive_reason,payout_status",
+  );
   const [{ data, error, count }, { data: summaryRows, error: summaryError }] =
-    await Promise.all([query, summaryRequest]);
+    await Promise.all([query, summaryQuery]);
   const rows = assertSupabaseResult(
     data as TransactionRow[] | null,
     error,
     "Unable to load transactions",
   );
-  const summaryData = assertSupabaseResult(
+  const summaryRowsData = assertSupabaseResult(
     summaryRows as Array<{
-      transaction_count: number | null;
-      paid_count: number | null;
+      status: string | null;
+      paid_at: string | null;
       print_count: number | null;
-      gross_revenue: number | string | null;
-      qris_gross_revenue: number | string | null;
-      qris_paid_count: number | null;
+      amount: number | string | null;
+      provider: string | null;
+      archived_at: string | null;
+      archive_reason: string | null;
+      payout_status: string | null;
     }> | null,
     summaryError,
     "Unable to load transaction summary",
-  )[0];
+  );
+  const paidRows = summaryRowsData.filter(
+    (row) =>
+      (row.status === "paid" || row.paid_at !== null) &&
+      row.archive_reason !== "testing" &&
+      row.payout_status !== "testing" &&
+      !(row.archived_at !== null && row.archive_reason !== "testing"),
+  );
+  const summaryData = {
+    transaction_count: summaryRowsData.length,
+    paid_count: paidRows.length,
+    print_count: paidRows.reduce((sum, row) => sum + Number(row.print_count ?? 0), 0),
+    gross_revenue: paidRows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0),
+    qris_gross_revenue: paidRows
+      .filter((row) => row.provider === "QRIS")
+      .reduce((sum, row) => sum + Number(row.amount ?? 0), 0),
+    qris_paid_count: paidRows.filter((row) => row.provider === "QRIS").length,
+  };
   const transactions = rows
     .filter((row) => !isOrphanQrisPendingTransaction(row))
     .map(mapTransaction);
