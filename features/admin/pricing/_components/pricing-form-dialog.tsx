@@ -7,6 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { DialogActions } from "@/features/admin/_components/dialog-actions";
+import {
+  formatJakartaDateTimeLocal,
+  parseJakartaDateTimeInput,
+} from "@/lib/jakarta-time";
 import type { PricingProductInput } from "@/types/pricing";
 
 type PricingFormDialogProps = {
@@ -103,7 +107,7 @@ export function PricingFormDialog({
                   setForm({
                     ...form,
                     eventExpiresAt: e.target.value
-                      ? new Date(e.target.value).toISOString()
+                      ? parseJakartaDateTimeInput(e.target.value)?.toISOString()
                       : undefined,
                   })
                 }
@@ -185,9 +189,5 @@ export function PricingFormDialog({
 }
 
 function toDateTimeLocal(value?: string) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const offset = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  return value ? formatJakartaDateTimeLocal(value) : "";
 }

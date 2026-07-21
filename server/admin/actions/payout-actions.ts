@@ -8,6 +8,10 @@ import {
 } from "@/server/admin/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAdminNotification } from "@/server/admin/notifications";
+import {
+  getJakartaDayStart,
+  parseJakartaDateTimeInput,
+} from "@/lib/jakarta-time";
 import type {
   PayoutAccount,
   PayoutActionState,
@@ -750,12 +754,17 @@ async function loadInvoices(
     query = query.eq("status", filters.status);
   }
   if (filters.dateFrom) {
-    query = query.gte("requested_at", new Date(filters.dateFrom).toISOString());
+    const start = getJakartaDayStart(filters.dateFrom);
+    if (start && !Number.isNaN(start.getTime())) {
+      query = query.gte("requested_at", start.toISOString());
+    }
   }
   if (filters.dateTo) {
-    const end = new Date(filters.dateTo);
-    end.setHours(23, 59, 59, 999);
-    query = query.lte("requested_at", end.toISOString());
+    const end = getJakartaDayStart(filters.dateTo);
+    if (end && !Number.isNaN(end.getTime())) {
+      end.setUTCDate(end.getUTCDate() + 1);
+      query = query.lt("requested_at", end.toISOString());
+    }
   }
 
   const { data, error, count } = pagination
@@ -1386,7 +1395,9 @@ export async function markPayoutInvoicePaid(
       return { success: false, error: "Transfer proof is required." };
     }
 
-    const parsedPaidAt = paidAt ? new Date(paidAt) : null;
+    const parsedPaidAt = paidAt
+      ? parseJakartaDateTimeInput(paidAt)
+      : null;
     if (paidAt && Number.isNaN(parsedPaidAt?.getTime())) {
       return { success: false, error: "Invalid transfer date." };
     }

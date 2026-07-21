@@ -14,6 +14,10 @@ import {
   normalizeOrganizationFeatures,
 } from "@/lib/organization-features";
 import { formatCurrency } from "@/lib/utils";
+import {
+  formatJakartaDateInput,
+  parseJakartaDateTimeInput,
+} from "@/lib/jakarta-time";
 import type { Organization } from "@/types/organization";
 import type { SubscriptionPlan } from "@/types/pricing";
 import type { TenantInput } from "@/features/admin/superadmin/api";
@@ -66,7 +70,7 @@ export function TenantFormDialog({
       status: rest.status || "active",
       devices: rest.devices || 0,
       users: rest.users || 1,
-      renewalDate: rest.renewalDate || new Date().toISOString().slice(0, 10),
+      renewalDate: rest.renewalDate || formatJakartaDateInput(new Date()),
       planId: rest.planId || "free",
       subscriptionStatus: rest.subscriptionStatus || "free",
       subscriptionExpiresAt: rest.subscriptionExpiresAt || null,
@@ -194,16 +198,14 @@ export function TenantFormDialog({
             type="date"
             value={
               form.subscriptionExpiresAt
-                ? new Date(form.subscriptionExpiresAt)
-                    .toISOString()
-                    .slice(0, 10)
+                ? formatJakartaDateInput(form.subscriptionExpiresAt)
                 : ""
             }
             onChange={(e) =>
               setForm({
                 ...form,
                 subscriptionExpiresAt: e.target.value
-                  ? new Date(e.target.value).toISOString()
+                  ? parseJakartaDateTimeInput(e.target.value)?.toISOString() ?? null
                   : null,
               })
             }

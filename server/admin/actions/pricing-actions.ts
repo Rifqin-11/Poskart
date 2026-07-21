@@ -2,6 +2,7 @@
 
 import { getAdminContext, verifyRole } from "@/server/admin/context";
 import { PRICING_PLAN_ORDER } from "@/lib/constants/business";
+import { parseJakartaDateTimeInput } from "@/lib/jakarta-time";
 import {
   assertSupabaseResult,
   mapPricingProduct,
@@ -122,8 +123,8 @@ export async function updatePricingProduct(
 
 function normalizeEventExpiry(value: string | undefined) {
   if (!value?.trim()) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
+  const date = parseJakartaDateTimeInput(value);
+  if (!date || Number.isNaN(date.getTime())) {
     throw new Error("Event expiry must be a valid date.");
   }
   return date.toISOString();

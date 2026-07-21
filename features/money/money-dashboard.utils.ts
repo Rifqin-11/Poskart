@@ -5,6 +5,7 @@ import type {
   MoneyWallet,
   MoneyWalletType,
 } from "@/types/money";
+import { formatJakartaDateTimeLocal } from "@/lib/jakarta-time";
 
 export type WalletFilter = "all" | MoneyWalletType;
 
@@ -76,9 +77,7 @@ export function formatMonthLabel(value: string) {
 }
 
 export function toLocalDateTime(value: string) {
-  const date = new Date(value);
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
+  return formatJakartaDateTimeLocal(value);
 }
 
 export function getNetAmount(entry: MoneyEntry) {

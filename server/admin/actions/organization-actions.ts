@@ -18,12 +18,22 @@ import {
   DEFAULT_ORGANIZATION_FEATURES,
   normalizeOrganizationFeatures,
 } from "@/lib/organization-features";
+import { parseJakartaDateTimeInput } from "@/lib/jakarta-time";
 import { getServiceRoleClient } from "@/lib/supabase/server";
 import {
   getOrganizationDuitkuGatewaySummary,
   saveOrganizationDuitkuGateway,
   type SaveOrganizationDuitkuGatewayInput,
 } from "@/server/payments/organization-gateway";
+
+function normalizeSubscriptionExpiry(value?: string | null) {
+  if (!value) return null;
+  const date = parseJakartaDateTimeInput(value);
+  if (!date || Number.isNaN(date.getTime())) {
+    throw new Error("Subscription expiry date is invalid.");
+  }
+  return date.toISOString();
+}
 
 export async function getOrganizations(): Promise<Organization[]> {
   const { supabase } = await getAdminContext();
@@ -113,7 +123,7 @@ export async function createOrganization(values: TenantInput): Promise<void> {
     organization_id: orgId,
     plan_id: values.planId || "free",
     status: values.subscriptionStatus || "free",
-    current_period_end: values.subscriptionExpiresAt || null,
+    current_period_end: normalizeSubscriptionExpiry(values.subscriptionExpiresAt),
     device_limit: values.deviceLimit ?? 1,
   });
   if (subErr)
@@ -159,7 +169,9 @@ export async function updateOrganization(
     if (patch.subscriptionStatus !== undefined)
       subPatch.status = patch.subscriptionStatus;
     if (patch.subscriptionExpiresAt !== undefined)
-      subPatch.current_period_end = patch.subscriptionExpiresAt;
+      subPatch.current_period_end = normalizeSubscriptionExpiry(
+        patch.subscriptionExpiresAt,
+      );
     if (patch.deviceLimit !== undefined)
       subPatch.device_limit = Math.max(1, patch.deviceLimit);
 
@@ -173,7 +185,9 @@ export async function updateOrganization(
           organization_id: id,
           plan_id: patch.planId || "free",
           status: patch.subscriptionStatus || "free",
-          current_period_end: patch.subscriptionExpiresAt || null,
+          current_period_end: normalizeSubscriptionExpiry(
+            patch.subscriptionExpiresAt,
+          ),
           device_limit: patch.deviceLimit ?? 1,
         });
       }

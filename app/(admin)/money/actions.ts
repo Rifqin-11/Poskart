@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { parseJakartaDateTimeInput } from "@/lib/jakarta-time";
 import { defaultMoneyWallets } from "@/features/money/money-dashboard.utils";
 import type {
   MoneyActionState,
@@ -114,7 +115,8 @@ async function validateMoneyEntry(
       return "Satu atau beberapa tag tidak valid untuk organisasi ini.";
     }
   }
-  if (Number.isNaN(new Date(values.occurredAt).getTime())) {
+  const parsedOccurredAt = parseJakartaDateTimeInput(values.occurredAt);
+  if (!parsedOccurredAt || Number.isNaN(parsedOccurredAt.getTime())) {
     return "Tanggal transaksi tidak valid.";
   }
   return null;
@@ -178,7 +180,7 @@ function toDatabasePayload(
         : 0,
     title: values.title.trim(),
     notes: values.notes.trim() || null,
-    occurred_at: new Date(values.occurredAt).toISOString(),
+    occurred_at: parseJakartaDateTimeInput(values.occurredAt)!.toISOString(),
     created_by: userId,
     updated_at: new Date().toISOString(),
   };
@@ -287,7 +289,8 @@ export async function saveMoneyTransfer(
   if (values.notes.trim().length > 500) {
     return { success: false, error: "Catatan maksimal 500 karakter." };
   }
-  if (Number.isNaN(new Date(values.occurredAt).getTime())) {
+  const parsedOccurredAt = parseJakartaDateTimeInput(values.occurredAt);
+  if (!parsedOccurredAt || Number.isNaN(parsedOccurredAt.getTime())) {
     return { success: false, error: "Tanggal transfer tidak valid." };
   }
 
@@ -295,7 +298,7 @@ export async function saveMoneyTransfer(
   if (tagError) return { success: false, error: tagError };
 
   const transferGroupId = randomUUID();
-  const occurredAt = new Date(values.occurredAt).toISOString();
+  const occurredAt = parsedOccurredAt.toISOString();
   const now = new Date().toISOString();
   const basePayload = {
     organization_id: context.organizationId,
