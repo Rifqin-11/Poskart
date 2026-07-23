@@ -27,6 +27,7 @@ import {
   deleteSharedGallery,
 } from "@/app/(admin)/gallery/actions";
 import { Button } from "@/components/ui/button";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { SharedGallerySummary } from "@/features/admin/gallery/gallery-share-types";
@@ -362,35 +363,39 @@ function SharedGalleryLibraryDialog({
   onDeleted: (galleryId: string) => void;
 }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const confirmDelete = useConfirmDialog();
 
   const remove = (gallery: SharedGallerySummary) => {
-    if (
-      !window.confirm(
-        `Delete shared gallery "${gallery.name}"? Original sessions and files will remain.`,
-      )
-    ) {
-      return;
-    }
-    setDeletingId(gallery.id);
-    void deleteSharedGallery(gallery.id)
-      .then(() => {
-        onDeleted(gallery.id);
-        toast.success(
-          "Shared gallery deleted. Original files were not changed.",
-        );
-      })
-      .catch((error) =>
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Unable to delete shared gallery.",
-        ),
-      )
-      .finally(() => setDeletingId(null));
+    confirmDelete.confirm({
+      title: "Delete shared gallery?",
+      description: `“${gallery.name}” will be removed. Original sessions and files will remain unchanged.`,
+      confirmLabel: "Delete gallery",
+      destructive: true,
+      onConfirm: () => {
+        setDeletingId(gallery.id);
+        void deleteSharedGallery(gallery.id)
+          .then(() => {
+            onDeleted(gallery.id);
+            toast.success(
+              "Shared gallery deleted. Original files were not changed.",
+            );
+          })
+          .catch((error) =>
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Unable to delete shared gallery.",
+            ),
+          )
+          .finally(() => setDeletingId(null));
+      },
+    });
   };
 
   return (
-    <Dialog
+    <>
+      {confirmDelete.dialog}
+      <Dialog
       open={open}
       onOpenChange={onOpenChange}
       title="Shared galleries"
@@ -479,7 +484,8 @@ function SharedGalleryLibraryDialog({
           </div>
         )}
       </div>
-    </Dialog>
+      </Dialog>
+    </>
   );
 }
 

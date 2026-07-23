@@ -404,6 +404,7 @@ export async function buildKioskBootstrap(
     templatesResult,
     pricingResult,
     devices,
+    voucherAllocationsResult,
   ] = await Promise.all([
     context.client
       .from("organizations")
@@ -460,6 +461,15 @@ export async function buildKioskBootstrap(
       .eq("active", true)
       .order("price", { ascending: true }),
     listOrganizationDevices(context),
+    device
+      ? context.client
+          .from("voucher_allocations")
+          .select(
+            "id,version,voucher_campaigns(expires_at),voucher_codes(code,reusable,redemption_count,last_redeemed_at,created_at)",
+          )
+          .eq("organization_id", context.organizationId)
+          .eq("device_id", device.id)
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   const queryError = [
@@ -470,6 +480,7 @@ export async function buildKioskBootstrap(
     themeResult.error,
     templatesResult.error,
     pricingResult.error,
+    voucherAllocationsResult.error,
   ].find(Boolean);
 
   if (queryError) {
@@ -547,6 +558,32 @@ export async function buildKioskBootstrap(
       return product.access_mode !== "event";
     }
     return assignedPricing.has(product.id) || assignedPricing.has(product.name);
+  });
+  const vouchers = (voucherAllocationsResult.data ?? []).flatMap((allocation) => {
+    const campaignRelation = allocation.voucher_campaigns as
+      | { expires_at: string | null }
+      | Array<{ expires_at: string | null }>
+      | null;
+    const campaign = Array.isArray(campaignRelation)
+      ? campaignRelation[0] ?? null
+      : campaignRelation;
+    return ((allocation.voucher_codes ?? []) as Array<{
+      code: string;
+      reusable: boolean;
+      redemption_count: number;
+      last_redeemed_at: string | null;
+      created_at: string;
+    }>).map((voucher) => ({
+      code: voucher.code,
+      reusable: voucher.reusable,
+      usageCount: voucher.redemption_count,
+      used: !voucher.reusable && voucher.redemption_count > 0,
+      usedAt: voucher.last_redeemed_at,
+      createdAt: voucher.created_at,
+      expiresAt: campaign?.expires_at ?? null,
+      allocationVersion: allocation.version,
+      serverManaged: true,
+    }));
   });
   const assetReferences = collectAssetUrls({
     layoutSchema: normalizedLayoutSchema,
@@ -643,6 +680,9 @@ export async function buildKioskBootstrap(
       usageCount: template.usage_count ?? 0,
     })),
     pricingProducts,
+    // Device-scoped voucher allocation. Flutter caches these codes locally,
+    // so voucher validation remains available while the kiosk is offline.
+    vouchers,
     // The ID of the device resolved/registered for this session.
     // Flutter must persist this so subsequent API calls use the correct device.
     registeredDeviceId: device?.id ?? null,

@@ -59,6 +59,8 @@ type SharedGallerySessionRow = {
   shared_gallery_id: string;
 };
 
+const INITIAL_GALLERY_PAGE_SIZE = 50;
+
 export async function GalleryPage() {
   const supabase = await createClient();
   const {
@@ -89,7 +91,7 @@ export async function GalleryPage() {
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
-      .limit(100),
+      .limit(INITIAL_GALLERY_PAGE_SIZE),
     supabase
       .from("shared_galleries")
       .select("id,name,public_token,created_at")
@@ -206,7 +208,7 @@ export async function GalleryPage() {
   });
 
   const lastRow = rows.at(-1);
-  const hasMoreRows = rows.length === 100;
+  const hasMoreRows = rows.length === INITIAL_GALLERY_PAGE_SIZE;
   const initialCursor =
     hasMoreRows && lastRow
       ? encodeGalleryCursor({ createdAt: lastRow.created_at, id: lastRow.id })

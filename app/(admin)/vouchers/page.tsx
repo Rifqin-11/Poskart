@@ -1,5 +1,5 @@
-import { VoucherApproval } from "@/features/admin/vouchers/voucher-approval-page";
+import { VoucherManagement } from "@/features/admin/vouchers/voucher-management";
 
 export default function VouchersPage() {
-  return <VoucherApproval />;
+  return <VoucherManagement />;
 }
