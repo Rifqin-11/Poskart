@@ -111,6 +111,24 @@ export function BoothFormDialog({
   const printerConnected = printerStatus === "ready";
   const runtimeStatus = form.status;
   const maintenanceEnabled = runtimeStatus === "maintenance";
+  const frameTemplateOptions = includeCurrentOptions(
+    options.frameTemplates,
+    form.frameTemplates,
+  );
+  const allFramesSelected =
+    frameTemplateOptions.length > 0 &&
+    frameTemplateOptions.every((template) =>
+      form.frameTemplates.includes(template),
+    );
+
+  const toggleAllFrames = () => {
+    const frameTemplates = allFramesSelected ? [] : frameTemplateOptions;
+    setForm({
+      ...form,
+      frameTemplates,
+      template: frameTemplates[0] ?? "",
+    });
+  };
 
   return (
     <Dialog
@@ -372,18 +390,26 @@ export function BoothFormDialog({
                     </p>
                   </div>
                 </div>
-                <Badge variant="secondary" className="shrink-0">
-                  {form.frameTemplates.length} selected
-                </Badge>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Badge variant="secondary">
+                    {form.frameTemplates.length} selected
+                  </Badge>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={readOnly || frameTemplateOptions.length === 0}
+                    onClick={toggleAllFrames}
+                  >
+                    {allFramesSelected ? "Clear all" : "Select all"}
+                  </Button>
+                </div>
               </div>
               <DeviceMultiSelect
                 className="mt-4"
                 values={form.frameTemplates}
                 emptyLabel="No frame templates yet"
-                options={includeCurrentOptions(
-                  options.frameTemplates,
-                  form.frameTemplates,
-                )}
+                options={frameTemplateOptions}
                 disabled={readOnly}
                 onChange={(values) =>
                   setForm({
