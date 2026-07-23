@@ -4,8 +4,10 @@ import {
   getMyPayoutInvoices,
   getMyPayoutSummary,
 } from "@/server/admin/actions/payout-actions";
+import { requireOrganizationSubscriptionAccess } from "@/server/admin/page-access";
 
 export default async function WithdrawPage() {
+  await requireOrganizationSubscriptionAccess("/withdraw");
   const [summary, invoicesPage, availableLedgerEntries] = await Promise.all([
     getMyPayoutSummary(),
     getMyPayoutInvoices({ page: 1, pageSize: 10 }),

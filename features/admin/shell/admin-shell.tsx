@@ -258,6 +258,8 @@ function SidebarContent({
             <Link
               key={item.href}
               href={item.href}
+              // Route-level loading UI lets Next.js prefetch only the shared
+              // shell and skeleton for dynamic pages, not their database data.
               onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-white hover:text-zinc-950 hover:shadow-sm",

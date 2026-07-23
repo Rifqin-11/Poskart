@@ -232,12 +232,10 @@ export async function POST(request: Request) {
         provider,
         collection_mode: collectionMode,
         template_id: templateId,
-        // A final session sync must never erase additional prints already
-        // recorded by the idempotent print-event ledger.
-        print_count: Math.max(
-          product.printCount,
-          existingTransaction?.print_count ?? 0,
-        ),
+        // `print_count` is the number of successful physical prints, not the
+        // package allowance. It is incremented only by the print-event ledger.
+        // Keep a prior confirmed count when a delayed session sync arrives.
+        print_count: existingTransaction?.print_count ?? 0,
         created_at_label: now,
         print_status: transaction.printStatus ?? "pending",
         print_attempts: Math.max(0, transaction.printAttempts ?? 0),

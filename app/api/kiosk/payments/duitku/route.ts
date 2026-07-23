@@ -170,7 +170,9 @@ export async function POST(request: Request) {
       payment_expires_at: payment.expiresAt,
       gateway_response: payment.raw,
       template_id: templateId,
-      print_count: product.printCount,
+      // A paid package grants an allowance, but is not proof that a print was
+      // completed. Successful printer events increment this separately.
+      print_count: 0,
       created_at_label: now,
       print_status: "pending",
       print_attempts: 0,

@@ -4,11 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { organizationApi } from "@/features/admin/organization/api";
 
-export function useTenantDetails() {
+export function useTenantDetails(enabled = true) {
   return useQuery<Awaited<ReturnType<typeof organizationApi.getMyOrganizationDetails>>, Error>({
     queryKey: adminQueryKeys.organizationDetails,
     queryFn: organizationApi.getMyOrganizationDetails,
     staleTime: 5 * 60_000,
+    enabled,
   });
 }
 
@@ -33,7 +34,7 @@ export function useUpdatePaymentCollectionMode() {
   });
 }
 
-export function usePaymentGatewaySettings() {
+export function usePaymentGatewaySettings(enabled = true) {
   return useQuery<
     Awaited<ReturnType<typeof organizationApi.getMyPaymentGatewaySettings>>,
     Error
@@ -41,6 +42,7 @@ export function usePaymentGatewaySettings() {
     queryKey: adminQueryKeys.organizationPaymentGateway,
     queryFn: organizationApi.getMyPaymentGatewaySettings,
     staleTime: 2 * 60_000,
+    enabled,
   });
 }
 
@@ -56,11 +58,12 @@ export function useSavePaymentGatewaySettings() {
   });
 }
 
-export function useTenantMembers() {
+export function useTenantMembers(enabled = true) {
   return useQuery<Awaited<ReturnType<typeof organizationApi.getMyOrganizationMembers>>, Error>({
     queryKey: adminQueryKeys.organizationMembers,
     queryFn: organizationApi.getMyOrganizationMembers,
     staleTime: 2 * 60_000,
+    enabled,
   });
 }
 

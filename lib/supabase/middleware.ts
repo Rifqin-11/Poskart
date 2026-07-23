@@ -88,6 +88,10 @@ export async function updateSession(request: NextRequest) {
         : null;
   const isOrganizationSettingsRoute =
     pathname === "/settings" && request.nextUrl.searchParams.get("tab") === "organization";
+  // Page access is now enforced by server-side route guards. Preserve the
+  // existing entitlement check for Server Actions, where there is no page
+  // render to run that guard, but keep ordinary sidebar navigation auth-only.
+  const isServerAction = request.headers.has("next-action");
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
@@ -103,7 +107,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isProtectedRoute) {
+  if (user && isProtectedRoute && isServerAction) {
     const { data: member } = await supabase
       .from("organization_members")
       .select("organization_id")
@@ -127,7 +131,12 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (user && isSubscriptionRoute && !isOrganizationSettingsRoute) {
+  if (
+    user &&
+    isServerAction &&
+    isSubscriptionRoute &&
+    !isOrganizationSettingsRoute
+  ) {
     const isSuperAdmin = await isSuperAdminProfile(supabase, user.sub);
 
     if (!isSuperAdmin) {
@@ -160,7 +169,7 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (user && featureRoute) {
+  if (user && isServerAction && featureRoute) {
     const isSuperAdmin = await isSuperAdminProfile(supabase, user.sub);
 
     if (!isSuperAdmin) {

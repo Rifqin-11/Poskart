@@ -53,7 +53,11 @@ export function PrintQueuePanel() {
   const { data: jobs = [] } = useQuery({
     queryKey: printQueueKey,
     queryFn: fetchPrintQueue,
-    refetchInterval: 5_000,
+    // Realtime invalidates this query as soon as a job changes. Polling stays
+    // as a fallback only: keep it responsive while work exists, but avoid a
+    // permanent 5-second API/DB request from every open admin tab.
+    refetchInterval: (query) =>
+      (query.state.data?.length ?? 0) > 0 ? 5_000 : 45_000,
     refetchOnWindowFocus: true,
     retry: 1,
   });

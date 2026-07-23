@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/features/admin/_components/empty-state";
 import { LoadingState } from "@/features/admin/_components/loading-state";
 import { StatCard } from "@/features/admin/_components/stat-card";
+import { AnimatedNumber } from "@/features/admin/_components/animated-number";
 import {
   emptyDashboardData,
   eventPeriodTabs,
@@ -327,7 +328,8 @@ export function DashboardOverview() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           label="QRIS success rate"
-          value={`${eventPeriod.qrisSuccessRate.toFixed(1)}%`}
+          value={eventPeriod.qrisSuccessRate}
+          valueFormat="percentage"
           helper={
             eventPeriod.qrisTotal > 0
               ? `${eventPeriod.qrisFailed.toLocaleString("id-ID")} failed QRIS`
@@ -338,22 +340,23 @@ export function DashboardOverview() {
         />
         <SummaryCard
           label="Total revenue"
-          value={formatCurrency(eventPeriod.totalRevenue)}
+          value={eventPeriod.totalRevenue}
+          valueFormat="currency"
           helper="Paid transaction amount"
           icon={CircleDollarSign}
           accent="bg-yellow-300"
         />
         <SummaryCard
           label="Total sessions"
-          value={eventPeriod.totalSessions.toLocaleString("id-ID")}
+          value={eventPeriod.totalSessions}
           helper="Paid booth sessions"
           icon={Activity}
           accent="bg-violet-300"
         />
         <SummaryCard
           label="Total prints"
-          value={eventPeriod.totalPrints.toLocaleString("id-ID")}
-          helper="Accumulated prints from packages"
+          value={eventPeriod.totalPrints}
+          helper="Confirmed printer output"
           icon={Printer}
           accent="bg-emerald-300"
         />
@@ -570,7 +573,7 @@ function EventAnalyticsSection({
         <StatCard
           title="Prints per session"
           value={printsPerSession.toFixed(1)}
-          description="Print package efficiency"
+          description="Confirmed prints per session"
           icon={Printer}
           className={dashboardSoftItemClass}
         />
@@ -625,12 +628,14 @@ function PeriodTabs({
 function SummaryCard({
   label,
   value,
+  valueFormat = "number",
   helper,
   icon: Icon,
   accent,
 }: {
   label: string;
-  value: string;
+  value: number;
+  valueFormat?: "currency" | "number" | "percentage";
   helper: string;
   icon: typeof Activity;
   accent: string;
@@ -641,7 +646,7 @@ function SummaryCard({
         <div>
           <div className="text-sm text-zinc-500">{label}</div>
           <div className="mt-2 text-3xl font-semibold tracking-tight">
-            {value}
+            <AnimatedNumber value={value} format={valueFormat} />
           </div>
         </div>
         <div className={`rounded-2xl ${accent} p-3 text-zinc-950`}>

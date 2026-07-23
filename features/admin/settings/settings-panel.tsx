@@ -121,18 +121,12 @@ type SettingsAccount = {
 
 export function SettingsPanel({
   initialAccount,
+  initialMemberRole,
 }: {
   initialAccount: SettingsAccount;
+  initialMemberRole: string | null;
 }) {
   const searchParams = useSearchParams();
-  const { data: config } = useAppConfig();
-  const saveConfig = useSaveAppConfig();
-  const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
-  const { data: members = [] } = useTenantMembers();
-  const { data: privateGateway } = usePaymentGatewaySettings();
-  const updatePaymentMode = useUpdatePaymentCollectionMode();
-  const savePrivateGateway = useSavePaymentGatewaySettings();
-
   const [editOrganizationOpen, setEditOrganizationOpen] = useState(false);
   const [editMediaOpen, setEditMediaOpen] = useState(false);
   const [form, setForm] = useState<SettingsForm>(DEFAULT_SETTINGS_FORM);
@@ -153,6 +147,19 @@ export function SettingsPanel({
   const [activeTab, setActiveTab] = useState<SettingsTab>(
     () => readSettingsTab(searchParams.get("tab")) ?? "details",
   );
+  const needsConfig = activeTab === "payment" || activeTab === "media";
+  const { data: config } = useAppConfig(needsConfig);
+  const saveConfig = useSaveAppConfig();
+  // Subscription state determines which tab is available, so keep this small
+  // organization query available immediately. The heavier member and gateway
+  // queries remain lazy below.
+  const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
+  const { data: members = [] } = useTenantMembers(activeTab === "organization");
+  const { data: privateGateway } = usePaymentGatewaySettings(
+    activeTab === "payment",
+  );
+  const updatePaymentMode = useUpdatePaymentCollectionMode();
+  const savePrivateGateway = useSavePaymentGatewaySettings();
   const tabsListRef = useRef<HTMLDivElement>(null);
   const [profileSaving, setProfileSaving] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -336,7 +343,7 @@ export function SettingsPanel({
   const subscriptionActive = Boolean(tenant?.subscription_is_active);
 
   const currentMember = members.find((m) => m.email === account.email);
-  const myRole = currentMember?.role ?? "partner";
+  const myRole = currentMember?.role ?? initialMemberRole ?? "partner";
   const canEditOrg = myRole === "owner" || myRole === "admin";
   const isOwnerOrAdmin = myRole === "owner" || myRole === "admin";
 
@@ -381,7 +388,7 @@ export function SettingsPanel({
               phone: account.phone,
               jobTitle: account.jobTitle,
               timezone: account.timezone,
-              memberRole: currentMember?.role ?? "",
+              memberRole: currentMember?.role ?? initialMemberRole ?? "",
             });
             setEditProfileOpen(true);
           }}
@@ -469,14 +476,16 @@ export function SettingsPanel({
           {visibleActiveTab === "details" ? (
             <ProfileCard
               account={account}
-              currentMemberRole={currentMember?.role}
+              currentMemberRole={
+                currentMember?.role ?? initialMemberRole ?? undefined
+              }
               onEditProfile={() => {
                 setProfileDraft({
                   fullName: account.fullName,
                   phone: account.phone,
                   jobTitle: account.jobTitle,
                   timezone: account.timezone,
-                  memberRole: currentMember?.role ?? "",
+                  memberRole: currentMember?.role ?? initialMemberRole ?? "",
                 });
                 setEditProfileOpen(true);
               }}
@@ -522,7 +531,7 @@ export function SettingsPanel({
           onSubmit={handleSaveProfile}
           profileSaving={profileSaving}
           email={account.email}
-          currentMemberRole={currentMember?.role}
+          currentMemberRole={currentMember?.role ?? initialMemberRole ?? undefined}
         />
       )}
 

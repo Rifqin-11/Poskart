@@ -1,7 +1,10 @@
 import { CalendarDays, Images } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getAdminContext,
+  getAdminMembership,
+} from "@/server/admin/context";
 import { GallerySessionCard } from "@/features/admin/gallery/gallery-session-card";
 import { GalleryLoadMore } from "@/features/admin/gallery/gallery-load-more";
 import {
@@ -62,21 +65,13 @@ type SharedGallerySessionRow = {
 const INITIAL_GALLERY_PAGE_SIZE = 50;
 
 export async function GalleryPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  const { data: membership } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("profile_id", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  const organizationId = membership?.organization_id;
+  // Reuse the request-scoped auth and membership lookups already performed by
+  // the admin layout/page guard instead of issuing another auth round trip.
+  const [{ supabase }, membership] = await Promise.all([
+    getAdminContext(),
+    getAdminMembership(),
+  ]);
+  const organizationId = membership?.organizationId;
 
   if (!organizationId) {
     return <GalleryEmpty message="Akun ini belum terhubung ke organisasi." />;
@@ -101,12 +96,46 @@ export async function GalleryPage() {
   const rows = (sessions ?? []) as GallerySessionRow[];
   const sharedRows = (sharedGalleryRows ?? []) as SharedGalleryRow[];
   const sharedGalleryIds = sharedRows.map((gallery) => gallery.id);
-  const { data: sharedGallerySessionRows } = sharedGalleryIds.length
-    ? await supabase
-        .from("shared_gallery_sessions")
-        .select("shared_gallery_id")
-        .in("shared_gallery_id", sharedGalleryIds)
-    : { data: [] };
+  const sessionIds = rows.map((session) => session.id);
+  const [
+    { data: sharedGallerySessionRows },
+    siteUrl,
+    { data: transactions },
+    { data: primaryFrames },
+    { data: livePhotoJobs },
+  ] = await Promise.all([
+    sharedGalleryIds.length
+      ? supabase
+          .from("shared_gallery_sessions")
+          .select("shared_gallery_id")
+          .in("shared_gallery_id", sharedGalleryIds)
+      : Promise.resolve({ data: [] }),
+    getSiteUrl(),
+    sessionIds.length
+      ? supabase
+          .from("transactions")
+          .select("id,status,provider,merchant_order_id")
+          .eq("organization_id", organizationId)
+          .in("id", sessionIds)
+      : Promise.resolve({ data: [] }),
+    sessionIds.length
+      ? supabase
+          .from("gallery_photos")
+          .select("id,session_id,kind,photo_index,secure_url,format")
+          .in("session_id", sessionIds)
+          .eq("organization_id", organizationId)
+          .eq("kind", "framed")
+          .eq("photo_index", 0)
+          .order("photo_index", { ascending: true })
+      : Promise.resolve({ data: [] }),
+    sessionIds.length
+      ? supabase
+          .from("live_photo_render_jobs")
+          .select("session_id,status,updated_at")
+          .eq("organization_id", organizationId)
+          .in("session_id", sessionIds)
+      : Promise.resolve({ data: [] }),
+  ]);
   const sessionCountBySharedGallery = (
     (sharedGallerySessionRows ?? []) as SharedGallerySessionRow[]
   ).reduce<Map<string, number>>((counts, row) => {
@@ -116,7 +145,6 @@ export async function GalleryPage() {
     );
     return counts;
   }, new Map());
-  const siteUrl = await getSiteUrl();
   const sharedGalleries: SharedGallerySummary[] = sharedRows.map((gallery) => ({
     id: gallery.id,
     name: gallery.name,
@@ -125,14 +153,6 @@ export async function GalleryPage() {
     sessionCount: sessionCountBySharedGallery.get(gallery.id) ?? 0,
     createdAt: gallery.created_at,
   }));
-  const sessionIds = rows.map((session) => session.id);
-  const { data: transactions } = sessionIds.length
-    ? await supabase
-        .from("transactions")
-        .select("id,status,provider,merchant_order_id")
-        .eq("organization_id", organizationId)
-        .in("id", sessionIds)
-    : { data: [] };
   const transactionRows = (transactions ?? []) as TransactionRow[];
   const transactionIds = new Set(
     transactionRows
@@ -144,23 +164,7 @@ export async function GalleryPage() {
     transaction_id:
       !session.test_mode && transactionIds.has(session.id) ? session.id : null,
   }));
-  const { data: primaryFrames } = sessionIds.length
-    ? await supabase
-        .from("gallery_photos")
-        .select("id,session_id,kind,photo_index,secure_url,format")
-        .in("session_id", sessionIds)
-        .eq("organization_id", organizationId)
-        .eq("kind", "framed")
-        .eq("photo_index", 0)
-        .order("photo_index", { ascending: true })
-    : { data: [] };
   const photoRows = (primaryFrames ?? []) as GalleryPhotoRow[];
-  const { data: livePhotoJobs } = sessionIds.length
-    ? await supabase
-        .from("live_photo_render_jobs")
-        .select("session_id,status,updated_at")
-        .in("session_id", sessionIds)
-    : { data: [] };
   const livePhotoJobRows = (livePhotoJobs ?? []) as LivePhotoJobRow[];
 
   const photosBySessionId = photoRows.reduce<Map<string, GalleryPhotoRow[]>>(

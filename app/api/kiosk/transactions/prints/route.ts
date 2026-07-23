@@ -11,6 +11,7 @@ type AdditionalPrintBody = {
   transactionId?: string;
   eventId?: string;
   copies?: number;
+  source?: "kiosk_print" | "kiosk_reprint";
 };
 
 export async function POST(request: Request) {
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     const transactionId = body.transactionId?.trim() ?? "";
     const eventId = body.eventId?.trim() ?? "";
     const copies = Math.trunc(body.copies ?? 0);
+    const source = body.source === "kiosk_print" ? "kiosk_print" : "kiosk_reprint";
 
     if (!transactionId || !eventId || copies < 1 || copies > 20) {
       throw new KioskApiError(
@@ -41,7 +43,7 @@ export async function POST(request: Request) {
         p_transaction_id: transactionId,
         p_device_id: device.id,
         p_copies: copies,
-        p_source: "kiosk_reprint",
+        p_source: source,
       },
     );
     if (error) throw error;

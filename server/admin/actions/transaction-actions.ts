@@ -267,9 +267,17 @@ export async function getTransactionsPage(
   const query = buildFilteredQuery(TRANSACTION_COLUMNS)
     .order("created_at", { ascending: false })
     .range(pagination.from, pagination.to);
-  const summaryQuery = buildFilteredQuery(
-    "status,paid_at,print_count,amount,provider,archived_at,archive_reason,payout_status",
-  );
+  const fromDate = filters.fromDate || filters.date;
+  const toDate = filters.toDate || filters.date;
+  const summaryQuery = supabase.rpc("get_transaction_page_summary", {
+    p_status: status,
+    p_payment_method: paymentMethod,
+    p_package_name: packageName ?? "",
+    p_search: search ?? "",
+    p_booth: booth ?? "",
+    p_from_date: fromDate || null,
+    p_to_date: toDate || null,
+  });
   const [{ data, error, count }, { data: summaryRows, error: summaryError }] =
     await Promise.all([query, summaryQuery]);
   const rows = assertSupabaseResult(
@@ -277,37 +285,18 @@ export async function getTransactionsPage(
     error,
     "Unable to load transactions",
   );
-  const summaryRowsData = assertSupabaseResult(
+  const summaryData = assertSupabaseResult(
     summaryRows as Array<{
-      status: string | null;
-      paid_at: string | null;
-      print_count: number | null;
-      amount: number | string | null;
-      provider: string | null;
-      archived_at: string | null;
-      archive_reason: string | null;
-      payout_status: string | null;
+      transaction_count: number | string | null;
+      paid_count: number | string | null;
+      print_count: number | string | null;
+      gross_revenue: number | string | null;
+      qris_gross_revenue: number | string | null;
+      qris_paid_count: number | string | null;
     }> | null,
     summaryError,
     "Unable to load transaction summary",
-  );
-  const paidRows = summaryRowsData.filter(
-    (row) =>
-      (row.status === "paid" || row.paid_at !== null) &&
-      row.archive_reason !== "testing" &&
-      row.payout_status !== "testing" &&
-      !(row.archived_at !== null && row.archive_reason !== "testing"),
-  );
-  const summaryData = {
-    transaction_count: summaryRowsData.length,
-    paid_count: paidRows.length,
-    print_count: paidRows.reduce((sum, row) => sum + Number(row.print_count ?? 0), 0),
-    gross_revenue: paidRows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0),
-    qris_gross_revenue: paidRows
-      .filter((row) => row.provider === "QRIS")
-      .reduce((sum, row) => sum + Number(row.amount ?? 0), 0),
-    qris_paid_count: paidRows.filter((row) => row.provider === "QRIS").length,
-  };
+  )[0];
   const transactions = rows
     .filter((row) => !isOrphanQrisPendingTransaction(row))
     .map(mapTransaction);

@@ -3,8 +3,10 @@ import { PricingManagement } from "@/features/admin/pricing";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { getQueryClient } from "@/lib/query-client.server";
 import { pricingService } from "@/server/admin/pricing-service";
+import { requireOrganizationSubscriptionAccess } from "@/server/admin/page-access";
 
 export default async function AdminPricingPage() {
+  await requireOrganizationSubscriptionAccess("/pricing");
   const queryClient = getQueryClient();
   await queryClient.prefetchQuery({
     queryKey: adminQueryKeys.pricing,

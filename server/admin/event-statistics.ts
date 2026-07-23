@@ -17,12 +17,17 @@ type EventTransactionRow = {
   status: string | null;
   provider: string | null;
   created_at: string;
-  print_count: number | null;
   template_id: string | null;
   paid_at: string | null;
   duitku_status_code: string | null;
   gateway_response: Record<string, unknown> | null;
   templates?: { name?: string | null } | { name?: string | null }[] | null;
+};
+
+type TransactionPrintEventRow = {
+  transaction_id: string;
+  copies: number | null;
+  created_at: string;
 };
 
 type DateParts = {
@@ -47,22 +52,34 @@ export async function getEventStatisticsForOrganization(
     Math.min(starts.daily.getTime(), starts.weekly.getTime(), starts.monthly.getTime()),
   );
 
-  const { data, error } = await client
-    .from("transactions")
-    .select(
-      "id,amount,status,provider,created_at,print_count,template_id,paid_at,duitku_status_code,gateway_response,templates(name)",
-    )
-    .eq("organization_id", organizationId)
-    .is("archived_at", null)
-    .or("archive_reason.is.null,archive_reason.neq.testing")
-    .gte("created_at", earliestStart.toISOString())
-    .order("created_at", { ascending: true });
+  const [transactionsResult, printEventsResult] = await Promise.all([
+    client
+      .from("transactions")
+      .select(
+        "id,amount,status,provider,created_at,template_id,paid_at,duitku_status_code,gateway_response,templates(name)",
+      )
+      .eq("organization_id", organizationId)
+      .is("archived_at", null)
+      .or("archive_reason.is.null,archive_reason.neq.testing")
+      .gte("created_at", earliestStart.toISOString())
+      .order("created_at", { ascending: true }),
+    client
+      .from("transaction_print_events")
+      .select("transaction_id,copies,created_at")
+      .eq("organization_id", organizationId)
+      .gte("created_at", earliestStart.toISOString())
+      .order("created_at", { ascending: true }),
+  ]);
 
-  if (error) throw error;
+  if (transactionsResult.error) throw transactionsResult.error;
+  if (printEventsResult.error) throw printEventsResult.error;
 
-  const rows = ((data ?? []) as EventTransactionRow[]).map(
+  const rows = ((transactionsResult.data ?? []) as EventTransactionRow[]).map(
     normalizeQrisTransactionStatus,
   );
+  const validTransactionIds = new Set(rows.map((row) => row.id));
+  const printEvents = ((printEventsResult.data ?? []) as TransactionPrintEventRow[])
+    .filter((event) => validTransactionIds.has(event.transaction_id));
 
   return {
     generatedAt: now.toISOString(),
@@ -72,21 +89,24 @@ export async function getEventStatisticsForOrganization(
         label: "Harian",
         startsAt: starts.daily,
         rows,
-        series: buildDailySeries(rows.filter((row) => row.status === "paid"), starts.daily),
+        printEvents,
+        series: buildDailySeries(rows.filter((row) => row.status === "paid"), printEvents, starts.daily),
       }),
       weekly: buildPeriodStatistics({
         key: "weekly",
         label: "Mingguan",
         startsAt: starts.weekly,
         rows,
-        series: buildWeeklySeries(rows.filter((row) => row.status === "paid"), now),
+        printEvents,
+        series: buildWeeklySeries(rows.filter((row) => row.status === "paid"), printEvents, now),
       }),
       monthly: buildPeriodStatistics({
         key: "monthly",
         label: "Bulanan",
         startsAt: starts.monthly,
         rows,
-        series: buildMonthlySeries(rows.filter((row) => row.status === "paid"), now),
+        printEvents,
+        series: buildMonthlySeries(rows.filter((row) => row.status === "paid"), printEvents, now),
       }),
     },
   };
@@ -97,18 +117,24 @@ function buildPeriodStatistics({
   label,
   startsAt,
   rows,
+  printEvents,
   series,
 }: {
   key: EventPeriodKey;
   label: string;
   startsAt: Date;
   rows: EventTransactionRow[];
+  printEvents: TransactionPrintEventRow[];
   series: EventChartPoint[];
 }): EventPeriodStatistics {
   const periodRows = rows.filter(
     (row) => new Date(row.created_at).getTime() >= startsAt.getTime(),
   );
   const paidPeriodRows = periodRows.filter((row) => row.status === "paid");
+  const periodPrintEvents = printEvents.filter(
+    (event) => new Date(event.created_at).getTime() >= startsAt.getTime(),
+  );
+  const printCountsByTransaction = getPrintCountsByTransaction(periodPrintEvents);
   const qrisRows = periodRows.filter(
     (row) => normalizeProvider(row.provider) === "QRIS",
   );
@@ -123,19 +149,22 @@ function buildPeriodStatistics({
     label,
     startsAt: startsAt.toISOString(),
     totalSessions: paidPeriodRows.length,
-    totalPrints: sumPrints(paidPeriodRows),
+    totalPrints: sumPrintedCopies(periodPrintEvents),
     totalRevenue: sumRevenue(paidPeriodRows),
     qrisTotal,
     qrisPaid,
     qrisFailed,
     qrisSuccessRate,
-    paymentMethods: buildPaymentBreakdown(paidPeriodRows),
-    topFrames: buildTopFrames(paidPeriodRows),
+    paymentMethods: buildPaymentBreakdown(paidPeriodRows, printCountsByTransaction),
+    topFrames: buildTopFrames(paidPeriodRows, printCountsByTransaction),
     revenueSeries: series,
   };
 }
 
-function buildPaymentBreakdown(rows: EventTransactionRow[]) {
+function buildPaymentBreakdown(
+  rows: EventTransactionRow[],
+  printCountsByTransaction: Map<string, number>,
+) {
   const totals = new Map<string, EventBreakdownItem>();
 
   for (const row of rows) {
@@ -150,14 +179,17 @@ function buildPaymentBreakdown(rows: EventTransactionRow[]) {
     current.value += safeAmount(row.amount);
     current.revenue += safeAmount(row.amount);
     current.sessions += 1;
-    current.prints += safePrintCount(row.print_count);
+    current.prints += printCountsByTransaction.get(row.id) ?? 0;
     totals.set(label, current);
   }
 
   return Array.from(totals.values()).sort((a, b) => b.revenue - a.revenue);
 }
 
-function buildTopFrames(rows: EventTransactionRow[]) {
+function buildTopFrames(
+  rows: EventTransactionRow[],
+  printCountsByTransaction: Map<string, number>,
+) {
   const totals = new Map<string, EventBreakdownItem>();
 
   for (const row of rows) {
@@ -172,7 +204,7 @@ function buildTopFrames(rows: EventTransactionRow[]) {
     current.value += 1;
     current.revenue += safeAmount(row.amount);
     current.sessions += 1;
-    current.prints += safePrintCount(row.print_count);
+    current.prints += printCountsByTransaction.get(row.id) ?? 0;
     totals.set(label, current);
   }
 
@@ -181,7 +213,11 @@ function buildTopFrames(rows: EventTransactionRow[]) {
     .slice(0, 5);
 }
 
-function buildDailySeries(rows: EventTransactionRow[], startOfDay: Date) {
+function buildDailySeries(
+  rows: EventTransactionRow[],
+  printEvents: TransactionPrintEventRow[],
+  startOfDay: Date,
+) {
   return Array.from({ length: 6 }, (_, index) => {
     const bucketStart = new Date(startOfDay.getTime() + index * 4 * HOUR_MS);
     const bucketEnd = new Date(bucketStart.getTime() + 4 * HOUR_MS);
@@ -189,17 +225,25 @@ function buildDailySeries(rows: EventTransactionRow[], startOfDay: Date) {
       const createdAt = new Date(row.created_at).getTime();
       return createdAt >= bucketStart.getTime() && createdAt < bucketEnd.getTime();
     });
+    const bucketPrintEvents = printEvents.filter((event) => {
+      const createdAt = new Date(event.created_at).getTime();
+      return createdAt >= bucketStart.getTime() && createdAt < bucketEnd.getTime();
+    });
 
     return {
       label: `${String(index * 4).padStart(2, "0")}:00`,
       revenue: sumRevenue(bucketRows),
       sessions: bucketRows.length,
-      prints: sumPrints(bucketRows),
+      prints: sumPrintedCopies(bucketPrintEvents),
     };
   });
 }
 
-function buildWeeklySeries(rows: EventTransactionRow[], now: Date) {
+function buildWeeklySeries(
+  rows: EventTransactionRow[],
+  printEvents: TransactionPrintEventRow[],
+  now: Date,
+) {
   const todayParts = getJakartaDateParts(now);
   const todayCalendarUtc = Date.UTC(
     todayParts.year,
@@ -220,17 +264,25 @@ function buildWeeklySeries(rows: EventTransactionRow[], now: Date) {
       const createdAt = new Date(row.created_at).getTime();
       return createdAt >= start.getTime() && createdAt < end.getTime();
     });
+    const bucketPrintEvents = printEvents.filter((event) => {
+      const createdAt = new Date(event.created_at).getTime();
+      return createdAt >= start.getTime() && createdAt < end.getTime();
+    });
 
     return {
       label: formatJakartaDate(start, { weekday: "short" }),
       revenue: sumRevenue(bucketRows),
       sessions: bucketRows.length,
-      prints: sumPrints(bucketRows),
+      prints: sumPrintedCopies(bucketPrintEvents),
     };
   });
 }
 
-function buildMonthlySeries(rows: EventTransactionRow[], now: Date) {
+function buildMonthlySeries(
+  rows: EventTransactionRow[],
+  printEvents: TransactionPrintEventRow[],
+  now: Date,
+) {
   const starts = getJakartaPeriodStarts(now);
   return Array.from({ length: 5 }, (_, index) => {
     const bucketStart = new Date(starts.monthly.getTime() + index * 7 * DAY_MS);
@@ -239,12 +291,16 @@ function buildMonthlySeries(rows: EventTransactionRow[], now: Date) {
       const createdAt = new Date(row.created_at).getTime();
       return createdAt >= bucketStart.getTime() && createdAt < bucketEnd.getTime();
     });
+    const bucketPrintEvents = printEvents.filter((event) => {
+      const createdAt = new Date(event.created_at).getTime();
+      return createdAt >= bucketStart.getTime() && createdAt < bucketEnd.getTime();
+    });
 
     return {
       label: `W${index + 1}`,
       revenue: sumRevenue(bucketRows),
       sessions: bucketRows.length,
-      prints: sumPrints(bucketRows),
+      prints: sumPrintedCopies(bucketPrintEvents),
     };
   });
 }
@@ -311,15 +367,27 @@ function sumRevenue(rows: EventTransactionRow[]) {
   return rows.reduce((sum, row) => sum + safeAmount(row.amount), 0);
 }
 
-function sumPrints(rows: EventTransactionRow[]) {
-  return rows.reduce((sum, row) => sum + safePrintCount(row.print_count), 0);
+function getPrintCountsByTransaction(
+  events: TransactionPrintEventRow[],
+) {
+  return events.reduce((counts, event) => {
+    counts.set(
+      event.transaction_id,
+      (counts.get(event.transaction_id) ?? 0) + safePrintCopies(event.copies),
+    );
+    return counts;
+  }, new Map<string, number>());
+}
+
+function sumPrintedCopies(events: TransactionPrintEventRow[]) {
+  return events.reduce((sum, event) => sum + safePrintCopies(event.copies), 0);
 }
 
 function safeAmount(value: number | null) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-function safePrintCount(value: number | null) {
+function safePrintCopies(value: number | null) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
