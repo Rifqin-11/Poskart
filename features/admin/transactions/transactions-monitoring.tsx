@@ -5,6 +5,9 @@ import {
   Banknote,
   CalendarDays,
   ChevronDown,
+  FileDown,
+  FileSpreadsheet,
+  FileText,
   LoaderCircle,
   Printer,
   ReceiptText,
@@ -44,6 +47,7 @@ import { useAppConfig } from "@/features/admin/settings/use-settings";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useBooths } from "@/features/admin/devices/use-devices";
 import { usePricing } from "@/features/admin/pricing/use-pricing";
+import { transactionsApi } from "@/features/admin/transactions/api";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { AppConfigRow } from "@/types/app-config";
@@ -72,6 +76,19 @@ function toDateValue(value: Date | undefined) {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function escapeHtml(value: string | number) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function escapeCsv(value: string | number) {
+  const escaped = String(value).replace(/"/g, '""');
+  return /[",\n]/.test(escaped) ? `"${escaped}"` : escaped;
 }
 
 function renderTransactionStatus(status: Transaction["status"]) {
@@ -403,6 +420,8 @@ export function TransactionsMonitoring() {
     to: toDate(toDateFilter),
   };
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
   const pageSize = TRANSACTION_PAGE_SIZE;
@@ -631,6 +650,85 @@ export function TransactionsMonitoring() {
           ? `${failedCount} transactions failed. ${failedMessage}`
           : failedMessage,
       );
+    }
+  }
+
+  async function getTransactionsForExport() {
+    const filters = {
+      page: 1,
+      pageSize: 50,
+      search: search.trim(),
+      status: statusFilter,
+      paymentMethod: paymentMethodFilter,
+      packageName: packageFilter === "all" ? "" : packageFilter,
+      date: "",
+      fromDate: fromDateFilter,
+      toDate: toDateFilter,
+      booth: boothFilter === "all" ? "" : boothFilter,
+    };
+    const firstPage = await transactionsApi.getTransactionsPage(filters);
+    if (firstPage.totalPages <= 1) return firstPage.items;
+    const pages = await Promise.all(
+      Array.from({ length: firstPage.totalPages - 1 }, (_, index) =>
+        transactionsApi.getTransactionsPage({ ...filters, page: index + 2 }),
+      ),
+    );
+    return [firstPage.items, ...pages.map((pageResult) => pageResult.items)].flat();
+  }
+
+  async function exportToExcel() {
+    setIsExporting(true);
+    try {
+      const transactions = await getTransactionsForExport();
+      const rows = transactions.map((transaction) => [
+        transaction.id,
+        formatDateTime(transaction.createdAtRaw),
+        transaction.device,
+        getTransactionPaymentMethod(transaction),
+        transaction.packageName,
+        transaction.amount,
+        transaction.printCount,
+        transaction.status,
+      ]);
+      const csv = [
+        ["ID", "Date & Time", "Booth", "Payment", "Package", "Amount", "Prints", "Status"],
+        ...rows,
+      ]
+        .map((row) => row.map(escapeCsv).join(","))
+        .join("\n");
+      const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csv], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `laporan_transaksi_${Date.now()}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Laporan transaksi (CSV) berhasil diekspor.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal mengekspor transaksi.");
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  async function exportToPdf() {
+    setIsExporting(true);
+    try {
+      const transactions = await getTransactionsForExport();
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) throw new Error("Izinkan pop-up untuk ekspor PDF.");
+      const rows = transactions
+        .map((transaction) => `<tr><td>${escapeHtml(transaction.id)}</td><td>${escapeHtml(formatDateTime(transaction.createdAtRaw))}</td><td>${escapeHtml(transaction.device)}</td><td>${escapeHtml(getTransactionPaymentMethod(transaction))}</td><td>${escapeHtml(transaction.packageName)}</td><td>${escapeHtml(formatCurrency(transaction.amount))}</td><td>${escapeHtml(transaction.status)}</td></tr>`)
+        .join("");
+      printWindow.document.write(`<!doctype html><html><head><title>Laporan Transaksi POSKART</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#18181b}h1{font-size:20px;margin:0 0 8px}p{color:#71717a;margin:0 0 20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #e4e4e7;padding:7px;text-align:left}th{background:#f4f4f5}</style></head><body><h1>Laporan Transaksi POSKART</h1><p>${escapeHtml(formatDateRangeLabel(fromDateFilter, toDateFilter))} · ${transactions.length} transaksi</p><table><thead><tr><th>ID</th><th>Date & Time</th><th>Booth</th><th>Payment</th><th>Package</th><th>Amount</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table><script>window.print();</script></body></html>`);
+      printWindow.document.close();
+      toast.success("Jendela PDF laporan transaksi dibuka.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal mengekspor transaksi.");
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -886,17 +984,63 @@ export function TransactionsMonitoring() {
               <span className="whitespace-nowrap">
                 {totalItems} transactions
               </span>
-              {!isReadOnly("transactions") ? (
-                <BulkActionMenu
-                  selectedCount={selectedCount}
-                  disabled={
-                    requestAction.isPending ||
-                    markTesting.isPending ||
-                    unmarkTesting.isPending
-                  }
-                  items={bulkActionItems}
-                />
-              ) : null}
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <div className="relative">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full"
+                    disabled={isExporting || totalItems === 0}
+                    onClick={() => setExportDropdownOpen((open) => !open)}
+                  >
+                    <FileDown className="size-4" />
+                    Ekspor
+                  </Button>
+                  {exportDropdownOpen ? (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        onClick={() => setExportDropdownOpen(false)}
+                      />
+                      <div className="absolute right-0 top-11 z-40 w-48 rounded-xl border border-zinc-200 bg-white p-1.5 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                          onClick={() => {
+                            setExportDropdownOpen(false);
+                            void exportToExcel();
+                          }}
+                        >
+                          <FileSpreadsheet className="size-4 text-emerald-600" />
+                          Ekspor Excel (.csv)
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                          onClick={() => {
+                            setExportDropdownOpen(false);
+                            void exportToPdf();
+                          }}
+                        >
+                          <FileText className="size-4 text-rose-600" />
+                          Ekspor PDF (.pdf)
+                        </button>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+                {!isReadOnly("transactions") ? (
+                  <BulkActionMenu
+                    selectedCount={selectedCount}
+                    disabled={
+                      requestAction.isPending ||
+                      markTesting.isPending ||
+                      unmarkTesting.isPending
+                    }
+                    items={bulkActionItems}
+                  />
+                ) : null}
+              </div>
             </div>
           </div>
         </CardHeader>

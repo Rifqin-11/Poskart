@@ -14,7 +14,6 @@ import {
   Menu,
   MonitorSmartphone,
   Palette,
-  PanelsTopLeft,
   ReceiptText,
   Settings,
   Store,
@@ -64,13 +63,6 @@ const navItems: AdminNavItem[] = [
     labelKey: "nav.queue",
     icon: ListOrdered,
     requiresSubscription: true,
-  },
-  {
-    href: "/pos",
-    labelKey: "nav.pos",
-    icon: PanelsTopLeft,
-    requiresSubscription: true,
-    organizationFeature: "posKasir",
   },
   {
     href: "/money",
