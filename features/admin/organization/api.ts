@@ -3,6 +3,7 @@ import { organizationService } from "@/server/admin/organization-service";
 export const organizationApi = {
   getMyOrganizationDetails: organizationService.getMyOrganizationDetails,
   updateMyOrganizationName: organizationService.updateMyOrganizationName,
+  deleteMyOrganization: organizationService.deleteMyOrganization,
   updateMyPaymentCollectionMode:
     organizationService.updateMyPaymentCollectionMode,
   getMyPaymentGatewaySettings:

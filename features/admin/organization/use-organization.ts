@@ -24,6 +24,17 @@ export function useUpdateTenantName() {
   });
 }
 
+export function useDeleteMyOrganization() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: organizationApi.deleteMyOrganization,
+    onSuccess: () => {
+      queryClient.clear();
+      window.location.assign("/onboarding");
+    },
+  });
+}
+
 export function useUpdatePaymentCollectionMode() {
   const queryClient = useQueryClient();
   return useMutation({

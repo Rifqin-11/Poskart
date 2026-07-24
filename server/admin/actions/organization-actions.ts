@@ -25,6 +25,7 @@ import {
   saveOrganizationDuitkuGateway,
   type SaveOrganizationDuitkuGatewayInput,
 } from "@/server/payments/organization-gateway";
+import { revalidatePath } from "next/cache";
 
 function normalizeSubscriptionExpiry(value?: string | null) {
   if (!value) return null;
@@ -199,6 +200,43 @@ export async function deleteOrganization(id: string): Promise<void> {
   const { supabase } = await getAdminContext();
   const { error } = await supabase.from("organizations").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete organization: ${error.message}`);
+}
+
+export async function deleteMyOrganization(confirmation: string) {
+  const { supabase } = await getAdminContext();
+  const membership = await getAdminMembership();
+
+  if (!membership || membership.role !== "owner") {
+    throw new Error("Hanya pemilik workspace yang dapat menghapus workspace.");
+  }
+
+  const { data: organization, error: organizationError } = await supabase
+    .from("organizations")
+    .select("id, name")
+    .eq("id", membership.organizationId)
+    .single();
+
+  if (organizationError || !organization) {
+    throw new Error("Workspace tidak ditemukan.");
+  }
+
+  const expectedConfirmation = `delete ${organization.name}`;
+  if (confirmation !== expectedConfirmation) {
+    throw new Error(`Ketikkan \"${expectedConfirmation}\" untuk mengonfirmasi.`);
+  }
+
+  const { error: deleteError } = await supabase
+    .from("organizations")
+    .delete()
+    .eq("id", organization.id);
+
+  if (deleteError) {
+    throw new Error(`Gagal menghapus workspace: ${deleteError.message}`);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/onboarding");
+  return true;
 }
 
 const getCachedMyOrganizationDetails = cache(async () => {

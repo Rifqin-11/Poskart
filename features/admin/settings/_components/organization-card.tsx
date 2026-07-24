@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  AlertTriangle,
   Building2,
   CreditCard,
   KeyRound,
@@ -34,6 +35,7 @@ import { SubscriptionDialog } from "@/features/billing/subscription/subscription
 import { AddMemberDialog } from "@/features/admin/organization/_components/add-member-dialog";
 import {
   useDeleteInvitation,
+  useDeleteMyOrganization,
   useInviteUser,
   useRemoveMember,
   useTenantDetails,
@@ -55,6 +57,7 @@ import { PayoutAccountForm } from "@/features/admin/payout/payout-account-form";
 import { Select } from "@/components/ui/select";
 import { getMyPayoutSummary } from "@/server/admin/actions/payout-actions";
 import type { PayoutAccount } from "@/types/payout";
+import { OrganizationDeleteDialog } from "./organization-delete-dialog";
 
 type OrganizationCardProps = {
   myEmail: string;
@@ -129,6 +132,7 @@ export function OrganizationCard({
   const updateName = useUpdateTenantName();
   const inviteUser = useInviteUser();
   const deleteInvitation = useDeleteInvitation();
+  const deleteMyOrganization = useDeleteMyOrganization();
   const removeMember = useRemoveMember();
   const leaveOrg = useLeaveOrganization();
   const transferOwnership = useTransferOwnership();
@@ -149,6 +153,7 @@ export function OrganizationCard({
   const [payoutAccount, setPayoutAccount] = useState<PayoutAccount | null>(
     null,
   );
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const loadPayoutAccount = useCallback(() => {
     getMyPayoutSummary()
@@ -679,24 +684,16 @@ export function OrganizationCard({
         </div>
       </SettingsCard>
 
-      <SettingsCard
-        icon={<LogOut className="size-4" />}
-        title="Leave Workspace"
-        description="Keluar dari organisasi/workspace ini."
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-zinc-500 leading-6">
-            Setelah keluar, Anda tidak akan lagi memiliki akses ke workspace ini. Anda akan dialihkan ke halaman onboarding untuk bergabung dengan workspace baru atau membuat workspace sendiri.
-          </p>
-          {isOwner && members.length === 1 ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-800">
-              Anda adalah satu-satunya pemilik. Anda tidak dapat meninggalkan workspace ini sebelum memindahkan kepemilikan ke anggota lain atau menghapus workspace.
-            </div>
-          ) : isOwner && members.length > 1 ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-800">
-              Anda adalah pemilik workspace ini. Harap transfer kepemilikan ke anggota lain terlebih dahulu sebelum meninggalkan workspace.
-            </div>
-          ) : (
+      {!isOwner ? (
+        <SettingsCard
+          icon={<LogOut className="size-4" />}
+          title="Leave Workspace"
+          description="Keluar dari organisasi/workspace ini."
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-zinc-500 leading-6">
+              Setelah keluar, Anda tidak akan lagi memiliki akses ke workspace ini. Anda akan dialihkan ke halaman onboarding untuk bergabung dengan workspace baru atau membuat workspace sendiri.
+            </p>
             <Button
               type="button"
               variant="destructive"
@@ -722,9 +719,37 @@ export function OrganizationCard({
               <LogOut className="size-4 mr-2" />
               {leaveOrg.isPending ? "Keluar..." : "Keluar dari Organisasi"}
             </Button>
-          )}
-        </div>
-      </SettingsCard>
+          </div>
+        </SettingsCard>
+      ) : null}
+
+      {isOwner && tenant ? (
+        <SettingsCard
+          icon={<AlertTriangle className="size-4" />}
+          title="Danger Zone"
+          description="Tindakan permanen untuk workspace ini."
+          className="border-red-200"
+        >
+          <div className="flex flex-col gap-4 rounded-3xl border border-red-200 bg-red-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="font-semibold text-red-950">Delete this workspace</div>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-red-800">
+                Hapus seluruh data workspace {tenant.name} secara permanen.
+                Aksi ini tidak dapat dibatalkan.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              className="rounded-2xl"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="size-4" />
+              Delete workspace
+            </Button>
+          </div>
+        </SettingsCard>
+      ) : null}
 
       <SubscriptionDialog
         open={subscriptionDialogOpen}
@@ -748,6 +773,25 @@ export function OrganizationCard({
           });
         }}
       />
+      {tenant ? (
+        <OrganizationDeleteDialog
+          open={deleteDialogOpen}
+          organizationName={tenant.name}
+          isDeleting={deleteMyOrganization.isPending}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={(confirmation) => {
+            deleteMyOrganization.mutate(confirmation, {
+              onError: (error) => {
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : "Gagal menghapus workspace.",
+                );
+              },
+            });
+          }}
+        />
+      ) : null}
     </div>
   );
 }
