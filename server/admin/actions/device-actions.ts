@@ -56,6 +56,9 @@ export async function createDevice(values: BoothInput): Promise<void> {
     pricing_profiles: pricingProfiles,
     session_countdown_seconds: values.sessionCountdownSeconds ?? null,
     payment_countdown_seconds: values.paymentCountdownSeconds ?? null,
+    voucher_enabled: values.voucherEnabled,
+    test_voucher_enabled:
+      values.voucherEnabled && values.testVoucherEnabled,
     printer_bottom_safe_zone_mm: clampPrinterTuningValue(
       values.printerBottomSafeZoneMm,
       0,
@@ -126,6 +129,31 @@ export async function updateDevice(
     dbPatch.session_countdown_seconds = patch.sessionCountdownSeconds ?? null;
   if (patch.paymentCountdownSeconds !== undefined)
     dbPatch.payment_countdown_seconds = patch.paymentCountdownSeconds ?? null;
+  if (patch.voucherEnabled !== undefined) {
+    dbPatch.voucher_enabled = patch.voucherEnabled;
+    if (!patch.voucherEnabled) dbPatch.test_voucher_enabled = false;
+  }
+  if (patch.testVoucherEnabled !== undefined) {
+    const voucherEnabled = patch.voucherEnabled;
+    if (voucherEnabled === false) {
+      dbPatch.test_voucher_enabled = false;
+    } else if (voucherEnabled === true) {
+      dbPatch.test_voucher_enabled = patch.testVoucherEnabled;
+    } else {
+      const { data: device, error: deviceError } = await supabase
+        .from("devices")
+        .select("voucher_enabled")
+        .eq("id", id)
+        .maybeSingle();
+      if (deviceError) {
+        throw new Error(
+          `Unable to validate voucher settings: ${deviceError.message}`,
+        );
+      }
+      dbPatch.test_voucher_enabled =
+        device?.voucher_enabled === true && patch.testVoucherEnabled;
+    }
+  }
   if (patch.printerBottomSafeZoneMm !== undefined) {
     dbPatch.printer_bottom_safe_zone_mm = clampPrinterTuningValue(
       patch.printerBottomSafeZoneMm,

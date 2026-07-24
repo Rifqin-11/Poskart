@@ -105,6 +105,54 @@ export function PricingManagement() {
       />
 
       <div className="space-y-5">
+        <Card className="border-slate-200 bg-white">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              Pilih jenis akses yang sesuai
+            </CardTitle>
+            <CardDescription>
+              Pricing dan event memiliki alur yang berbeda di kiosk. Gunakan
+              event hanya untuk sesi yang dibayarkan atau ditanggung oleh
+              penyelenggara.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-medium text-white">
+                  Berbayar
+                </span>
+                <p className="font-semibold text-slate-950">Pricing package</p>
+              </div>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Pengunjung memilih paket, lalu melanjutkan ke pembayaran.
+                Harga, promo, QR download, dan batas cetak dapat diatur untuk
+                setiap paket.
+              </p>
+              <p className="mt-3 text-xs font-medium text-slate-600">
+                Cocok untuk layanan photobooth reguler.
+              </p>
+            </div>
+            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="rounded-full bg-[#00357B] px-2.5 py-1 text-xs font-medium text-white">
+                  Gratis
+                </span>
+                <p className="font-semibold text-slate-950">Event access</p>
+              </div>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Pengunjung langsung memulai sesi tanpa memilih paket atau
+                melakukan pembayaran. Akses ini hanya berlaku pada device yang
+                dialokasikan untuk event tersebut.
+              </p>
+              <p className="mt-3 text-xs font-medium text-slate-600">
+                Cocok untuk acara yang ditanggung penyelenggara; nama dan masa
+                berlaku event dapat diatur.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         <PricingTableCard
           title="Pricing packages"
           description="Paid packages with payment, print, and media settings."

@@ -61,6 +61,8 @@ const EMPTY_BOOTH: BoothInput = {
   pricingProfiles: [],
   sessionCountdownSeconds: null,
   paymentCountdownSeconds: null,
+  voucherEnabled: false,
+  testVoucherEnabled: false,
   printerBottomSafeZoneMm: 0,
   printerBrightness: 0,
   printerContrast: 0,

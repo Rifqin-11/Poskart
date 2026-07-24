@@ -16,6 +16,10 @@ export type Device = {
   sessionCountdownSeconds?: number | null;
   /** Per-device override for the QRIS payment countdown (seconds). */
   paymentCountdownSeconds?: number | null;
+  /** Enables voucher redemption in the kiosk payment method sheet. */
+  voucherEnabled: boolean;
+  /** Enables the reserved TEST voucher for local-only test sessions. */
+  testVoucherEnabled: boolean;
   printerStatus:
     | "ready"
     | "disconnected"

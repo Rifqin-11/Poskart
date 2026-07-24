@@ -7,6 +7,7 @@ import {
   ImageIcon,
   Layers3,
   Printer,
+  TicketCheck,
   Timer,
   Trash2,
   Wrench,
@@ -371,6 +372,70 @@ export function BoothFormDialog({
                 )}
               </section>
             </div>
+
+            <section className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-600 shadow-sm ring-1 ring-zinc-200">
+                  <TicketCheck className="size-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900">
+                    Payment methods
+                  </h3>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">
+                    Control voucher payment availability for this device. Changes
+                    apply after the kiosk&apos;s next sync.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white px-3">
+                <div className="flex items-center justify-between gap-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900">
+                      Voucher
+                    </p>
+                    <p className="mt-0.5 text-xs leading-5 text-zinc-500">
+                      Show the voucher entry option alongside QRIS.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={form.voucherEnabled ?? false}
+                    disabled={readOnly}
+                    onCheckedChange={(voucherEnabled) =>
+                      setForm({
+                        ...form,
+                        voucherEnabled,
+                        testVoucherEnabled: voucherEnabled
+                          ? form.testVoucherEnabled
+                          : false,
+                      })
+                    }
+                    aria-label="Toggle voucher payment"
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900">
+                      Test voucher
+                    </p>
+                    <p className="mt-0.5 text-xs leading-5 text-zinc-500">
+                      Enable code <span className="font-mono font-medium">TEST</span>{" "}
+                      for local test sessions. It is excluded from transactions,
+                      dashboard, and payout.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={form.testVoucherEnabled ?? false}
+                    disabled={readOnly || !form.voucherEnabled}
+                    onCheckedChange={(testVoucherEnabled) =>
+                      setForm({ ...form, testVoucherEnabled })
+                    }
+                    aria-label="Toggle test voucher"
+                  />
+                </div>
+              </div>
+            </section>
           </TabsContent>
 
           {/* TAB 2: FRAME */}
