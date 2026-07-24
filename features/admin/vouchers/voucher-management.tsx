@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Copy, Loader2, Plus, Ticket, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -42,11 +42,19 @@ const initialForm: VoucherForm = {
   deviceIds: [],
 };
 
-export function VoucherManagement() {
+export function VoucherManagement({
+  initialOpen = false,
+  initialCampaignId,
+  initialCode,
+}: {
+  initialOpen?: boolean;
+  initialCampaignId?: string;
+  initialCode?: string;
+}) {
   const { data: devices = [], isLoading: devicesLoading } = useBooths();
   const { isReadOnly } = usePermission();
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const confirmDelete = useConfirmDialog();
   const [form, setForm] = useState<VoucherForm>(initialForm);
   const { data: campaigns = [], isLoading: campaignsLoading } = useQuery({
@@ -126,7 +134,7 @@ export function VoucherManagement() {
             <div className="rounded-2xl border border-dashed border-zinc-200 px-5 py-12 text-center text-sm text-zinc-500">Belum ada voucher campaign.</div>
           ) : (
             <div className="divide-y divide-zinc-100">
-              {campaigns.map((campaign) => <CampaignRow key={campaign.id} campaign={campaign} deleting={deleteCampaign.isPending} readOnly={isReadOnly("vouchers")} onDelete={() => confirmDelete.confirm({
+              {campaigns.map((campaign) => <CampaignRow key={campaign.id} campaign={campaign} deleting={deleteCampaign.isPending} readOnly={isReadOnly("vouchers")} highlighted={campaign.id === initialCampaignId} highlightedCode={campaign.id === initialCampaignId ? initialCode : undefined} onDelete={() => confirmDelete.confirm({
                 title: "Hapus voucher campaign?",
                 description: `Campaign “${campaign.name}”, seluruh kode voucher, dan allocation device akan dihapus. Voucher yang sudah tersimpan pada device offline baru hilang saat perangkat kembali sync.`,
                 confirmLabel: "Hapus campaign",
@@ -171,8 +179,16 @@ function Metric({ label, value }: { label: string; value: number }) {
   return <Card><CardContent className="p-5"><p className="text-sm text-zinc-500">{label}</p><p className="mt-2 text-2xl font-semibold tracking-tight">{value.toLocaleString("id-ID")}</p></CardContent></Card>;
 }
 
-function CampaignRow({ campaign, deleting, readOnly, onDelete }: { campaign: Awaited<ReturnType<typeof vouchersApi.getVoucherCampaigns>>[number]; deleting: boolean; readOnly: boolean; onDelete: () => void }) {
-  const [open, setOpen] = useState(false);
+function CampaignRow({ campaign, deleting, readOnly, highlighted, highlightedCode, onDelete }: { campaign: Awaited<ReturnType<typeof vouchersApi.getVoucherCampaigns>>[number]; deleting: boolean; readOnly: boolean; highlighted?: boolean; highlightedCode?: string; onDelete: () => void }) {
+  const [open, setOpen] = useState(Boolean(highlighted));
+  const rowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!highlighted) return;
+    const frame = window.requestAnimationFrame(() => {
+      rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [highlighted]);
   const copyVoucherCode = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
@@ -182,7 +198,7 @@ function CampaignRow({ campaign, deleting, readOnly, onDelete }: { campaign: Awa
     }
   };
 
-  return <Collapsible open={open} onOpenChange={setOpen} className="py-4">
+  return <Collapsible ref={rowRef} open={open} onOpenChange={setOpen} className={cn("py-4", highlighted && "rounded-2xl bg-blue-50/70 px-3 ring-1 ring-blue-200")}>
     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
         <div className="flex items-center gap-2"><p className="font-semibold text-zinc-900">{campaign.name}</p><Badge variant="secondary">{campaign.generationType}</Badge></div>
@@ -193,7 +209,7 @@ function CampaignRow({ campaign, deleting, readOnly, onDelete }: { campaign: Awa
     <CollapsibleContent className="pt-4">
       <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3">
         <p className="mb-3 text-xs font-medium text-zinc-500">Kode voucher dan device allocation</p>
-        <div className="flex flex-wrap gap-2">{campaign.codes.map((voucher, index) => { const used = !voucher.reusable && voucher.redemptionCount > 0; return <div key={`${voucher.code}-${voucher.deviceName}-${index}`} className={cn("flex items-center rounded-lg border py-1.5 pl-2.5 pr-1.5 text-xs", used ? "border-red-200 bg-red-50 text-red-700" : "border-zinc-200 bg-white")}><span className="font-mono font-semibold">{voucher.code}</span><button type="button" onClick={() => void copyVoucherCode(voucher.code)} aria-label={`Copy voucher code ${voucher.code}`} title="Copy voucher code" className={cn("ml-1.5 grid size-5 place-items-center rounded transition-colors", used ? "text-red-500 hover:bg-red-100" : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700")}><Copy className="size-3.5" /></button><span className={cn("ml-1", used ? "text-red-500" : "text-zinc-400")}>{used ? "Used" : voucher.reusable && voucher.redemptionCount > 0 ? `Used ${voucher.redemptionCount}×` : voucher.deviceName}</span>{!used && voucher.reusable ? <span className="ml-1.5 text-zinc-400">{voucher.deviceName}</span> : null}</div>; })}</div>
+        <div className="flex flex-wrap gap-2">{campaign.codes.map((voucher, index) => { const used = !voucher.reusable && voucher.redemptionCount > 0; const isHighlightedCode = highlightedCode?.toLocaleUpperCase() === voucher.code.toLocaleUpperCase(); return <div key={`${voucher.code}-${voucher.deviceName}-${index}`} className={cn("flex items-center rounded-lg border py-1.5 pl-2.5 pr-1.5 text-xs", used ? "border-red-200 bg-red-50 text-red-700" : "border-zinc-200 bg-white", isHighlightedCode && "ring-2 ring-blue-500 ring-offset-2")}><span className="font-mono font-semibold">{voucher.code}</span><button type="button" onClick={() => void copyVoucherCode(voucher.code)} aria-label={`Copy voucher code ${voucher.code}`} title="Copy voucher code" className={cn("ml-1.5 grid size-5 place-items-center rounded transition-colors", used ? "text-red-500 hover:bg-red-100" : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700")}><Copy className="size-3.5" /></button><span className={cn("ml-1", used ? "text-red-500" : "text-zinc-400")}>{used ? "Used" : voucher.reusable && voucher.redemptionCount > 0 ? `Used ${voucher.redemptionCount}×` : voucher.deviceName}</span>{!used && voucher.reusable ? <span className="ml-1.5 text-zinc-400">{voucher.deviceName}</span> : null}</div>; })}</div>
       </div>
     </CollapsibleContent>
   </Collapsible>;

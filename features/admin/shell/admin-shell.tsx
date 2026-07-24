@@ -401,8 +401,8 @@ export function AdminShell({
               >
                 <Menu />
               </Button>
-              <div className="hidden w-full max-w-md md:block">
-                <CommandSearch />
+              <div className="min-w-0 flex-1 md:max-w-md">
+                <CommandSearch isSuperAdmin={isSuperAdmin} />
               </div>
               <div className="ml-auto flex items-center gap-3">
                 <div className="hidden text-right md:block">

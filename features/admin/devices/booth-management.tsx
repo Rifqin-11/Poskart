@@ -73,9 +73,16 @@ type DeviceFormOptions = {
   pricingProducts: PricingProduct[];
 };
 
-export function BoothManagement() {
-  const { data = [], refetch } = useBooths();
-  const { data: subscriptionStatus } = useSubscriptionStatus();
+export function BoothManagement({
+  initialAction,
+  initialDeviceId,
+}: {
+  initialAction?: string;
+  initialDeviceId?: string;
+}) {
+  const { data = [], refetch, isLoading: devicesLoading } = useBooths();
+  const { data: subscriptionStatus, isLoading: subscriptionLoading } =
+    useSubscriptionStatus();
   const { data: layouts = [] } = useLayoutSchemas();
   const { data: templates = [] } = useTemplates();
   const { isReadOnly } = usePermission();
@@ -83,8 +90,10 @@ export function BoothManagement() {
   const createBooth = useCreateBooth();
   const updateBooth = useUpdateBooth();
   const deleteBooth = useDeleteBooth();
-  const [editing, setEditing] = useState<Device | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(
+    initialDeviceId ?? null,
+  );
+  const [creating, setCreating] = useState(initialAction === "create");
   const [failedFor, setFailedFor] = useState<Device | null>(null);
   const confirmDelete = useConfirmDialog();
   const deviceLimit = subscriptionStatus?.deviceLimit ?? 1;
@@ -93,6 +102,7 @@ export function BoothManagement() {
   const deviceUsagePercent =
     deviceLimit > 0 ? Math.min(100, (usedDevices / deviceLimit) * 100) : 0;
   const deviceLimitReached = remainingDevices <= 0;
+  const editing = data.find((item) => item.id === editingId) ?? null;
 
   const deviceFormOptions = useMemo<DeviceFormOptions>(
     () => ({
@@ -346,7 +356,7 @@ export function BoothManagement() {
                 >
                   <Printer className="size-4" /> Failed prints
                 </Button>
-                <Button size="sm" onClick={() => setEditing(device)}>
+                <Button size="sm" onClick={() => setEditingId(device.id)}>
                   <SlidersHorizontal className="size-4" />{" "}
                   {isReadOnly("devices") ? "View details" : "Configure"}
                 </Button>
@@ -373,7 +383,11 @@ export function BoothManagement() {
         ) : null}
       </div>
 
-      {creating ? (
+      {creating &&
+      !devicesLoading &&
+      !subscriptionLoading &&
+      !deviceLimitReached &&
+      !isReadOnly("devices") ? (
         <BoothFormDialog
           title="Add device"
           initial={EMPTY_BOOTH}
@@ -400,10 +414,10 @@ export function BoothManagement() {
           initial={editing}
           options={deviceFormOptions}
           submitting={updateBooth.isPending}
-          onClose={() => setEditing(null)}
+          onClose={() => setEditingId(null)}
           onDelete={() => {
             const target = editing;
-            setEditing(null);
+            setEditingId(null);
             handleDelete(target);
           }}
           onSubmit={(values) => {
@@ -421,7 +435,7 @@ export function BoothManagement() {
               {
                 onSuccess: () => {
                   toast.success("Device updated");
-                  setEditing(null);
+                  setEditingId(null);
                 },
                 onError: (err) =>
                   toast.error(

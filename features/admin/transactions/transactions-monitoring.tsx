@@ -1,6 +1,12 @@
 "use client";
 
-import { type ComponentType, type ReactNode, useEffect, useState } from "react";
+import {
+  type ComponentType,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Banknote,
   CalendarDays,
@@ -397,7 +403,13 @@ function TransactionSummaryMetric({
   );
 }
 
-export function TransactionsMonitoring() {
+export function TransactionsMonitoring({
+  initialSearch = "",
+  initialAction,
+}: {
+  initialSearch?: string;
+  initialAction?: string;
+}) {
   const { t } = useI18n();
   const { data: config } = useAppConfig();
   const requestAction = useRequestTransactionAction();
@@ -407,7 +419,7 @@ export function TransactionsMonitoring() {
   const { data: booths = [] } = useBooths();
   const { data: pricingPackages = [] } = usePricing();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
   const [packageFilter, setPackageFilter] = useState("all");
@@ -420,7 +432,10 @@ export function TransactionsMonitoring() {
     to: toDate(toDateFilter),
   };
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(
+    initialAction === "export",
+  );
+  const exportButtonRef = useRef<HTMLButtonElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
@@ -444,6 +459,17 @@ export function TransactionsMonitoring() {
   const packageOptions = pricingPackages.map((item) => item.name).filter(Boolean);
   const totalItems = transactionQuery.data?.totalItems ?? 0;
   const paymentMethodOptions = ["QRIS", "Cash", "Voucher", "Event"];
+
+  useEffect(() => {
+    if (initialAction !== "export") return;
+    const frame = window.requestAnimationFrame(() => {
+      exportButtonRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [initialAction]);
 
   function resetFilters() {
     setSearch("");
@@ -987,6 +1013,7 @@ export function TransactionsMonitoring() {
               <div className="flex items-center gap-2 self-end sm:self-auto">
                 <div className="relative">
                   <Button
+                    ref={exportButtonRef}
                     type="button"
                     variant="outline"
                     className="rounded-full"
