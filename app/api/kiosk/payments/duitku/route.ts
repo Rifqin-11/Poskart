@@ -1,6 +1,7 @@
 import {
   jsonError,
   jsonOk,
+  KioskApiError,
   type KioskRequestContext,
   requireKioskContext,
   requireOrganizationDevice,
@@ -286,7 +287,12 @@ export async function PATCH(request: Request) {
 
     // Keep the update conditional so a concurrent Duitku callback cannot be
     // overwritten after it has already finalized the payment.
-    const { data, error } = await context.client
+    // Authorization has already been verified through the kiosk session and
+    // tenant-scoped device lookup above. Use the server client for this state
+    // transition so an RLS policy cannot leave a valid cancellation stuck in
+    // pending with a 500 response.
+    const adminClient = createSupabaseAdminClient();
+    const { data, error } = await adminClient
       .from("transactions")
       .update({
         status: "cancelled",
@@ -303,7 +309,16 @@ export async function PATCH(request: Request) {
     if (error) throw error;
     if (data) return jsonOk(formatStatus(data as TransactionRow));
 
-    const latest = await loadTransaction(context, sessionId);
+    const { data: latest, error: latestError } = await adminClient
+      .from("transactions")
+      .select(
+        "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response",
+      )
+      .eq("organization_id", context.organizationId)
+      .eq("id", transaction.id)
+      .maybeSingle();
+
+    if (latestError) throw latestError;
     if (!latest) {
       return jsonOk(
         {
@@ -313,9 +328,18 @@ export async function PATCH(request: Request) {
         { status: 404 },
       );
     }
-    return jsonOk(formatStatus(latest));
+    return jsonOk(formatStatus(latest as TransactionRow));
   } catch (error) {
-    return jsonError(error);
+    console.error("Unable to cancel Duitku QRIS payment", error);
+    return jsonError(
+      error instanceof KioskApiError
+        ? error
+        : new KioskApiError(
+            "Unable to cancel the QRIS payment. Please try again.",
+            500,
+            "KIOSK_DUITKU_CANCEL_FAILED",
+          ),
+    );
   }
 }
 
