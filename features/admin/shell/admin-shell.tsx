@@ -401,7 +401,7 @@ export function AdminShell({
               >
                 <Menu />
               </Button>
-              <div className="min-w-0 flex-1 md:max-w-md">
+              <div className="hidden min-w-0 flex-1 md:block md:max-w-md">
                 <CommandSearch isSuperAdmin={isSuperAdmin} />
               </div>
               <div className="ml-auto flex items-center gap-3">
@@ -412,6 +412,9 @@ export function AdminShell({
                   <div className="max-w-48 truncate text-sm font-medium">
                     {userEmail ?? "POSKART Photobooth"}
                   </div>
+                </div>
+                <div className="md:hidden">
+                  <CommandSearch isSuperAdmin={isSuperAdmin} variant="icon" />
                 </div>
                 <div className="relative">
                   <button

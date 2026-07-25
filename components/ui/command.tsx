@@ -225,8 +225,10 @@ function toSearchItem(result: GlobalSearchResult): SearchItem {
 
 export function CommandSearch({
   isSuperAdmin = false,
+  variant = "default",
 }: {
   isSuperAdmin?: boolean;
+  variant?: "default" | "icon" | "responsive";
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -487,25 +489,63 @@ export function CommandSearch({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={openSearch}
-        className="flex h-9 w-full min-w-0 items-center gap-2 rounded-xl border border-white/70 bg-white/25 px-3 text-left text-sm text-zinc-400 shadow-sm shadow-zinc-950/[0.03] backdrop-blur-xl transition-colors hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
-        aria-label="Search POSKART"
-      >
-        <Search className="size-4 shrink-0" />
-        <span className="hidden min-w-0 flex-1 truncate sm:block">
-          Search POSKART...
-        </span>
-        <span className="ml-auto hidden shrink-0 items-center gap-1 rounded-lg border border-zinc-200/80 bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 md:flex">
-          <span>⌘</span>K
-        </span>
-      </button>
+      {variant === "icon" ? (
+        <button
+          type="button"
+          onClick={openSearch}
+          className="relative grid size-10 place-items-center rounded-2xl border border-white/70 bg-white/55 text-zinc-700 shadow-sm backdrop-blur-xl transition-colors hover:bg-white/75 hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+          aria-label="Search POSKART"
+          title="Search POSKART (⌘K)"
+        >
+          <Search className="size-4" />
+        </button>
+      ) : variant === "responsive" ? (
+        <>
+          <button
+            type="button"
+            onClick={openSearch}
+            className="flex md:hidden relative grid size-10 place-items-center rounded-2xl border border-white/70 bg-white/55 text-zinc-700 shadow-sm backdrop-blur-xl transition-colors hover:bg-white/75 hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+            aria-label="Search POSKART"
+            title="Search POSKART (⌘K)"
+          >
+            <Search className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={openSearch}
+            className="hidden md:flex h-9 w-full min-w-0 items-center gap-2 rounded-xl border border-white/70 bg-white/25 px-3 text-left text-sm text-zinc-400 shadow-sm shadow-zinc-950/[0.03] backdrop-blur-xl transition-colors hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+            aria-label="Search POSKART"
+          >
+            <Search className="size-4 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">
+              Search POSKART...
+            </span>
+            <span className="ml-auto hidden shrink-0 items-center gap-1 rounded-lg border border-zinc-200/80 bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 md:flex">
+              <span>⌘</span>K
+            </span>
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={openSearch}
+          className="flex h-9 w-full min-w-0 items-center gap-2 rounded-xl border border-white/70 bg-white/25 px-3 text-left text-sm text-zinc-400 shadow-sm shadow-zinc-950/[0.03] backdrop-blur-xl transition-colors hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+          aria-label="Search POSKART"
+        >
+          <Search className="size-4 shrink-0" />
+          <span className="hidden min-w-0 flex-1 truncate sm:block">
+            Search POSKART...
+          </span>
+          <span className="ml-auto hidden shrink-0 items-center gap-1 rounded-lg border border-zinc-200/80 bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 md:flex">
+            <span>⌘</span>K
+          </span>
+        </button>
+      )}
 
       {open
         ? createPortal(
         <div
-          className="fixed inset-0 z-[200] grid place-items-center p-6"
+          className="fixed inset-0 z-[200] flex items-start justify-center p-4 pt-16 sm:pt-20 bg-zinc-950/40 backdrop-blur-sm"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeSearch();
           }}
@@ -513,8 +553,8 @@ export function CommandSearch({
           <div
             role="dialog"
             aria-label="Search POSKART"
-            className="z-[101] flex w-[min(42rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[1.5rem] border border-zinc-200 bg-white shadow-2xl shadow-zinc-950/15"
-            style={{ height: "min(38rem, calc(100dvh - 8rem))" }}
+            className="z-[101] flex w-full max-w-2xl flex-col overflow-hidden rounded-[1.5rem] border border-zinc-200 bg-white shadow-2xl shadow-zinc-950/20"
+            style={{ height: "min(38rem, calc(100dvh - 6rem))" }}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="flex shrink-0 items-center gap-3 border-b border-zinc-100 px-4 py-3">
