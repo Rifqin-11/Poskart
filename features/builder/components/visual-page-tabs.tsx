@@ -1,5 +1,6 @@
 "use client";
 
+import { Eye, EyeOff } from "lucide-react";
 import { pageLabels } from "@/features/builder/constants";
 import { cn } from "@/lib/utils";
 import type { BuilderCanvas, BuilderPage } from "@/types/builder";
@@ -16,31 +17,44 @@ export function VisualPageTabs({
   onUpdateCanvas: (patch: Partial<BuilderCanvas>) => void;
 }) {
   return (
-    <div className="flex items-center gap-0.5 rounded-lg bg-zinc-100 p-0.5">
+    <div className="flex items-center gap-1 rounded-lg bg-zinc-100 p-0.5">
       {pageLabels.map((page) => {
         const isEnabled =
           !canvas.enabledPages || canvas.enabledPages.includes(page);
+        const isActive = activePage === page;
+
         return (
-          <div key={page} className="group relative">
+          <div
+            key={page}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium capitalize transition-all",
+              isActive
+                ? "bg-white text-zinc-950 shadow-sm"
+                : "text-zinc-500 hover:text-zinc-800",
+              !isEnabled && "opacity-75",
+            )}
+          >
             <button
               type="button"
               onClick={() => onSetActivePage(page)}
-              className={cn(
-                "rounded-md px-3 py-1 text-[11px] font-medium capitalize transition-colors",
-                activePage === page
-                  ? "bg-white text-zinc-900 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-700",
-                !isEnabled && "opacity-40",
-              )}
+              className="min-w-0 font-medium tracking-tight outline-none"
             >
-              {page}
-              {!isEnabled && (
-                <span className="ml-1 text-[9px] text-zinc-400">(off)</span>
-              )}
+              <span
+                className={cn(
+                  !isEnabled && "line-through text-zinc-400 decoration-zinc-400/60",
+                )}
+              >
+                {page}
+              </span>
             </button>
+
             <button
               type="button"
-              title={isEnabled ? "Disable page on tablet" : "Enable page on tablet"}
+              title={
+                isEnabled
+                  ? `Sembunyikan halaman (${page}) dari alur kiosk`
+                  : `Tampilkan halaman (${page}) di alur kiosk`
+              }
               onClick={(event) => {
                 event.stopPropagation();
                 const allPages = pageLabels;
@@ -55,9 +69,18 @@ export function VisualPageTabs({
                       : nextPages,
                 });
               }}
-              className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border border-zinc-300 bg-white text-[8px] text-zinc-500 shadow-sm hover:border-zinc-500 hover:text-zinc-900 group-hover:flex group-focus-within:flex [@media(pointer:coarse)]:flex"
+              className={cn(
+                "grid size-4 place-items-center rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400",
+                isEnabled
+                  ? "text-zinc-400 hover:bg-zinc-200/60 hover:text-zinc-800"
+                  : "bg-amber-100/80 text-amber-700 hover:bg-amber-200 hover:text-amber-800",
+              )}
             >
-              {isEnabled ? "●" : "○"}
+              {isEnabled ? (
+                <Eye className="size-3" />
+              ) : (
+                <EyeOff className="size-3" />
+              )}
             </button>
           </div>
         );

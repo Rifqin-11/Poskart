@@ -545,7 +545,7 @@ export function CommandSearch({
       {open
         ? createPortal(
         <div
-          className="fixed inset-0 z-[200] flex items-start justify-center p-4 pt-16 sm:pt-20 bg-zinc-950/40 backdrop-blur-sm"
+          className="fixed inset-0 z-[200] flex items-start justify-center p-4 pt-16 sm:pt-20 bg-zinc-950/40"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeSearch();
           }}
