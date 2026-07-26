@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   const { data: transaction, error: transactionLookupError } = await supabase
     .from("transactions")
     .select(
-      "id,organization_id,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,booth,package_name,paid_at,created_at,gateway_response",
+      "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,booth,package_name,paid_at,created_at,gateway_response",
     )
     .eq("merchant_order_id", payload.merchantOrderId)
     .maybeSingle();
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     verifiedStatus.statusCode,
   );
   const now = new Date().toISOString();
-  const { error: transactionError } = await supabase
+  let transactionUpdate = supabase
     .from("transactions")
     .update({
       status: verifiedMappedStatus,
@@ -138,6 +138,15 @@ export async function POST(request: NextRequest) {
       updated_at: now,
     })
     .eq("merchant_order_id", payload.merchantOrderId);
+
+  // A local kiosk cancellation must not be reverted merely because Duitku
+  // still reports the QR as pending or failed. A real settled payment remains
+  // authoritative, so it is deliberately allowed to move cancelled -> paid.
+  if (verifiedMappedStatus !== "paid") {
+    transactionUpdate = transactionUpdate.eq("status", "pending");
+  }
+
+  const { error: transactionError } = await transactionUpdate;
 
   if (transactionError) {
     return NextResponse.json(

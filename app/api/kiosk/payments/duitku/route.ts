@@ -374,6 +374,10 @@ async function refreshTransactionStatus(
   context: KioskRequestContext,
   transaction: TransactionRow,
 ) {
+  // A kiosk cancellation is a terminal local state. Duitku can keep the QR
+  // marked pending until it expires, so never let a later status poll turn a
+  // cancelled transaction back into pending.
+  if (transaction.status === "cancelled") return formatStatus(transaction);
   if (!transaction.merchant_order_id) return formatStatus(transaction);
 
   const adminClient = createSupabaseAdminClient();
@@ -404,12 +408,19 @@ async function refreshTransactionStatus(
     })
     .eq("id", transaction.id)
     .eq("organization_id", context.organizationId)
+    // The transaction can be cancelled while this gateway request is in
+    // flight. Only the original pending record may be refreshed.
+    .eq("status", "pending")
     .select(
       "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response",
     )
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
+  if (!data) {
+    const latest = await loadTransaction(context, transaction.id);
+    return formatStatus(latest ?? transaction);
+  }
   if (mappedStatus === "paid") {
     await recordDuitkuPaymentLedgerEntry(adminClient, {
       transaction: data as TransactionRow,
