@@ -45,6 +45,16 @@ export function useUpdatePaymentCollectionMode() {
   });
 }
 
+export function useUpdateQrisPaymentMethod() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: organizationApi.updateMyQrisPaymentMethod,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.organizationDetails });
+    },
+  });
+}
+
 export function usePaymentGatewaySettings(enabled = true) {
   return useQuery<
     Awaited<ReturnType<typeof organizationApi.getMyPaymentGatewaySettings>>,

@@ -12,6 +12,7 @@ type SubscriptionGatewayMode = "duitku" | "midtrans" | "both";
 
 type SettingsForm = {
   payment_mode: "sharing" | "private";
+  qris_payment_method: "SQ" | "SP";
   qris_provider_merchant_id: string;
   qris_webhook_secret: string;
   subscription_payment_gateway: SubscriptionGatewayMode;
@@ -190,25 +191,33 @@ export function PaymentSettingsCard<T extends SettingsForm>({
                 ) : null}
               </SettingField>
 
-              <SettingField label="QRIS payment method">
-                <Select
-                  value={privateGatewayDraft.paymentMethod}
-                  onChange={(event) =>
-                    setPrivateGatewayDraft((draft) => ({
-                      ...draft,
-                      paymentMethod: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="SQ">Nusapay (SQ)</option>
-                  <option value="SP">Shopee Pay (SP)</option>
-                </Select>
-                <div className="mt-2 text-xs text-emerald-800/75">
-                  Pilih metode QRIS yang aktif di akun Duitku organisasi.
-                </div>
-              </SettingField>
             </div>
           )}
+
+          <SettingField
+            label="QRIS untuk aplikasi Flutter"
+            className="md:col-span-2"
+          >
+            <Select
+              value={form.qris_payment_method}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  qris_payment_method:
+                    event.target.value === "SP" ? "SP" : "SQ",
+                }))
+              }
+            >
+              <option value="SQ">NusaPay QRIS</option>
+              <option value="SP">ShopeePay QRIS</option>
+            </Select>
+            <div className="mt-2 text-xs leading-5 text-zinc-500">
+              Berlaku untuk QRIS baru dari booth Flutter. Jika satu kanal
+              sedang gangguan, pilih kanal lain lalu simpan; perangkat akan
+              memakai pilihan baru pada pembayaran berikutnya. QR yang sudah
+              dibuat tetap memakai kanal sebelumnya.
+            </div>
+          </SettingField>
 
           <SettingField
             label="Subscription payment gateway"

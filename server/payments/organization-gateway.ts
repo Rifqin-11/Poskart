@@ -133,9 +133,24 @@ export async function resolveDuitkuRuntimeConfigForOrganization(
     collectionMode: string | null | undefined;
   },
 ): Promise<DuitkuRuntimeConfig | null> {
-  if (input.collectionMode !== "custom") return getDuitkuConfig();
   if (!input.organizationId) {
-    throw new Error("Organization ID tidak ditemukan untuk Payment Private.");
+    if (input.collectionMode === "custom") {
+      throw new Error(
+        "Organization ID tidak ditemukan untuk Payment Private.",
+      );
+    }
+    // Legacy platform transactions may not have an organization_id. Their
+    // callback/status checks must keep using the platform default.
+    return getDuitkuConfig();
+  }
+
+  const paymentMethod = await getOrganizationQrisPaymentMethod(
+    client,
+    input.organizationId,
+  );
+  if (input.collectionMode !== "custom") {
+    const platformConfig = getDuitkuConfig();
+    return platformConfig ? { ...platformConfig, paymentMethod } : null;
   }
 
   const row = await getOrganizationDuitkuGatewayRow(
@@ -153,7 +168,7 @@ export async function resolveDuitkuRuntimeConfigForOrganization(
     merchantCode: row.merchant_code,
     apiKey,
     sandbox: row.sandbox,
-    paymentMethod: row.payment_method,
+    paymentMethod,
   });
 
   if (!config) {
@@ -161,6 +176,25 @@ export async function resolveDuitkuRuntimeConfigForOrganization(
   }
 
   return config;
+}
+
+async function getOrganizationQrisPaymentMethod(
+  client: SupabaseClient,
+  organizationId: string,
+) {
+  const { data, error } = await client
+    .from("organizations")
+    .select("qris_payment_method")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  // Keep existing deployments usable until this migration is applied.
+  if (error) {
+    if (error.code === "42703") return "SQ";
+    throw new Error(`Gagal memuat metode QRIS organisasi: ${error.message}`);
+  }
+
+  return normalizePaymentMethod(data?.qris_payment_method);
 }
 
 async function getOrganizationDuitkuGatewayRow(

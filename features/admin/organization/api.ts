@@ -6,6 +6,7 @@ export const organizationApi = {
   deleteMyOrganization: organizationService.deleteMyOrganization,
   updateMyPaymentCollectionMode:
     organizationService.updateMyPaymentCollectionMode,
+  updateMyQrisPaymentMethod: organizationService.updateMyQrisPaymentMethod,
   getMyPaymentGatewaySettings:
     organizationService.getMyPaymentGatewaySettings,
   saveMyPaymentGatewaySettings:

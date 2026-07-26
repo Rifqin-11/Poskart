@@ -255,6 +255,7 @@ const getCachedMyOrganizationDetails = cache(async () => {
       join_code,
       features,
       payment_collection_mode,
+      qris_payment_method,
       created_at,
       updated_at,
       subscriptions (
@@ -289,6 +290,8 @@ const getCachedMyOrganizationDetails = cache(async () => {
     features: normalizeOrganizationFeatures(organization.features),
     payment_collection_mode:
       organization.payment_collection_mode ?? "platform",
+    qris_payment_method:
+      organization.qris_payment_method === "SP" ? "SP" : "SQ",
     subscription_status: sub?.status ?? "free",
     subscription_expires_at: sub?.current_period_end ?? null,
     device_limit: sub?.device_limit ?? planMeta?.included_devices ?? 1,
@@ -352,6 +355,36 @@ export async function updateMyPaymentCollectionMode(
     })
     .eq("id", profile.organization_id)
     .select("id,payment_collection_mode")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateMyQrisPaymentMethod(method: "SQ" | "SP") {
+  const { supabase, user } = await getAdminContext();
+
+  const { data: profile } = await supabase
+    .from("organization_members")
+    .select("organization_id, role")
+    .eq("profile_id", user.id)
+    .limit(1)
+    .single();
+  if (!profile?.organization_id) throw new Error("No organization associated");
+
+  if (profile.role !== "owner" && profile.role !== "admin") {
+    throw new Error(
+      "Hanya pemilik atau admin yang dapat mengubah metode QRIS organisasi.",
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("organizations")
+    .update({
+      qris_payment_method: method,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", profile.organization_id)
+    .select("id,qris_payment_method")
     .single();
   if (error) throw error;
   return data;

@@ -17,6 +17,7 @@ import {
   useTenantDetails,
   useTenantMembers,
   useUpdatePaymentCollectionMode,
+  useUpdateQrisPaymentMethod,
 } from "@/features/admin/organization/use-organization";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -56,6 +57,7 @@ type SettingsForm = {
   default_template_id: string;
   // Payment
   payment_mode: "sharing" | "private";
+  qris_payment_method: "SQ" | "SP";
   qris_provider_merchant_id: string;
   qris_webhook_secret: string;
   qris_auto_retry: boolean;
@@ -89,6 +91,7 @@ const DEFAULT_SETTINGS_FORM: SettingsForm = {
   auto_return_duration_seconds: 8,
   default_template_id: "",
   payment_mode: "sharing",
+  qris_payment_method: "SQ",
   qris_provider_merchant_id: "",
   qris_webhook_secret: "",
   qris_auto_retry: true,
@@ -159,6 +162,7 @@ export function SettingsPanel({
     activeTab === "payment",
   );
   const updatePaymentMode = useUpdatePaymentCollectionMode();
+  const updateQrisPaymentMethod = useUpdateQrisPaymentMethod();
   const savePrivateGateway = useSavePaymentGatewaySettings();
   const tabsListRef = useRef<HTMLDivElement>(null);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -183,6 +187,8 @@ export function SettingsPanel({
         qris_auto_retry: config.qris_auto_retry ?? true,
         payment_mode:
           tenant?.payment_collection_mode === "custom" ? "private" : "sharing",
+        qris_payment_method:
+          tenant?.qris_payment_method === "SP" ? "SP" : "SQ",
         subscription_payment_gateway:
           config.subscription_payment_gateway ?? "duitku",
         gateway_fee_type: config.gateway_fee_type ?? "percentage",
@@ -205,7 +211,7 @@ export function SettingsPanel({
     return () => {
       cancelled = true;
     };
-  }, [config, tenant?.payment_collection_mode]);
+  }, [config, tenant?.payment_collection_mode, tenant?.qris_payment_method]);
 
   useEffect(() => {
     if (!privateGateway) return;
@@ -286,12 +292,15 @@ export function SettingsPanel({
             merchantCode: privateGatewayDraft.merchantCode,
             apiKey: privateGatewayDraft.apiKey,
             sandbox: false,
-            paymentMethod: privateGatewayDraft.paymentMethod,
+            paymentMethod: form.qris_payment_method,
           }),
         );
       }
 
       mutations.push(updatePaymentMode.mutateAsync(paymentMode));
+      mutations.push(
+        updateQrisPaymentMethod.mutateAsync(form.qris_payment_method),
+      );
     }
 
     try {
@@ -359,6 +368,7 @@ export function SettingsPanel({
   const isSavingSettings =
     saveConfig.isPending ||
     updatePaymentMode.isPending ||
+    updateQrisPaymentMethod.isPending ||
     savePrivateGateway.isPending;
   const visibleActiveTab: SettingsTab = organizationOnly
     ? "organization"

@@ -255,7 +255,9 @@ export async function createDuitkuDirectPayment(
 
   const paymentAmount = Math.max(0, Math.round(input.amount));
   const paymentMethod =
-    input.paymentMethod?.trim() || getDuitkuQrisPaymentMethod();
+    input.paymentMethod?.trim() ||
+    config.paymentMethod?.trim() ||
+    getDuitkuQrisPaymentMethod();
   const expiryPeriod = Math.min(
     60,
     Math.max(1, Math.round(input.expiryPeriodMinutes ?? 10)),
