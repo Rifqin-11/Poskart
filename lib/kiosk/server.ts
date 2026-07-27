@@ -17,6 +17,7 @@ import {
   normalizeAssetUrl,
 } from "@/lib/assets/asset-url";
 import { getPublicGalleryBaseUrl } from "@/lib/gallery/urls";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { LayoutSchema } from "@/types/builder";
 
 type OrganizationMembershipRow = {
@@ -291,27 +292,31 @@ export async function listOrganizationDevices(context: KioskRequestContext) {
  * This allows the same physical device to map to the same DB row even after
  * the app is reinstalled (Android ID survives reinstall with the same signing key).
  */
-export async function upsertDeviceByHardwareId(
+/**
+ * Resolves a previously paired physical device. Device creation deliberately
+ * does not happen here: a new hardware ID must complete the web pairing flow.
+ */
+export async function requirePairedDeviceByHardwareId(
   context: KioskRequestContext,
   hardwareId: string,
-  userEmail: string,
 ): Promise<KioskDeviceRow> {
   const normalizedHwId = hardwareId.trim();
   if (!normalizedHwId) {
     throw new KioskApiError(
-      "Hardware ID is required for device registration.",
+      "Hardware ID is required for device pairing.",
       400,
       "KIOSK_HARDWARE_ID_REQUIRED",
     );
   }
 
-  // 1. Check if device already exists for this org + hardware_id
-  const { data: existing, error: lookupError } = await context.client
+  // Service-role lookup is intentional here. RLS normally hides devices in
+  // other organizations, but we must reject a physical kiosk that has already
+  // been paired elsewhere instead of silently creating/moving it.
+  const { data: existing, error: lookupError } = await createSupabaseAdminClient()
     .from("devices")
     .select(
       "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
-    .eq("organization_id", context.organizationId)
     .eq("hardware_id", normalizedHwId)
     .maybeSingle();
 
@@ -323,77 +328,66 @@ export async function upsertDeviceByHardwareId(
     );
   }
 
-  if (existing) {
-    return existing as KioskDeviceRow;
-  }
-
-  // 2. No existing device — register a new one
-  const newId = `BTH-${Date.now()}`;
-  const deviceName = `Booth (${userEmail})`;
-  const now = new Date().toISOString();
-
-  const { error: insertError } = await context.client.from("devices").insert({
-    id: newId,
-    organization_id: context.organizationId,
-    hardware_id: normalizedHwId,
-    name: deviceName,
-    location: "",
-    status: "online",
-    battery: 0,
-    app_version: "",
-    last_sync: now,
-    theme: "",
-    template: "",
-    pricing_profile: "",
-    frame_templates: [],
-    pricing_profiles: [],
-    updated_at: now,
-  });
-
-  if (insertError) {
+  if (!existing) {
     throw new KioskApiError(
-      `Unable to register device: ${insertError.message}`,
-      500,
-      "KIOSK_DEVICE_REGISTER_FAILED",
+      "Pair this new device from the POSKART web dashboard.",
+      428,
+      "KIOSK_DEVICE_PAIRING_REQUIRED",
     );
   }
 
-  // Return the freshly inserted row
-  const { data: fresh, error: refetchError } = await context.client
-    .from("devices")
-    .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
-    )
-    .eq("id", newId)
+  if (existing.organization_id !== context.organizationId) {
+    throw new KioskApiError(
+      "This physical device is already paired with another organization.",
+      409,
+      "KIOSK_DEVICE_REGISTERED_TO_OTHER_ORGANIZATION",
+    );
+  }
+
+  return existing as KioskDeviceRow;
+}
+
+export async function buildKioskPairingSession(context: KioskRequestContext) {
+  const { data: organization, error } = await context.client
+    .from("organizations")
+    .select("id,name,status,join_code,payment_collection_mode")
+    .eq("id", context.organizationId)
     .single();
 
-  if (refetchError || !fresh) {
+  if (error || !organization) {
     throw new KioskApiError(
-      "Device registered but could not be retrieved.",
+      `Unable to load organization: ${error?.message ?? "not found"}`,
       500,
-      "KIOSK_DEVICE_REFETCH_FAILED",
+      "KIOSK_ORGANIZATION_LOOKUP_FAILED",
     );
   }
 
-  return fresh as KioskDeviceRow;
+  return {
+    pairingRequired: true,
+    registeredDeviceId: null,
+    user: {
+      id: context.user.id,
+      email: context.user.email ?? "",
+    },
+    organization: {
+      ...organization,
+      role: context.organizationRole,
+    },
+  };
 }
 
 export async function buildKioskBootstrap(
   context: KioskRequestContext,
   deviceId?: string | null,
   hardwareId?: string | null,
-  userEmail?: string,
 ) {
-  // Resolve the device: prefer explicit deviceId, then upsert by hardwareId
+  // Resolve the device: prefer the stored ID, otherwise accept only a device
+  // that has already completed dashboard pairing.
   let device: KioskDeviceRow | null = null;
   if (deviceId) {
     device = await requireOrganizationDevice(context, deviceId);
   } else if (hardwareId) {
-    device = await upsertDeviceByHardwareId(
-      context,
-      hardwareId,
-      userEmail ?? context.user.email ?? "unknown",
-    );
+    device = await requirePairedDeviceByHardwareId(context, hardwareId);
   }
 
   const [

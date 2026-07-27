@@ -1,14 +1,17 @@
 import {
+  buildKioskPairingSession,
   buildKioskBootstrap,
   createKioskAuthClient,
   jsonError,
   jsonOk,
+  KioskApiError,
   resolveKioskContext,
 } from "@/lib/kiosk/server";
 
 type RefreshBody = {
   refreshToken?: string;
   deviceId?: string;
+  hardwareId?: string;
 };
 
 export async function POST(request: Request) {
@@ -42,7 +45,25 @@ export async function POST(request: Request) {
     }
 
     const context = await resolveKioskContext(data.session.access_token);
-    const bootstrap = await buildKioskBootstrap(context, body.deviceId);
+    let kioskPayload: Awaited<ReturnType<typeof buildKioskBootstrap>> | Awaited<
+      ReturnType<typeof buildKioskPairingSession>
+    >;
+    try {
+      kioskPayload = await buildKioskBootstrap(
+        context,
+        body.deviceId,
+        body.hardwareId,
+      );
+    } catch (error) {
+      if (
+        error instanceof KioskApiError &&
+        error.code === "KIOSK_DEVICE_PAIRING_REQUIRED"
+      ) {
+        kioskPayload = await buildKioskPairingSession(context);
+      } else {
+        throw error;
+      }
+    }
 
     return jsonOk({
       accessToken: data.session.access_token,
@@ -50,7 +71,7 @@ export async function POST(request: Request) {
       expiresAt: data.session.expires_at
         ? new Date(data.session.expires_at * 1000).toISOString()
         : null,
-      ...bootstrap,
+      ...kioskPayload,
     });
   } catch (error) {
     return jsonError(error);

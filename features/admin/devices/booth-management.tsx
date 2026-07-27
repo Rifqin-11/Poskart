@@ -14,6 +14,8 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -26,9 +28,10 @@ import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import {
   useBooths,
-  useCreateBooth,
+  useCreatePairedBooth,
   useDeleteBooth,
   useUpdateBooth,
+  useValidateDevicePairing,
 } from "@/features/admin/devices/use-devices";
 import { useLayoutSchemas } from "@/features/admin/layout/use-layout";
 import { usePricing } from "@/features/admin/pricing/use-pricing";
@@ -89,13 +92,19 @@ export function BoothManagement({
   const { data: templates = [] } = useTemplates();
   const { isReadOnly } = usePermission();
   const { data: pricingProducts = [] } = usePricing();
-  const createBooth = useCreateBooth();
+  const createPairedBooth = useCreatePairedBooth();
   const updateBooth = useUpdateBooth();
   const deleteBooth = useDeleteBooth();
+  const validatePairing = useValidateDevicePairing();
   const [editingId, setEditingId] = useState<string | null>(
     initialDeviceId ?? null,
   );
-  const [creating, setCreating] = useState(initialAction === "create");
+  const [creating, setCreating] = useState(false);
+  const [pairingDialogOpen, setPairingDialogOpen] = useState(
+    initialAction === "create",
+  );
+  const [pairingCode, setPairingCode] = useState("");
+  const [pairingId, setPairingId] = useState<string | null>(null);
   const [failedFor, setFailedFor] = useState<Device | null>(null);
   const confirmDelete = useConfirmDialog();
   const deviceLimit = subscriptionStatus?.deviceLimit ?? 1;
@@ -136,6 +145,24 @@ export function BoothManagement({
     });
   };
 
+  const openPairing = () => {
+    setPairingCode("");
+    setPairingId(null);
+    setPairingDialogOpen(true);
+  };
+
+  const confirmPairingCode = () => {
+    validatePairing.mutate(pairingCode, {
+      onSuccess: ({ pairingId: nextPairingId }) => {
+        setPairingId(nextPairingId);
+        setPairingDialogOpen(false);
+        setCreating(true);
+      },
+      onError: (error) =>
+        toast.error(error instanceof Error ? error.message : "Pairing failed"),
+    });
+  };
+
   return (
     <div>
       {confirmDelete.dialog}
@@ -154,7 +181,7 @@ export function BoothManagement({
               <RefreshCw className="size-4" /> Refresh network
             </Button>
             <Button
-              onClick={() => setCreating(true)}
+              onClick={openPairing}
               disabled={deviceLimitReached || isReadOnly("devices")}
               title={
                 isReadOnly("devices")
@@ -376,7 +403,7 @@ export function BoothManagement({
               <Button
                 className="mt-3"
                 disabled={isReadOnly("devices")}
-                onClick={() => setCreating(true)}
+                onClick={openPairing}
               >
                 <Plus className="size-4" /> Add device
               </Button>
@@ -385,26 +412,83 @@ export function BoothManagement({
         ) : null}
       </div>
 
-      {creating &&
+      <Dialog
+        open={pairingDialogOpen}
+        onOpenChange={setPairingDialogOpen}
+        title="Pair a new device"
+        className="max-w-md"
+      >
+        <form
+          className="space-y-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            confirmPairingCode();
+          }}
+        >
+          <div>
+            <p className="text-sm font-medium text-zinc-900">
+              Enter the code shown on the tablet
+            </p>
+            <p className="mt-1 text-sm leading-6 text-zinc-500">
+              A new kiosk shows an 8-character code after login. The code is
+              valid for 10 minutes and this device remains locked until this
+              configuration is saved.
+            </p>
+          </div>
+          <Input
+            autoFocus
+            value={pairingCode}
+            onChange={(event) =>
+              setPairingCode(
+                event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""),
+              )
+            }
+            placeholder="AB12CD34"
+            maxLength={10}
+            className="h-12 text-center font-mono text-lg font-semibold tracking-[0.2em]"
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPairingDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={pairingCode.length < 8 || validatePairing.isPending}
+            >
+              {validatePairing.isPending ? "Checking..." : "Continue"}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      {creating && pairingId &&
       !devicesLoading &&
       !subscriptionLoading &&
       !deviceLimitReached &&
       !isReadOnly("devices") ? (
         <BoothFormDialog
-          title="Add device"
+          title="Configure paired device"
           initial={EMPTY_BOOTH}
           options={deviceFormOptions}
-          submitting={createBooth.isPending}
-          onClose={() => setCreating(false)}
+          submitting={createPairedBooth.isPending}
+          onClose={() => {
+            setCreating(false);
+            setPairingId(null);
+          }}
           onSubmit={(values) => {
-            createBooth.mutate(values, {
+            createPairedBooth.mutate({ pairingId, values }, {
               onSuccess: () => {
-                toast.success("Device created");
+                toast.success("Device paired and configured");
                 setCreating(false);
+                setPairingId(null);
               },
               onError: (err) =>
                 toast.error(
-                  err instanceof Error ? err.message : "Create failed",
+                  err instanceof Error ? err.message : "Pairing failed",
                 ),
             });
           }}

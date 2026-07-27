@@ -1,6 +1,8 @@
 "use server";
 
 import { getAdminContext, verifyRole } from "@/server/admin/context";
+import { getPairingForAdminCode } from "@/lib/kiosk/device-pairings";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   PRINTER_TUNING_LIMITS,
   clampPrinterTuningValue,
@@ -86,6 +88,100 @@ export async function createDevice(values: BoothInput): Promise<void> {
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(`Unable to create device: ${error.message}`);
+}
+
+export type DevicePairingClaim = {
+  pairingId: string;
+  expiresAt: string;
+};
+
+/** Validates the short code before opening the existing booth configuration form. */
+export async function validateDevicePairingCode(
+  code: string,
+): Promise<DevicePairingClaim> {
+  const { organizationId } = await verifyRole(["owner", "admin"]);
+  const pairing = await getPairingForAdminCode(organizationId, code);
+  return {
+    pairingId: pairing.id,
+    expiresAt: pairing.expires_at,
+  };
+}
+
+/**
+ * Creates the configured device and consumes its pairing request atomically.
+ * The SQL function locks the pairing row, checks expiry/ownership, inserts the
+ * device with its bound hardware ID, then marks the pairing configured.
+ */
+export async function createPairedDevice(
+  pairingId: string,
+  values: BoothInput,
+): Promise<void> {
+  const { supabase, organizationId } = await verifyRole(["owner", "admin"]);
+  const normalizedPairingId = pairingId.trim();
+  if (!normalizedPairingId) throw new Error("Pairing request is required.");
+
+  const frameTemplates = normalizeAssignmentList(
+    values.frameTemplates,
+    values.template,
+  );
+  const pricingProfiles = normalizeAssignmentList(
+    values.pricingProfiles,
+    values.pricingProfile,
+  );
+  await assertPricingAssignmentModes(supabase, pricingProfiles);
+
+  const id = `BTH-${Date.now()}`;
+  const { error } = await createSupabaseAdminClient().rpc(
+    "complete_device_pairing",
+    {
+      p_pairing_id: normalizedPairingId,
+      p_organization_id: organizationId,
+      p_device_id: id,
+      p_device: {
+        name: values.name,
+        location: values.location,
+        status: values.status,
+        battery: values.battery,
+        appVersion: values.appVersion,
+        lastSync: values.lastSync,
+        theme: values.theme,
+        template: frameTemplates[0] ?? "",
+        pricingProfile: pricingProfiles[0] ?? "",
+        frameTemplates,
+        pricingProfiles,
+        sessionCountdownSeconds: values.sessionCountdownSeconds ?? null,
+        paymentCountdownSeconds: values.paymentCountdownSeconds ?? null,
+        voucherEnabled: values.voucherEnabled,
+        testVoucherEnabled:
+          values.voucherEnabled && values.testVoucherEnabled,
+        printerBottomSafeZoneMm: clampPrinterTuningValue(
+          values.printerBottomSafeZoneMm,
+          0,
+          PRINTER_TUNING_LIMITS.bottomSafeZoneMm.min,
+          PRINTER_TUNING_LIMITS.bottomSafeZoneMm.max,
+        ),
+        printerBrightness: clampPrinterTuningValue(
+          values.printerBrightness,
+          0,
+          PRINTER_TUNING_LIMITS.brightness.min,
+          PRINTER_TUNING_LIMITS.brightness.max,
+        ),
+        printerContrast: clampPrinterTuningValue(
+          values.printerContrast,
+          0,
+          PRINTER_TUNING_LIMITS.contrast.min,
+          PRINTER_TUNING_LIMITS.contrast.max,
+        ),
+        printerDotDensity: clampPrinterTuningValue(
+          values.printerDotDensity,
+          1,
+          PRINTER_TUNING_LIMITS.dotDensity.min,
+          PRINTER_TUNING_LIMITS.dotDensity.max,
+        ),
+      },
+    },
+  );
+  if (error) throw new Error(`Unable to pair device: ${error.message}`);
 }
 
 export async function updateDevice(

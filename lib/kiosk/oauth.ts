@@ -10,6 +10,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  buildKioskPairingSession,
   buildKioskBootstrap,
   KioskApiError,
   resolveKioskContext,
@@ -265,22 +266,35 @@ export async function completeKioskGoogleCallback(request: NextRequest) {
     }
 
     const context = await resolveKioskContext(data.session.access_token);
-    const bootstrap = await buildKioskBootstrap(
-      context,
-      null,                                   // no explicit deviceId
-      hardwareId || null,                     // use hardwareId for UPSERT
-      context.user.email ?? "unknown",        // device name fallback
-    );
+    let kioskPayload: Awaited<ReturnType<typeof buildKioskBootstrap>> | Awaited<
+      ReturnType<typeof buildKioskPairingSession>
+    >;
+    try {
+      kioskPayload = await buildKioskBootstrap(
+        context,
+        null,
+        hardwareId || null,
+      );
+    } catch (error) {
+      if (
+        error instanceof KioskApiError &&
+        error.code === "KIOSK_DEVICE_PAIRING_REQUIRED"
+      ) {
+        kioskPayload = await buildKioskPairingSession(context);
+      } else {
+        throw error;
+      }
+    }
     const ticket = await issueKioskOAuthTicket({
       userId: context.user.id,
-      deviceId: bootstrap.registeredDeviceId ?? hardwareId,
+      deviceId: kioskPayload.registeredDeviceId ?? hardwareId,
       sessionPayload: {
         accessToken: data.session.access_token,
         refreshToken: data.session.refresh_token,
         expiresAt: data.session.expires_at
           ? new Date(data.session.expires_at * 1000).toISOString()
           : null,
-        ...bootstrap,
+        ...kioskPayload,
       },
     });
     const response = kioskCallbackPage(

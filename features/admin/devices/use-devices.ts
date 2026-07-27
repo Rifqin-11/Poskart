@@ -23,6 +23,21 @@ export function useCreateBooth() {
   });
 }
 
+export function useCreatePairedBooth() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ pairingId, values }: { pairingId: string; values: BoothInput }) =>
+      devicesApi.createPairedDevice(pairingId, values),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.devices }),
+  });
+}
+
+export function useValidateDevicePairing() {
+  return useMutation({
+    mutationFn: (code: string) => devicesApi.validateDevicePairingCode(code),
+  });
+}
+
 export function useUpdateBooth() {
   const queryClient = useQueryClient();
   return useMutation({

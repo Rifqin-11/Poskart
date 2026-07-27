@@ -10,10 +10,12 @@ import type {
 export const devicesApi = {
   getDevices: deviceService.getDevices,
   createDevice: deviceService.createDevice,
+  createPairedDevice: deviceService.createPairedDevice,
   updateDevice: deviceService.updateDevice,
   deleteDevice: deviceService.deleteDevice,
   approveVoucherRequest: deviceService.approveVoucherRequest,
   rejectVoucherRequest: deviceService.rejectVoucherRequest,
+  validateDevicePairingCode: deviceService.validateDevicePairingCode,
   getFailedPrintsByBooth: transactionService.getFailedPrintsByBooth,
   retryPrint: transactionService.retryPrint,
 };
