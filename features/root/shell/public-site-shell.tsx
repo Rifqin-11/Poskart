@@ -42,7 +42,7 @@ export async function PublicHeader({
         className={cn(
           "mx-auto flex max-w-[90rem] items-center justify-between px-5 sm:px-8 lg:px-12",
           isLanding
-            ? "mt-3 h-14 w-[calc(100%-1.5rem)] rounded-full border border-white/70 bg-white/60 shadow-[0_12px_40px_rgba(24,24,27,0.08)] backdrop-blur-2xl sm:mt-4 sm:w-[calc(100%-2rem)] lg:w-[calc(100%-4rem)]"
+            ? "mt-3 h-14 w-[calc(100%-1.5rem)] rounded-full border border-blue-100/90 bg-white/75 shadow-[0_12px_40px_rgba(0,53,123,0.1)] backdrop-blur-2xl sm:mt-4 sm:w-[calc(100%-2rem)] lg:w-[calc(100%-4rem)]"
             : "h-[72px]",
         )}
       >
@@ -93,7 +93,7 @@ export async function PublicHeader({
               className={cn(
                 "rounded-full px-4 py-2 transition-colors",
                 isLanding
-                  ? "hover:bg-white/55 hover:text-zinc-950"
+                  ? "hover:bg-blue-50 hover:text-[#00357B]"
                   : "hover:bg-zinc-100 hover:text-zinc-950",
               )}
             >
@@ -109,7 +109,7 @@ export async function PublicHeader({
               className={buttonVariants({
                 size: "sm",
                 className: isLanding
-                  ? "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-700"
+                  ? "rounded-full bg-[#00357B] px-5 text-white hover:bg-[#014EB4]"
                   : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
               })}
             >
@@ -130,7 +130,7 @@ export async function PublicHeader({
             className={buttonVariants({
               size: "sm",
               className: isLanding
-                ? "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-700"
+                ? "rounded-full bg-[#00357B] px-5 text-white hover:bg-[#014EB4]"
                 : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
             })}
           >
@@ -191,7 +191,7 @@ export function PublicFooter({ className }: { className?: string }) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="transition-colors hover:text-zinc-950"
+                  className="transition-colors hover:text-[#00357B]"
                 >
                   {link.label}
                 </Link>
@@ -209,7 +209,7 @@ export function PublicFooter({ className }: { className?: string }) {
         <div className="mt-auto w-full select-none overflow-hidden pt-16 sm:pt-20">
           <div
             aria-hidden="true"
-            className="text-center font-sans text-7xl font-black uppercase leading-[0.78] tracking-normal text-[#f4f4f5] sm:text-9xl sm:leading-[0.74] lg:text-[13rem] xl:text-[17rem]"
+            className="text-center font-sans text-7xl font-black uppercase leading-[0.78] tracking-normal text-[#f4f4f5] sm:text-9xl sm:leading-[0.74] lg:text-[11rem] xl:text-[14rem]"
           >
             POSKART
           </div>

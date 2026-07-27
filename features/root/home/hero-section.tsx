@@ -139,17 +139,17 @@ export function HeroSection({
   return (
     <section
       ref={sectionRef}
-      className="relative isolate min-h-[175svh] bg-[#ececea] text-zinc-950"
+      className="hero-gradient-poskart relative isolate min-h-[175svh] text-zinc-950"
     >
       <div className="sticky top-0 h-screen overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-5 top-24 bottom-20 border-x border-t border-zinc-950/10 sm:inset-x-8 lg:inset-x-12" />
+        <div className="pointer-events-none absolute inset-x-5 top-24 bottom-20 border-x border-t border-blue-950/10 sm:inset-x-8 lg:inset-x-12" />
 
         <div className="relative mx-auto h-full max-w-[90rem] px-5 pt-28 sm:px-8 sm:pt-32 lg:px-12">
           <div
             data-hero-reveal
             className="flex items-center justify-between gap-4"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-600">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#00357B]">
               The operating system for modern photobooths
             </p>
             <p className="hidden text-xs text-zinc-600 md:block">
@@ -160,7 +160,7 @@ export function HeroSection({
           <div className="relative mt-8 lg:mt-6">
             <div
               data-hero-accent
-              className="absolute -left-2 top-0 z-10 hidden text-[7rem] font-black leading-none text-zinc-300 sm:block lg:-left-5 lg:text-[9rem]"
+              className="absolute -left-2 top-0 z-10 hidden text-[7rem] font-black leading-none text-[#C9364A]/20 sm:block lg:-left-5 lg:text-[9rem]"
               aria-hidden="true"
             >
               #
@@ -186,7 +186,7 @@ export function HeroSection({
 
             <MoveDownRight
               data-hero-accent
-              className="absolute right-[5%] top-[32%] z-10 hidden size-28 stroke-[2.5] text-zinc-400 sm:block lg:size-40"
+              className="absolute right-[5%] top-[32%] z-10 hidden size-28 stroke-[2.5] text-[#014EB4]/45 sm:block lg:size-40"
               aria-hidden="true"
             />
 
@@ -210,7 +210,7 @@ export function HeroSection({
 
         <div
           data-hero-panel
-          className="invisible absolute inset-x-5 bottom-0 z-20 h-[390px] overflow-hidden rounded-t-[28px] border border-b-0 border-zinc-200 bg-white text-zinc-950 opacity-0 shadow-[0_-20px_60px_rgba(24,24,27,0.08)] sm:inset-x-8 sm:h-[250px] lg:inset-x-12 lg:h-[180px]"
+          className="invisible absolute inset-x-5 bottom-0 z-20 h-[390px] overflow-hidden rounded-t-[28px] border border-b-0 border-blue-100 bg-white text-zinc-950 opacity-0 shadow-[0_-20px_60px_rgba(0,53,123,0.1)] sm:inset-x-8 sm:h-[250px] lg:inset-x-12 lg:h-[180px]"
         >
           <div
             data-hero-panel-content
@@ -223,13 +223,13 @@ export function HeroSection({
                   deliver every memory from one connected workspace.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                  <span className="border border-zinc-200 px-3 py-2">
+                  <span className="border border-blue-100 bg-blue-50/40 px-3 py-2 text-[#00357B]">
                     Visual builder
                   </span>
-                  <span className="border border-zinc-200 px-3 py-2">
+                  <span className="border border-blue-100 bg-blue-50/40 px-3 py-2 text-[#00357B]">
                     Offline kiosk
                   </span>
-                  <span className="border border-zinc-200 px-3 py-2">
+                  <span className="border border-blue-100 bg-blue-50/40 px-3 py-2 text-[#00357B]">
                     QRIS + print
                   </span>
                 </div>
@@ -238,21 +238,21 @@ export function HeroSection({
               <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
                 <a
                   href="/download/app"
-                  className="inline-flex h-12 items-center justify-center gap-2 bg-zinc-950 px-5 text-sm font-semibold text-white transition-colors hover:bg-zinc-700"
+                  className="inline-flex h-12 items-center justify-center gap-2 bg-[#00357B] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#014EB4]"
                 >
                   <Download className="size-4" />
                   Download {latestRelease?.version ?? "App"}
                 </a>
                 <Link
                   href="/subscriptions"
-                  className="inline-flex h-12 items-center justify-center gap-2 border border-zinc-300 bg-white px-5 text-sm font-semibold transition-colors hover:border-zinc-950"
+                  className="inline-flex h-12 items-center justify-center gap-2 border border-blue-200 bg-white px-5 text-sm font-semibold text-[#00357B] transition-colors hover:border-[#00357B] hover:bg-blue-50"
                 >
                   View pricing <ArrowUpRight className="size-4" />
                 </Link>
               </div>
             </div>
 
-            <div className="mt-16 grid gap-8 border-t border-zinc-200 pt-10 sm:mt-20 lg:mt-28 lg:grid-cols-[0.7fr_1.3fr] lg:items-end">
+            <div className="mt-16 grid gap-8 border-t border-blue-100 pt-10 sm:mt-20 lg:mt-28 lg:grid-cols-[0.7fr_1.3fr] lg:items-end">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
                 Scroll the booth journey
               </p>
@@ -267,7 +267,7 @@ export function HeroSection({
           data-hero-scroll
           href="#platform"
           aria-label="Explore the POSKART workflow"
-          className="absolute bottom-8 right-8 z-30 hidden size-12 items-center justify-center rounded-full border border-white/80 bg-white/65 text-zinc-950 shadow-lg backdrop-blur-xl transition-transform hover:translate-y-1 lg:flex"
+          className="absolute bottom-8 right-8 z-30 hidden size-12 items-center justify-center rounded-full border border-blue-100 bg-white/75 text-[#00357B] shadow-lg shadow-blue-950/10 backdrop-blur-xl transition-transform hover:translate-y-1 lg:flex"
         >
           <ArrowDown className="size-5" />
         </a>

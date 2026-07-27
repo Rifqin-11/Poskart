@@ -89,6 +89,21 @@ html {
 
 /* ── Light Theme Utilities ───────────────────────────────────── */
 
+.hero-gradient-poskart {
+  background:
+    radial-gradient(ellipse 68% 52% at 50% 0%, rgba(1, 78, 180, 0.12), transparent 74%),
+    radial-gradient(ellipse 30% 36% at 8% 34%, rgba(201, 54, 74, 0.07), transparent 78%),
+    radial-gradient(ellipse 34% 38% at 91% 38%, rgba(0, 53, 123, 0.07), transparent 78%),
+    #f7f9ff;
+}
+
+.cta-gradient-poskart {
+  background:
+    radial-gradient(ellipse 54% 90% at 100% 0%, rgba(201, 54, 74, 0.28), transparent 72%),
+    radial-gradient(ellipse 44% 80% at 0% 100%, rgba(1, 78, 180, 0.42), transparent 70%),
+    #00357b;
+}
+
 .hero-gradient-light {
   background:
     radial-gradient(ellipse 70% 50% at 50% 0%, rgba(249, 115, 22, 0.07), transparent),

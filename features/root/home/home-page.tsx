@@ -27,14 +27,14 @@ export function HomePage({
     : null;
 
   return (
-    <main className="min-h-screen overflow-clip bg-[#ececea] text-zinc-950">
+    <main className="min-h-screen overflow-clip bg-[#f7f9ff] text-zinc-950">
       <PublicHeader variant="landing" />
       <HeroSection latestRelease={latestRelease} />
       <ScrollyFeatures />
       <ProductShowcase />
       <WorkflowBand />
       <LandingCTA planLabel={planLabel} />
-      <PublicFooter />
+      <PublicFooter className="border-t border-blue-100" />
     </main>
   );
 }

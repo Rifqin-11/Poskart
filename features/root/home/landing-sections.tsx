@@ -76,10 +76,10 @@ export function ProductShowcase() {
           </h2>
         </div>
 
-        <div className="relative mt-14 overflow-hidden border border-zinc-200 bg-[#f4f5f7] px-3 pt-8 sm:px-8 sm:pt-12 lg:px-12">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-300 pb-5 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+        <div className="relative mt-14 overflow-hidden border border-blue-100 bg-[linear-gradient(145deg,#f4f8ff_0%,#ffffff_58%,#fff7f8_100%)] px-3 pt-8 sm:px-8 sm:pt-12 lg:px-12">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-blue-100 pb-5 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
             <span>Live product surface</span>
-            <div className="flex items-center gap-1 rounded-full border border-zinc-300 bg-white/70 p-1 normal-case tracking-normal">
+            <div className="flex items-center gap-1 rounded-full border border-blue-100 bg-white/80 p-1 normal-case tracking-normal">
               {(Object.keys(devicePreviews) as DeviceKey[]).map((deviceKey) => {
                 const device = devicePreviews[deviceKey];
                 const Icon = device.icon;
@@ -103,8 +103,8 @@ export function ProductShowcase() {
                     className={cn(
                       "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[10px] font-semibold transition-colors",
                       isActive
-                        ? "bg-zinc-950 text-white"
-                        : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-950",
+                        ? "bg-[#00357B] text-white"
+                        : "text-zinc-500 hover:bg-blue-50 hover:text-[#00357B]",
                     )}
                   >
                     <Icon className="size-3.5" />
@@ -142,11 +142,11 @@ export function ProductShowcase() {
           </div>
         </div>
 
-        <div className="mt-12 grid border-y border-zinc-200 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid border-y border-blue-100 sm:grid-cols-2 lg:grid-cols-4">
           {metrics.map((metric) => (
             <div
               key={metric.label}
-              className="border-b border-zinc-200 py-7 sm:px-6 lg:border-b-0 lg:border-r last:lg:border-r-0"
+              className="border-b border-blue-100 py-7 sm:px-6 lg:border-b-0 lg:border-r last:lg:border-r-0"
             >
               <p className="text-4xl font-black tracking-normal text-zinc-950">
                 {metric.value}
@@ -191,16 +191,16 @@ export function WorkflowBand() {
   return (
     <section
       id="builder"
-      className="scroll-mt-[72px] bg-[#e5e5e1] text-zinc-950"
+      className="scroll-mt-[72px] bg-[#eef4ff] text-zinc-950"
     >
       <div className="mx-auto max-w-[90rem] px-5 py-20 sm:px-8 lg:px-12 lg:py-24">
-        <div className="flex flex-col justify-between gap-8 border-b border-zinc-950/20 pb-10 lg:flex-row lg:items-end">
+        <div className="flex flex-col justify-between gap-8 border-b border-[#00357B]/20 pb-10 lg:flex-row lg:items-end">
           <h2 className="max-w-4xl text-4xl font-black uppercase leading-[0.92] tracking-normal sm:text-6xl lg:text-7xl">
             A simple guest journey. A serious operating system behind it.
           </h2>
           <div className="flex gap-3">
-            <MonitorCheck className="size-6" />
-            <CreditCard className="size-6" />
+            <MonitorCheck className="size-6 text-[#00357B]" />
+            <CreditCard className="size-6 text-[#C9364A]" />
           </div>
         </div>
 
@@ -208,13 +208,13 @@ export function WorkflowBand() {
           {workflow.map(({ icon: Icon, step, description }, index) => (
             <article
               key={step}
-              className="border-b border-zinc-950/20 py-9 md:px-6 lg:border-b-0 lg:border-r first:lg:pl-0 last:lg:border-r-0"
+              className="border-b border-[#00357B]/20 py-9 md:px-6 lg:border-b-0 lg:border-r first:lg:pl-0 last:lg:border-r-0"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-[0.18em]">
                   0{index + 1}
                 </span>
-                <Icon className="size-5" />
+                <Icon className="size-5 text-[#00357B]" />
               </div>
               <h3 className="mt-12 text-2xl font-black uppercase">{step}</h3>
               <p className="mt-3 text-sm leading-7 text-zinc-600">
@@ -230,29 +230,29 @@ export function WorkflowBand() {
 
 export function LandingCTA({ planLabel }: { planLabel: string | null }) {
   return (
-    <section className="bg-zinc-950 text-white">
+    <section className="cta-gradient-poskart text-white">
       <div className="mx-auto grid max-w-[90rem] gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[1fr_auto] lg:items-end lg:px-12 lg:py-28">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">
             Ready for the next event?
           </p>
           <h2 className="mt-6 max-w-5xl text-5xl font-black uppercase leading-[0.88] tracking-normal sm:text-7xl lg:text-8xl">
             Put your booth on a better system.
           </h2>
           {planLabel && (
-            <p className="mt-6 text-sm text-zinc-400">{planLabel}</p>
+            <p className="mt-6 text-sm text-blue-100">{planLabel}</p>
           )}
         </div>
         <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
           <Link
             href="/register"
-            className="inline-flex h-12 items-center justify-center gap-2 bg-white px-6 text-sm font-bold text-zinc-950 transition-colors hover:bg-zinc-200"
+            className="inline-flex h-12 items-center justify-center gap-2 bg-white px-6 text-sm font-bold text-[#00357B] transition-colors hover:bg-blue-50"
           >
             Start with POSKART <ArrowRight className="size-4" />
           </Link>
           <Link
             href="/contact"
-            className="inline-flex h-12 items-center justify-center border border-white/35 px-6 text-sm font-bold text-white transition-colors hover:bg-white hover:text-zinc-950"
+            className="inline-flex h-12 items-center justify-center border border-white/45 px-6 text-sm font-bold text-white transition-colors hover:bg-white hover:text-[#00357B]"
           >
             Talk to us
           </Link>

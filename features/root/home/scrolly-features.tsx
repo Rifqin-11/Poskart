@@ -150,13 +150,13 @@ export function ScrollyFeatures() {
                   ref={(element) => {
                     storyRefs.current[index] = element;
                   }}
-                  className="flex min-h-0 flex-col justify-center border-b border-zinc-300 py-16 lg:min-h-[82vh] lg:py-24"
+                  className="flex min-h-0 flex-col justify-center border-b border-blue-100 py-16 lg:min-h-[82vh] lg:py-24"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-zinc-950">
+                    <span className="text-sm font-bold text-[#00357B]">
                       {story.number} / {story.eyebrow}
                     </span>
-                    <Icon className="size-5 text-zinc-400" />
+                    <Icon className="size-5 text-[#C9364A]" />
                   </div>
                   <h3 className="mt-8 text-3xl font-bold leading-tight tracking-normal sm:text-4xl">
                     {story.title}
@@ -170,7 +170,7 @@ export function ScrollyFeatures() {
                         key={point}
                         className="flex items-center gap-3 text-sm font-medium"
                       >
-                        <span className="grid size-6 place-items-center rounded-full bg-zinc-950 text-white">
+                        <span className="grid size-6 place-items-center rounded-full bg-[#00357B] text-white">
                           <Check className="size-3.5" />
                         </span>
                         {point}
@@ -187,7 +187,7 @@ export function ScrollyFeatures() {
           </div>
 
           <div className="sticky top-24 hidden h-[calc(100vh-7rem)] items-center self-start lg:flex">
-            <div className="relative h-[70vh] rounded-4xl w-full overflow-hidden border border-white/70 bg-zinc-900 shadow-[0_24px_70px_rgba(24,24,27,0.16)]">
+            <div className="relative h-[70vh] rounded-4xl w-full overflow-hidden border border-blue-200/70 bg-[linear-gradient(145deg,#00357B_0%,#014EB4_58%,#082952_100%)] shadow-[0_24px_70px_rgba(0,53,123,0.2)]">
               <div className="absolute inset-x-5 top-5 z-10 flex items-center justify-between gap-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-300 xl:inset-x-7 xl:top-7 xl:text-xs">
                 <span className="min-w-0 truncate">POSKART system</span>
                 <span>{String(activeStory + 1).padStart(2, "0")} / 03</span>
@@ -234,8 +234,8 @@ export function ScrollyFeatures() {
         </div>
       </div>
 
-      <div className="border-y border-zinc-300 bg-white">
-        <div className="mx-auto grid max-w-[90rem] divide-y divide-zinc-200 px-5 sm:px-8 md:grid-cols-4 md:divide-x md:divide-y-0 lg:px-12">
+      <div className="border-y border-blue-100 bg-[#f8faff]">
+        <div className="mx-auto grid max-w-[90rem] divide-y divide-blue-100 px-5 sm:px-8 md:grid-cols-4 md:divide-x md:divide-y-0 lg:px-12">
           {[
             { icon: WifiOff, label: "Offline-ready kiosk" },
             { icon: CreditCard, label: "QRIS and vouchers" },
@@ -243,7 +243,7 @@ export function ScrollyFeatures() {
             { icon: CloudUpload, label: "Cloud delivery" },
           ].map(({ icon: Icon, label }) => (
             <div key={label} className="flex items-center gap-3 py-5 md:px-5">
-              <Icon className="size-4 text-zinc-950" />
+              <Icon className="size-4 text-[#00357B]" />
               <span className="text-sm font-semibold">{label}</span>
             </div>
           ))}
@@ -256,7 +256,7 @@ export function ScrollyFeatures() {
 function StoryVisual({ storyIndex }: { storyIndex: number }) {
   const story = stories[storyIndex];
   return (
-    <div className="relative aspect-[4/3] overflow-hidden border border-white/70 bg-zinc-900 p-6 shadow-[0_20px_50px_rgba(24,24,27,0.12)]">
+    <div className="relative aspect-[4/3] overflow-hidden border border-blue-100 bg-[linear-gradient(145deg,#00357B_0%,#014EB4_60%,#082952_100%)] p-6 shadow-[0_20px_50px_rgba(0,53,123,0.16)]">
       <Image
         src={story.image}
         alt={story.imageAlt}
