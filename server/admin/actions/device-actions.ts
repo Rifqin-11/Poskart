@@ -7,6 +7,7 @@ import {
   PRINTER_TUNING_LIMITS,
   clampPrinterTuningValue,
 } from "@/lib/printer-tuning";
+import { assertSettingsPin, normalizeSettingsPin } from "@/lib/kiosk/settings-pin";
 import {
   assertSupabaseResult,
   mapBooth,
@@ -43,6 +44,11 @@ export async function createDevice(values: BoothInput): Promise<void> {
     values.pricingProfile,
   );
   await assertPricingAssignmentModes(supabase, pricingProfiles);
+  const settingsPin = normalizeSettingsPin(values.settingsPin);
+  if (values.protectSettings && !settingsPin) {
+    throw new Error("Set a 4 to 12 digit Settings PIN before enabling protection.");
+  }
+  if (settingsPin) assertSettingsPin(settingsPin);
   const { error } = await supabase.from("devices").insert({
     id,
     name: values.name,
@@ -61,6 +67,8 @@ export async function createDevice(values: BoothInput): Promise<void> {
     voucher_enabled: values.voucherEnabled,
     test_voucher_enabled:
       values.voucherEnabled && values.testVoucherEnabled,
+    settings_pin: settingsPin,
+    protect_settings: values.protectSettings && settingsPin.length > 0,
     printer_bottom_safe_zone_mm: clampPrinterTuningValue(
       values.printerBottomSafeZoneMm,
       0,
@@ -154,6 +162,8 @@ export async function createPairedDevice(
         voucherEnabled: values.voucherEnabled,
         testVoucherEnabled:
           values.voucherEnabled && values.testVoucherEnabled,
+        settingsPin: normalizeSettingsPin(values.settingsPin),
+        protectSettings: values.protectSettings,
         printerBottomSafeZoneMm: clampPrinterTuningValue(
           values.printerBottomSafeZoneMm,
           0,
@@ -228,6 +238,30 @@ export async function updateDevice(
   if (patch.voucherEnabled !== undefined) {
     dbPatch.voucher_enabled = patch.voucherEnabled;
     if (!patch.voucherEnabled) dbPatch.test_voucher_enabled = false;
+  }
+  if (patch.settingsPin !== undefined) {
+    const settingsPin = normalizeSettingsPin(patch.settingsPin);
+    // Blank input in the Configure dialog deliberately means "keep current PIN".
+    if (settingsPin) dbPatch.settings_pin = assertSettingsPin(settingsPin);
+  }
+  if (patch.protectSettings !== undefined) {
+    if (patch.protectSettings) {
+      const candidatePin = normalizeSettingsPin(patch.settingsPin);
+      if (!candidatePin) {
+        const { data: device, error: deviceError } = await supabase
+          .from("devices")
+          .select("settings_pin")
+          .eq("id", id)
+          .maybeSingle();
+        if (deviceError) {
+          throw new Error(`Unable to validate Settings PIN: ${deviceError.message}`);
+        }
+        if (!normalizeSettingsPin(device?.settings_pin)) {
+          throw new Error("Set a 4 to 12 digit Settings PIN before enabling protection.");
+        }
+      }
+    }
+    dbPatch.protect_settings = patch.protectSettings;
   }
   if (patch.testVoucherEnabled !== undefined) {
     const voucherEnabled = patch.voucherEnabled;

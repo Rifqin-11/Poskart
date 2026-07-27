@@ -104,6 +104,7 @@ export function BoothFormDialog({
       frameTemplates: normalizeStringList(rest.frameTemplates, rest.template),
       pricingProfile: pricingProfiles[0] ?? "",
       pricingProfiles,
+      settingsPin: "",
     } as BoothInput;
   });
 
@@ -155,6 +156,18 @@ export function BoothFormDialog({
                 ? "Choose one active event"
                 : "Choose at least one paid package",
             );
+            return;
+          }
+          if (
+            form.protectSettings &&
+            !form.settingsPin?.trim() &&
+            !initialDevice.protectSettings
+          ) {
+            toast.error("Set a 4 to 12 digit Settings PIN before enabling protection");
+            return;
+          }
+          if (form.settingsPin?.trim() && !/^\d{4,12}$/.test(form.settingsPin.trim())) {
+            toast.error("Settings PIN must contain 4 to 12 digits");
             return;
           }
           if (
@@ -492,6 +505,50 @@ export function BoothFormDialog({
             value="system"
             className="min-h-[340px] max-h-[420px] space-y-4 overflow-y-auto pr-1"
           >
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50/30 p-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-zinc-600">
+                    Settings access PIN
+                  </div>
+                  <p className="mt-1 max-w-xl text-xs leading-5 text-zinc-500">
+                    Protect the Settings page on this tablet. If it is forgotten,
+                    the tablet can email a one-time reset link to workspace owners and admins.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 rounded-full border border-zinc-200 bg-white px-3 py-2">
+                  <span className={cn("text-xs font-semibold", form.protectSettings ? "text-[#00357B]" : "text-zinc-500")}>
+                    {form.protectSettings ? "Protected" : "Not protected"}
+                  </span>
+                  <Switch
+                    checked={form.protectSettings}
+                    disabled={readOnly}
+                    onCheckedChange={(checked) => setForm({ ...form, protectSettings: checked })}
+                    aria-label="Require PIN to open kiosk settings"
+                  />
+                </div>
+              </div>
+              <label className="mt-3 block max-w-sm text-xs font-medium text-zinc-600">
+                {initialDevice.protectSettings ? "New PIN (leave empty to keep current PIN)" : "PIN (4–12 digits)"}
+                <Input
+                  className="mt-1 bg-white"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  maxLength={12}
+                  value={form.settingsPin ?? ""}
+                  placeholder={initialDevice.protectSettings ? "Keep current PIN" : "e.g. 1234"}
+                  disabled={readOnly}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      settingsPin: event.target.value.replace(/\D/g, ""),
+                    })
+                  }
+                />
+              </label>
+            </div>
+
             <div className="rounded-lg border border-zinc-200 bg-zinc-50/30 p-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>

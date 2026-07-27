@@ -72,7 +72,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
       description="QRIS provider settings and subscription checkout gateway."
       icon={<CreditCard className="size-4" />}
     >
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="space-y-5">
         <div className="grid gap-4 md:grid-cols-2">
           {/* Payment Mode Selection */}
           <div className="md:col-span-2 grid gap-3 sm:grid-cols-2">
@@ -239,7 +239,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
             </div>
           </SettingField>
         </div>
-        <div className="space-y-3">
+        <div className="border-t border-zinc-100 pt-5">
           <SwitchSetting
             title="Auto retry failed QRIS payment"
             description="Retry otomatis saat transaksi QRIS gagal diproses."
@@ -252,7 +252,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
             type="button"
             onClick={onSave}
             disabled={saving}
-            className="w-full rounded-2xl"
+            className="mt-3 w-full rounded-2xl"
           >
             <Save className="size-4" />
             {saving ? "Saving..." : "Save payment"}

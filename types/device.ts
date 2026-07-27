@@ -20,6 +20,8 @@ export type Device = {
   voucherEnabled: boolean;
   /** Enables the reserved TEST voucher for local-only test sessions. */
   testVoucherEnabled: boolean;
+  /** Whether opening Settings on the kiosk requires its device PIN. */
+  protectSettings: boolean;
   printerStatus:
     | "ready"
     | "disconnected"
