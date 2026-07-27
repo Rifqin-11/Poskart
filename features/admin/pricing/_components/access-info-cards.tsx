@@ -12,7 +12,7 @@ export function PaidInfoCard() {
     <div className="rounded-xl bg-zinc-50/80 px-3.5 py-2.5 text-xs text-zinc-600 transition-colors border border-zinc-100/80">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="shrink-0 rounded-md bg-zinc-950 px-2 py-0.5 text-[10px] font-semibold text-white">
+          <span className="shrink-0 rounded-md bg-[#00357B] px-2 py-0.5 text-[10px] font-semibold text-white">
             Berbayar
           </span>
           <span className="truncate text-zinc-700 font-medium text-[12px]">

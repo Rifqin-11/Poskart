@@ -832,10 +832,10 @@ function SuperAdminSectionButton({
     <button
       type="button"
       onClick={onClick}
-      className="group flex min-h-[138px] w-full items-start justify-between gap-4 rounded-[28px] border border-zinc-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+      className="group flex min-h-[138px] w-full items-start justify-between gap-4 rounded-[28px] border border-zinc-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]"
     >
       <div className="min-w-0">
-        <div className="grid size-11 place-items-center rounded-2xl bg-zinc-100 text-zinc-700 transition group-hover:bg-zinc-950 group-hover:text-white">
+        <div className="grid size-11 place-items-center rounded-2xl bg-zinc-100 text-zinc-700 transition group-hover:bg-[#00357B] group-hover:text-white">
           <Icon className="size-5" />
         </div>
         <div className="mt-4 text-base font-semibold text-zinc-950">

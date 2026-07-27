@@ -933,7 +933,7 @@ function DeviceMultiSelect({
                   className={cn(
                     "inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
                     selected
-                      ? "border-zinc-950 bg-zinc-950 text-white"
+                      ? "border-[#00357B] bg-[#00357B] text-white"
                       : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 hover:text-zinc-950",
                     disabled && "opacity-60 cursor-not-allowed",
                   )}

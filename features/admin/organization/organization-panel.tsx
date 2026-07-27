@@ -161,7 +161,7 @@ function OrganizationSettings({
               <button
                 type="button"
                 onClick={() => setSubscriptionDialogOpen(true)}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-[#00357B] px-4 text-sm font-medium text-white transition-colors hover:bg-[#014EB4]"
               >
                 <CreditCard className="size-4" />
                 {isFreeAccount ? "View subscription plans" : "Manage billing"}
@@ -295,7 +295,7 @@ function OrganizationSettings({
             <button
               type="button"
               onClick={() => setSubscriptionDialogOpen(true)}
-              className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-zinc-950 px-3 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
+              className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-[#00357B] px-3 text-sm font-medium text-white transition-colors hover:bg-[#014EB4]"
             >
               {isFreeAccount ? "View subscription plans" : "Manage billing"}
             </button>

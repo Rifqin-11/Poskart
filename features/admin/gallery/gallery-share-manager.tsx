@@ -179,7 +179,7 @@ export function GallerySelectionButton({ sessionId }: { sessionId: string }) {
       className={cn(
         "absolute top-2 left-2 z-10 grid size-8 place-items-center rounded-full border shadow-sm transition-colors",
         selected
-          ? "border-zinc-950 bg-zinc-950 text-white"
+          ? "border-[#00357B] bg-[#00357B] text-white"
           : "border-white/80 bg-white/90 text-transparent hover:text-zinc-500",
       )}
     >
@@ -193,7 +193,7 @@ function SelectionToolbar() {
   if (!context?.isSelectionMode) return null;
 
   return (
-    <div className="fixed inset-x-3 bottom-4 z-40 mx-auto flex w-[calc(100%-1.5rem)] max-w-xl items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-2.5 text-white shadow-2xl sm:bottom-6 sm:p-3">
+    <div className="fixed inset-x-3 bottom-4 z-40 mx-auto flex w-[calc(100%-1.5rem)] max-w-xl items-center gap-3 rounded-2xl border border-zinc-800 bg-[#00357B] p-2.5 text-white shadow-2xl sm:bottom-6 sm:p-3">
       <div className="flex min-w-0 flex-1 items-center gap-2 px-1">
         <Images className="size-4 shrink-0" />
         <span className="truncate text-sm font-medium">

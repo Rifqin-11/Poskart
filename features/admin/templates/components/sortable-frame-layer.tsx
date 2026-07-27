@@ -29,7 +29,7 @@ export function SortableFrameLayer({
       className={cn(
         "flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs transition-colors",
         isSelected
-          ? "border-zinc-900 bg-zinc-950 text-white"
+          ? "border-zinc-900 bg-[#00357B] text-white"
           : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50",
       )}
     >

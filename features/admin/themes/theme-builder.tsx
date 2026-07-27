@@ -110,7 +110,7 @@ export function ThemeBuilder() {
           </CardHeader>
           <CardContent className="grid gap-8 p-8 lg:grid-cols-[1fr_320px]">
             <div
-              className="flex min-h-[560px] flex-col justify-between rounded-[28px] border-[10px] border-zinc-950 p-8 shadow-2xl"
+              className="flex min-h-[560px] flex-col justify-between rounded-[28px] border-[10px] border-[#00357B] p-8 shadow-2xl"
               style={{ background: schema.colors.background, color: schema.colors.foreground }}
             >
               <div>

@@ -126,7 +126,7 @@ export function GallerySessionCard({
         className={cn(
           "group overflow-hidden rounded-xl py-0 shadow-sm transition hover:shadow-md",
           selected
-            ? "border-zinc-950 ring-2 ring-zinc-950 ring-offset-2"
+            ? "border-[#00357B] ring-2 ring-[#00357B] ring-offset-2"
             : "border-zinc-200",
         )}
       >
@@ -193,7 +193,7 @@ export function GallerySessionCard({
                 href={session.share_url || `/s/${session.id}`}
                 target="_blank"
                 aria-label="Buka hasil foto"
-                className="grid size-8 place-items-center rounded-lg bg-zinc-100 text-zinc-700 transition-colors hover:bg-zinc-950 hover:text-white"
+                className="grid size-8 place-items-center rounded-lg bg-zinc-100 text-zinc-700 transition-colors hover:bg-[#00357B] hover:text-white"
               >
                 <ExternalLink className="size-3.5" />
               </Link>

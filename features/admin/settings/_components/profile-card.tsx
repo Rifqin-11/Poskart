@@ -86,7 +86,7 @@ export function ProfileCard({
         <SettingsPanelBlock className="min-w-0 overflow-hidden">
           <div className="flex min-w-0 flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="relative grid size-16 shrink-0 place-items-center rounded-3xl border border-zinc-200 bg-zinc-950 text-xl font-semibold text-white shadow-sm sm:size-20 sm:text-2xl">
+              <div className="relative grid size-16 shrink-0 place-items-center rounded-3xl border border-zinc-200 bg-[#00357B] text-xl font-semibold text-white shadow-sm sm:size-20 sm:text-2xl">
                 {accountInitials || "PO"}
                 <button
                   type="button"

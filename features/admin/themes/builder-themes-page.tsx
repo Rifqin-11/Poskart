@@ -357,7 +357,7 @@ export function BuilderThemesPage() {
         {!isReadOnly("themes") && (
           <Link
             href="/themes/builder/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#00357B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#014EB4]"
           >
             <Plus className="size-4" />
             Create Theme
@@ -468,7 +468,7 @@ export function BuilderThemesPage() {
           {!isReadOnly("themes") && (
             <Link
               href="/themes/builder/new"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00357B] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#014EB4]"
             >
               <Plus className="size-4" />
               Create Theme

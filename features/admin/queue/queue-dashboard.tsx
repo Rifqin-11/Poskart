@@ -509,7 +509,7 @@ export function QueueDashboard({
         <CardContent>
           {nextEntry ? (
             <div className="grid gap-4 lg:grid-cols-[160px_minmax(0,1fr)_auto] lg:items-center">
-              <div className="rounded-3xl bg-zinc-950 px-4 py-5 text-center text-white">
+              <div className="rounded-3xl bg-[#00357B] px-4 py-5 text-center text-white">
                 <div className="text-xs uppercase tracking-[0.2em] text-zinc-400">
                   Number
                 </div>

@@ -81,7 +81,7 @@ export function PrintQueuePanel() {
     <aside className="fixed bottom-4 right-4 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-zinc-200 bg-white/95 shadow-2xl shadow-zinc-950/15 backdrop-blur-xl">
       <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-lg bg-zinc-950 text-white">
+          <span className="grid size-8 place-items-center rounded-lg bg-[#00357B] text-white">
             <Printer className="size-4" />
           </span>
           <div>

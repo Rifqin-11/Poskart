@@ -129,7 +129,7 @@ export function PaymentGatewayManagement() {
                 className={cn(
                   "rounded-lg border p-4 text-left transition",
                   selected
-                    ? "border-zinc-950 bg-zinc-950 text-white shadow-sm"
+                    ? "border-[#00357B] bg-[#00357B] text-white shadow-sm"
                     : "border-zinc-200 bg-white text-zinc-950 hover:border-zinc-300",
                 )}
               >

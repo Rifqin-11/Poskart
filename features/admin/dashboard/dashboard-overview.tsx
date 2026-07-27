@@ -614,7 +614,7 @@ function PeriodTabs({
           onClick={() => onSelectPeriod(tab.key)}
           className={`h-9 flex-1 rounded-xl px-4 text-sm font-medium transition sm:flex-none ${
             selectedPeriod === tab.key
-              ? "bg-zinc-950 text-white shadow-sm"
+              ? "bg-[#00357B] text-white shadow-sm"
               : "text-zinc-500 hover:bg-white hover:text-zinc-900"
           }`}
         >
