@@ -34,6 +34,7 @@ type TouchMenuHandlers = {
 };
 
 export function VisualCanvasStage({
+  tourTarget,
   canvasRef,
   viewportRef,
   activePage,
@@ -68,6 +69,7 @@ export function VisualCanvasStage({
   onEditCancel,
   onStartEdit,
 }: {
+  tourTarget?: string;
   canvasRef: RefObject<HTMLDivElement | null>;
   viewportRef: RefObject<HTMLDivElement | null>;
   activePage: BuilderPage;
@@ -123,6 +125,7 @@ export function VisualCanvasStage({
   return (
     <div
       ref={canvasRef}
+      data-builder-tour={tourTarget}
       className="relative flex-1 overflow-hidden"
       style={{
         background: "#F0F0F2",

@@ -40,6 +40,7 @@ import { VisualPageTabs } from "@/features/builder/components/visual-page-tabs";
 import { VisualPropertiesSidebar } from "@/features/builder/components/visual-properties-sidebar";
 import { VisualLoadDialog } from "@/features/builder/components/visual-load-dialog";
 import { VisualSaveDialog } from "@/features/builder/components/visual-save-dialog";
+import { BuilderGuidedTour } from "@/features/builder/tutorial/builder-guided-tour";
 import { bakeLayoutSchemaColorKeyAssets } from "@/features/builder/utils/bake-color-key-assets";
 import { normalizeAssetReferences } from "@/lib/assets/asset-url";
 import type { BuilderNode } from "@/types/builder";
@@ -83,6 +84,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   const { data: savedLayout } = useActiveLayoutSchema();
   const hydratedLayoutId = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [builderTutorialOpen, setBuilderTutorialOpen] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [themeName, setThemeName] = useState("");
   const saveLayoutMutation = useSaveLayoutAsTheme();
@@ -121,6 +123,36 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   const hasUnsavedChanges =
     lastCommittedSchemaRef.current !== null &&
     lastCommittedSchemaRef.current !== currentSchemaKey;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void fetch("/api/admin/tutorial?scope=builder", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as { completed?: boolean };
+      })
+      .then((progress) => {
+        if (!cancelled && progress?.completed === false) {
+          setBuilderTutorialOpen(true);
+        }
+      })
+      .catch(() => {
+        // The builder must remain usable even when tutorial progress is unavailable.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const completeBuilderTutorial = useCallback(() => {
+    setBuilderTutorialOpen(false);
+    void fetch("/api/admin/tutorial?scope=builder", {
+      method: "PUT",
+      cache: "no-store",
+    });
+  }, []);
 
   // Re-inject custom font <link> tags whenever canvas.customFonts changes
   useEffect(() => {
@@ -844,6 +876,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
     <div className="flex h-screen flex-col overflow-hidden">
       <BuilderHeader
         onBack={requestBack}
+        onShowTutorial={() => setBuilderTutorialOpen(true)}
         saveLabel="Save"
         isSaving={isSaving}
         onSave={() => void handleSave()}
@@ -928,6 +961,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
         />
 
         <VisualCanvasStage
+          tourTarget="canvas"
           canvasRef={canvasRef}
           viewportRef={viewportRef}
           activePage={activePage}
@@ -1053,6 +1087,14 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
           onConfirm={() => void handleSaveConfirm()}
         />
       )}
+
+      {builderTutorialOpen ? (
+        <BuilderGuidedTour
+          open
+          onClose={completeBuilderTutorial}
+          onComplete={completeBuilderTutorial}
+        />
+      ) : null}
     </div>
   );
 

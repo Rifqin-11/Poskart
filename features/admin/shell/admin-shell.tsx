@@ -19,12 +19,13 @@ import {
   Store,
   LogOut,
   Building,
+  CircleHelp,
   Shield,
   UserRound,
   Ticket,
   WalletCards,
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
 import { useTenantDetails } from "@/features/admin/organization/use-organization";
 import { useRealtimeSync } from "@/features/admin/hooks/use-realtime-sync";
@@ -46,6 +47,7 @@ import {
 } from "@/lib/organization-features";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries";
+import { AdminGuidedTour } from "@/features/admin/tutorial/admin-guided-tour";
 
 type AdminNavItem = {
   href: string;
@@ -214,6 +216,7 @@ function SidebarContent({
     <div className="flex h-full min-h-0 flex-col">
       <Link
         href="/dashboard"
+        data-admin-tour="brand"
         className="mb-6 flex items-center gap-3 rounded-2xl px-2 py-1.5 transition-colors hover:bg-white/70"
         onClick={onNavigate}
       >
@@ -231,7 +234,10 @@ function SidebarContent({
         </div>
       </Link>
 
-      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]">
+      <nav
+        data-admin-tour="navigation"
+        className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]"
+      >
         {filteredNavItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href;
@@ -276,6 +282,7 @@ function SidebarContent({
 
       <Link
         href="/settings?tab=organization"
+        data-admin-tour="organization"
         onClick={onNavigate}
         className={cn(
           "mt-3 shrink-0 rounded-3xl border bg-white/90 p-3.5 shadow-sm shadow-zinc-200/70 transition-colors hover:border-zinc-300 hover:bg-white",
@@ -347,11 +354,45 @@ export function AdminShell({
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const { locale, setLocale, t } = useI18n();
   const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
   const builderFullView = useBuilderStore((s) => s.builderFullView);
   const accountName = userName || userEmail || "POSKART User";
   const accountRole = formatAccountRole(userRole, isSuperAdmin);
+
+  const completeTutorial = useCallback(() => {
+    setTutorialOpen(false);
+    void fetch("/api/admin/tutorial", {
+      method: "PUT",
+      cache: "no-store",
+    });
+  }, []);
+
+  const replayTutorial = useCallback(() => {
+    setAccountMenuOpen(false);
+    setTutorialOpen(true);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    void fetch("/api/admin/tutorial", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as { completed?: boolean };
+      })
+      .then((progress) => {
+        if (active && progress && !progress.completed) {
+          setTutorialOpen(true);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Subscribe to Supabase Realtime so layout_schemas + devices queries
   // auto-refresh when the Flutter kiosk app pushes changes (e.g. active theme)
@@ -398,10 +439,14 @@ export function AdminShell({
                 size="icon"
                 className="lg:hidden"
                 onClick={() => setOpen(true)}
+                data-admin-tour="menu"
               >
                 <Menu />
               </Button>
-              <div className="hidden min-w-0 flex-1 md:block md:max-w-md">
+              <div
+                data-admin-tour="search"
+                className="hidden min-w-0 flex-1 md:block md:max-w-md"
+              >
                 <CommandSearch isSuperAdmin={isSuperAdmin} />
               </div>
               <div className="ml-auto flex items-center gap-3">
@@ -413,7 +458,7 @@ export function AdminShell({
                     {userEmail ?? "POSKART Photobooth"}
                   </div>
                 </div>
-                <div className="md:hidden">
+                <div data-admin-tour="search" className="md:hidden">
                   <CommandSearch isSuperAdmin={isSuperAdmin} variant="icon" />
                 </div>
                 <div className="relative">
@@ -535,6 +580,7 @@ export function AdminShell({
                 <div className="relative">
                   <button
                     type="button"
+                    data-admin-tour="profile"
                     className="flex items-center gap-1 rounded-full bg-white/35 p-0.5 transition-colors hover:bg-white/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
                     onClick={() => {
                       setNotificationMenuOpen(false);
@@ -600,6 +646,15 @@ export function AdminShell({
                         <button
                           type="button"
                           role="menuitem"
+                          className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm text-zinc-700 hover:bg-blue-50 hover:text-[#00357B]"
+                          onClick={replayTutorial}
+                        >
+                          <CircleHelp className="size-4" />
+                          View tutorial
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
                           className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
                           onClick={() => {
                             setAccountMenuOpen(false);
@@ -643,6 +698,13 @@ export function AdminShell({
         open={subscriptionDialogOpen}
         onOpenChange={setSubscriptionDialogOpen}
       />
+      {tutorialOpen ? (
+        <AdminGuidedTour
+          open
+          onClose={completeTutorial}
+          onComplete={completeTutorial}
+        />
+      ) : null}
     </div>
   );
 }

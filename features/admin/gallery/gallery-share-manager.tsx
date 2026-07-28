@@ -2,6 +2,7 @@
 
 import {
   Check,
+  CircleHelp,
   Copy,
   ExternalLink,
   FolderOpen,
@@ -32,6 +33,11 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { SharedGallerySummary } from "@/features/admin/gallery/gallery-share-types";
 import { cn } from "@/lib/utils";
+import {
+  FeatureGuidedTour,
+  type FeatureTourStep,
+} from "@/features/admin/tutorial/feature-guided-tour";
+import { useFeatureTutorial } from "@/features/admin/tutorial/use-feature-tutorial";
 
 type GalleryShareContextValue = {
   isSelectionMode: boolean;
@@ -42,7 +48,26 @@ type GalleryShareContextValue = {
   cancelSelection: () => void;
   openCreateDialog: () => void;
   openLibraryDialog: () => void;
+  showTutorial: () => void;
 };
+
+const GALLERY_TOUR_STEPS: FeatureTourStep[] = [
+  {
+    selectors: [
+      '[data-gallery-tour="sessions"]',
+      '[data-gallery-tour="empty"]',
+    ],
+    title: "Hasil sesi photobooth",
+    description:
+      "Setiap sesi yang selesai diproses dari kiosk muncul di sini. Buka card untuk melihat hasil dan tindakan yang tersedia.",
+  },
+  {
+    selectors: ['[data-gallery-tour="shared-galleries"]'],
+    title: "Bagikan beberapa sesi",
+    description:
+      "Shared galleries menggabungkan beberapa sesi ke satu link publik yang dapat dibagikan kepada klien atau penyelenggara event.",
+  },
+];
 
 const GalleryShareContext = createContext<GalleryShareContextValue | null>(
   null,
@@ -65,6 +90,7 @@ export function GalleryShareProvider({
   );
   const [createdGallery, setCreatedGallery] =
     useState<SharedGallerySummary | null>(null);
+  const galleryTutorial = useFeatureTutorial("gallery");
 
   const toggleSelection = useCallback((sessionId: string) => {
     setSelectedIds((current) => {
@@ -102,6 +128,7 @@ export function GalleryShareProvider({
       cancelSelection,
       openCreateDialog,
       openLibraryDialog,
+      showTutorial: galleryTutorial.show,
     }),
     [
       cancelSelection,
@@ -111,6 +138,7 @@ export function GalleryShareProvider({
       openLibraryDialog,
       selectedIds,
       toggleSelection,
+      galleryTutorial.show,
     ],
   );
 
@@ -141,6 +169,15 @@ export function GalleryShareProvider({
           )
         }
       />
+      {galleryTutorial.open ? (
+        <FeatureGuidedTour
+          open
+          title="Gallery guide"
+          steps={GALLERY_TOUR_STEPS}
+          onClose={galleryTutorial.complete}
+          onComplete={galleryTutorial.complete}
+        />
+      ) : null}
     </GalleryShareContext.Provider>
   );
 }
@@ -154,10 +191,20 @@ export function GalleryShareHeaderActions() {
   if (!context) return null;
 
   return (
-    <Button variant="outline" onClick={context.openLibraryDialog}>
-      <FolderOpen className="size-4" />
-      Shared galleries
-    </Button>
+    <div className="flex flex-wrap gap-2">
+      <Button variant="outline" onClick={context.showTutorial}>
+        <CircleHelp className="size-4" />
+        Show tutorial
+      </Button>
+      <Button
+        data-gallery-tour="shared-galleries"
+        variant="outline"
+        onClick={context.openLibraryDialog}
+      >
+        <FolderOpen className="size-4" />
+        Shared galleries
+      </Button>
+    </div>
   );
 }
 

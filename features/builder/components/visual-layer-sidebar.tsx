@@ -39,7 +39,10 @@ export function VisualLayerSidebar({
   onLayerDragEnd: (event: DragEndEvent) => void;
 }) {
   return (
-    <aside className="flex w-52 shrink-0 flex-col border-r border-zinc-200 bg-white">
+    <aside
+      data-builder-tour="layers"
+      className="flex w-52 shrink-0 flex-col border-r border-zinc-200 bg-white"
+    >
       <div className="flex items-center justify-between px-3 py-2.5">
         <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
           Layers

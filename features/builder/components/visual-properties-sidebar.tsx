@@ -16,7 +16,10 @@ export function VisualPropertiesSidebar({
   onStartEdit: (node: BuilderNode) => void;
 }) {
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-l border-zinc-200 bg-white">
+    <aside
+      data-builder-tour="properties"
+      className="flex w-72 shrink-0 flex-col border-l border-zinc-200 bg-white"
+    >
       <div className="flex items-center justify-between px-3 py-2.5">
         <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
           Properties

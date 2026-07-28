@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   BadgeCheck,
   Battery,
+  CircleHelp,
   Plus,
   Printer,
   RefreshCw,
@@ -39,6 +40,11 @@ import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscri
 import { useTemplates } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
+import {
+  FeatureGuidedTour,
+  type FeatureTourStep,
+} from "@/features/admin/tutorial/feature-guided-tour";
+import { useFeatureTutorial } from "@/features/admin/tutorial/use-feature-tutorial";
 import type {
   BoothInput,
   LayoutSchemaRow,
@@ -73,6 +79,82 @@ const EMPTY_BOOTH: BoothInput = {
   printerContrast: 0,
   printerDotDensity: 1,
 };
+
+const DEVICE_TOUR_STEPS: FeatureTourStep[] = [
+  {
+    selectors: ['[data-devices-tour="add-device"]'],
+    title: "Pair perangkat baru",
+    description:
+      "Klik Add device lalu masukkan kode pairing yang muncul pada tablet setelah login. Kode hanya berlaku sementara.",
+  },
+  {
+    selectors: ['[data-devices-tour="capacity"]'],
+    title: "Pantau kapasitas",
+    description:
+      "Bagian ini menunjukkan jumlah device yang sudah digunakan dan sisa slot dari paket langganan organisasi.",
+  },
+  {
+    selectors: [
+      '[data-devices-tour="configure"]',
+      '[data-devices-tour="device-list"]',
+    ],
+    title: "Konfigurasi setiap booth",
+    description:
+      "Setelah pairing, buka Configure untuk mengatur theme, frame, paket atau event, voucher, printer, dan keamanan settings.",
+  },
+];
+
+const DEVICE_CONFIGURATION_TOUR_STEPS: FeatureTourStep[] = [
+  {
+    selectors: ['[data-device-config-tour="tabs"]'],
+    title: "Tiga area konfigurasi",
+    description:
+      "General mengatur pengalaman pengunjung, Frame menentukan pilihan frame, dan System mengatur keamanan serta perangkat.",
+  },
+  {
+    selectors: ['[data-device-config-tour="theme"]'],
+    title: "Theme dan layout",
+    description:
+      "Pilih visual theme yang akan ditampilkan kiosk. Perubahan diterapkan saat device melakukan sync berikutnya.",
+  },
+  {
+    selectors: ['[data-device-config-tour="session-access"]'],
+    title: "Pricing atau event",
+    description:
+      "Pricing meminta pengunjung memilih paket dan membayar. Event langsung memulai sesi gratis untuk kiosk yang ditugaskan.",
+  },
+  {
+    selectors: ['[data-device-config-tour="frames"]'],
+    title: "Frame yang tersedia",
+    description:
+      "Pilih frame yang dapat digunakan pengunjung pada booth ini. Gunakan Select all bila seluruh koleksi ingin tersedia.",
+  },
+  {
+    selectors: ['[data-device-config-tour="settings-pin"]'],
+    title: "Keamanan settings kiosk",
+    description:
+      "Aktifkan PIN bila menu Settings tablet hanya boleh dibuka petugas. Reset dapat diminta melalui email owner dan admin.",
+  },
+  {
+    selectors: ['[data-device-config-tour="save"]'],
+    title: "Simpan konfigurasi",
+    description:
+      "Simpan setelah semua pengaturan selesai. Kiosk mengambil konfigurasi terbaru saat online dan melakukan sinkronisasi.",
+  },
+];
+
+const DEVICE_CONFIGURATION_TOUR_START = DEVICE_TOUR_STEPS.length;
+const DEVICE_TOUR_TAB_BY_STEP = [
+  undefined,
+  undefined,
+  undefined,
+  "general",
+  "general",
+  "general",
+  "frame",
+  "system",
+  "system",
+] as const;
 
 type DeviceFormOptions = {
   themes: string[];
@@ -109,6 +191,11 @@ export function BoothManagement({
   const [pairingId, setPairingId] = useState<string | null>(null);
   const [failedFor, setFailedFor] = useState<Device | null>(null);
   const confirmDelete = useConfirmDialog();
+  const devicesTutorial = useFeatureTutorial("devices");
+  const [deviceTutorialStartStep, setDeviceTutorialStartStep] = useState(0);
+  const [deviceTutorialTab, setDeviceTutorialTab] = useState<
+    "general" | "frame" | "system" | undefined
+  >(undefined);
   const deviceLimit = subscriptionStatus?.deviceLimit ?? 1;
   const usedDevices = data.length;
   const remainingDevices = Math.max(0, deviceLimit - usedDevices);
@@ -116,6 +203,33 @@ export function BoothManagement({
     deviceLimit > 0 ? Math.min(100, (usedDevices / deviceLimit) * 100) : 0;
   const deviceLimitReached = remainingDevices <= 0;
   const editing = data.find((item) => item.id === editingId) ?? null;
+  const deviceTourSteps =
+    data.length > 0 || creating
+      ? [...DEVICE_TOUR_STEPS, ...DEVICE_CONFIGURATION_TOUR_STEPS]
+      : DEVICE_TOUR_STEPS;
+
+  const startDeviceTutorial = (startStep = 0) => {
+    setDeviceTutorialStartStep(startStep);
+    setDeviceTutorialTab(DEVICE_TOUR_TAB_BY_STEP[startStep]);
+    devicesTutorial.show();
+  };
+
+  const finishDeviceTutorial = () => {
+    setDeviceTutorialTab(undefined);
+    devicesTutorial.complete();
+  };
+
+  const handleDeviceTutorialStep = (nextStepIndex: number) => {
+    setDeviceTutorialTab(DEVICE_TOUR_TAB_BY_STEP[nextStepIndex]);
+    if (
+      nextStepIndex >= DEVICE_CONFIGURATION_TOUR_START &&
+      !editing &&
+      !creating &&
+      data[0]
+    ) {
+      setEditingId(data[0].id);
+    }
+  };
 
   const deviceFormOptions = useMemo<DeviceFormOptions>(
     () => ({
@@ -173,6 +287,10 @@ export function BoothManagement({
         description="Configure kiosk theme, frame template, pricing package, countdowns, sync status, and remote actions."
         action={
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => startDeviceTutorial()}>
+              <CircleHelp className="size-4" />
+              Show tutorial
+            </Button>
             <Button
               variant="outline"
               onClick={() => {
@@ -183,6 +301,7 @@ export function BoothManagement({
               <RefreshCw className="size-4" /> Refresh network
             </Button>
             <Button
+              data-devices-tour="add-device"
               onClick={openPairing}
               disabled={deviceLimitReached || isReadOnly("devices")}
               title={
@@ -198,7 +317,7 @@ export function BoothManagement({
           </div>
         }
       />
-      <Card className="mb-6">
+      <Card data-devices-tour="capacity" className="mb-6">
         <CardContent className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center">
           <div>
             <div className="text-sm font-semibold text-zinc-950">
@@ -254,7 +373,10 @@ export function BoothManagement({
           </div>
         </CardContent>
       </Card>
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div
+        data-devices-tour="device-list"
+        className="grid gap-4 xl:grid-cols-2"
+      >
         {data.map((device: Device) => (
           <Card key={device.id}>
             <CardHeader className="flex-row items-start justify-between">
@@ -387,7 +509,11 @@ export function BoothManagement({
                 >
                   <Printer className="size-4" /> Failed prints
                 </Button>
-                <Button size="sm" onClick={() => setEditingId(device.id)}>
+                <Button
+                  data-devices-tour="configure"
+                  size="sm"
+                  onClick={() => setEditingId(device.id)}
+                >
                   <SlidersHorizontal className="size-4" />{" "}
                   {isReadOnly("devices") ? "View details" : "Configure"}
                 </Button>
@@ -494,6 +620,10 @@ export function BoothManagement({
                 ),
             });
           }}
+          tutorialTab={deviceTutorialTab}
+          onShowTutorial={() =>
+            startDeviceTutorial(DEVICE_CONFIGURATION_TOUR_START)
+          }
         />
       ) : null}
       {editing ? (
@@ -532,12 +662,28 @@ export function BoothManagement({
               },
             );
           }}
+          tutorialTab={deviceTutorialTab}
+          onShowTutorial={() =>
+            startDeviceTutorial(DEVICE_CONFIGURATION_TOUR_START)
+          }
         />
       ) : null}
       {failedFor ? (
         <FailedPrintsDialog
           device={failedFor}
           onClose={() => setFailedFor(null)}
+        />
+      ) : null}
+      {devicesTutorial.open ? (
+        <FeatureGuidedTour
+          key={deviceTutorialStartStep}
+          open
+          title="Device guide"
+          steps={deviceTourSteps}
+          initialStepIndex={deviceTutorialStartStep}
+          onClose={finishDeviceTutorial}
+          onComplete={finishDeviceTutorial}
+          onBeforeStepChange={handleDeviceTutorialStep}
         />
       ) : null}
     </div>

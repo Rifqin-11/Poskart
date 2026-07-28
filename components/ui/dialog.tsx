@@ -11,6 +11,7 @@ export function Dialog({
   children,
   className,
   overlayClassName,
+  headerAction,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -18,6 +19,7 @@ export function Dialog({
   children: React.ReactNode;
   className?: string;
   overlayClassName?: string;
+  headerAction?: React.ReactNode;
 }) {
   if (!open) return null;
 
@@ -34,15 +36,18 @@ export function Dialog({
           className,
         )}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 px-4 py-3 sm:px-5 sm:py-4">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-100 px-4 py-3 sm:px-5 sm:py-4">
           <h2 className="text-sm font-semibold">{title}</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onOpenChange(false)}
-          >
-            <X className="size-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {headerAction}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">
           {children}

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowLeft, Redo2, Save, Undo2 } from "lucide-react";
+import { ArrowLeft, CircleHelp, Redo2, Save, Undo2 } from "lucide-react";
 import { BuilderToolbarButton } from "@/features/builder/shared/builder-toolbar-button";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +19,7 @@ export function BuilderHeader({
   onSave,
   onUndo,
   onRedo,
+  onShowTutorial,
 }: {
   title?: string;
   subtitle?: string;
@@ -33,6 +34,7 @@ export function BuilderHeader({
   onSave: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
+  onShowTutorial?: () => void;
 }) {
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-3">
@@ -93,8 +95,20 @@ export function BuilderHeader({
       </div>
 
       <div className="ml-auto flex min-w-0 items-center gap-2">
+        {onShowTutorial ? (
+          <BuilderToolbarButton
+            data-builder-tour="tutorial"
+            onClick={onShowTutorial}
+            title="Show tutorial"
+            className="text-[#00357B] hover:bg-blue-50 hover:text-[#00357B]"
+          >
+            <CircleHelp className="size-3.5" />
+            <span className="hidden lg:inline">Show tutorial</span>
+          </BuilderToolbarButton>
+        ) : null}
         {rightMeta}
         <button
+          data-builder-tour="save"
           type="button"
           onClick={onSave}
           disabled={isSaving}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, Edit2, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, CircleHelp, Edit2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +31,11 @@ import {
 } from "@/features/admin/pricing/use-pricing";
 import { formatCurrency } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
+import {
+  FeatureGuidedTour,
+  type FeatureTourStep,
+} from "@/features/admin/tutorial/feature-guided-tour";
+import { useFeatureTutorial } from "@/features/admin/tutorial/use-feature-tutorial";
 import type { PricingProduct, PricingProductInput } from "@/types/pricing";
 
 import { PricingFormDialog } from "./_components/pricing-form-dialog";
@@ -56,6 +61,33 @@ const EMPTY_EVENT: PricingProductInput = {
   accessMode: "event",
 };
 
+const PRICING_TOUR_STEPS: FeatureTourStep[] = [
+  {
+    selectors: ['[data-pricing-tour="packages"]'],
+    title: "Paket berbayar",
+    description:
+      "Gunakan bagian ini untuk paket reguler. Pengunjung memilih paket dan menyelesaikan pembayaran sebelum sesi dimulai.",
+  },
+  {
+    selectors: ['[data-pricing-tour="package-info"]'],
+    title: "Atur manfaat paket",
+    description:
+      "Setiap paket dapat memiliki harga, promo, batas cetak, QR download, GIF, dan Live Photo yang berbeda.",
+  },
+  {
+    selectors: ['[data-pricing-tour="events"]'],
+    title: "Akses event",
+    description:
+      "Event dipakai untuk sesi gratis yang ditanggung penyelenggara. Kiosk yang ditugaskan akan melewati pilihan paket dan pembayaran.",
+  },
+  {
+    selectors: ['[data-pricing-tour="event-info"]'],
+    title: "Pilih mode yang tepat",
+    description:
+      "Gunakan paket berbayar untuk operasional normal. Gunakan event hanya saat pengunjung memang tidak perlu checkout.",
+  },
+];
+
 export function PricingManagement() {
   const { data = [] } = usePricing();
   const createPricing = useCreatePricing();
@@ -65,6 +97,7 @@ export function PricingManagement() {
   const [editing, setEditing] = useState<PricingProduct | null>(null);
   const [creating, setCreating] = useState<PricingProductInput | null>(null);
   const confirmDelete = useConfirmDialog();
+  const pricingTutorial = useFeatureTutorial("pricing");
 
   const handleToggle = (
     product: PricingProduct,
@@ -103,6 +136,12 @@ export function PricingManagement() {
       <PageHeader
         title="Pricing & Product Management"
         description="Configure paid packages and event access for POSKART kiosks."
+        action={
+          <Button variant="outline" onClick={pricingTutorial.show}>
+            <CircleHelp className="size-4" />
+            Show tutorial
+          </Button>
+        }
       />
 
       <div className="space-y-5">
@@ -111,6 +150,8 @@ export function PricingManagement() {
           description="Paid packages with payment, print, and media settings."
           products={data.filter((product) => product.accessMode === "paid")}
           eventMode={false}
+          tourTarget="packages"
+          infoTourTarget="package-info"
           readOnly={isReadOnly("pricing")}
           onAdd={() => setCreating({ ...EMPTY_PRICING })}
           onEdit={setEditing}
@@ -122,6 +163,8 @@ export function PricingManagement() {
           description="Complimentary sessions that skip package and payment selection on assigned kiosks."
           products={data.filter((product) => product.accessMode === "event")}
           eventMode
+          tourTarget="events"
+          infoTourTarget="event-info"
           readOnly={isReadOnly("pricing")}
           onAdd={() => setCreating({ ...EMPTY_EVENT })}
           onEdit={setEditing}
@@ -179,6 +222,15 @@ export function PricingManagement() {
           }}
         />
       ) : null}
+      {pricingTutorial.open ? (
+        <FeatureGuidedTour
+          open
+          title="Pricing guide"
+          steps={PRICING_TOUR_STEPS}
+          onClose={pricingTutorial.complete}
+          onComplete={pricingTutorial.complete}
+        />
+      ) : null}
     </div>
   );
 }
@@ -188,6 +240,8 @@ type PricingTableCardProps = {
   description: string;
   products: PricingProduct[];
   eventMode: boolean;
+  tourTarget: string;
+  infoTourTarget: string;
   readOnly: boolean;
   onAdd: () => void;
   onEdit: (product: PricingProduct) => void;
@@ -204,6 +258,8 @@ function PricingTableCard({
   description,
   products,
   eventMode,
+  tourTarget,
+  infoTourTarget,
   readOnly,
   onAdd,
   onEdit,
@@ -220,7 +276,7 @@ function PricingTableCard({
   );
 
   return (
-    <Card>
+    <Card data-pricing-tour={tourTarget}>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <CardTitle>{title}</CardTitle>
@@ -236,7 +292,9 @@ function PricingTableCard({
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
-        {eventMode ? <EventInfoCard /> : <PaidInfoCard />}
+        <div data-pricing-tour={infoTourTarget}>
+          {eventMode ? <EventInfoCard /> : <PaidInfoCard />}
+        </div>
         <div className="overflow-x-auto">
           <Table className="min-w-[900px]">
             <TableHeader>

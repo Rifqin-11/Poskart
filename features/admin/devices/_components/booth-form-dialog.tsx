@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   Check,
+  CircleHelp,
   CreditCard,
   ImageIcon,
   Layers3,
@@ -34,6 +35,7 @@ type DeviceFormOptions = {
 };
 
 type SessionAccessMode = "" | "paid" | "event";
+type DeviceConfigurationTab = "general" | "frame" | "system";
 
 type BoothFormDialogProps = {
   title: string;
@@ -43,6 +45,8 @@ type BoothFormDialogProps = {
   onClose: () => void;
   onDelete?: () => void;
   onSubmit: (values: BoothInput) => void;
+  tutorialTab?: DeviceConfigurationTab;
+  onShowTutorial?: () => void;
 };
 
 export function BoothFormDialog({
@@ -53,6 +57,8 @@ export function BoothFormDialog({
   onClose,
   onDelete,
   onSubmit,
+  tutorialTab,
+  onShowTutorial,
 }: BoothFormDialogProps) {
   const { isReadOnly } = usePermission();
   const readOnly = isReadOnly("devices");
@@ -93,6 +99,7 @@ export function BoothFormDialog({
   const [eventSelection, setEventSelection] = useState(
     initialEventProduct?.name ?? "",
   );
+  const [activeTab, setActiveTab] = useState<DeviceConfigurationTab>("general");
   const [form, setForm] = useState<BoothInput>(() => {
     const { id: _ignored, ...rest } = initial as Device;
     void _ignored;
@@ -138,6 +145,17 @@ export function BoothFormDialog({
       onOpenChange={(o) => !o && onClose()}
       title={title}
       className="max-w-5xl"
+      headerAction={onShowTutorial ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onShowTutorial}
+        >
+          <CircleHelp className="size-4" />
+          <span className="hidden sm:inline">Show tutorial</span>
+        </Button>
+      ) : null}
     >
       <form
         onSubmit={(e) => {
@@ -185,8 +203,18 @@ export function BoothFormDialog({
           onSubmit(form);
         }}
       >
-        <Tabs defaultValue="general" className="w-full">
-          <TabsList className="mb-4 grid h-auto w-full grid-cols-3 gap-1 rounded-2xl">
+        <Tabs
+          defaultValue="general"
+          value={tutorialTab ?? activeTab}
+          onValueChange={(value) =>
+            setActiveTab(value as DeviceConfigurationTab)
+          }
+          className="w-full"
+        >
+          <TabsList
+            data-device-config-tour="tabs"
+            className="mb-4 grid h-auto w-full grid-cols-3 gap-1 rounded-2xl"
+          >
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="frame">Frame</TabsTrigger>
             <TabsTrigger value="system">System</TabsTrigger>
@@ -242,7 +270,10 @@ export function BoothFormDialog({
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
-              <section className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
+              <section
+                data-device-config-tour="theme"
+                className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4"
+              >
                 <div className="flex items-start gap-3">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-600 shadow-sm ring-1 ring-zinc-200">
                     <Layers3 className="size-4" />
@@ -273,7 +304,10 @@ export function BoothFormDialog({
                 </Select>
               </section>
 
-              <section className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
+              <section
+                data-device-config-tour="session-access"
+                className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-600 shadow-sm ring-1 ring-zinc-200">
@@ -386,7 +420,10 @@ export function BoothFormDialog({
               </section>
             </div>
 
-            <section className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
+            <section
+              data-device-config-tour="frames"
+              className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4"
+            >
               <div className="flex items-start gap-3">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-600 shadow-sm ring-1 ring-zinc-200">
                   <TicketCheck className="size-4" />
@@ -505,7 +542,10 @@ export function BoothFormDialog({
             value="system"
             className="min-h-[340px] max-h-[420px] space-y-4 overflow-y-auto pr-1"
           >
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50/30 p-3">
+            <div
+              data-device-config-tour="settings-pin"
+              className="rounded-lg border border-zinc-200 bg-zinc-50/30 p-3"
+            >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wider text-zinc-600">
@@ -753,7 +793,10 @@ export function BoothFormDialog({
           </TabsContent>
         </Tabs>
 
-        <div className="mt-4 flex flex-col gap-3 border-t border-zinc-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          data-device-config-tour="save"
+          className="mt-4 flex flex-col gap-3 border-t border-zinc-100 pt-4 sm:flex-row sm:items-center sm:justify-between"
+        >
           <div>
             {onDelete && !readOnly ? (
               <Button type="button" variant="destructive" onClick={onDelete}>

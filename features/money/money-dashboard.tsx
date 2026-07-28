@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   ArrowUpCircle,
   Banknote,
+  CircleHelp,
   Edit2,
   FileDown,
   FileSpreadsheet,
@@ -77,6 +78,11 @@ import {
   WalletManagerDialog,
 } from "@/features/money/components/money-dialogs";
 import { cn, formatCurrency } from "@/lib/utils";
+import {
+  FeatureGuidedTour,
+  type FeatureTourStep,
+} from "@/features/admin/tutorial/feature-guided-tour";
+import { useFeatureTutorial } from "@/features/admin/tutorial/use-feature-tutorial";
 import type {
   MoneyCustomCategory,
   MoneyEntry,
@@ -84,6 +90,33 @@ import type {
   MoneyTag,
   MoneyWallet,
 } from "@/types/money";
+
+const FINANCE_TOUR_STEPS: FeatureTourStep[] = [
+  {
+    selectors: ['[data-finance-tour="add-transaction"]'],
+    title: "Catat transaksi operasional",
+    description:
+      "Tambahkan pemasukan, pengeluaran, atau transfer agar laporan keuangan selalu mencerminkan kondisi operasional booth.",
+  },
+  {
+    selectors: ['[data-finance-tour="wallets"]'],
+    title: "Pilih dompet",
+    description:
+      "Pisahkan cash, QRIS, atau dompet lain agar saldo dan arus transaksi dapat dipantau lebih akurat.",
+  },
+  {
+    selectors: ['[data-finance-tour="summary"]'],
+    title: "Baca ringkasan",
+    description:
+      "Kartu ringkasan menghitung saldo bersih, total pemasukan, dan pengeluaran berdasarkan dompet serta periode yang dipilih.",
+  },
+  {
+    selectors: ['[data-finance-tour="export"]'],
+    title: "Ekspor laporan",
+    description:
+      "Gunakan Ekspor untuk mengunduh data yang sedang difilter sebagai file Excel atau PDF.",
+  },
+];
 
 export function MoneyDashboard({
   entries,
@@ -128,6 +161,7 @@ export function MoneyDashboard({
   );
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const financeTutorial = useFeatureTutorial("finance");
 
   const scopedEntries = useMemo(() => {
     return entries.filter(
@@ -469,6 +503,15 @@ export function MoneyDashboard({
   return (
     <div className="space-y-6">
       {confirmDelete.dialog}
+      {financeTutorial.open ? (
+        <FeatureGuidedTour
+          open
+          title="Finance guide"
+          steps={FINANCE_TOUR_STEPS}
+          onClose={financeTutorial.complete}
+          onComplete={financeTutorial.complete}
+        />
+      ) : null}
       {editorOpen ? (
         <MoneyEntryDialog
           entry={editing}
@@ -632,8 +675,17 @@ export function MoneyDashboard({
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 xl:flex xl:flex-wrap">
+          <Button
+            variant="outline"
+            className="w-full justify-center rounded-full xl:w-auto"
+            onClick={financeTutorial.show}
+          >
+            <CircleHelp className="size-4" />
+            Show tutorial
+          </Button>
           <div className="relative">
             <Button
+              data-finance-tour="export"
               variant="outline"
               className="w-full justify-center xl:w-auto rounded-full"
               onClick={() => setSettingsDropdownOpen(!settingsDropdownOpen)}
@@ -725,14 +777,18 @@ export function MoneyDashboard({
             ) : null}
           </div>
 
-          <Button className="justify-center sm:col-span-2 xl:col-span-1 rounded-full" onClick={openCreate}>
+          <Button
+            data-finance-tour="add-transaction"
+            className="justify-center rounded-full sm:col-span-2 xl:col-span-1"
+            onClick={openCreate}
+          >
             <Plus className="size-4" />
             Tambah transaksi
           </Button>
         </div>
       </div>
 
-      <Card>
+      <Card data-finance-tour="wallets">
         <CardContent className="space-y-3 p-4">
           <div className="space-y-1.5">
             <div className="text-xs font-medium text-zinc-500">
@@ -805,7 +861,10 @@ export function MoneyDashboard({
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div
+        data-finance-tour="summary"
+        className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+      >
         <StatCard
           title={
             selectedMonth === "all"

@@ -289,7 +289,10 @@ export async function GalleryPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div
+              data-gallery-tour="sessions"
+              className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+            >
               {group.sessions.map((session) => {
                 const framed = photosBySessionId.get(session.id)?.[0] ?? null;
                 const livePhotoJob = livePhotoJobBySessionId.get(session.id);
@@ -339,7 +342,10 @@ function GalleryEmpty({ message }: { message: string }) {
         </div>
         <GalleryShareHeaderActions />
       </header>
-      <Card className="grid min-h-80 place-items-center rounded-2xl border-dashed p-10 text-center">
+      <Card
+        data-gallery-tour="empty"
+        className="grid min-h-80 place-items-center rounded-2xl border-dashed p-10 text-center"
+      >
         <div>
           <Images className="mx-auto size-10 text-zinc-400" />
           <p className="mt-4 max-w-md text-sm text-zinc-500">{message}</p>

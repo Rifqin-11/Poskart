@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronDown, Copy, Loader2, Plus, Ticket, Trash2 } from "lucide-react";
+import { Check, ChevronDown, CircleHelp, Copy, Loader2, Plus, Ticket, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import { useBooths } from "@/features/admin/devices/use-devices";
 import { usePermission } from "@/features/admin/hooks/use-permission";
+import {
+  FeatureGuidedTour,
+  type FeatureTourStep,
+} from "@/features/admin/tutorial/feature-guided-tour";
+import { useFeatureTutorial } from "@/features/admin/tutorial/use-feature-tutorial";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { vouchersApi, type VoucherGenerationType } from "@/features/admin/vouchers/api";
 import { cn } from "@/lib/utils";
@@ -42,6 +47,39 @@ const initialForm: VoucherForm = {
   deviceIds: [],
 };
 
+const VOUCHER_TOUR_STEPS: FeatureTourStep[] = [
+  {
+    selectors: ['[data-vouchers-tour="campaigns"]'],
+    title: "Voucher campaign",
+    description:
+      "Setiap campaign menyimpan kode voucher dan allocation-nya. Voucher hanya tersedia untuk device yang menerima allocation.",
+  },
+  {
+    selectors: ['[data-vouchers-tour="generate"]'],
+    title: "Generate voucher",
+    description:
+      "Buat campaign baru dari tombol ini. Berikutnya, panduan membuka form generator agar Anda dapat melihat pengaturan pentingnya.",
+  },
+  {
+    selectors: ['[data-vouchers-tour="generation-types"]'],
+    title: "Pilih jenis kode",
+    description:
+      "Random membuat kode unik 6 karakter, berurutan memakai prefix dan nomor awal, sedangkan reusable memakai satu kode yang dapat digunakan berulang.",
+  },
+  {
+    selectors: ['[data-vouchers-tour="assign-devices"]'],
+    title: "Alokasikan ke device",
+    description:
+      "Pilih device penerima. Alokasi inilah yang membuat voucher tetap dapat divalidasi saat kiosk sedang offline.",
+  },
+  {
+    selectors: ['[data-vouchers-tour="generate-submit"]'],
+    title: "Buat dan kirim",
+    description:
+      "Setelah semua benar, generate voucher. Kode akan tersinkron ke device yang dipilih pada kesempatan sync berikutnya.",
+  },
+];
+
 export function VoucherManagement({
   initialOpen = false,
   initialCampaignId,
@@ -56,6 +94,7 @@ export function VoucherManagement({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(initialOpen);
   const confirmDelete = useConfirmDialog();
+  const vouchersTutorial = useFeatureTutorial("vouchers");
   const [form, setForm] = useState<VoucherForm>(initialForm);
   const { data: campaigns = [], isLoading: campaignsLoading } = useQuery({
     queryKey: adminQueryKeys.vouchers,
@@ -109,13 +148,32 @@ export function VoucherManagement({
     validityDays: Number.parseInt(form.validityDays, 10),
     deviceIds: form.deviceIds,
   });
+  const closeVoucherTutorial = () => {
+    setOpen(false);
+    vouchersTutorial.complete();
+  };
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Vouchers"
         description="Generate voucher dan alokasikan langsung ke device agar tetap dapat digunakan offline."
-        action={<Button disabled={isReadOnly("vouchers")} onClick={() => setOpen(true)}><Plus className="mr-2 size-4" />Generate voucher</Button>}
+        action={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={vouchersTutorial.show}>
+              <CircleHelp className="size-4" />
+              Show tutorial
+            </Button>
+            <Button
+              data-vouchers-tour="generate"
+              disabled={isReadOnly("vouchers")}
+              onClick={() => setOpen(true)}
+            >
+              <Plus className="mr-2 size-4" />
+              Generate voucher
+            </Button>
+          </div>
+        }
       />
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -124,7 +182,7 @@ export function VoucherManagement({
         <Metric label="Assigned devices" value={new Set(campaigns.flatMap((campaign) => campaign.allocations.map((allocation) => allocation.deviceId))).size} />
       </div>
 
-      <Card>
+      <Card data-vouchers-tour="campaigns">
         <CardHeader>
           <CardTitle>Voucher campaigns</CardTitle>
           <CardDescription>Voucher hanya akan tersedia pada device yang mendapat allocation.</CardDescription>
@@ -150,7 +208,7 @@ export function VoucherManagement({
       <Dialog open={open} onOpenChange={setOpen} title="Generate voucher" className="max-w-3xl">
         <div className="space-y-5">
           <Tabs defaultValue="random" value={form.generationType} onValueChange={(value) => update({ generationType: value as VoucherGenerationType })}>
-            <TabsList className="w-full"><TabsTrigger className="flex-1" value="random">Random</TabsTrigger><TabsTrigger className="flex-1" value="sequential">Berurutan</TabsTrigger><TabsTrigger className="flex-1" value="reusable">Reusable</TabsTrigger></TabsList>
+            <TabsList data-vouchers-tour="generation-types" className="w-full"><TabsTrigger className="flex-1" value="random">Random</TabsTrigger><TabsTrigger className="flex-1" value="sequential">Berurutan</TabsTrigger><TabsTrigger className="flex-1" value="reusable">Reusable</TabsTrigger></TabsList>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <label className="text-xs font-medium text-zinc-600 sm:col-span-2">Nama campaign<Input className="mt-1" value={form.name} onChange={(event) => update({ name: event.target.value })} placeholder="Contoh: Promo MPLS 2026" /></label>
               {form.generationType !== "reusable" ? <label className="text-xs font-medium text-zinc-600">Jumlah voucher<Input className="mt-1" type="number" min="1" max="5000" value={form.count} onChange={(event) => update({ count: event.target.value })} /></label> : null}
@@ -161,16 +219,28 @@ export function VoucherManagement({
             <TabsContent value="reusable"><label className="block text-xs font-medium text-zinc-600">Kode voucher reusable<Input className="mt-1" value={form.reusableCode} maxLength={32} onChange={(event) => update({ reusableCode: event.target.value.toUpperCase() })} placeholder="MPLS2026" /></label></TabsContent>
           </Tabs>
 
-          <section className="rounded-2xl border border-zinc-200 p-4">
+          <section data-vouchers-tour="assign-devices" className="rounded-2xl border border-zinc-200 p-4">
             <div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-semibold">Assign to devices</h3><p className="mt-1 text-xs text-zinc-500">Hanya device ini yang akan menerima voucher saat sinkronisasi.</p></div><Button type="button" variant="outline" size="sm" disabled={devicesLoading || devices.length === 0} onClick={() => update({ deviceIds: form.deviceIds.length === devices.length ? [] : devices.map((device) => device.id) })}>{form.deviceIds.length === devices.length ? "Clear all" : "Select all"}</Button></div>
             <div className="mt-4 grid max-h-44 gap-2 overflow-y-auto sm:grid-cols-2">
               {devices.map((device) => { const selected = form.deviceIds.includes(device.id); return <button key={device.id} type="button" onClick={() => toggleDevice(device.id)} className={cn("flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm", selected ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400")}><span className={cn("grid size-4 place-items-center rounded border", selected ? "border-white/50" : "border-zinc-300")}>{selected ? <Check className="size-3" /> : null}</span><span className="min-w-0 truncate">{device.name}</span></button>; })}
             </div>
             {selectedDevices.length > 0 ? <div className="mt-4 rounded-xl bg-zinc-50 p-3 text-xs text-zinc-600"><span className="font-medium text-zinc-900">Allocation preview: </span>{selectedDevices.map((device, index) => `${device.name} ${allocationPreview[index]?.[1] ?? 0}`).join(" · ")}</div> : null}
           </section>
-          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4"><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button type="button" disabled={generate.isPending || form.deviceIds.length === 0} onClick={submit}>{generate.isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Ticket className="mr-2 size-4" />}Generate & assign</Button></div>
+          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4"><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button data-vouchers-tour="generate-submit" type="button" disabled={generate.isPending || form.deviceIds.length === 0} onClick={submit}>{generate.isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Ticket className="mr-2 size-4" />}Generate & assign</Button></div>
         </div>
       </Dialog>
+      {vouchersTutorial.open ? (
+        <FeatureGuidedTour
+          open
+          title="Voucher guide"
+          steps={VOUCHER_TOUR_STEPS}
+          onClose={closeVoucherTutorial}
+          onComplete={closeVoucherTutorial}
+          onBeforeStepChange={(nextStepIndex) => {
+            setOpen(nextStepIndex >= 2);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

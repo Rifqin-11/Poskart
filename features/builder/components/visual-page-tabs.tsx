@@ -17,7 +17,10 @@ export function VisualPageTabs({
   onUpdateCanvas: (patch: Partial<BuilderCanvas>) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-lg bg-zinc-100 p-0.5">
+    <div
+      data-builder-tour="pages"
+      className="flex items-center gap-1 rounded-lg bg-zinc-100 p-0.5"
+    >
       {pageLabels.map((page) => {
         const isEnabled =
           !canvas.enabledPages || canvas.enabledPages.includes(page);
