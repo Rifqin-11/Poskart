@@ -24,6 +24,73 @@ export function assertSettingsPin(value: string | undefined) {
   return pin;
 }
 
+type UpdateSettingsPinInput = {
+  deviceId: string;
+  currentPin?: string;
+  nextPin?: string;
+  protectSettings?: boolean;
+};
+
+/**
+ * Updates the kiosk settings lock from the paired device itself.
+ *
+ * The current PIN is always verified server-side before an existing lock can
+ * be changed or disabled. This keeps the web dashboard and the kiosk's
+ * offline cache in sync without trusting a local-only mutation.
+ */
+export async function updateDeviceSettingsPin(
+  context: KioskRequestContext,
+  input: UpdateSettingsPinInput,
+) {
+  const device = await requireOrganizationDevice(context, input.deviceId);
+  const existingPin = normalizeSettingsPin(device.settings_pin);
+  const requestedCurrentPin = normalizeSettingsPin(input.currentPin);
+  const protectSettings = input.protectSettings === true;
+
+  if (existingPin && requestedCurrentPin !== existingPin) {
+    throw new KioskApiError(
+      "PIN saat ini tidak sesuai.",
+      403,
+      "SETTINGS_PIN_INVALID",
+    );
+  }
+
+  let nextPin = existingPin;
+  if (protectSettings) {
+    try {
+      nextPin = assertSettingsPin(input.nextPin);
+    } catch (error) {
+      throw new KioskApiError(
+        error instanceof Error ? error.message : "PIN baru tidak valid.",
+        422,
+        "SETTINGS_PIN_INVALID_FORMAT",
+      );
+    }
+  }
+  const { error } = await context.client
+    .from("devices")
+    .update({
+      settings_pin: nextPin,
+      protect_settings: protectSettings,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", device.id)
+    .eq("organization_id", context.organizationId);
+
+  if (error) {
+    throw new KioskApiError(
+      `Unable to update Settings PIN: ${error.message}`,
+      500,
+      "SETTINGS_PIN_UPDATE_FAILED",
+    );
+  }
+
+  return {
+    settingsPin: nextPin,
+    protectSettings,
+  };
+}
+
 export async function requestSettingsPinReset(
   context: KioskRequestContext,
   deviceId: string,

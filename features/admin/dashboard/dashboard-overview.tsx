@@ -34,6 +34,7 @@ import { LoadingState } from "@/features/admin/_components/loading-state";
 import { StatCard } from "@/features/admin/_components/stat-card";
 import { AnimatedNumber } from "@/features/admin/_components/animated-number";
 import {
+  dashboardChartBlue,
   emptyDashboardData,
   eventPeriodTabs,
   pieColors,
@@ -508,8 +509,8 @@ function EventAnalyticsSection({
                         x2="0"
                         y2="1"
                       >
-                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                        <stop offset="5%" stopColor={dashboardChartBlue} stopOpacity={0.25} />
+                        <stop offset="95%" stopColor={dashboardChartBlue} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
@@ -534,7 +535,7 @@ function EventAnalyticsSection({
                     <Area
                       type="monotone"
                       dataKey="revenue"
-                      stroke="#8b5cf6"
+                      stroke={dashboardChartBlue}
                       fill={`url(#eventRevenue-${period.key})`}
                       strokeWidth={2.5}
                     />

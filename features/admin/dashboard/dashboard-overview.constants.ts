@@ -10,10 +10,12 @@ export const eventPeriodTabs: Array<{ key: EventPeriodKey; label: string }> = [
   { key: "monthly", label: "Monthly" },
 ];
 
+export const dashboardChartBlue = "#00357B";
+
 export const pieColors = [
   "#18181b",
   "#10b981",
-  "#8b5cf6",
+  dashboardChartBlue,
   "#f59e0b",
   "#ef4444",
 ];
