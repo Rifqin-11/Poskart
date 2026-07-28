@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   BadgeCheck,
+  AlertTriangle,
   Battery,
   CircleHelp,
   Plus,
@@ -54,6 +55,7 @@ import type {
 import type { Device } from "@/types/device";
 
 import { BoothFormDialog } from "./_components/booth-form-dialog";
+import { DeviceErrorsDialog } from "./_components/device-errors-dialog";
 import { FailedPrintsDialog } from "./_components/printer-status-logs-dialog";
 
 const EMPTY_BOOTH: BoothInput = {
@@ -190,6 +192,7 @@ export function BoothManagement({
   const [pairingCode, setPairingCode] = useState("");
   const [pairingId, setPairingId] = useState<string | null>(null);
   const [failedFor, setFailedFor] = useState<Device | null>(null);
+  const [errorsFor, setErrorsFor] = useState<Device | null>(null);
   const confirmDelete = useConfirmDialog();
   const devicesTutorial = useFeatureTutorial("devices");
   const [deviceTutorialStartStep, setDeviceTutorialStartStep] = useState(0);
@@ -503,6 +506,21 @@ export function BoothManagement({
               <Progress value={device.battery} />
               <div className="flex flex-wrap gap-2">
                 <Button
+                  variant={
+                    device.unresolvedErrorCount ? "destructive" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => setErrorsFor(device)}
+                >
+                  <AlertTriangle className="size-4" />
+                  Errors
+                  {device.unresolvedErrorCount ? (
+                    <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
+                      {device.unresolvedErrorCount}
+                    </span>
+                  ) : null}
+                </Button>
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setFailedFor(device)}
@@ -672,6 +690,13 @@ export function BoothManagement({
         <FailedPrintsDialog
           device={failedFor}
           onClose={() => setFailedFor(null)}
+        />
+      ) : null}
+      {errorsFor ? (
+        <DeviceErrorsDialog
+          device={errorsFor}
+          canResolve={!isReadOnly("devices")}
+          onClose={() => setErrorsFor(null)}
         />
       ) : null}
       {devicesTutorial.open ? (

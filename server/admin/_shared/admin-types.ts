@@ -239,6 +239,7 @@ export type BoothRow = Omit<
   | "voucherRequestedAt"
   | "voucherCommand"
   | "voucherCommandUpdatedAt"
+  | "unresolvedErrorCount"
 > & {
   app_version: string;
   last_sync: string;

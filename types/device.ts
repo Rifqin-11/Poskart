@@ -40,4 +40,5 @@ export type Device = {
   voucherRequestedAt?: string | null;
   voucherCommand?: string | null;
   voucherCommandUpdatedAt?: string | null;
+  unresolvedErrorCount?: number;
 };

@@ -7,6 +7,8 @@ import {
   approveVoucherRequest,
   rejectVoucherRequest,
   validateDevicePairingCode,
+  getDeviceErrors,
+  setDeviceErrorResolved,
 } from "@/server/admin/actions/device-actions";
 
 export const deviceService = {
@@ -18,4 +20,6 @@ export const deviceService = {
   approveVoucherRequest,
   rejectVoucherRequest,
   validateDevicePairingCode,
+  getDeviceErrors,
+  setDeviceErrorResolved,
 };

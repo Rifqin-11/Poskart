@@ -8,6 +8,11 @@ import {
   clampPrinterTuningValue,
 } from "@/lib/printer-tuning";
 import { assertSettingsPin, normalizeSettingsPin } from "@/lib/kiosk/settings-pin";
+import type {
+  DeviceErrorCategory,
+  DeviceErrorGroup,
+  DeviceErrorSeverity,
+} from "@/types/device-error";
 import {
   assertSupabaseResult,
   mapBooth,
@@ -20,16 +25,134 @@ import {
 
 export async function getDevices(): Promise<Device[]> {
   const { supabase } = await getAdminContext();
-  const { data, error } = await supabase
-    .from("devices")
-    .select(BOOTH_COLUMNS)
-    .order("name", { ascending: true });
+  const [{ data, error }, errorGroupsResult] = await Promise.all([
+    supabase
+      .from("devices")
+      .select(BOOTH_COLUMNS)
+      .order("name", { ascending: true }),
+    supabase
+      .rpc("get_device_error_open_counts"),
+  ]);
 
-  return assertSupabaseResult(
+  const devices = assertSupabaseResult(
     data as BoothRow[] | null,
     error,
     "Unable to load devices",
   ).map(mapBooth);
+  const unresolvedByDevice = new Map<string, number>();
+  if (errorGroupsResult.error) {
+    const missingTable =
+      errorGroupsResult.error.code === "42P01" ||
+      errorGroupsResult.error.code === "PGRST202" ||
+      errorGroupsResult.error.code === "PGRST205";
+    if (!missingTable) {
+      throw new Error(
+        `Unable to load device error counts: ${errorGroupsResult.error.message}`,
+      );
+    }
+  } else {
+    for (const row of errorGroupsResult.data ?? []) {
+      const deviceId =
+        typeof row.device_id === "string" ? row.device_id : "";
+      if (!deviceId) continue;
+      const count =
+        typeof row.open_count === "number"
+          ? row.open_count
+          : Number(row.open_count);
+      unresolvedByDevice.set(deviceId, Number.isFinite(count) ? count : 0);
+    }
+  }
+
+  return devices.map((device) => ({
+    ...device,
+    unresolvedErrorCount: unresolvedByDevice.get(device.id) ?? 0,
+  }));
+}
+
+type DeviceErrorRow = {
+  id: string;
+  device_id: string;
+  category: DeviceErrorCategory;
+  severity: DeviceErrorSeverity;
+  message: string;
+  stack_trace: string | null;
+  context: Record<string, unknown> | null;
+  app_version: string | null;
+  occurrence_count: number;
+  first_seen: string;
+  last_seen: string;
+  resolved_at: string | null;
+};
+
+function mapDeviceError(row: DeviceErrorRow): DeviceErrorGroup {
+  return {
+    id: row.id,
+    deviceId: row.device_id,
+    category: row.category,
+    severity: row.severity,
+    message: row.message,
+    stackTrace: row.stack_trace,
+    context: row.context ?? {},
+    appVersion: row.app_version,
+    occurrenceCount: row.occurrence_count,
+    firstSeen: row.first_seen,
+    lastSeen: row.last_seen,
+    resolvedAt: row.resolved_at,
+  };
+}
+
+export async function getDeviceErrors(
+  deviceId: string,
+): Promise<DeviceErrorGroup[]> {
+  const { supabase } = await getAdminContext();
+  const normalizedDeviceId = deviceId.trim();
+  if (!normalizedDeviceId) return [];
+
+  const { data, error } = await supabase
+    .from("device_error_groups")
+    .select(
+      "id, device_id, category, severity, message, stack_trace, context, app_version, occurrence_count, first_seen, last_seen, resolved_at",
+    )
+    .eq("device_id", normalizedDeviceId)
+    .order("last_seen", { ascending: false })
+    .limit(100);
+  if (error) {
+    if (
+      error.code === "42P01" ||
+      error.code === "PGRST202" ||
+      error.code === "PGRST205"
+    ) {
+      return [];
+    }
+    throw new Error(`Unable to load device errors: ${error.message}`);
+  }
+
+  return ((data ?? []) as DeviceErrorRow[]).map(mapDeviceError);
+}
+
+export async function setDeviceErrorResolved(
+  errorId: string,
+  resolved: boolean,
+): Promise<void> {
+  const { supabase, user } = await verifyRole(["owner", "admin"]);
+  const normalizedErrorId = errorId.trim();
+  if (!normalizedErrorId) throw new Error("Device error is required.");
+
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("device_error_groups")
+    .update({
+      resolved_at: resolved ? now : null,
+      resolved_by: resolved ? user.id : null,
+      updated_at: now,
+    })
+    .eq("id", normalizedErrorId)
+    .select("id")
+    .maybeSingle();
+  if (error) {
+    throw new Error(`Unable to update device error: ${error.message}`);
+  }
+  if (!data) throw new Error("Device error not found or access was denied.");
 }
 
 export async function createDevice(values: BoothInput): Promise<void> {

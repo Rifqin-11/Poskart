@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { devicesApi, type BoothInput } from "@/features/admin/devices/api";
 import type { Device } from "@/types/device";
+import type { DeviceErrorGroup } from "@/types/device-error";
 
 export function useBooths() {
   return useQuery<Device[], Error>({
@@ -52,6 +53,33 @@ export function useDeleteBooth() {
   return useMutation({
     mutationFn: (id: string) => devicesApi.deleteDevice(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.devices }),
+  });
+}
+
+export function useDeviceErrors(deviceId: string | null) {
+  return useQuery<DeviceErrorGroup[], Error>({
+    queryKey: adminQueryKeys.deviceErrors(deviceId),
+    queryFn: () => devicesApi.getDeviceErrors(deviceId as string),
+    enabled: Boolean(deviceId),
+    refetchInterval: deviceId ? 30_000 : false,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useSetDeviceErrorResolved() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      errorId,
+      resolved,
+    }: {
+      errorId: string;
+      resolved: boolean;
+    }) => devicesApi.setDeviceErrorResolved(errorId, resolved),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["device-errors"] });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.devices });
+    },
   });
 }
 

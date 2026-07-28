@@ -14,6 +14,8 @@ export const adminQueryKeys = {
   adminNotifications: ["admin-notifications"] as const,
   failedPrints: (boothName?: string | null) => ["failed-prints", boothName ?? null] as const,
   devices: ["devices"] as const,
+  deviceErrors: (deviceId?: string | null) =>
+    ["device-errors", deviceId ?? null] as const,
   vouchers: ["vouchers"] as const,
   templates: ["templates"] as const,
   pricing: ["pricing"] as const,
