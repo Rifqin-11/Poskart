@@ -402,6 +402,7 @@ export async function buildKioskBootstrap(
     activeLayoutResult,
     themeResult,
     templatesResult,
+    frameCategoriesResult,
     pricingResult,
     devices,
     voucherAllocationsResult,
@@ -447,12 +448,18 @@ export async function buildKioskBootstrap(
     context.client
       .from("templates")
       .select(
-        "id,name,category,status,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default,display_order,usage_count",
+        "id,name,category,status,tagline,photo_count,accent_color,frame_category_id,frame_image_url,frame_layout,is_default,display_order,usage_count",
       )
       .eq("organization_id", context.organizationId)
       .eq("status", "published")
       .order("display_order", { ascending: true })
       .order("updated_at", { ascending: false }),
+    context.client
+      .from("frame_categories")
+      .select("id,name,display_order")
+      .eq("organization_id", context.organizationId)
+      .order("display_order", { ascending: true })
+      .order("created_at", { ascending: true }),
     context.client
       .from("pricing_products")
       .select(
@@ -479,6 +486,7 @@ export async function buildKioskBootstrap(
     layoutsResult.error,
     themeResult.error,
     templatesResult.error,
+    frameCategoriesResult.error,
     pricingResult.error,
     voucherAllocationsResult.error,
   ].find(Boolean);
@@ -551,6 +559,14 @@ export async function buildKioskBootstrap(
           (t) => assignedTemplates.has(t.id) || assignedTemplates.has(t.name),
         )
       : normalizedTemplates;
+  const assignedFrameCategoryIds = new Set(
+    templates
+      .map((template) => template.frame_category_id as string | null)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const frameCategories = (frameCategoriesResult.data ?? []).filter((category) =>
+    assignedFrameCategoryIds.has(category.id),
+  );
   const pricingProducts = (pricingResult.data ?? []).filter((product) => {
     if (assignedPricing.size === 0) {
       // Legacy devices without an explicit assignment may use paid packages,
@@ -657,6 +673,7 @@ export async function buildKioskBootstrap(
       id: template.id,
       name: template.name,
       category: template.category,
+      frameCategoryId: template.frame_category_id ?? null,
       tagline: template.tagline ?? null,
       photoCount: template.photo_count,
       accentColor: template.accent_color,
@@ -670,6 +687,7 @@ export async function buildKioskBootstrap(
       id: template.id,
       name: template.name,
       category: template.category,
+      frameCategoryId: template.frame_category_id ?? null,
       tagline: template.tagline ?? null,
       photoCount: template.photo_count,
       accentColor: template.accent_color,
@@ -678,6 +696,11 @@ export async function buildKioskBootstrap(
       isDefault: template.is_default,
       displayOrder: template.display_order,
       usageCount: template.usage_count ?? 0,
+    })),
+    frameCategories: frameCategories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      displayOrder: category.display_order,
     })),
     pricingProducts,
     // Device-scoped voucher allocation. Flutter caches these codes locally,

@@ -18,6 +18,7 @@ export const adminQueryKeys = {
     ["device-errors", deviceId ?? null] as const,
   vouchers: ["vouchers"] as const,
   templates: ["templates"] as const,
+  frameCategories: ["frame-categories"] as const,
   pricing: ["pricing"] as const,
   organizations: ["organizations"] as const,
   themes: ["themes"] as const,

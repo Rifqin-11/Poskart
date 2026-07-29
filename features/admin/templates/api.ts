@@ -5,5 +5,11 @@ export const templatesApi = {
   createTemplate: templateService.createTemplate,
   updateTemplate: templateService.updateTemplate,
   deleteTemplate: templateService.deleteTemplate,
+  moveTemplateToFrameCategory: templateService.moveTemplateToFrameCategory,
   reorderTemplates: templateService.reorderTemplates,
+  getFrameCategories: templateService.getFrameCategories,
+  reorderFrameCategories: templateService.reorderFrameCategories,
+  createFrameCategory: templateService.createFrameCategory,
+  updateFrameCategory: templateService.updateFrameCategory,
+  deleteFrameCategory: templateService.deleteFrameCategory,
 };

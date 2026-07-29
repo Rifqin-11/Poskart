@@ -13,10 +13,17 @@ export type Template = {
   tagline?: string;
   photoCount: number;
   accentColor: string;
+  frameCategoryId?: string;
   frameImageUrl?: string;
   isDefault: boolean;
   /** Full visual frame layout — designed in the Frame Builder */
   frameLayout?: FrameLayout | null;
+};
+
+export type FrameCategory = {
+  id: string;
+  name: string;
+  displayOrder: number;
 };
 
 export type TemplateFormValues = {
@@ -26,6 +33,7 @@ export type TemplateFormValues = {
   tagline: string;
   photoCount: number;
   accentColor: string;
+  frameCategoryId: string;
   frameImageUrl: string;
   isDefault: boolean;
   frameLayout?: FrameLayout | null;

@@ -7,11 +7,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FrameTemplateBuilder } from "@/features/admin/templates/frame-template-builder";
 import { bakeFrameLayoutColorKeyAssets } from "@/features/builder/utils/bake-color-key-assets";
 import {
   useCreateTemplate,
+  useFrameCategories,
   useTemplates,
   useUpdateTemplate,
 } from "@/features/admin/templates/use-templates";
@@ -46,6 +48,7 @@ const DEFAULT_FORM: TemplateFormValues = {
   tagline: "",
   photoCount: 0,
   accentColor: "#C4121A",
+  frameCategoryId: "",
   frameImageUrl: "",
   isDefault: false,
   frameLayout: null,
@@ -95,6 +98,7 @@ export function TemplateBuilderWorkspace({
   const router = useRouter();
   const isNew = templateId === "new";
   const { data: templates = [], isLoading } = useTemplates();
+  const { data: frameCategories = [] } = useFrameCategories();
   const createTemplate = useCreateTemplate();
   const updateTemplate = useUpdateTemplate();
   const template = isNew
@@ -130,6 +134,7 @@ export function TemplateBuilderWorkspace({
         tagline: template.tagline ?? "",
         photoCount: template.photoCount,
         accentColor: template.accentColor,
+        frameCategoryId: template.frameCategoryId ?? "",
         frameImageUrl: template.frameImageUrl ?? "",
         isDefault: template.isDefault,
         frameLayout: template.frameLayout ?? null,
@@ -256,6 +261,25 @@ export function TemplateBuilderWorkspace({
           placeholder="Timeless and elegant"
           onChange={(event) => patch("tagline", event.target.value)}
         />
+      </label>
+      <label className="block text-xs font-medium text-zinc-600">
+        Frame category
+        <Select
+          className="mt-1"
+          value={form.frameCategoryId}
+          onChange={(event) => patch("frameCategoryId", event.target.value)}
+        >
+          <option value="">No category — show without category tab</option>
+          {frameCategories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </Select>
+        <span className="mt-1 block text-[10px] leading-4 text-zinc-400">
+          Category tabs appear in Flutter only when at least one assigned frame
+          uses a category.
+        </span>
       </label>
       <div className="space-y-2">
         <div className="text-xs font-medium text-zinc-600">Accent color</div>

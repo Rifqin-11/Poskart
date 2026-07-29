@@ -10,7 +10,10 @@ import type {
   SubscriptionPlan,
   SubscriptionPlanInput,
 } from "@/types/pricing";
-import type { Template, TemplateFormValues } from "@/types/template";
+import type {
+  Template,
+  TemplateFormValues,
+} from "@/types/template";
 import type { Organization } from "@/types/organization";
 import type { ThemePreset, ThemeSchema } from "@/types/theme";
 import type { Transaction } from "@/types/transaction";
@@ -267,7 +270,11 @@ export type BoothRow = Omit<
 
 export type TemplateRow = Omit<
   Template,
-  "assignedBooths" | "updatedAt" | "displayOrder" | "usageCount"
+  | "assignedBooths"
+  | "updatedAt"
+  | "displayOrder"
+  | "usageCount"
+  | "frameCategoryId"
 > & {
   assigned_booths: number;
   updated_at_label: string;
@@ -279,6 +286,7 @@ export type TemplateRow = Omit<
   frame_image_url: unknown;
   frame_layout: unknown;
   is_default: boolean;
+  frame_category_id: string | null;
 };
 
 export type PricingProductRow = Omit<
@@ -627,6 +635,7 @@ export const mapTemplate = (row: TemplateRow): Template => ({
   tagline: row.tagline ?? undefined,
   photoCount: row.photo_count ?? 4,
   accentColor: row.accent_color ?? "#C4121A",
+  frameCategoryId: row.frame_category_id ?? undefined,
   frameImageUrl: normalizeAssetUrl(row.frame_image_url) ?? undefined,
   frameLayout: normalizeAssetReferences(row.frame_layout) as
     Template["frameLayout"] | null,

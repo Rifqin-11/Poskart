@@ -10,12 +10,32 @@ import {
   type TemplateRow,
 } from "../_shared/admin-types";
 
+function normalizeFrameCategoryId(value: string | undefined) {
+  const normalized = value?.trim() ?? "";
+  return normalized || null;
+}
+
+async function assertFrameCategoryAccess(
+  supabase: Awaited<ReturnType<typeof verifyRole>>["supabase"],
+  frameCategoryId: string | null,
+) {
+  if (!frameCategoryId) return;
+  const { data, error } = await supabase
+    .from("frame_categories")
+    .select("id")
+    .eq("id", frameCategoryId)
+    .maybeSingle();
+  if (error || !data) {
+    throw new Error("Selected frame category is unavailable.");
+  }
+}
+
 export async function getTemplates(): Promise<Template[]> {
   const { supabase } = await getAdminContext();
   const { data, error } = await supabase
     .from("templates")
     .select(
-      "id,name,category,status,assigned_booths,updated_at_label,display_order,usage_count,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default",
+      "id,name,category,status,assigned_booths,updated_at_label,display_order,usage_count,tagline,photo_count,accent_color,frame_category_id,frame_image_url,frame_layout,is_default",
     )
     .order("display_order", { ascending: true })
     .order("updated_at", { ascending: false });
@@ -27,11 +47,15 @@ export async function getTemplates(): Promise<Template[]> {
   ).map(mapTemplate);
 }
 
-export async function createTemplate(values: TemplateFormValues): Promise<void> {
+export async function createTemplate(
+  values: TemplateFormValues,
+): Promise<void> {
   const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const now = new Date().toISOString();
   const id = `TPL-${Date.now()}`;
   const photoCount = countPhotoSlotsFromLayout(values.frameLayout);
+  const frameCategoryId = normalizeFrameCategoryId(values.frameCategoryId);
+  await assertFrameCategoryAccess(supabase, frameCategoryId);
   const { data: lastTemplate, error: orderError } = await supabase
     .from("templates")
     .select("display_order")
@@ -54,6 +78,7 @@ export async function createTemplate(values: TemplateFormValues): Promise<void> 
     tagline: values.tagline || null,
     photo_count: photoCount,
     accent_color: values.accentColor,
+    frame_category_id: frameCategoryId,
     frame_image_url: values.frameImageUrl || null,
     frame_layout: values.frameLayout ?? null,
     is_default: values.isDefault,
@@ -79,6 +104,11 @@ export async function updateTemplate(
   if (values.status !== undefined) patch.status = values.status;
   if (values.tagline !== undefined) patch.tagline = values.tagline || null;
   if (values.accentColor !== undefined) patch.accent_color = values.accentColor;
+  if (values.frameCategoryId !== undefined) {
+    const frameCategoryId = normalizeFrameCategoryId(values.frameCategoryId);
+    await assertFrameCategoryAccess(supabase, frameCategoryId);
+    patch.frame_category_id = frameCategoryId;
+  }
   if (values.frameImageUrl !== undefined)
     patch.frame_image_url = values.frameImageUrl || null;
   if (values.frameLayout !== undefined) {
@@ -108,5 +138,26 @@ export async function reorderTemplates(templateIds: string[]): Promise<void> {
   });
   if (error) {
     throw new Error(`Unable to reorder templates: ${error.message}`);
+  }
+}
+
+export async function moveTemplateToFrameCategory(
+  templateId: string,
+  frameCategoryId: string | null,
+  templateIds: string[],
+): Promise<void> {
+  if (templateIds.length === 0) return;
+
+  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
+  const normalizedFrameCategoryId = frameCategoryId?.trim() || null;
+  await assertFrameCategoryAccess(supabase, normalizedFrameCategoryId);
+
+  const { error } = await supabase.rpc("move_template_to_frame_category", {
+    target_template_id: templateId,
+    target_frame_category_id: normalizedFrameCategoryId,
+    template_ids: templateIds,
+  });
+  if (error) {
+    throw new Error(`Unable to move template: ${error.message}`);
   }
 }

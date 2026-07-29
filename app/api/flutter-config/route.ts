@@ -22,7 +22,7 @@ export async function GET() {
   try {
     const supabase = await createClient();
 
-    const [configResult, layoutResult, themeResult, templatesResult] =
+    const [configResult, layoutResult, themeResult, templatesResult, frameCategoriesResult] =
       await Promise.all([
         supabase
           .from("app_configs")
@@ -44,17 +44,30 @@ export async function GET() {
         supabase
           .from("templates")
           .select(
-            "id,name,category,status,tagline,photo_count,accent_color,frame_image_url,frame_layout,is_default,display_order,usage_count",
+            "id,name,category,status,tagline,photo_count,accent_color,frame_category_id,frame_image_url,frame_layout,is_default,display_order,usage_count",
           )
           .eq("status", "published")
           .order("display_order", { ascending: true })
           .order("updated_at", { ascending: false }),
+        supabase
+          .from("frame_categories")
+          .select("id,name,display_order")
+          .order("display_order", { ascending: true })
+          .order("created_at", { ascending: true }),
       ]);
 
     const config = configResult.data;
     const layout = layoutResult.data;
     const theme = themeResult.data;
     const templates = templatesResult.data ?? [];
+    const assignedFrameCategoryIds = new Set(
+      templates
+        .map((template) => template.frame_category_id as string | null)
+        .filter((id): id is string => Boolean(id)),
+    );
+    const frameCategories = (frameCategoriesResult.data ?? []).filter(
+      (category) => assignedFrameCategoryIds.has(category.id),
+    );
 
     const normalizedLayoutSchema = layout?.schema
       ? normalizeAssetReferences(layout.schema)
@@ -100,6 +113,7 @@ export async function GET() {
         id: t.id,
         name: t.name,
         category: t.category,
+        frameCategoryId: t.frame_category_id ?? null,
         tagline: t.tagline ?? null,
         photoCount: t.photo_count,
         accentColor: t.accent_color,
@@ -108,6 +122,11 @@ export async function GET() {
         isDefault: t.is_default,
         displayOrder: t.display_order,
         usageCount: t.usage_count ?? 0,
+      })),
+      frameCategories: frameCategories.map((category) => ({
+        id: category.id,
+        name: category.name,
+        displayOrder: category.display_order,
       })),
     };
 

@@ -30,8 +30,15 @@ import type { Device } from "@/types/device";
 
 type DeviceFormOptions = {
   themes: string[];
-  frameTemplates: string[];
+  frameTemplates: FrameTemplateOption[];
   pricingProducts: PricingProduct[];
+};
+
+type FrameTemplateOption = {
+  name: string;
+  frameImageUrl?: string;
+  accentColor?: string;
+  photoCount?: number;
 };
 
 type SessionAccessMode = "" | "paid" | "event";
@@ -121,8 +128,14 @@ export function BoothFormDialog({
   const runtimeStatus = form.status;
   const maintenanceEnabled = runtimeStatus === "maintenance";
   const frameTemplateOptions = includeCurrentOptions(
-    options.frameTemplates,
+    options.frameTemplates.map((template) => template.name),
     form.frameTemplates,
+  );
+  const frameTemplateSelectionOptions = frameTemplateOptions.map(
+    (name): FrameTemplateOption =>
+      options.frameTemplates.find((template) => template.name === name) ?? {
+        name,
+      },
   );
   const allFramesSelected =
     frameTemplateOptions.length > 0 &&
@@ -490,7 +503,10 @@ export function BoothFormDialog({
 
           {/* TAB 2: FRAME */}
           <TabsContent value="frame" className="min-h-[340px]">
-            <section className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4">
+            <section
+              data-device-config-tour="frames"
+              className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-4"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-600 shadow-sm ring-1 ring-zinc-200">
@@ -520,11 +536,11 @@ export function BoothFormDialog({
                   </Button>
                 </div>
               </div>
-              <DeviceMultiSelect
+              <FrameTemplateMultiSelect
                 className="mt-4"
                 values={form.frameTemplates}
                 emptyLabel="No frame templates yet"
-                options={frameTemplateOptions}
+                options={frameTemplateSelectionOptions}
                 disabled={readOnly}
                 onChange={(values) =>
                   setForm({
@@ -922,6 +938,118 @@ function EventProductSelect({
       <p className="mt-1 text-[10px] leading-4 text-zinc-400">
         One event only. Visitors go directly from Landing to the frame picker.
       </p>
+    </div>
+  );
+}
+
+function FrameTemplateMultiSelect({
+  values,
+  emptyLabel,
+  options,
+  className,
+  onChange,
+  disabled,
+}: {
+  values: string[];
+  emptyLabel: string;
+  options: FrameTemplateOption[];
+  className?: string;
+  onChange: (values: string[]) => void;
+  disabled?: boolean;
+}) {
+  const selectedValues = normalizeStringList(values);
+
+  const toggleValue = (name: string) => {
+    if (disabled) return;
+    onChange(
+      selectedValues.includes(name)
+        ? selectedValues.filter((value) => value !== name)
+        : [...selectedValues, name],
+    );
+  };
+
+  return (
+    <div className={className}>
+      {options.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-zinc-200 bg-white px-3 py-8 text-center text-xs text-zinc-400">
+          {emptyLabel}
+        </div>
+      ) : (
+        <div className="grid max-h-[340px] grid-cols-2 gap-3 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-3 sm:grid-cols-3 lg:grid-cols-4">
+          {options.map((template) => {
+            const selected = selectedValues.includes(template.name);
+            return (
+              <button
+                key={template.name}
+                type="button"
+                disabled={disabled}
+                aria-pressed={selected}
+                onClick={() => toggleValue(template.name)}
+                className={cn(
+                  "group relative overflow-hidden rounded-xl border bg-white text-left shadow-sm transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B] focus-visible:ring-offset-2",
+                  selected
+                    ? "border-[#00357B] ring-2 ring-[#00357B]/20"
+                    : "border-zinc-200 hover:border-[#00357B]/45 hover:shadow-md",
+                  disabled && "cursor-not-allowed opacity-60",
+                )}
+              >
+                <div
+                  className="relative aspect-[4/5] overflow-hidden border-b border-zinc-100 bg-zinc-50 p-2"
+                  style={{
+                    backgroundColor: template.accentColor
+                      ? `${template.accentColor}12`
+                      : undefined,
+                  }}
+                >
+                  {template.frameImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={template.frameImageUrl}
+                      alt={`Preview ${template.name}`}
+                      className="size-full object-contain"
+                    />
+                  ) : (
+                    <div className="flex size-full flex-col items-center justify-center gap-2 text-zinc-400">
+                      <ImageIcon
+                        className="size-7"
+                        style={{ color: template.accentColor }}
+                      />
+                      <span className="text-[10px] font-medium">
+                        Preview unavailable
+                      </span>
+                    </div>
+                  )}
+                  <span
+                    className={cn(
+                      "absolute right-2 top-2 flex size-6 items-center justify-center rounded-full border shadow-sm transition",
+                      selected
+                        ? "border-[#00357B] bg-[#00357B] text-white"
+                        : "border-white/90 bg-white/85 text-transparent",
+                    )}
+                  >
+                    <Check className="size-3.5" />
+                  </span>
+                </div>
+                <div className="min-w-0 p-2.5">
+                  <p className="truncate text-xs font-semibold text-zinc-900">
+                    {template.name}
+                  </p>
+                  <p className="mt-1 text-[10px] text-zinc-500">
+                    {template.photoCount
+                      ? `${template.photoCount} photos`
+                      : "Frame"}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {selectedValues.length > 0 ? (
+        <div className="mt-2 text-[10px] text-zinc-400">
+          {selectedValues.length} selected
+        </div>
+      ) : null}
     </div>
   );
 }

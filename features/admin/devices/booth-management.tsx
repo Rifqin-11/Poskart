@@ -160,7 +160,12 @@ const DEVICE_TOUR_TAB_BY_STEP = [
 
 type DeviceFormOptions = {
   themes: string[];
-  frameTemplates: string[];
+  frameTemplates: Array<{
+    name: string;
+    frameImageUrl?: string;
+    accentColor?: string;
+    photoCount?: number;
+  }>;
   pricingProducts: PricingProduct[];
 };
 
@@ -241,8 +246,13 @@ export function BoothManagement({
         .filter(Boolean),
       frameTemplates: templates
         .filter((template: Template) => template.category === "frame")
-        .map((template: Template) => template.name)
-        .filter(Boolean),
+        .filter((template: Template) => Boolean(template.name))
+        .map((template: Template) => ({
+          name: template.name,
+          frameImageUrl: template.frameImageUrl,
+          accentColor: template.accentColor,
+          photoCount: template.photoCount,
+        })),
       pricingProducts,
     }),
     [layouts, pricingProducts, templates],
