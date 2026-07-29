@@ -7,9 +7,9 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { href: "/#platform", label: "Platform" },
-  { href: "/#builder", label: "Builder" },
   { href: "/#features", label: "Features" },
+  { href: "/#platform", label: "Platform" },
+  { href: "/#workflow", label: "Workflow" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/contact", label: "Contact" },
 ];

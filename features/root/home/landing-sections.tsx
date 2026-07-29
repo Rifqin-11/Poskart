@@ -59,7 +59,7 @@ export function ProductShowcase() {
   const preview = previewDevice ? devicePreviews[previewDevice] : null;
 
   return (
-    <section id="features" className="scroll-mt-[72px] bg-white">
+    <section id="platform" className="scroll-mt-[72px] bg-white">
       <div className="mx-auto max-w-[90rem] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
         <div className="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:items-end">
           <div>
@@ -190,7 +190,7 @@ const workflow = [
 export function WorkflowBand() {
   return (
     <section
-      id="builder"
+      id="workflow"
       className="scroll-mt-[72px] bg-[#eef4ff] text-zinc-950"
     >
       <div className="mx-auto max-w-[90rem] px-5 py-20 sm:px-8 lg:px-12 lg:py-24">

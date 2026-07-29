@@ -265,7 +265,7 @@ export function HeroSection({
 
         <a
           data-hero-scroll
-          href="#platform"
+          href="#features"
           aria-label="Explore the POSKART workflow"
           className="absolute bottom-8 right-8 z-30 hidden size-12 items-center justify-center rounded-full border border-blue-100 bg-white/75 text-[#00357B] shadow-lg shadow-blue-950/10 backdrop-blur-xl transition-transform hover:translate-y-1 lg:flex"
         >

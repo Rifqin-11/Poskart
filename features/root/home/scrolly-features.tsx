@@ -136,7 +136,7 @@ export function ScrollyFeatures() {
   return (
     <section
       ref={rootRef}
-      id="platform"
+      id="features"
       className="relative scroll-mt-[72px] bg-white text-zinc-950"
     >
       <div className="mx-auto max-w-[90rem] px-5 pb-20 pt-4 sm:px-8 lg:px-12 lg:pb-28 lg:pt-8">
