@@ -365,7 +365,7 @@ export function BuilderThemesPage() {
         )}
       </div>
 
-      {/* Active banner */}
+      {/* Active banner
       {activeLayout && (
         <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
           <Check className="size-5 shrink-0 text-emerald-600" />
@@ -381,71 +381,7 @@ export function BuilderThemesPage() {
             Live
           </Badge>
         </div>
-      )}
-
-      {activeLayout && (
-        <Card className="rounded-2xl border-zinc-200 p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-zinc-900">
-                Active theme statistics
-              </p>
-              <p className="mt-1 text-xs text-zinc-500">
-                Session and print totals for{" "}
-                <span className="font-medium text-zinc-700">
-                  {activeLayout.name}
-                </span>
-                .
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={statisticsLoading}
-              onClick={() => void refreshStatistics()}
-            >
-              <RefreshCw
-                className={cn("size-4", statisticsLoading && "animate-spin")}
-              />
-              Refresh statistics
-            </Button>
-          </div>
-          {statisticsError && (
-            <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
-              Unable to load statistics. Press refresh to try again.
-            </p>
-          )}
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="flex items-center gap-4 rounded-xl border border-blue-100 bg-blue-50/70 p-4">
-              <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-700">
-                <ScanLine className="size-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-zinc-950">
-                  {activeThemeStatistics?.totalSessions ?? 0}
-                </p>
-                <p className="text-xs font-medium text-zinc-500">
-                  Total sessions
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
-              <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
-                <Printer className="size-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-zinc-950">
-                  {activeThemeStatistics?.totalPrints ?? 0}
-                </p>
-                <p className="text-xs font-medium text-zinc-500">
-                  Total prints
-                </p>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
+      )} */}
 
       {/* Loading */}
       {isLoading && (
