@@ -24,11 +24,12 @@ export function HeroSection({
       const reduceMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       ).matches;
+      const isMobile = window.matchMedia("(max-width: 639px)").matches;
 
       gsap.set("[data-hero-panel]", {
         autoAlpha: 1,
         y: 0,
-        yPercent: 100,
+        yPercent: isMobile ? 0 : 100,
       });
 
       if (reduceMotion) {
@@ -139,7 +140,7 @@ export function HeroSection({
   return (
     <section
       ref={sectionRef}
-      className="hero-gradient-poskart relative isolate min-h-[175svh] text-zinc-950"
+      className="hero-gradient-poskart relative isolate min-h-[145svh] text-zinc-950 sm:min-h-[175svh]"
     >
       <div className="sticky top-0 h-screen overflow-hidden">
         <div className="pointer-events-none absolute inset-x-5 top-24 bottom-20 border-x border-t border-blue-950/10 sm:inset-x-8 lg:inset-x-12" />

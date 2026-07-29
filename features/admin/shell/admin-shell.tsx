@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ArrowLeft,
   Bell,
   ChevronDown,
   CreditCard,
@@ -396,7 +397,9 @@ export function AdminShell({
 
   // Subscribe to Supabase Realtime so layout_schemas + devices queries
   // auto-refresh when the Flutter kiosk app pushes changes (e.g. active theme)
-  useRealtimeSync();
+  const pathname = usePathname();
+  const isCheckoutPage = pathname === "/checkout";
+  const isStandalone = builderFullView || isCheckoutPage;
 
   const { data: notifications = [] } = useAdminNotifications();
   const markRead = useMarkAdminNotificationsRead();
@@ -410,28 +413,64 @@ export function AdminShell({
         builderFullView ? "bg-zinc-50" : "bg-[#f5f6f8]",
       )}
     >
-      {/* App sidebar — hidden in builder full-view */}
-      {!builderFullView && (
-        <aside className="fixed inset-y-4 left-4 hidden w-64 overflow-hidden rounded-[2rem] border border-zinc-200/70 bg-white p-4 shadow-xl shadow-zinc-950/[0.05] lg:block xl:w-72">
-          <SidebarContent isSuperAdmin={isSuperAdmin} />
-        </aside>
-      )}
+      {/* App sidebar — hidden in builder full-view or checkout */}
+      {!isStandalone && (
+        <>
+          <aside className="fixed inset-y-4 left-4 hidden w-64 overflow-hidden rounded-[2rem] border border-zinc-200/70 bg-white p-4 shadow-xl shadow-zinc-950/[0.05] lg:block xl:w-72">
+            <SidebarContent isSuperAdmin={isSuperAdmin} />
+          </aside>
 
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SidebarContent
-          isSuperAdmin={isSuperAdmin}
-          onNavigate={() => setOpen(false)}
-        />
-      </Sheet>
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SidebarContent
+              isSuperAdmin={isSuperAdmin}
+              onNavigate={() => setOpen(false)}
+            />
+          </Sheet>
+        </>
+      )}
 
       <div
         className={cn(
           "transition-all duration-200",
-          builderFullView ? "lg:pl-0" : "lg:pl-[17.25rem] xl:pl-[18.75rem]",
+          isStandalone ? "lg:pl-0" : "lg:pl-[17.25rem] xl:pl-[18.75rem]",
         )}
       >
-        {/* Topbar — hidden in builder full-view */}
-        {!builderFullView && (
+        {/* Checkout Header — standalone header with Back button & Icon */}
+        {isCheckoutPage ? (
+          <header className="sticky top-4 z-30 mx-auto max-w-6xl mt-4 px-3 sm:px-5 lg:px-6">
+            <div className="flex h-16 items-center justify-between rounded-[1.75rem] border border-white/75 bg-white/75 px-4 shadow-lg shadow-zinc-950/[0.035] backdrop-blur-2xl backdrop-saturate-150 sm:px-5">
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2.5 rounded-2xl border border-zinc-200/80 bg-white px-3.5 py-2 text-sm font-medium text-zinc-700 shadow-sm transition-all hover:bg-zinc-50 hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+              >
+                <ArrowLeft className="size-4 text-zinc-600" />
+                <div className="flex items-center gap-2">
+                  <div className="grid size-6 place-items-center overflow-hidden rounded-lg bg-white ring-1 ring-zinc-200/80">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/Logo Poskart.png"
+                      alt="POSKART Logo"
+                      className="size-4 object-contain"
+                    />
+                  </div>
+                  <span className="font-semibold text-zinc-900">Batal</span>
+                </div>
+              </Link>
+
+              <div className="flex items-center gap-3">
+                <div className="hidden text-right sm:block">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+                    Signed in as
+                  </div>
+                  <div className="max-w-48 truncate text-xs font-semibold text-zinc-800">
+                    {userEmail ?? "POSKART User"}
+                  </div>
+                </div>
+                <Avatar name={initials} />
+              </div>
+            </div>
+          </header>
+        ) : !builderFullView ? (
           <header className="sticky top-4 z-30 mx-3 mt-4 rounded-[1.75rem] border border-white/75 bg-white/55 px-4 shadow-lg shadow-zinc-950/[0.035] backdrop-blur-2xl backdrop-saturate-150 lg:mx-4 lg:px-5">
             <div className="flex h-16 items-center gap-4">
               <Button
@@ -445,7 +484,7 @@ export function AdminShell({
               </Button>
               <div
                 data-admin-tour="search"
-                className="hidden min-w-0 flex-1 md:block md:max-w-md"
+                className="hidden min-w-0 flex-1 md:block md:max-w-xs lg:max-w-md"
               >
                 <CommandSearch isSuperAdmin={isSuperAdmin} />
               </div>
@@ -683,10 +722,10 @@ export function AdminShell({
               </div>
             </div>
           </header>
-        )}
+        ) : null}
         <main
           className={cn(
-            builderFullView
+            builderFullView || isCheckoutPage
               ? "p-0"
               : "mx-3 mt-4 px-4 py-5 lg:mx-4 lg:px-5 xl:px-8 xl:py-6",
           )}

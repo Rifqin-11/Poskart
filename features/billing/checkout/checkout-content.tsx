@@ -181,7 +181,7 @@ export function CheckoutContent({
             <CreditCard className="size-3.5 text-red-500" />
             Checkout
           </div>
-          <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+          <h1 className="max-w-2xl text-2xl font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">
             Complete your POSKART subscription.
           </h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-600">
@@ -207,7 +207,7 @@ export function CheckoutContent({
 
         {longerDurationOffers.length > 0 ? (
           <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 sm:p-6">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div>
                 <h2 className="text-lg font-semibold tracking-tight">
                   Perpanjang lebih hemat
@@ -216,7 +216,7 @@ export function CheckoutContent({
                   Pilih masa akses lebih panjang untuk harga yang lebih hemat.
                 </p>
               </div>
-              <span className="shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
+              <span className="w-fit shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
                 {plan.durationMonths} bulan dipilih
               </span>
             </div>
@@ -239,18 +239,18 @@ export function CheckoutContent({
                     href={`/checkout?plan=${offer.id}&devices=${quote.deviceCount}`}
                     className="group rounded-2xl border border-zinc-200 bg-zinc-50 p-4 transition hover:border-[#00357B]/35 hover:bg-blue-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B] focus-visible:ring-offset-2"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-zinc-950">
                         {offer.durationMonths} bulan
                       </span>
                       {savingsPercent > 0 ? (
-                        <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
+                        <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
                           Hemat {savingsPercent}%
                         </span>
                       ) : null}
                     </div>
-                    <div className="mt-4 flex items-end justify-between gap-3">
-                      <div>
+                    <div className="mt-4 flex flex-wrap items-end justify-between gap-2">
+                      <div className="min-w-0">
                         {originalAmount ? (
                           <span className="block text-xs text-zinc-400">
                             Harga normal{" "}
@@ -259,11 +259,11 @@ export function CheckoutContent({
                             </span>
                           </span>
                         ) : null}
-                        <span className="mt-1 block text-lg font-semibold tracking-tight text-zinc-950">
+                        <span className="mt-1 block text-base font-semibold tracking-tight text-zinc-950 sm:text-lg">
                           {offer.price}
                         </span>
                       </div>
-                      <span className="text-xs font-medium text-[#00357B] transition group-hover:translate-x-0.5">
+                      <span className="shrink-0 text-xs font-medium text-[#00357B] transition group-hover:translate-x-0.5">
                         Pilih →
                       </span>
                     </div>
@@ -275,7 +275,7 @@ export function CheckoutContent({
         ) : null}
 
         <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">
                 Subscription devices
@@ -286,12 +286,12 @@ export function CheckoutContent({
                 plan.
               </p>
             </div>
-            <span className="shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
+            <span className="w-fit shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
               {plan.name}
             </span>
           </div>
 
-          <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl bg-zinc-100 p-4 sm:p-5">
+          <div className="mt-5 flex flex-col gap-4 rounded-2xl bg-zinc-100 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div>
               <p className="text-sm font-medium text-zinc-950">Total devices</p>
               <p className="mt-1 text-xs leading-5 text-zinc-500">
@@ -299,7 +299,7 @@ export function CheckoutContent({
                 {formatCurrency(plan.additionalDevicePriceMonthly)} per month.
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2 rounded-xl bg-white p-1 shadow-sm ring-1 ring-zinc-200">
+            <div className="flex shrink-0 items-center gap-2 self-start rounded-xl bg-white p-1 shadow-sm ring-1 ring-zinc-200 sm:self-auto">
               <button
                 type="button"
                 aria-label="Kurangi jumlah device"
