@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
   MouseSensor,
   TouchSensor,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
   useDroppable,
   useSensor,
   useSensors,
@@ -65,6 +67,13 @@ type TemplateGroup = {
   templates: Template[];
 };
 
+type ActiveTemplateDrag = {
+  templateId: string;
+  sourceGroupId: string;
+  currentGroupId: string;
+  initialTemplates: Template[];
+};
+
 export function TemplateManagement() {
   const router = useRouter();
   const { data = EMPTY_TEMPLATES } = useTemplates();
@@ -81,6 +90,8 @@ export function TemplateManagement() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [testTemplate, setTestTemplate] = useState<Template | null>(null);
   const [frameCategoriesOpen, setFrameCategoriesOpen] = useState(false);
+  const orderedTemplatesRef = useRef<Template[]>([]);
+  const activeTemplateDragRef = useRef<ActiveTemplateDrag | null>(null);
   const confirmDelete = useConfirmDialog();
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -94,7 +105,10 @@ export function TemplateManagement() {
   useEffect(() => {
     let cancelled = false;
     queueMicrotask(() => {
-      if (!cancelled) setOrderedTemplates(data);
+      if (!cancelled) {
+        orderedTemplatesRef.current = data;
+        setOrderedTemplates(data);
+      }
     });
     return () => {
       cancelled = true;
@@ -174,22 +188,137 @@ export function TemplateManagement() {
     ];
   }, [frameCategories, orderedTemplates]);
 
+  const setTemplateOrder = (templates: Template[]) => {
+    orderedTemplatesRef.current = templates;
+    setOrderedTemplates(templates);
+  };
+
+  const getDestinationGroup = (overId: string) =>
+    templateGroups.find((candidate) =>
+      candidate.templates.some((template) => template.id === overId),
+    ) ??
+    templateGroups.find(
+      (candidate) => `${GROUP_DROP_PREFIX}${candidate.id}` === overId,
+    );
+
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    const templateId = String(active.id);
+    const sourceGroup = templateGroups.find((candidate) =>
+      candidate.templates.some((template) => template.id === templateId),
+    );
+    if (!sourceGroup) return;
+
+    activeTemplateDragRef.current = {
+      templateId,
+      sourceGroupId: sourceGroup.id,
+      currentGroupId: sourceGroup.id,
+      initialTemplates: orderedTemplatesRef.current,
+    };
+  };
+
+  const handleDragOver = ({ active, over }: DragOverEvent) => {
+    const activeDrag = activeTemplateDragRef.current;
+    if (!activeDrag || !over || String(active.id) !== activeDrag.templateId) {
+      return;
+    }
+
+    const activeId = activeDrag.templateId;
+    const sourceGroup = templateGroups.find((candidate) =>
+      candidate.templates.some((template) => template.id === activeId),
+    );
+    const destinationGroup = getDestinationGroup(String(over.id));
+    if (
+      !sourceGroup ||
+      !destinationGroup ||
+      sourceGroup.id === destinationGroup.id
+    ) {
+      return;
+    }
+
+    const activeTemplate = sourceGroup.templates.find(
+      (template) => template.id === activeId,
+    );
+    if (!activeTemplate) return;
+
+    const sourceTemplates = sourceGroup.templates.filter(
+      (template) => template.id !== activeId,
+    );
+    const destinationTemplates = [...destinationGroup.templates];
+    const destinationIndex = destinationTemplates.findIndex(
+      (template) => template.id === String(over.id),
+    );
+    destinationTemplates.splice(
+      destinationIndex < 0 ? destinationTemplates.length : destinationIndex,
+      0,
+      {
+        ...activeTemplate,
+        frameCategoryId: destinationGroup.frameCategoryId ?? undefined,
+      },
+    );
+
+    activeDrag.currentGroupId = destinationGroup.id;
+    setTemplateOrder(
+      templateGroups
+        .flatMap((group) => {
+          if (group.id === sourceGroup.id) return sourceTemplates;
+          if (group.id === destinationGroup.id) return destinationTemplates;
+          return group.templates;
+        })
+        .map((template, displayOrder) => ({ ...template, displayOrder })),
+    );
+  };
+
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    const activeDrag = activeTemplateDragRef.current;
+    activeTemplateDragRef.current = null;
     if (isReadOnly("templates")) return;
-    if (!over || active.id === over.id) return;
+    if (!over) {
+      if (activeDrag) setTemplateOrder(activeDrag.initialTemplates);
+      return;
+    }
 
     const activeId = String(active.id);
     const overId = String(over.id);
+
+    if (activeDrag && activeDrag.currentGroupId !== activeDrag.sourceGroupId) {
+      const movedTemplate = orderedTemplatesRef.current.find(
+        (template) => template.id === activeId,
+      );
+      if (!movedTemplate) {
+        setTemplateOrder(activeDrag.initialTemplates);
+        return;
+      }
+
+      moveTemplateToFrameCategory.mutate(
+        {
+          templateId: activeId,
+          frameCategoryId: movedTemplate.frameCategoryId ?? null,
+          templateIds: orderedTemplatesRef.current.map(
+            (template) => template.id,
+          ),
+        },
+        {
+          onSuccess: () =>
+            toast.success("Kategori dan urutan template disimpan"),
+          onError: (error) => {
+            setTemplateOrder(activeDrag.initialTemplates);
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Gagal menyimpan kategori template",
+            );
+          },
+        },
+      );
+      return;
+    }
+
+    if (active.id === over.id) return;
+
     const sourceGroup = templateGroups.find((candidate) =>
       candidate.templates.some((template) => template.id === active.id),
     );
-    const destinationGroup =
-      templateGroups.find((candidate) =>
-        candidate.templates.some((template) => template.id === overId),
-      ) ??
-      templateGroups.find(
-        (candidate) => `${GROUP_DROP_PREFIX}${candidate.id}` === overId,
-      );
+    const destinationGroup = getDestinationGroup(overId);
     if (!sourceGroup || !destinationGroup) return;
 
     const activeTemplate = sourceGroup.templates.find(
@@ -245,11 +374,10 @@ export function TemplateManagement() {
     const reordered = nextGroups
       .flatMap((group) => group.templates)
       .map((template, displayOrder) => ({ ...template, displayOrder }));
-    setOrderedTemplates(reordered);
-
+    setTemplateOrder(reordered);
     const templateIds = reordered.map((template) => template.id);
     const rollback = (error: unknown) => {
-      setOrderedTemplates(data);
+      setTemplateOrder(activeDrag?.initialTemplates ?? data);
       toast.error(
         error instanceof Error
           ? error.message
@@ -394,7 +522,17 @@ export function TemplateManagement() {
           </CardContent>
         </Card>
       ) : (
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragCancel={() => {
+            const activeDrag = activeTemplateDragRef.current;
+            activeTemplateDragRef.current = null;
+            if (activeDrag) setTemplateOrder(activeDrag.initialTemplates);
+          }}
+          onDragEnd={handleDragEnd}
+        >
           <div className="space-y-8">
             {templateGroups.map((group) => (
               <TemplateGroupSection
