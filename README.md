@@ -47,6 +47,12 @@ are read from server environment variables. Super Admin only chooses the active
 provider for new uploads. Set `CRON_SECRET` in production so only the scheduler
 can run cleanup.
 
+Subscription expiry reminders also run daily through
+`/api/cron/subscription-expiry-reminders` at 08:00 WIB. Seven, three, and one
+day before expiry, each workspace owner and admin receives an in-app reminder
+and, when `RESEND_API_KEY` is configured, an email reminder. The reminder is
+deduplicated per recipient, expiry date, and reminder interval.
+
 The checkout flow is:
 
 ```text

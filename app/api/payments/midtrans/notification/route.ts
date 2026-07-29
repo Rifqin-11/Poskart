@@ -9,21 +9,32 @@ import {
 import { activatePaidSubscription } from "@/server/subscription/activation";
 
 export async function POST(request: NextRequest) {
-  const payload = (await request.json().catch(() => null)) as MidtransNotificationPayload | null;
+  const payload = (await request
+    .json()
+    .catch(() => null)) as MidtransNotificationPayload | null;
 
   if (!payload?.order_id) {
-    return NextResponse.json({ message: "Invalid Midtrans notification payload." }, { status: 400 });
+    return NextResponse.json(
+      { message: "Invalid Midtrans notification payload." },
+      { status: 400 },
+    );
   }
 
   if (!verifyMidtransNotificationSignature(payload)) {
-    return NextResponse.json({ message: "Invalid Midtrans notification signature." }, { status: 401 });
+    return NextResponse.json(
+      { message: "Invalid Midtrans notification signature." },
+      { status: 401 },
+    );
   }
 
   const supabase = getServiceClient();
 
   if (!supabase) {
     return NextResponse.json(
-      { message: "SUPABASE_SERVICE_ROLE_KEY is required to process Midtrans notifications." },
+      {
+        message:
+          "SUPABASE_SERVICE_ROLE_KEY is required to process Midtrans notifications.",
+      },
       { status: 500 },
     );
   }
@@ -31,7 +42,9 @@ export async function POST(request: NextRequest) {
   const status = mapMidtransTransactionStatus(payload);
   const { data: order, error: orderError } = await supabase
     .from("subscription_orders")
-    .select("merchant_order_id,email,organization_id,profile_id,plan_id,duration_months,device_count")
+    .select(
+      "merchant_order_id,email,organization_id,profile_id,plan_id,duration_months,device_count,status",
+    )
     .eq("merchant_order_id", payload.order_id)
     .maybeSingle();
 
@@ -39,7 +52,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: orderError.message }, { status: 500 });
   }
 
-  const { error } = await supabase
+  // Only the first transition to paid may activate/extend the subscription.
+  // Midtrans can deliver the same success notification more than once.
+  const { data: paidTransition, error } = await supabase
     .from("subscription_orders")
     .update({
       status,
@@ -48,16 +63,22 @@ export async function POST(request: NextRequest) {
       gateway_response: payload,
       updated_at: new Date().toISOString(),
     })
-    .eq("merchant_order_id", payload.order_id);
+    .eq("merchant_order_id", payload.order_id)
+    .neq("status", "paid")
+    .select("merchant_order_id")
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 
-  if (status === "paid" && order) {
+  if (status === "paid" && order && paidTransition) {
     const activationError = await activatePaidSubscription(supabase, order);
     if (activationError) {
-      return NextResponse.json({ message: activationError.message }, { status: 500 });
+      return NextResponse.json(
+        { message: activationError.message },
+        { status: 500 },
+      );
     }
   }
 

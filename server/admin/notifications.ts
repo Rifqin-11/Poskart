@@ -30,6 +30,7 @@ type AdminNotificationRow = {
 const NOTIFICATION_COLUMNS =
   "id,audience,recipient_profile_id,organization_id,type,title,body,href,metadata,read_at,created_at";
 const NOTIFICATION_VISIBLE_MS = 60 * 60 * 1000;
+const SUBSCRIPTION_REMINDER_VISIBLE_MS = 8 * 24 * 60 * 60 * 1000;
 
 function mapNotification(row: AdminNotificationRow): AdminNotification {
   return {
@@ -61,21 +62,23 @@ export async function createAdminNotification(
       .eq("organization_id", input.organizationId);
 
     if (!memberError && members?.length) {
-      const { error } = await serviceRoleClient.from("admin_notifications").insert(
-        members
-          .map((member) => member.profile_id as string | null)
-          .filter((profileId): profileId is string => Boolean(profileId))
-          .map((profileId) => ({
-            audience: "user",
-            recipient_profile_id: profileId,
-            organization_id: input.organizationId,
-            type: input.type,
-            title: input.title,
-            body: input.body ?? null,
-            href: input.href ?? null,
-            metadata: input.metadata ?? {},
-          })),
-      );
+      const { error } = await serviceRoleClient
+        .from("admin_notifications")
+        .insert(
+          members
+            .map((member) => member.profile_id as string | null)
+            .filter((profileId): profileId is string => Boolean(profileId))
+            .map((profileId) => ({
+              audience: "user",
+              recipient_profile_id: profileId,
+              organization_id: input.organizationId,
+              type: input.type,
+              title: input.title,
+              body: input.body ?? null,
+              href: input.href ?? null,
+              metadata: input.metadata ?? {},
+            })),
+        );
 
       if (error && error.code !== "42P01" && error.code !== "42703") {
         throw new Error(`Gagal membuat notifikasi: ${error.message}`);
@@ -91,21 +94,23 @@ export async function createAdminNotification(
       .eq("role", "admin");
 
     if (!adminError && admins?.length) {
-      const { error } = await serviceRoleClient.from("admin_notifications").insert(
-        admins
-          .map((admin) => admin.id as string | null)
-          .filter((profileId): profileId is string => Boolean(profileId))
-          .map((profileId) => ({
-            audience: "user",
-            recipient_profile_id: profileId,
-            organization_id: input.organizationId ?? null,
-            type: input.type,
-            title: input.title,
-            body: input.body ?? null,
-            href: input.href ?? null,
-            metadata: input.metadata ?? {},
-          })),
-      );
+      const { error } = await serviceRoleClient
+        .from("admin_notifications")
+        .insert(
+          admins
+            .map((admin) => admin.id as string | null)
+            .filter((profileId): profileId is string => Boolean(profileId))
+            .map((profileId) => ({
+              audience: "user",
+              recipient_profile_id: profileId,
+              organization_id: input.organizationId ?? null,
+              type: input.type,
+              title: input.title,
+              body: input.body ?? null,
+              href: input.href ?? null,
+              metadata: input.metadata ?? {},
+            })),
+        );
 
       if (error && error.code !== "42P01" && error.code !== "42703") {
         throw new Error(`Gagal membuat notifikasi: ${error.message}`);
@@ -132,12 +137,19 @@ export async function createAdminNotification(
 
 export async function getMyAdminNotifications(): Promise<AdminNotification[]> {
   const { supabase, user } = await getAdminContext();
-  const visibleSince = new Date(Date.now() - NOTIFICATION_VISIBLE_MS).toISOString();
+  const visibleSince = new Date(
+    Date.now() - NOTIFICATION_VISIBLE_MS,
+  ).toISOString();
+  const subscriptionReminderVisibleSince = new Date(
+    Date.now() - SUBSCRIPTION_REMINDER_VISIBLE_MS,
+  ).toISOString();
 
   let query = supabase
     .from("admin_notifications")
     .select(NOTIFICATION_COLUMNS)
-    .gte("created_at", visibleSince)
+    .or(
+      `created_at.gte.${visibleSince},and(type.eq.subscription_expiry_reminder,created_at.gte.${subscriptionReminderVisibleSince})`,
+    )
     .order("created_at", { ascending: false })
     .limit(30);
 

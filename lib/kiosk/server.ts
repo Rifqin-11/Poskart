@@ -40,6 +40,7 @@ export type KioskDeviceRow = {
   template: string;
   pricing_profile: string;
   frame_templates: string[] | null;
+  frame_categories_enabled: boolean | null;
   pricing_profiles: string[] | null;
   session_countdown_seconds: number | null;
   payment_countdown_seconds: number | null;
@@ -245,7 +246,7 @@ export async function requireOrganizationDevice(
   const { data, error } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
     .eq("id", normalizedId)
     .eq("organization_id", context.organizationId)
@@ -274,7 +275,7 @@ export async function listOrganizationDevices(context: KioskRequestContext) {
   const { data, error } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
     .eq("organization_id", context.organizationId)
     .order("name", { ascending: true });
@@ -319,7 +320,7 @@ export async function requirePairedDeviceByHardwareId(
     await createSupabaseAdminClient()
       .from("devices")
       .select(
-        "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
+        "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
       )
       .eq("hardware_id", normalizedHwId)
       .maybeSingle();

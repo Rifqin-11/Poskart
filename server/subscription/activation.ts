@@ -13,13 +13,37 @@ export async function activatePaidSubscription(
   supabase: SupabaseClient,
   order: SubscriptionOrderForActivation,
 ) {
-  const organizationId = order.organization_id ?? (await findOrganizationId(supabase, order));
+  const organizationId =
+    order.organization_id ?? (await findOrganizationId(supabase, order));
 
   if (!organizationId) {
     return new Error("No organization found for paid subscription order.");
   }
 
-  const periodEnd = addMonths(new Date(), Math.max(1, order.duration_months || 1));
+  const now = new Date();
+  const { data: currentSubscription, error: currentSubscriptionError } =
+    await supabase
+      .from("subscriptions")
+      .select("current_period_end")
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+  if (currentSubscriptionError) {
+    return new Error(currentSubscriptionError.message);
+  }
+
+  const currentPeriodEnd = currentSubscription?.current_period_end
+    ? new Date(currentSubscription.current_period_end)
+    : null;
+  const renewalStart =
+    currentPeriodEnd &&
+    Number.isFinite(currentPeriodEnd.getTime()) &&
+    currentPeriodEnd.getTime() > now.getTime()
+      ? currentPeriodEnd
+      : now;
+  const periodEnd = addMonths(
+    renewalStart,
+    Math.max(1, order.duration_months || 1),
+  );
   const { error } = await supabase.from("subscriptions").upsert(
     {
       organization_id: organizationId,
@@ -32,7 +56,18 @@ export async function activatePaidSubscription(
     { onConflict: "organization_id" },
   );
 
-  return error ? new Error(error.message) : null;
+  if (error) return new Error(error.message);
+
+  // Any previous warning belongs to the old expiry date. Future reminder jobs
+  // use the new period end, and the old in-app notices should not keep asking
+  // an already-renewed owner/admin to extend again.
+  await supabase
+    .from("admin_notifications")
+    .delete()
+    .eq("organization_id", organizationId)
+    .eq("type", "subscription_expiry_reminder");
+
+  return null;
 }
 
 async function findOrganizationId(
@@ -64,6 +99,16 @@ async function findOrganizationId(
 
 function addMonths(date: Date, months: number) {
   const next = new Date(date);
+  const day = next.getDate();
+
+  // Avoid JavaScript's 31 Jan + 1 month => early March rollover.
+  next.setDate(1);
   next.setMonth(next.getMonth() + months);
+  const lastDayOfTargetMonth = new Date(
+    next.getFullYear(),
+    next.getMonth() + 1,
+    0,
+  ).getDate();
+  next.setDate(Math.min(day, lastDayOfTargetMonth));
   return next;
 }

@@ -588,6 +588,31 @@ export function BoothFormDialog({
                   })
                 }
               />
+              <div className="mt-4 flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#00357B]/10 text-[#00357B]">
+                    <Layers3 className="size-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium text-zinc-900">
+                      Frame categories
+                    </h4>
+                    <p className="mt-1 max-w-2xl text-xs leading-5 text-zinc-500">
+                      Show the Semua, General, and assigned category tabs above
+                      the frame picker on this booth. When disabled, every
+                      selected frame stays available in one grid.
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={form.frameCategoriesEnabled ?? true}
+                  disabled={readOnly}
+                  onCheckedChange={(frameCategoriesEnabled) =>
+                    setForm({ ...form, frameCategoriesEnabled })
+                  }
+                  aria-label="Enable frame categories on kiosk"
+                />
+              </div>
             </section>
           </TabsContent>
 

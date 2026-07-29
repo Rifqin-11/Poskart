@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   const { data: order, error: orderError } = await supabase
     .from("subscription_orders")
     .select(
-      "merchant_order_id,email,organization_id,profile_id,plan_id,duration_months,device_count",
+      "merchant_order_id,email,organization_id,profile_id,plan_id,duration_months,device_count,status",
     )
     .eq("merchant_order_id", payload.merchantOrderId)
     .maybeSingle();
@@ -46,7 +46,10 @@ export async function POST(request: NextRequest) {
     }
 
     const status = mapDuitkuResultCode(payload.resultCode);
-    const { error } = await supabase
+    // Gate activation on the first paid transition. Gateways can repeat a
+    // successful callback; without this condition each retry could extend a
+    // subscription again after early-renewal became cumulative.
+    const { data: paidTransition, error } = await supabase
       .from("subscription_orders")
       .update({
         status,
@@ -54,13 +57,16 @@ export async function POST(request: NextRequest) {
         gateway_response: payload,
         updated_at: new Date().toISOString(),
       })
-      .eq("merchant_order_id", payload.merchantOrderId);
+      .eq("merchant_order_id", payload.merchantOrderId)
+      .neq("status", "paid")
+      .select("merchant_order_id")
+      .maybeSingle();
 
     if (error) {
       return NextResponse.json({ message: error.message }, { status: 500 });
     }
 
-    if (status === "paid") {
+    if (status === "paid" && paidTransition) {
       const activationError = await activatePaidSubscription(supabase, order);
       if (activationError) {
         return NextResponse.json(
@@ -126,9 +132,14 @@ export async function POST(request: NextRequest) {
     .update({
       status: verifiedMappedStatus,
       payment_reference:
-        verifiedStatus.reference ?? payload.reference ?? transaction?.payment_reference ?? null,
-      duitku_status_code: verifiedStatus.statusCode ?? payload.resultCode ?? null,
-      duitku_status_message: verifiedStatus.statusMessage ?? verifiedMappedStatus,
+        verifiedStatus.reference ??
+        payload.reference ??
+        transaction?.payment_reference ??
+        null,
+      duitku_status_code:
+        verifiedStatus.statusCode ?? payload.resultCode ?? null,
+      duitku_status_message:
+        verifiedStatus.statusMessage ?? verifiedMappedStatus,
       gateway_status_checked_at: now,
       gateway_response: {
         callback: payload,
@@ -160,7 +171,9 @@ export async function POST(request: NextRequest) {
       transaction: {
         ...transaction,
         payment_reference:
-          verifiedStatus.reference ?? payload.reference ?? transaction.payment_reference,
+          verifiedStatus.reference ??
+          payload.reference ??
+          transaction.payment_reference,
         paid_at: now,
         gateway_response: verifiedStatus.raw,
       },

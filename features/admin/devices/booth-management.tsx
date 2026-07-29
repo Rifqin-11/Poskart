@@ -69,6 +69,7 @@ const EMPTY_BOOTH: BoothInput = {
   template: "",
   pricingProfile: "",
   frameTemplates: [],
+  frameCategoriesEnabled: true,
   pricingProfiles: [],
   sessionCountdownSeconds: null,
   paymentCountdownSeconds: null,
@@ -129,7 +130,7 @@ const DEVICE_CONFIGURATION_TOUR_STEPS: FeatureTourStep[] = [
     selectors: ['[data-device-config-tour="frames"]'],
     title: "Frame yang tersedia",
     description:
-      "Pilih frame yang dapat digunakan pengunjung pada booth ini. Gunakan Select all bila seluruh koleksi ingin tersedia.",
+      "Pilih frame yang dapat digunakan pengunjung pada booth ini. Gunakan Select all bila seluruh koleksi ingin tersedia, lalu aktifkan kategori frame bila kiosk perlu menampilkan tab Semua, General, dan kategori.",
   },
   {
     selectors: ['[data-device-config-tour="settings-pin"]'],

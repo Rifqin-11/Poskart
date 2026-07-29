@@ -12,6 +12,8 @@ export type Device = {
   template: string;
   pricingProfile: string;
   frameTemplates: string[];
+  /** Whether the kiosk shows frame category tabs above the template grid. */
+  frameCategoriesEnabled: boolean;
   pricingProfiles: string[];
   /** Per-device override for the in-session photo countdown (seconds).
    *  When null, the Flutter app falls back to the global `app_configs` value. */

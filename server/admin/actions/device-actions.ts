@@ -210,6 +210,7 @@ export async function createDevice(values: BoothInput): Promise<void> {
     template: frameTemplates[0] ?? "",
     pricing_profile: pricingProductIds[0] ?? "",
     frame_templates: frameTemplates,
+    frame_categories_enabled: values.frameCategoriesEnabled,
     pricing_profiles: pricingProductIds,
     session_countdown_seconds: values.sessionCountdownSeconds ?? null,
     payment_countdown_seconds: values.paymentCountdownSeconds ?? null,
@@ -317,6 +318,7 @@ export async function createPairedDevice(
         template: frameTemplates[0] ?? "",
         pricingProfile: pricingProductIds[0] ?? "",
         frameTemplates,
+        frameCategoriesEnabled: values.frameCategoriesEnabled,
         pricingProfiles: pricingProductIds,
         sessionCountdownSeconds: values.sessionCountdownSeconds ?? null,
         paymentCountdownSeconds: values.paymentCountdownSeconds ?? null,
@@ -408,6 +410,9 @@ export async function updateDevice(
     dbPatch.session_countdown_seconds = patch.sessionCountdownSeconds ?? null;
   if (patch.paymentCountdownSeconds !== undefined)
     dbPatch.payment_countdown_seconds = patch.paymentCountdownSeconds ?? null;
+  if (patch.frameCategoriesEnabled !== undefined) {
+    dbPatch.frame_categories_enabled = patch.frameCategoriesEnabled;
+  }
   if (patch.voucherEnabled !== undefined) {
     dbPatch.voucher_enabled = patch.voucherEnabled;
     if (!patch.voucherEnabled) dbPatch.test_voucher_enabled = false;
