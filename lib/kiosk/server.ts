@@ -383,13 +383,15 @@ export async function buildKioskBootstrap(
   deviceId?: string | null,
   hardwareId?: string | null,
 ) {
-  // Resolve the device: prefer the stored ID, otherwise accept only a device
-  // that has already completed dashboard pairing.
+  // Resolve the physical kiosk only after it has completed dashboard pairing.
   let device: KioskDeviceRow | null = null;
-  if (deviceId) {
-    device = await requireOrganizationDevice(context, deviceId);
-  } else if (hardwareId) {
+  // The hardware identifier is the pairing credential for a physical kiosk.
+  // Prefer it over a locally cached device ID, which can belong to a prior
+  // installation and otherwise blocks a newly-paired device from bootstrapping.
+  if (hardwareId) {
     device = await requirePairedDeviceByHardwareId(context, hardwareId);
+  } else if (deviceId) {
+    device = await requireOrganizationDevice(context, deviceId);
   }
 
   const [
