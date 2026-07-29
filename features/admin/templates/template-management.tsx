@@ -167,7 +167,7 @@ export function TemplateManagement() {
       ...categorizedGroups,
       {
         id: "uncategorized-templates",
-        label: "Tanpa kategori",
+        label: "General",
         frameCategoryId: null,
         templates: uncategorizedTemplates,
       },

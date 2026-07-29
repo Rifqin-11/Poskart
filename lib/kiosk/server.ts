@@ -314,13 +314,14 @@ export async function requirePairedDeviceByHardwareId(
   // Service-role lookup is intentional here. RLS normally hides devices in
   // other organizations, but we must reject a physical kiosk that has already
   // been paired elsewhere instead of silently creating/moving it.
-  const { data: existing, error: lookupError } = await createSupabaseAdminClient()
-    .from("devices")
-    .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
-    )
-    .eq("hardware_id", normalizedHwId)
-    .maybeSingle();
+  const { data: existing, error: lookupError } =
+    await createSupabaseAdminClient()
+      .from("devices")
+      .select(
+        "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
+      )
+      .eq("hardware_id", normalizedHwId)
+      .maybeSingle();
 
   if (lookupError) {
     throw new KioskApiError(
@@ -406,6 +407,7 @@ export async function buildKioskBootstrap(
     pricingResult,
     devices,
     voucherAllocationsResult,
+    deviceFrameTemplatesResult,
   ] = await Promise.all([
     context.client
       .from("organizations")
@@ -477,6 +479,14 @@ export async function buildKioskBootstrap(
           .eq("organization_id", context.organizationId)
           .eq("device_id", device.id)
       : Promise.resolve({ data: [], error: null }),
+    device
+      ? context.client
+          .from("device_frame_templates")
+          .select("template_id")
+          .eq("organization_id", context.organizationId)
+          .eq("device_id", device.id)
+          .order("display_order", { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   const queryError = [
@@ -489,6 +499,7 @@ export async function buildKioskBootstrap(
     frameCategoriesResult.error,
     pricingResult.error,
     voucherAllocationsResult.error,
+    deviceFrameTemplatesResult.error,
   ].find(Boolean);
 
   if (queryError) {
@@ -533,7 +544,15 @@ export async function buildKioskBootstrap(
     if (fallbackLayout.error) throw fallbackLayout.error;
     layout = fallbackLayout.data;
   }
-  const assignedTemplates = new Set(device?.frame_templates ?? []);
+  const assignedTemplateIds = (deviceFrameTemplatesResult.data ?? [])
+    .map((assignment) => assignment.template_id)
+    .filter((templateId): templateId is string => Boolean(templateId));
+  // Fall back only for legacy devices that have not been backfilled yet.
+  const assignedTemplates = new Set(
+    assignedTemplateIds.length > 0
+      ? assignedTemplateIds
+      : (device?.frame_templates ?? []),
+  );
   const assignedPricing = new Set([
     ...(device?.pricing_profiles ?? []),
     ...(device?.pricing_profile ? [device.pricing_profile] : []),
@@ -564,8 +583,8 @@ export async function buildKioskBootstrap(
       .map((template) => template.frame_category_id as string | null)
       .filter((id): id is string => Boolean(id)),
   );
-  const frameCategories = (frameCategoriesResult.data ?? []).filter((category) =>
-    assignedFrameCategoryIds.has(category.id),
+  const frameCategories = (frameCategoriesResult.data ?? []).filter(
+    (category) => assignedFrameCategoryIds.has(category.id),
   );
   const pricingProducts = (pricingResult.data ?? []).filter((product) => {
     if (assignedPricing.size === 0) {
@@ -575,32 +594,36 @@ export async function buildKioskBootstrap(
     }
     return assignedPricing.has(product.id) || assignedPricing.has(product.name);
   });
-  const vouchers = (voucherAllocationsResult.data ?? []).flatMap((allocation) => {
-    const campaignRelation = allocation.voucher_campaigns as
-      | { expires_at: string | null }
-      | Array<{ expires_at: string | null }>
-      | null;
-    const campaign = Array.isArray(campaignRelation)
-      ? campaignRelation[0] ?? null
-      : campaignRelation;
-    return ((allocation.voucher_codes ?? []) as Array<{
-      code: string;
-      reusable: boolean;
-      redemption_count: number;
-      last_redeemed_at: string | null;
-      created_at: string;
-    }>).map((voucher) => ({
-      code: voucher.code,
-      reusable: voucher.reusable,
-      usageCount: voucher.redemption_count,
-      used: !voucher.reusable && voucher.redemption_count > 0,
-      usedAt: voucher.last_redeemed_at,
-      createdAt: voucher.created_at,
-      expiresAt: campaign?.expires_at ?? null,
-      allocationVersion: allocation.version,
-      serverManaged: true,
-    }));
-  });
+  const vouchers = (voucherAllocationsResult.data ?? []).flatMap(
+    (allocation) => {
+      const campaignRelation = allocation.voucher_campaigns as
+        | { expires_at: string | null }
+        | Array<{ expires_at: string | null }>
+        | null;
+      const campaign = Array.isArray(campaignRelation)
+        ? (campaignRelation[0] ?? null)
+        : campaignRelation;
+      return (
+        (allocation.voucher_codes ?? []) as Array<{
+          code: string;
+          reusable: boolean;
+          redemption_count: number;
+          last_redeemed_at: string | null;
+          created_at: string;
+        }>
+      ).map((voucher) => ({
+        code: voucher.code,
+        reusable: voucher.reusable,
+        usageCount: voucher.redemption_count,
+        used: !voucher.reusable && voucher.redemption_count > 0,
+        usedAt: voucher.last_redeemed_at,
+        createdAt: voucher.created_at,
+        expiresAt: campaign?.expires_at ?? null,
+        allocationVersion: allocation.version,
+        serverManaged: true,
+      }));
+    },
+  );
   const assetReferences = collectAssetUrls({
     layoutSchema: normalizedLayoutSchema,
     designTokens: normalizedThemeSchema,

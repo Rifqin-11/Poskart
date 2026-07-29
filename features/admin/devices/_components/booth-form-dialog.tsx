@@ -35,6 +35,7 @@ type DeviceFormOptions = {
 };
 
 type FrameTemplateOption = {
+  id: string;
   name: string;
   frameImageUrl?: string;
   accentColor?: string;
@@ -115,7 +116,11 @@ export function BoothFormDialog({
       : defaultPaidSelections;
     return {
       ...rest,
-      frameTemplates: normalizeStringList(rest.frameTemplates, rest.template),
+      frameTemplates: normalizeFrameTemplateAssignments(
+        rest.frameTemplates,
+        rest.template,
+        options.frameTemplates,
+      ),
       pricingProfile: pricingProfiles[0] ?? "",
       pricingProfiles,
       settingsPin: "",
@@ -128,13 +133,14 @@ export function BoothFormDialog({
   const runtimeStatus = form.status;
   const maintenanceEnabled = runtimeStatus === "maintenance";
   const frameTemplateOptions = includeCurrentOptions(
-    options.frameTemplates.map((template) => template.name),
+    options.frameTemplates.map((template) => template.id),
     form.frameTemplates,
   );
   const frameTemplateSelectionOptions = frameTemplateOptions.map(
-    (name): FrameTemplateOption =>
-      options.frameTemplates.find((template) => template.name === name) ?? {
-        name,
+    (id): FrameTemplateOption =>
+      options.frameTemplates.find((template) => template.id === id) ?? {
+        id,
+        name: id,
       },
   );
   const allFramesSelected =
@@ -158,17 +164,19 @@ export function BoothFormDialog({
       onOpenChange={(o) => !o && onClose()}
       title={title}
       className="max-w-5xl"
-      headerAction={onShowTutorial ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onShowTutorial}
-        >
-          <CircleHelp className="size-4" />
-          <span className="hidden sm:inline">Show tutorial</span>
-        </Button>
-      ) : null}
+      headerAction={
+        onShowTutorial ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onShowTutorial}
+          >
+            <CircleHelp className="size-4" />
+            <span className="hidden sm:inline">Show tutorial</span>
+          </Button>
+        ) : null
+      }
     >
       <form
         onSubmit={(e) => {
@@ -194,10 +202,15 @@ export function BoothFormDialog({
             !form.settingsPin?.trim() &&
             !initialDevice.protectSettings
           ) {
-            toast.error("Set a 4 to 12 digit Settings PIN before enabling protection");
+            toast.error(
+              "Set a 4 to 12 digit Settings PIN before enabling protection",
+            );
             return;
           }
-          if (form.settingsPin?.trim() && !/^\d{4,12}$/.test(form.settingsPin.trim())) {
+          if (
+            form.settingsPin?.trim() &&
+            !/^\d{4,12}$/.test(form.settingsPin.trim())
+          ) {
             toast.error("Settings PIN must contain 4 to 12 digits");
             return;
           }
@@ -446,8 +459,8 @@ export function BoothFormDialog({
                     Payment methods
                   </h3>
                   <p className="mt-1 text-xs leading-5 text-zinc-500">
-                    Control voucher payment availability for this device. Changes
-                    apply after the kiosk&apos;s next sync.
+                    Control voucher payment availability for this device.
+                    Changes apply after the kiosk&apos;s next sync.
                   </p>
                 </div>
               </div>
@@ -455,9 +468,7 @@ export function BoothFormDialog({
               <div className="mt-4 divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white px-3">
                 <div className="flex items-center justify-between gap-4 py-3">
                   <div>
-                    <p className="text-sm font-medium text-zinc-900">
-                      Voucher
-                    </p>
+                    <p className="text-sm font-medium text-zinc-900">Voucher</p>
                     <p className="mt-0.5 text-xs leading-5 text-zinc-500">
                       Show the voucher entry option alongside QRIS.
                     </p>
@@ -483,8 +494,9 @@ export function BoothFormDialog({
                       Test voucher
                     </p>
                     <p className="mt-0.5 text-xs leading-5 text-zinc-500">
-                      Enable code <span className="font-mono font-medium">TEST</span>{" "}
-                      for local test sessions. It is excluded from transactions,
+                      Enable code{" "}
+                      <span className="font-mono font-medium">TEST</span> for
+                      local test sessions. It is excluded from transactions,
                       dashboard, and payout.
                     </p>
                   </div>
@@ -568,24 +580,34 @@ export function BoothFormDialog({
                     Settings access PIN
                   </div>
                   <p className="mt-1 max-w-xl text-xs leading-5 text-zinc-500">
-                    Protect the Settings page on this tablet. If it is forgotten,
-                    the tablet can email a one-time reset link to workspace owners and admins.
+                    Protect the Settings page on this tablet. If it is
+                    forgotten, the tablet can email a one-time reset link to
+                    workspace owners and admins.
                   </p>
                 </div>
                 <div className="flex items-center gap-3 rounded-full border border-zinc-200 bg-white px-3 py-2">
-                  <span className={cn("text-xs font-semibold", form.protectSettings ? "text-[#00357B]" : "text-zinc-500")}>
+                  <span
+                    className={cn(
+                      "text-xs font-semibold",
+                      form.protectSettings ? "text-[#00357B]" : "text-zinc-500",
+                    )}
+                  >
                     {form.protectSettings ? "Protected" : "Not protected"}
                   </span>
                   <Switch
                     checked={form.protectSettings}
                     disabled={readOnly}
-                    onCheckedChange={(checked) => setForm({ ...form, protectSettings: checked })}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, protectSettings: checked })
+                    }
                     aria-label="Require PIN to open kiosk settings"
                   />
                 </div>
               </div>
               <label className="mt-3 block max-w-sm text-xs font-medium text-zinc-600">
-                {initialDevice.protectSettings ? "New PIN (leave empty to keep current PIN)" : "PIN (4–12 digits)"}
+                {initialDevice.protectSettings
+                  ? "New PIN (leave empty to keep current PIN)"
+                  : "PIN (4–12 digits)"}
                 <Input
                   className="mt-1 bg-white"
                   type="password"
@@ -593,7 +615,11 @@ export function BoothFormDialog({
                   autoComplete="new-password"
                   maxLength={12}
                   value={form.settingsPin ?? ""}
-                  placeholder={initialDevice.protectSettings ? "Keep current PIN" : "e.g. 1234"}
+                  placeholder={
+                    initialDevice.protectSettings
+                      ? "Keep current PIN"
+                      : "e.g. 1234"
+                  }
                   disabled={readOnly}
                   onChange={(event) =>
                     setForm({
@@ -959,12 +985,12 @@ function FrameTemplateMultiSelect({
 }) {
   const selectedValues = normalizeStringList(values);
 
-  const toggleValue = (name: string) => {
+  const toggleValue = (id: string) => {
     if (disabled) return;
     onChange(
-      selectedValues.includes(name)
-        ? selectedValues.filter((value) => value !== name)
-        : [...selectedValues, name],
+      selectedValues.includes(id)
+        ? selectedValues.filter((value) => value !== id)
+        : [...selectedValues, id],
     );
   };
 
@@ -977,14 +1003,14 @@ function FrameTemplateMultiSelect({
       ) : (
         <div className="grid max-h-[340px] grid-cols-2 gap-3 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-3 sm:grid-cols-3 lg:grid-cols-4">
           {options.map((template) => {
-            const selected = selectedValues.includes(template.name);
+            const selected = selectedValues.includes(template.id);
             return (
               <button
-                key={template.name}
+                key={template.id}
                 type="button"
                 disabled={disabled}
                 aria-pressed={selected}
-                onClick={() => toggleValue(template.name)}
+                onClick={() => toggleValue(template.id)}
                 className={cn(
                   "group relative overflow-hidden rounded-xl border bg-white text-left shadow-sm transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B] focus-visible:ring-offset-2",
                   selected
@@ -1051,6 +1077,19 @@ function FrameTemplateMultiSelect({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function normalizeFrameTemplateAssignments(
+  values: string[] | null | undefined,
+  fallback: string | null | undefined,
+  options: FrameTemplateOption[],
+) {
+  return normalizeStringList(values, fallback).map(
+    (value) =>
+      options.find(
+        (template) => template.id === value || template.name === value,
+      )?.id ?? value,
   );
 }
 

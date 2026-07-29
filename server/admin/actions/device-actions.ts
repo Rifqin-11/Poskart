@@ -7,7 +7,10 @@ import {
   PRINTER_TUNING_LIMITS,
   clampPrinterTuningValue,
 } from "@/lib/printer-tuning";
-import { assertSettingsPin, normalizeSettingsPin } from "@/lib/kiosk/settings-pin";
+import {
+  assertSettingsPin,
+  normalizeSettingsPin,
+} from "@/lib/kiosk/settings-pin";
 import type {
   DeviceErrorCategory,
   DeviceErrorGroup,
@@ -30,8 +33,7 @@ export async function getDevices(): Promise<Device[]> {
       .from("devices")
       .select(BOOTH_COLUMNS)
       .order("name", { ascending: true }),
-    supabase
-      .rpc("get_device_error_open_counts"),
+    supabase.rpc("get_device_error_open_counts"),
   ]);
 
   const devices = assertSupabaseResult(
@@ -52,8 +54,7 @@ export async function getDevices(): Promise<Device[]> {
     }
   } else {
     for (const row of errorGroupsResult.data ?? []) {
-      const deviceId =
-        typeof row.device_id === "string" ? row.device_id : "";
+      const deviceId = typeof row.device_id === "string" ? row.device_id : "";
       if (!deviceId) continue;
       const count =
         typeof row.open_count === "number"
@@ -156,11 +157,12 @@ export async function setDeviceErrorResolved(
 }
 
 export async function createDevice(values: BoothInput): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin"]);
+  const { supabase, organizationId } = await verifyRole(["owner", "admin"]);
   const id = `BTH-${Date.now()}`;
-  const frameTemplates = normalizeAssignmentList(
-    values.frameTemplates,
-    values.template,
+  const frameTemplates = await resolveFrameTemplateAssignmentIds(
+    supabase,
+    organizationId,
+    normalizeAssignmentList(values.frameTemplates, values.template),
   );
   const pricingProfiles = normalizeAssignmentList(
     values.pricingProfiles,
@@ -169,7 +171,9 @@ export async function createDevice(values: BoothInput): Promise<void> {
   await assertPricingAssignmentModes(supabase, pricingProfiles);
   const settingsPin = normalizeSettingsPin(values.settingsPin);
   if (values.protectSettings && !settingsPin) {
-    throw new Error("Set a 4 to 12 digit Settings PIN before enabling protection.");
+    throw new Error(
+      "Set a 4 to 12 digit Settings PIN before enabling protection.",
+    );
   }
   if (settingsPin) assertSettingsPin(settingsPin);
   const { error } = await supabase.from("devices").insert({
@@ -188,8 +192,7 @@ export async function createDevice(values: BoothInput): Promise<void> {
     session_countdown_seconds: values.sessionCountdownSeconds ?? null,
     payment_countdown_seconds: values.paymentCountdownSeconds ?? null,
     voucher_enabled: values.voucherEnabled,
-    test_voucher_enabled:
-      values.voucherEnabled && values.testVoucherEnabled,
+    test_voucher_enabled: values.voucherEnabled && values.testVoucherEnabled,
     settings_pin: settingsPin,
     protect_settings: values.protectSettings && settingsPin.length > 0,
     printer_bottom_safe_zone_mm: clampPrinterTuningValue(
@@ -219,6 +222,7 @@ export async function createDevice(values: BoothInput): Promise<void> {
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(`Unable to create device: ${error.message}`);
+  await syncDeviceFrameTemplateAssignments(supabase, id, frameTemplates);
 }
 
 export type DevicePairingClaim = {
@@ -251,9 +255,10 @@ export async function createPairedDevice(
   const normalizedPairingId = pairingId.trim();
   if (!normalizedPairingId) throw new Error("Pairing request is required.");
 
-  const frameTemplates = normalizeAssignmentList(
-    values.frameTemplates,
-    values.template,
+  const frameTemplates = await resolveFrameTemplateAssignmentIds(
+    supabase,
+    organizationId,
+    normalizeAssignmentList(values.frameTemplates, values.template),
   );
   const pricingProfiles = normalizeAssignmentList(
     values.pricingProfiles,
@@ -283,8 +288,7 @@ export async function createPairedDevice(
         sessionCountdownSeconds: values.sessionCountdownSeconds ?? null,
         paymentCountdownSeconds: values.paymentCountdownSeconds ?? null,
         voucherEnabled: values.voucherEnabled,
-        testVoucherEnabled:
-          values.voucherEnabled && values.testVoucherEnabled,
+        testVoucherEnabled: values.voucherEnabled && values.testVoucherEnabled,
         settingsPin: normalizeSettingsPin(values.settingsPin),
         protectSettings: values.protectSettings,
         printerBottomSafeZoneMm: clampPrinterTuningValue(
@@ -315,13 +319,14 @@ export async function createPairedDevice(
     },
   );
   if (error) throw new Error(`Unable to pair device: ${error.message}`);
+  await syncDeviceFrameTemplateAssignments(supabase, id, frameTemplates);
 }
 
 export async function updateDevice(
   id: string,
   patch: Partial<BoothInput>,
 ): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin"]);
+  const { supabase, organizationId } = await verifyRole(["owner", "admin"]);
   const dbPatch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
@@ -332,14 +337,13 @@ export async function updateDevice(
   if (patch.appVersion !== undefined) dbPatch.app_version = patch.appVersion;
   if (patch.lastSync !== undefined) dbPatch.last_sync = patch.lastSync;
   if (patch.theme !== undefined) dbPatch.theme = patch.theme;
-  if (patch.template !== undefined) dbPatch.template = patch.template;
-  if (patch.frameTemplates !== undefined) {
-    const frameTemplates = normalizeAssignmentList(
-      patch.frameTemplates,
-      patch.template,
+  let frameTemplates: string[] | null = null;
+  if (patch.frameTemplates !== undefined || patch.template !== undefined) {
+    frameTemplates = await resolveFrameTemplateAssignmentIds(
+      supabase,
+      organizationId,
+      normalizeAssignmentList(patch.frameTemplates, patch.template),
     );
-    dbPatch.frame_templates = frameTemplates;
-    dbPatch.template = frameTemplates[0] ?? "";
   }
   if (patch.pricingProfile !== undefined) {
     await assertPricingAssignmentModes(supabase, [patch.pricingProfile]);
@@ -377,10 +381,14 @@ export async function updateDevice(
           .eq("id", id)
           .maybeSingle();
         if (deviceError) {
-          throw new Error(`Unable to validate Settings PIN: ${deviceError.message}`);
+          throw new Error(
+            `Unable to validate Settings PIN: ${deviceError.message}`,
+          );
         }
         if (!normalizeSettingsPin(device?.settings_pin)) {
-          throw new Error("Set a 4 to 12 digit Settings PIN before enabling protection.");
+          throw new Error(
+            "Set a 4 to 12 digit Settings PIN before enabling protection.",
+          );
         }
       }
     }
@@ -442,6 +450,50 @@ export async function updateDevice(
 
   const { error } = await supabase.from("devices").update(dbPatch).eq("id", id);
   if (error) throw new Error(`Unable to update device: ${error.message}`);
+  if (frameTemplates) {
+    await syncDeviceFrameTemplateAssignments(supabase, id, frameTemplates);
+  }
+}
+
+async function resolveFrameTemplateAssignmentIds(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  organizationId: string,
+  assignments: string[],
+) {
+  if (assignments.length === 0) return [];
+
+  const uniqueAssignments = Array.from(new Set(assignments));
+  const { data, error } = await supabase
+    .from("templates")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("category", "frame")
+    .in("id", uniqueAssignments);
+  if (error) {
+    throw new Error(`Unable to validate frame templates: ${error.message}`);
+  }
+  if ((data?.length ?? 0) !== uniqueAssignments.length) {
+    throw new Error(
+      "One or more selected frame templates are unavailable. Please select them again.",
+    );
+  }
+  return assignments;
+}
+
+async function syncDeviceFrameTemplateAssignments(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  deviceId: string,
+  templateIds: string[],
+) {
+  const { error } = await supabase.rpc("set_device_frame_templates", {
+    target_device_id: deviceId,
+    target_template_ids: templateIds,
+  });
+  if (error) {
+    throw new Error(
+      `Unable to save device frame assignments: ${error.message}`,
+    );
+  }
 }
 
 async function assertPricingAssignmentModes(

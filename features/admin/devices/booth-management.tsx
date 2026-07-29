@@ -161,6 +161,7 @@ const DEVICE_TOUR_TAB_BY_STEP = [
 type DeviceFormOptions = {
   themes: string[];
   frameTemplates: Array<{
+    id: string;
     name: string;
     frameImageUrl?: string;
     accentColor?: string;
@@ -248,6 +249,7 @@ export function BoothManagement({
         .filter((template: Template) => template.category === "frame")
         .filter((template: Template) => Boolean(template.name))
         .map((template: Template) => ({
+          id: template.id,
           name: template.name,
           frameImageUrl: template.frameImageUrl,
           accentColor: template.accentColor,
@@ -496,7 +498,10 @@ export function BoothManagement({
                 <div className="flex items-center gap-1.5">
                   <span className="text-zinc-500">Frame:</span>
                   <span className="font-medium text-zinc-700">
-                    {formatAssignmentList(device.frameTemplates)}
+                    {formatFrameTemplateAssignments(
+                      device.frameTemplates,
+                      templates,
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -621,7 +626,8 @@ export function BoothManagement({
         </form>
       </Dialog>
 
-      {creating && pairingId &&
+      {creating &&
+      pairingId &&
       !devicesLoading &&
       !subscriptionLoading &&
       !deviceLimitReached &&
@@ -636,17 +642,20 @@ export function BoothManagement({
             setPairingId(null);
           }}
           onSubmit={(values) => {
-            createPairedBooth.mutate({ pairingId, values }, {
-              onSuccess: () => {
-                toast.success("Device paired and configured");
-                setCreating(false);
-                setPairingId(null);
+            createPairedBooth.mutate(
+              { pairingId, values },
+              {
+                onSuccess: () => {
+                  toast.success("Device paired and configured");
+                  setCreating(false);
+                  setPairingId(null);
+                },
+                onError: (err) =>
+                  toast.error(
+                    err instanceof Error ? err.message : "Pairing failed",
+                  ),
               },
-              onError: (err) =>
-                toast.error(
-                  err instanceof Error ? err.message : "Pairing failed",
-                ),
-            });
+            );
           }}
           tutorialTab={deviceTutorialTab}
           onShowTutorial={() =>
@@ -744,4 +753,19 @@ function formatAssignmentList(
   if (list.length === 0) return "—";
   if (list.length <= 2) return list.join(", ");
   return `${list.slice(0, 2).join(", ")} +${list.length - 2}`;
+}
+
+function formatFrameTemplateAssignments(
+  values: string[] | null | undefined,
+  templates: Template[],
+) {
+  const templateNames = new Map(
+    templates.map((template) => [template.id, template.name]),
+  );
+  const resolved = normalizeStringList(values).map(
+    (value) => templateNames.get(value) ?? value,
+  );
+  if (resolved.length === 0) return "—";
+  if (resolved.length <= 2) return resolved.join(", ");
+  return `${resolved.slice(0, 2).join(", ")} +${resolved.length - 2}`;
 }
