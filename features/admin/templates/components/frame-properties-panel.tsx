@@ -8,8 +8,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { ColorKeyControls } from "@/features/builder/components/color-key-controls";
-import { readNumber, readString } from "@/features/admin/templates/frame-builder.utils";
+import {
+  readNumber,
+  readString,
+} from "@/features/admin/templates/frame-builder.utils";
 import { BUILDER_IMAGE_ACCEPT } from "@/lib/services/storage-service";
+import { cn } from "@/lib/utils";
 import type { FrameLayout, FrameNode } from "@/types/frame-template";
 
 export function FramePropertiesPanel({
@@ -24,6 +28,7 @@ export function FramePropertiesPanel({
   onDuplicateNode,
   onDeleteNode,
   onUploadToNode,
+  embedded = false,
 }: {
   detailsPanel?: ReactNode;
   layout: FrameLayout;
@@ -36,6 +41,7 @@ export function FramePropertiesPanel({
   onDuplicateNode: (node: FrameNode) => void;
   onDeleteNode: (node: FrameNode) => void;
   onUploadToNode: (file?: File) => void;
+  embedded?: boolean;
 }) {
   const frameBackgroundNode = layout.nodes.find(
     (node) =>
@@ -44,7 +50,12 @@ export function FramePropertiesPanel({
   );
 
   return (
-    <aside className="min-h-0 overflow-hidden border-l border-zinc-100">
+    <aside
+      className={cn(
+        "min-h-0 overflow-hidden",
+        embedded ? "h-full w-full" : "border-l border-zinc-100",
+      )}
+    >
       <ScrollArea className="h-full p-4">
         <div className="space-y-4">
           {detailsPanel}
@@ -115,9 +126,7 @@ export function FramePropertiesPanel({
                   <div className="text-sm font-semibold">
                     {selectedNode.type}
                   </div>
-                  <div className="text-xs text-zinc-500">
-                    {selectedNode.id}
-                  </div>
+                  <div className="text-xs text-zinc-500">{selectedNode.id}</div>
                 </div>
                 <div className="flex gap-1">
                   <Button
@@ -156,7 +165,10 @@ export function FramePropertiesPanel({
 
               <div className="grid grid-cols-2 gap-2">
                 {(["x", "y", "width", "height"] as const).map((key) => (
-                  <label key={key} className="text-xs font-medium text-zinc-500">
+                  <label
+                    key={key}
+                    className="text-xs font-medium text-zinc-500"
+                  >
                     {key.toUpperCase()}
                     <Input
                       className="mt-1"
@@ -206,9 +218,7 @@ export function FramePropertiesPanel({
                   Photo order
                   <Select
                     className="mt-1"
-                    value={String(
-                      readNumber(selectedNode.props.photoOrder, 1),
-                    )}
+                    value={String(readNumber(selectedNode.props.photoOrder, 1))}
                     onChange={(event) =>
                       onAssignPhotoSlotOrder(
                         selectedNode.id,

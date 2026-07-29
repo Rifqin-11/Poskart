@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties, ReactNode } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,11 +10,15 @@ export function Sheet({
   onOpenChange,
   children,
   side = "left",
+  className,
+  style,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  children: React.ReactNode;
+  children: ReactNode;
   side?: "left" | "right" | "bottom";
+  className?: string;
+  style?: CSSProperties;
 }) {
   if (!open) return null;
 
@@ -24,6 +29,7 @@ export function Sheet({
     >
       <div
         onClick={(event) => event.stopPropagation()}
+        style={style}
         className={cn(
           "absolute flex flex-col bg-white shadow-2xl shadow-zinc-950/15",
           side === "bottom"
@@ -31,6 +37,7 @@ export function Sheet({
             : side === "left"
               ? "top-3 left-3 h-[calc(100%-1.5rem)] w-[min(calc(100vw-1.5rem),20rem)] rounded-r-[2rem] rounded-l-3xl border border-white/75 bg-white/92 p-4 backdrop-blur-xl sm:w-80"
               : "top-3 right-3 h-[calc(100%-1.5rem)] w-[min(calc(100vw-1.5rem),20rem)] rounded-l-[2rem] rounded-r-3xl border border-white/75 bg-white/92 p-4 backdrop-blur-xl sm:w-80",
+          className,
         )}
       >
         {side !== "bottom" ? (

@@ -52,6 +52,7 @@ export function VisualCanvasStage({
   isSpacePanning,
   canvasTouchMenu,
   nodeTouchMenu,
+  showInteractionHint = true,
   onCanvasMouseDown,
   onCanvasMouseMove,
   onCanvasMouseUp,
@@ -87,6 +88,7 @@ export function VisualCanvasStage({
   isSpacePanning: boolean;
   canvasTouchMenu: TouchMenuHandlers;
   nodeTouchMenu: TouchMenuHandlers;
+  showInteractionHint?: boolean;
   onCanvasMouseDown: (event: React.MouseEvent) => void;
   onCanvasMouseMove: (event: React.MouseEvent) => void;
   onCanvasMouseUp: () => void;
@@ -310,10 +312,12 @@ export function VisualCanvasStage({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/80 px-3 py-1 text-[10px] text-zinc-400 shadow-sm backdrop-blur-sm">
-        Ctrl+scroll to zoom - Space+drag to pan - Shift+1 Fit - Shift+2 100% - F
-        Pan to selection
-      </div>
+      {showInteractionHint ? (
+        <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/80 px-3 py-1 text-[10px] text-zinc-400 shadow-sm backdrop-blur-sm">
+          Ctrl+scroll to zoom - Space+drag to pan - Shift+1 Fit - Shift+2 100% -
+          F Pan to selection
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -7,9 +7,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import {
-  arrayMove,
-} from "@dnd-kit/sortable";
+import { arrayMove } from "@dnd-kit/sortable";
 import {
   useCallback,
   useEffect,
@@ -20,9 +18,11 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { BuilderHeader } from "@/features/builder/shared/builder-header";
+import { BuilderResponsiveWorkspace } from "@/features/builder/shared/builder-responsive-workspace";
 import { BuilderUnsavedDialog } from "@/features/builder/shared/builder-unsaved-dialog";
 import { BuilderZoomControls } from "@/features/builder/shared/builder-zoom-controls";
 import { useBuilderExitGuard } from "@/features/builder/shared/use-builder-exit-guard";
+import { useBuilderResponsiveMode } from "@/features/builder/shared/use-builder-responsive-mode";
 import { FRAME_SNAP_THRESHOLD } from "@/features/admin/templates/frame-builder.constants";
 import { FrameCanvasStage } from "@/features/admin/templates/components/frame-canvas-stage";
 import { FrameContextMenu } from "@/features/admin/templates/components/frame-context-menu";
@@ -51,10 +51,6 @@ import {
   type FrameNode,
   type FrameNodeType,
 } from "@/types/frame-template";
-
-
-
-
 
 export function FrameTemplateBuilder({
   open = true,
@@ -115,6 +111,7 @@ export function FrameTemplateBuilder({
   } | null>(null);
   const [clipboard, setClipboard] = useState<FrameNode | null>(null);
   const [isSavingLayout, setIsSavingLayout] = useState(false);
+  const { isPortraitBuilder } = useBuilderResponsiveMode();
   const hydratedKeyRef = useRef<string | null>(null);
   const [committedLayoutKey, setCommittedLayoutKey] = useState(() =>
     JSON.stringify(normalizeFrameLayout(initialLayout ?? fallbackLayout)),
@@ -311,8 +308,22 @@ export function FrameTemplateBuilder({
 
   useEffect(() => {
     if (!open) return;
-    fitToScreen();
-  }, [fitToScreen, open, resetKey]);
+    const timer = window.setTimeout(() => fitToScreen(), 50);
+    const viewport = canvasViewportRef.current;
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => fitToScreen())
+        : null;
+
+    if (viewport) resizeObserver?.observe(viewport);
+    window.addEventListener("resize", fitToScreen);
+
+    return () => {
+      window.clearTimeout(timer);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", fitToScreen);
+    };
+  }, [fitToScreen, isPortraitBuilder, open, resetKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -890,12 +901,13 @@ export function FrameTemplateBuilder({
       <div
         className={cn(
           "flex flex-col overflow-hidden border border-zinc-200 bg-white shadow-2xl",
-          presentation === "modal"
+          presentation === "modal" && !isPortraitBuilder
             ? "mx-auto h-full max-w-7xl rounded-xl"
             : "h-full w-full rounded-none border-0 shadow-none",
         )}
       >
         <BuilderHeader
+          compact={isPortraitBuilder}
           title={`Frame: ${templateName}`}
           onBack={requestClose}
           saveLabel={saveLabel}
@@ -906,6 +918,89 @@ export function FrameTemplateBuilder({
           canUndo={history.past.length > 0}
           canRedo={history.future.length > 0}
           centerContent={
+            !isPortraitBuilder ? (
+              <BuilderZoomControls
+                zoom={zoom}
+                hasSelection={!!selectedId}
+                onZoomOut={() => setZoom((value) => clampZoom(value - 0.1))}
+                onZoomIn={() => setZoom((value) => clampZoom(value + 0.1))}
+                onFitToScreen={fitToScreen}
+                onPanToSelection={
+                  selectedId ? () => panToNode(selectedId) : undefined
+                }
+              />
+            ) : undefined
+          }
+        />
+
+        <BuilderResponsiveWorkspace
+          key={isPortraitBuilder ? "portrait" : "desktop"}
+          isPortraitBuilder={isPortraitBuilder}
+          desktopClassName="grid grid-cols-[240px_minmax(0,1fr)_360px]"
+          layersCount={layers.length}
+          activeContextLabel="frame"
+          selectedPropertiesLabel={
+            selectedNode?.type.replaceAll("-", " ") ?? null
+          }
+          desktopLayers={
+            <FrameLayerSidebar
+              layers={layers}
+              selectedId={selectedId}
+              sensors={sensors}
+              onAddNode={addNode}
+              onLayerDragEnd={handleLayerDragEnd}
+              onSelectNode={setSelectedId}
+              onToggleLock={(id, locked) => updateNode(id, { locked })}
+            />
+          }
+          desktopProperties={
+            <FramePropertiesPanel
+              detailsPanel={detailsPanel}
+              layout={layout}
+              selectedNode={selectedNode}
+              uploading={uploading}
+              onUpdateCanvas={updateCanvas}
+              onUpdateNode={updateNode}
+              onUpdateNodeProps={updateNodeProps}
+              onAssignPhotoSlotOrder={assignPhotoSlotOrder}
+              onDuplicateNode={duplicateNode}
+              onDeleteNode={deleteNode}
+              onUploadToNode={uploadToNode}
+            />
+          }
+          canvas={
+            <FrameCanvasStage
+              canvasSurfaceRef={canvasSurfaceRef}
+              canvasViewportRef={canvasViewportRef}
+              layout={layout}
+              zoom={zoom}
+              pan={pan}
+              guides={guides}
+              snapPreview={snapPreview}
+              selectedId={selectedId}
+              isPanning={isPanning}
+              spaceDown={spaceDown}
+              canvasTouchMenu={canvasTouchMenu}
+              nodeTouchMenu={nodeTouchMenu}
+              showInteractionHint={!isPortraitBuilder}
+              onCanvasMouseDown={handleCanvasMouseDown}
+              onCanvasMouseMove={handleCanvasMouseMove}
+              onCanvasMouseUp={handleCanvasMouseUp}
+              onSelectNode={setSelectedId}
+              onOpenContextMenu={(x, y, nodeId) =>
+                setContextMenu({ x, y, nodeId })
+              }
+              onComputeGuides={computeGuides}
+              onUpdateNode={updateNode}
+              onClearSnap={clearSnap}
+              onSetGuides={setGuides}
+              onSetSnapPreview={setSnapPreview}
+              onSetLongPressNode={(id) => {
+                longPressNodeRef.current = id;
+              }}
+            />
+          }
+          zoomControls={
             <BuilderZoomControls
               zoom={zoom}
               hasSelection={!!selectedId}
@@ -917,63 +1012,52 @@ export function FrameTemplateBuilder({
               }
             />
           }
+          layersContent={
+            <FrameLayerSidebar
+              embedded
+              mode="layers"
+              layers={layers}
+              selectedId={selectedId}
+              sensors={sensors}
+              onAddNode={addNode}
+              onLayerDragEnd={handleLayerDragEnd}
+              onSelectNode={setSelectedId}
+              onToggleLock={(id, locked) => updateNode(id, { locked })}
+            />
+          }
+          renderAddContent={(closePanel) => (
+            <FrameLayerSidebar
+              embedded
+              mode="add"
+              layers={layers}
+              selectedId={selectedId}
+              sensors={sensors}
+              onAddNode={(type) => {
+                addNode(type);
+                closePanel();
+              }}
+              onLayerDragEnd={handleLayerDragEnd}
+              onSelectNode={setSelectedId}
+              onToggleLock={(id, locked) => updateNode(id, { locked })}
+            />
+          )}
+          propertiesContent={
+            <FramePropertiesPanel
+              embedded
+              detailsPanel={detailsPanel}
+              layout={layout}
+              selectedNode={selectedNode}
+              uploading={uploading}
+              onUpdateCanvas={updateCanvas}
+              onUpdateNode={updateNode}
+              onUpdateNodeProps={updateNodeProps}
+              onAssignPhotoSlotOrder={assignPhotoSlotOrder}
+              onDuplicateNode={duplicateNode}
+              onDeleteNode={deleteNode}
+              onUploadToNode={uploadToNode}
+            />
+          }
         />
-
-        <div className="grid min-h-0 flex-1 grid-cols-[240px_minmax(0,1fr)_360px]">
-          <FrameLayerSidebar
-            layers={layers}
-            selectedId={selectedId}
-            sensors={sensors}
-            onAddNode={addNode}
-            onLayerDragEnd={handleLayerDragEnd}
-            onSelectNode={setSelectedId}
-            onToggleLock={(id, locked) => updateNode(id, { locked })}
-          />
-
-          <FrameCanvasStage
-            canvasSurfaceRef={canvasSurfaceRef}
-            canvasViewportRef={canvasViewportRef}
-            layout={layout}
-            zoom={zoom}
-            pan={pan}
-            guides={guides}
-            snapPreview={snapPreview}
-            selectedId={selectedId}
-            isPanning={isPanning}
-            spaceDown={spaceDown}
-            canvasTouchMenu={canvasTouchMenu}
-            nodeTouchMenu={nodeTouchMenu}
-            onCanvasMouseDown={handleCanvasMouseDown}
-            onCanvasMouseMove={handleCanvasMouseMove}
-            onCanvasMouseUp={handleCanvasMouseUp}
-            onSelectNode={setSelectedId}
-            onOpenContextMenu={(x, y, nodeId) =>
-              setContextMenu({ x, y, nodeId })
-            }
-            onComputeGuides={computeGuides}
-            onUpdateNode={updateNode}
-            onClearSnap={clearSnap}
-            onSetGuides={setGuides}
-            onSetSnapPreview={setSnapPreview}
-            onSetLongPressNode={(id) => {
-              longPressNodeRef.current = id;
-            }}
-          />
-
-          <FramePropertiesPanel
-            detailsPanel={detailsPanel}
-            layout={layout}
-            selectedNode={selectedNode}
-            uploading={uploading}
-            onUpdateCanvas={updateCanvas}
-            onUpdateNode={updateNode}
-            onUpdateNodeProps={updateNodeProps}
-            onAssignPhotoSlotOrder={assignPhotoSlotOrder}
-            onDuplicateNode={duplicateNode}
-            onDeleteNode={deleteNode}
-            onUploadToNode={uploadToNode}
-          />
-        </div>
       </div>
       <BuilderUnsavedDialog
         open={showUnsavedDialog}
@@ -1067,7 +1151,12 @@ export function FrameTemplateBuilder({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] bg-zinc-950/40 p-4 backdrop-blur-sm">
+    <div
+      className={cn(
+        "fixed inset-0 z-[70] bg-zinc-950/40 backdrop-blur-sm",
+        isPortraitBuilder ? "p-0" : "p-4",
+      )}
+    >
       {builder}
     </div>
   );

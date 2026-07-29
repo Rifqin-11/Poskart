@@ -1,7 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowLeft, CircleHelp, Redo2, Save, Undo2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CircleHelp,
+  MoreHorizontal,
+  Redo2,
+  Save,
+  Undo2,
+} from "lucide-react";
 import { BuilderToolbarButton } from "@/features/builder/shared/builder-toolbar-button";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +27,7 @@ export function BuilderHeader({
   onUndo,
   onRedo,
   onShowTutorial,
+  compact = false,
 }: {
   title?: string;
   subtitle?: string;
@@ -35,7 +43,83 @@ export function BuilderHeader({
   onUndo?: () => void;
   onRedo?: () => void;
   onShowTutorial?: () => void;
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <div className="relative z-40 flex h-14 shrink-0 items-center gap-1.5 border-b border-zinc-200 bg-white px-2">
+        <BuilderToolbarButton onClick={onBack} title="Back">
+          <ArrowLeft className="size-4" />
+          <span className="hidden sm:inline">Back</span>
+        </BuilderToolbarButton>
+
+        {leftContent ? (
+          <>
+            <div className="h-4 w-px shrink-0 bg-zinc-200" />
+            <div className="min-w-0">{leftContent}</div>
+          </>
+        ) : null}
+
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          {onUndo ? (
+            <BuilderToolbarButton
+              onClick={onUndo}
+              disabled={canUndo === false}
+              title="Undo"
+            >
+              <Undo2 className="size-4" />
+            </BuilderToolbarButton>
+          ) : null}
+          {onRedo ? (
+            <BuilderToolbarButton
+              onClick={onRedo}
+              disabled={canRedo === false}
+              title="Redo"
+            >
+              <Redo2 className="size-4" />
+            </BuilderToolbarButton>
+          ) : null}
+
+          <details className="group relative">
+            <summary className="flex size-8 cursor-pointer list-none items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 [&::-webkit-details-marker]:hidden">
+              <MoreHorizontal className="size-4" />
+              <span className="sr-only">More builder actions</span>
+            </summary>
+            <div className="absolute top-10 right-0 z-50 w-64 rounded-xl border border-zinc-200 bg-white p-2 shadow-2xl shadow-zinc-950/15">
+              <div className="flex flex-col gap-1 [&>*]:w-full [&>*]:justify-start">
+                {onShowTutorial ? (
+                  <BuilderToolbarButton
+                    data-builder-tour="tutorial"
+                    onClick={onShowTutorial}
+                    title="Show tutorial"
+                  >
+                    <CircleHelp className="size-3.5" />
+                    Show tutorial
+                  </BuilderToolbarButton>
+                ) : null}
+                {centerContent}
+                {rightMeta}
+              </div>
+            </div>
+          </details>
+
+          <button
+            data-builder-tour="save"
+            type="button"
+            onClick={onSave}
+            disabled={isSaving}
+            className="flex h-8 items-center gap-1.5 rounded-md bg-zinc-900 px-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-700 disabled:opacity-60"
+          >
+            <Save className="size-3.5" />
+            <span className="hidden sm:inline">
+              {isSaving ? "Saving…" : saveLabel}
+            </span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-3">
       <BuilderToolbarButton onClick={onBack} title="Back">

@@ -42,6 +42,7 @@ export function FrameCanvasStage({
   spaceDown,
   canvasTouchMenu,
   nodeTouchMenu,
+  showInteractionHint = true,
   onCanvasMouseDown,
   onCanvasMouseMove,
   onCanvasMouseUp,
@@ -66,6 +67,7 @@ export function FrameCanvasStage({
   spaceDown: boolean;
   canvasTouchMenu: TouchMenuHandlers;
   nodeTouchMenu: TouchMenuHandlers;
+  showInteractionHint?: boolean;
   onCanvasMouseDown: (event: React.MouseEvent) => void;
   onCanvasMouseMove: (event: React.MouseEvent) => void;
   onCanvasMouseUp: () => void;
@@ -117,7 +119,10 @@ export function FrameCanvasStage({
         onOpenContextMenu(event.clientX, event.clientY, null);
       }}
     >
-      <div ref={canvasViewportRef} className="pointer-events-none absolute inset-0" />
+      <div
+        ref={canvasViewportRef}
+        className="pointer-events-none absolute inset-0"
+      />
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -154,7 +159,10 @@ export function FrameCanvasStage({
             }}
           >
             {guides.map((guide, index) => (
-              <FrameGuide key={`${guide.type}-${guide.pos}-${index}`} guide={guide} />
+              <FrameGuide
+                key={`${guide.type}-${guide.pos}-${index}`}
+                guide={guide}
+              />
             ))}
             {snapPreview ? <FrameSnapPreview preview={snapPreview} /> : null}
             {layout.nodes
@@ -183,7 +191,9 @@ export function FrameCanvasStage({
                     onSelectNode(node.id);
                     onOpenContextMenu(event.clientX, event.clientY, node.id);
                   }}
-                  onPointerDown={(event: React.PointerEvent<HTMLDivElement>) => {
+                  onPointerDown={(
+                    event: React.PointerEvent<HTMLDivElement>,
+                  ) => {
                     onSetLongPressNode(node.id);
                     onSelectNode(node.id);
                     nodeTouchMenu.onPointerDown(event);
@@ -284,10 +294,12 @@ export function FrameCanvasStage({
           </div>
         </div>
       </div>
-      <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/80 px-3 py-1 text-[10px] text-zinc-400 shadow-sm backdrop-blur-sm">
-        Ctrl+scroll to zoom - Scroll to pan - Space+drag to pan - Shift+1 Fit -
-        Shift+2 100% - F Pan to selection
-      </div>
+      {showInteractionHint ? (
+        <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-white/80 px-3 py-1 text-[10px] text-zinc-400 shadow-sm backdrop-blur-sm">
+          Ctrl+scroll to zoom - Scroll to pan - Space+drag to pan - Shift+1 Fit
+          - Shift+2 100% - F Pan to selection
+        </div>
+      ) : null}
     </main>
   );
 }

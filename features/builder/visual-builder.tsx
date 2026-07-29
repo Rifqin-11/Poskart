@@ -32,7 +32,9 @@ import { BuilderHeader } from "@/features/builder/shared/builder-header";
 import { BuilderToolbarButton } from "@/features/builder/shared/builder-toolbar-button";
 import { BuilderUnsavedDialog } from "@/features/builder/shared/builder-unsaved-dialog";
 import { BuilderZoomControls } from "@/features/builder/shared/builder-zoom-controls";
+import { BuilderResponsiveWorkspace } from "@/features/builder/shared/builder-responsive-workspace";
 import { useBuilderExitGuard } from "@/features/builder/shared/use-builder-exit-guard";
+import { useBuilderResponsiveMode } from "@/features/builder/shared/use-builder-responsive-mode";
 import { VisualCanvasStage } from "@/features/builder/components/visual-canvas-stage";
 import { VisualContextMenu } from "@/features/builder/components/visual-context-menu";
 import { VisualLayerSidebar } from "@/features/builder/components/visual-layer-sidebar";
@@ -85,6 +87,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   const hydratedLayoutId = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [builderTutorialOpen, setBuilderTutorialOpen] = useState(false);
+  const { isPortraitBuilder } = useBuilderResponsiveMode();
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [themeName, setThemeName] = useState("");
   const saveLayoutMutation = useSaveLayoutAsTheme();
@@ -873,8 +876,9 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <BuilderHeader
+        compact={isPortraitBuilder}
         onBack={requestBack}
         onShowTutorial={() => setBuilderTutorialOpen(true)}
         saveLabel="Save"
@@ -888,18 +892,21 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
             canvas={canvas}
             onSetActivePage={setActivePage}
             onUpdateCanvas={updateCanvas}
+            compact={isPortraitBuilder}
           />
         }
         centerContent={
-          <BuilderZoomControls
-            zoom={zoom}
-            hasSelection={!!selectedId}
-            onZoomOut={() => setZoom((z) => clampZoom(z - 0.1))}
-            onZoomIn={() => setZoom((z) => clampZoom(z + 0.1))}
-            onPanToSelection={
-              selectedId ? () => panToNode(selectedId) : undefined
-            }
-          />
+          !isPortraitBuilder ? (
+            <BuilderZoomControls
+              zoom={zoom}
+              hasSelection={!!selectedId}
+              onZoomOut={() => setZoom((z) => clampZoom(z - 0.1))}
+              onZoomIn={() => setZoom((z) => clampZoom(z + 0.1))}
+              onPanToSelection={
+                selectedId ? () => panToNode(selectedId) : undefined
+              }
+            />
+          ) : undefined
         }
         rightMeta={
           <>
@@ -950,61 +957,123 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
       />
 
       {/* ── Body ─────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
-        <VisualLayerSidebar
-          activePage={activePage}
-          isOverlayMode={isOverlayMode}
-          layersList={layersList}
-          sensors={sensors}
-          onAddNode={addNode}
-          onLayerDragEnd={handleDragEnd}
-        />
-
-        <VisualCanvasStage
-          tourTarget="canvas"
-          canvasRef={canvasRef}
-          viewportRef={viewportRef}
-          activePage={activePage}
-          canvas={canvas}
-          zoom={zoom}
-          pan={pan}
-          selectedId={selectedId}
-          editingId={editingId}
-          editValue={editValue}
-          visibleNodes={visibleNodes}
-          guides={guides}
-          snapPreview={snapPreview}
-          boxSelect={boxSelect}
-          isPanning={isPanningRef.current}
-          isSpacePanning={spaceRef.current}
-          canvasTouchMenu={canvasTouchMenu}
-          nodeTouchMenu={nodeTouchMenu}
-          onCanvasMouseDown={handleCanvasMouseDown}
-          onCanvasMouseMove={handleCanvasMouseMove}
-          onCanvasMouseUp={handleCanvasMouseUp}
-          onSelectNode={selectNode}
-          onOpenContextMenu={(x, y, nodeId) => setContextMenu({ x, y, nodeId })}
-          onCanvasToClient={canvasToClient}
-          onComputeGuides={computeGuides}
-          onUpdateNode={updateNode}
-          onClearSnap={clearSnap}
-          onSetGuides={setGuides}
-          onSetSnapPreview={setSnapPreview}
-          onSetLongPressNode={(id) => {
-            longPressNodeRef.current = id;
-          }}
-          onEditChange={setEditValue}
-          onEditCommit={commitTextEdit}
-          onEditCancel={cancelTextEdit}
-          onStartEdit={startTextEdit}
-        />
-
-        <VisualPropertiesSidebar
-          selectedNode={selectedNode}
-          schema={schema()}
-          onStartEdit={startTextEdit}
-        />
-      </div>
+      <BuilderResponsiveWorkspace
+        key={isPortraitBuilder ? "portrait" : "desktop"}
+        isPortraitBuilder={isPortraitBuilder}
+        desktopClassName="flex"
+        layersCount={layersList.length}
+        activeContextLabel={activePage}
+        selectedPropertiesLabel={
+          selectedNode?.type.replaceAll("-", " ") ?? null
+        }
+        desktopLayers={
+          <VisualLayerSidebar
+            activePage={activePage}
+            isOverlayMode={isOverlayMode}
+            layersList={layersList}
+            sensors={sensors}
+            onAddNode={addNode}
+            onLayerDragEnd={handleDragEnd}
+          />
+        }
+        desktopProperties={
+          <VisualPropertiesSidebar
+            selectedNode={selectedNode}
+            schema={schema()}
+            onStartEdit={startTextEdit}
+          />
+        }
+        canvas={
+          <VisualCanvasStage
+            tourTarget="canvas"
+            canvasRef={canvasRef}
+            viewportRef={viewportRef}
+            activePage={activePage}
+            canvas={canvas}
+            zoom={zoom}
+            pan={pan}
+            selectedId={selectedId}
+            editingId={editingId}
+            editValue={editValue}
+            visibleNodes={visibleNodes}
+            guides={guides}
+            snapPreview={snapPreview}
+            boxSelect={boxSelect}
+            isPanning={isPanningRef.current}
+            isSpacePanning={spaceRef.current}
+            canvasTouchMenu={canvasTouchMenu}
+            nodeTouchMenu={nodeTouchMenu}
+            showInteractionHint={!isPortraitBuilder}
+            onCanvasMouseDown={handleCanvasMouseDown}
+            onCanvasMouseMove={handleCanvasMouseMove}
+            onCanvasMouseUp={handleCanvasMouseUp}
+            onSelectNode={selectNode}
+            onOpenContextMenu={(x, y, nodeId) =>
+              setContextMenu({ x, y, nodeId })
+            }
+            onCanvasToClient={canvasToClient}
+            onComputeGuides={computeGuides}
+            onUpdateNode={updateNode}
+            onClearSnap={clearSnap}
+            onSetGuides={setGuides}
+            onSetSnapPreview={setSnapPreview}
+            onSetLongPressNode={(id) => {
+              longPressNodeRef.current = id;
+            }}
+            onEditChange={setEditValue}
+            onEditCommit={commitTextEdit}
+            onEditCancel={cancelTextEdit}
+            onStartEdit={startTextEdit}
+          />
+        }
+        zoomControls={
+          <BuilderZoomControls
+            zoom={zoom}
+            hasSelection={!!selectedId}
+            onZoomOut={() => setZoom((value) => clampZoom(value - 0.1))}
+            onZoomIn={() => setZoom((value) => clampZoom(value + 0.1))}
+            onFitToScreen={fitToScreen}
+            onPanToSelection={
+              selectedId ? () => panToNode(selectedId) : undefined
+            }
+          />
+        }
+        layersContent={
+          <VisualLayerSidebar
+            embedded
+            mode="layers"
+            activePage={activePage}
+            isOverlayMode={isOverlayMode}
+            layersList={layersList}
+            sensors={sensors}
+            onAddNode={addNode}
+            onLayerDragEnd={handleDragEnd}
+          />
+        }
+        renderAddContent={(closePanel) => (
+          <VisualLayerSidebar
+            embedded
+            mode="add"
+            activePage={activePage}
+            isOverlayMode={isOverlayMode}
+            layersList={layersList}
+            sensors={sensors}
+            onAddNode={(type) => {
+              addNode(type);
+              closePanel();
+            }}
+            onLayerDragEnd={handleDragEnd}
+          />
+        )}
+        propertiesContent={
+          <VisualPropertiesSidebar
+            embedded
+            selectedNode={selectedNode}
+            schema={schema()}
+            onStartEdit={startTextEdit}
+          />
+        }
+      />
 
       {contextMenu ? (
         <VisualContextMenu
