@@ -166,7 +166,7 @@ export function HeroSection({
               #
             </div>
 
-            <h1 className="relative z-[1] text-center text-[2.45rem] font-black uppercase leading-[0.82] tracking-normal min-[375px]:text-[2.75rem] sm:text-[6.5rem] lg:text-[9.25rem] xl:text-[11rem]">
+            <h1 className="relative z-[1] text-center text-[2.45rem] font-black uppercase leading-[0.82] tracking-normal min-[375px]:text-[2.75rem] sm:text-[6rem] lg:text-[7rem] xl:text-[9rem]">
               <span className="block overflow-hidden">
                 <span data-hero-line className="block">
                   POSKART
@@ -244,7 +244,7 @@ export function HeroSection({
                   Download {latestRelease?.version ?? "App"}
                 </a>
                 <Link
-                  href="/subscriptions"
+                  href="/#pricing"
                   className="inline-flex h-12 items-center justify-center gap-2 border border-blue-200 bg-white px-5 text-sm font-semibold text-[#00357B] transition-colors hover:border-[#00357B] hover:bg-blue-50"
                 >
                   View pricing <ArrowUpRight className="size-4" />

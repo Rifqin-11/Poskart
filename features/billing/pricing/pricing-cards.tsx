@@ -14,22 +14,17 @@ import {
 import { cn, formatCurrency } from "@/lib/utils";
 
 export function PricingCards({
-  defaultPlanId = "starter-monthly",
   plans = fallbackPricingPlans,
   onSelectPlan,
 }: {
-  defaultPlanId?: string;
   plans?: PricingPlan[];
   onSelectPlan?: (plan: PricingPlan) => void;
 }) {
   const visiblePlans = plans.length > 0 ? plans : fallbackPricingPlans;
-  const defaultPlan =
-    visiblePlans.find((plan) => plan.id === defaultPlanId) ?? visiblePlans[0];
   const [activeDuration, setActiveDuration] = useState(
-    defaultPlan?.durationMonths ?? 1,
-  );
-  const [activePlanId, setActivePlanId] = useState(
-    defaultPlan?.id ?? defaultPlanId,
+    visiblePlans.find((plan) => plan.durationMonths === 1)?.durationMonths ??
+      visiblePlans[0]?.durationMonths ??
+      1,
   );
   const monthlyPlans = useMemo(
     () => visiblePlans.filter((plan) => plan.durationMonths === 1),
@@ -44,7 +39,7 @@ export function PricingCards({
   );
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-8">
       <div className="flex flex-col items-center gap-5 text-center">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
@@ -56,7 +51,7 @@ export function PricingCards({
         </div>
 
         <div
-          className="grid w-full max-w-2xl rounded-full border border-zinc-200 bg-zinc-100/80 p-1 sm:grid-cols-4"
+          className="grid w-full max-w-2xl rounded-full border border-zinc-200/90 bg-zinc-200/60 p-1 shadow-[0_10px_26px_rgba(15,23,42,0.06)] backdrop-blur-md sm:grid-cols-4"
           role="tablist"
           aria-label="Billing duration"
         >
@@ -71,16 +66,12 @@ export function PricingCards({
                 aria-selected={active}
                 onClick={() => {
                   setActiveDuration(duration.months);
-                  const nextPlan = visiblePlans
-                    .filter((plan) => plan.durationMonths === duration.months)
-                    .sort(comparePlansByTier)[0];
-                  if (nextPlan) setActivePlanId(nextPlan.id);
                 }}
                 className={cn(
-                  "h-11 rounded-full px-4 text-sm font-medium transition",
+                  "h-11 rounded-full px-4 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B] focus-visible:ring-offset-2",
                   active
-                    ? "bg-white text-zinc-950 shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-950",
+                    ? "bg-white text-[#00357B] shadow-[0_3px_10px_rgba(15,23,42,0.14)] ring-1 ring-[#00357B]/10"
+                    : "text-zinc-500 hover:bg-white/60 hover:text-zinc-950",
                 )}
               >
                 {duration.label}
@@ -90,14 +81,12 @@ export function PricingCards({
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid items-stretch gap-5 lg:grid-cols-3 lg:gap-4 xl:gap-6">
         {activePlans.map((plan) => (
           <PricingCard
             key={plan.id}
             plan={plan}
-            active={activePlanId === plan.id}
             monthlyPlans={monthlyPlans}
-            onActivate={() => setActivePlanId(plan.id)}
             onSelectPlan={onSelectPlan}
           />
         ))}
@@ -108,15 +97,11 @@ export function PricingCards({
 
 function PricingCard({
   plan,
-  active,
   monthlyPlans,
-  onActivate,
   onSelectPlan,
 }: {
   plan: PricingPlan;
-  active: boolean;
   monthlyPlans: PricingPlan[];
-  onActivate: () => void;
   onSelectPlan?: (plan: PricingPlan) => void;
 }) {
   const tier = getTierMeta(plan);
@@ -132,23 +117,15 @@ function PricingCard({
     plan.amount,
   );
   const savingsPercent = promoSavingsPercent || durationSavingsPercent;
+  const featured = plan.highlighted;
 
   return (
     <article
-      role="button"
-      tabIndex={0}
-      onClick={onActivate}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onActivate();
-        }
-      }}
       className={cn(
-        "min-h-[620px] cursor-pointer rounded-[28px] border p-7 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950",
-        active
-          ? "border-zinc-950 bg-zinc-950 text-white shadow-xl"
-          : "border-zinc-200 bg-white text-zinc-950 hover:border-zinc-400 hover:bg-zinc-50",
+        "relative flex min-h-[610px] flex-col overflow-hidden rounded-[28px] border p-6 shadow-[0_12px_30px_rgba(15,23,42,0.06)] transition-[transform,border-color,box-shadow] duration-200 lg:p-7",
+        featured
+          ? "z-10 border-[#00357B] bg-gradient-to-b from-[#064891] to-[#002B63] text-white shadow-[0_24px_50px_rgba(0,53,123,0.24)] lg:-translate-y-5"
+          : "border-blue-100 bg-white text-zinc-950 hover:-translate-y-1 hover:border-blue-200 hover:shadow-[0_18px_38px_rgba(0,53,123,0.1)] lg:mt-5",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -157,18 +134,14 @@ function PricingCard({
           <p
             className={cn(
               "mt-1 text-xs leading-5",
-              active ? "text-zinc-300" : "text-zinc-500",
+              featured ? "text-blue-100" : "text-zinc-500",
             )}
           >
             {plan.audience ?? tier?.audience ?? plan.description}
           </p>
         </div>
-        {active ? (
-          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-zinc-950">
-            Active
-          </span>
-        ) : plan.highlighted ? (
-          <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+        {plan.highlighted ? (
+          <span className="rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-xs font-medium text-white">
             Popular
           </span>
         ) : null}
@@ -180,7 +153,7 @@ function PricingCard({
             <span
               className={cn(
                 "text-lg font-medium line-through",
-                active ? "text-zinc-500" : "text-zinc-400",
+                featured ? "text-blue-200" : "text-zinc-400",
               )}
             >
               {formatCurrency(plan.compareAtAmount)}
@@ -189,9 +162,9 @@ function PricingCard({
               <span
                 className={cn(
                   "rounded-full px-2.5 py-1 text-xs font-semibold",
-                  active
-                    ? "bg-emerald-400/15 text-emerald-200"
-                    : "bg-emerald-50 text-emerald-700",
+                  featured
+                    ? "bg-red-400/15 text-red-100"
+                    : "bg-red-50 text-red-700",
                 )}
               >
                 Diskon {promoSavingsPercent}%
@@ -206,8 +179,8 @@ function PricingCard({
           </span>
           <span
             className={
-              active
-                ? "pb-1 text-sm text-zinc-300"
+              featured
+                ? "pb-1 text-sm text-blue-100"
                 : "pb-1 text-sm text-zinc-500"
             }
           >
@@ -218,7 +191,7 @@ function PricingCard({
 
       <p
         className={
-          active ? "mt-2 text-xs text-zinc-400" : "mt-2 text-xs text-zinc-500"
+          featured ? "mt-2 text-xs text-blue-100" : "mt-2 text-xs text-zinc-500"
         }
       >
         {formatCurrency(monthlyDeviceEquivalent)}/bulan/device
@@ -230,7 +203,9 @@ function PricingCard({
       {plan.compareAtAmount && savingsPercent > 0 ? (
         <p
           className={
-            active ? "mt-1 text-xs text-zinc-400" : "mt-1 text-xs text-zinc-500"
+            featured
+              ? "mt-1 text-xs text-blue-100"
+              : "mt-1 text-xs text-zinc-500"
           }
         >
           Hemat dari harga normal {formatCurrency(plan.compareAtAmount)}
@@ -239,8 +214,8 @@ function PricingCard({
 
       <p
         className={
-          active
-            ? "mt-5 text-sm leading-6 text-zinc-300"
+          featured
+            ? "mt-5 text-sm leading-6 text-blue-50"
             : "mt-5 text-sm leading-6 text-zinc-500"
         }
       >
@@ -250,15 +225,16 @@ function PricingCard({
       {onSelectPlan ? (
         <button
           type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onActivate();
-            onSelectPlan(plan);
-          }}
+          onClick={() => onSelectPlan(plan)}
           className={buttonVariants({
-            variant: active ? "secondary" : "default",
+            variant: "outline",
             size: "lg",
-            className: "mt-6 w-full rounded-full",
+            className: cn(
+              "mt-6 w-full rounded-xl",
+              featured
+                ? "border-white bg-white text-[#00357B] hover:bg-blue-50 hover:text-[#00357B]"
+                : "border-[#00357B] bg-white text-[#00357B] hover:bg-blue-50 hover:text-[#00357B]",
+            ),
           })}
         >
           {plan.cta}
@@ -267,11 +243,15 @@ function PricingCard({
       ) : (
         <Link
           href={`/checkout?plan=${plan.id}`}
-          onClick={(event) => event.stopPropagation()}
           className={buttonVariants({
-            variant: active ? "secondary" : "default",
+            variant: "outline",
             size: "lg",
-            className: "mt-6 w-full rounded-full",
+            className: cn(
+              "mt-6 w-full rounded-xl",
+              featured
+                ? "border-white bg-white text-[#00357B] hover:bg-blue-50 hover:text-[#00357B]"
+                : "border-[#00357B] bg-white text-[#00357B] hover:bg-blue-50 hover:text-[#00357B]",
+            ),
           })}
         >
           {plan.cta}
@@ -280,18 +260,16 @@ function PricingCard({
       )}
 
       <div
-        className={
-          active
-            ? "mt-6 border-t border-white/15 pt-6"
-            : "mt-6 border-t border-zinc-200 pt-6"
-        }
+        className={cn(
+          "mt-6 border-t pt-6",
+          featured ? "border-white/20" : "border-blue-100",
+        )}
       >
         <div
-          className={
-            active
-              ? "mb-3 text-xs font-medium text-zinc-300"
-              : "mb-3 text-xs font-medium text-zinc-500"
-          }
+          className={cn(
+            "mb-3 text-xs font-medium",
+            featured ? "text-blue-100" : "text-zinc-500",
+          )}
         >
           Termasuk
         </div>
@@ -300,9 +278,9 @@ function PricingCard({
             <div key={feature} className="flex items-start gap-2 text-sm">
               <CheckCircle2
                 className={
-                  active
-                    ? "mt-0.5 size-4 shrink-0 text-emerald-300"
-                    : "mt-0.5 size-4 shrink-0 text-emerald-600"
+                  featured
+                    ? "mt-0.5 size-4 shrink-0 text-blue-100"
+                    : "mt-0.5 size-4 shrink-0 text-[#00357B]"
                 }
               />
               <span>{feature}</span>
@@ -312,11 +290,10 @@ function PricingCard({
       </div>
 
       <div
-        className={
-          active
-            ? "mt-6 text-xs leading-5 text-zinc-300"
-            : "mt-6 text-xs leading-5 text-zinc-500"
-        }
+        className={cn(
+          "mt-auto pt-6 text-xs leading-5",
+          featured ? "text-blue-100" : "text-zinc-500",
+        )}
       >
         Cocok untuk: {plan.audience ?? tier?.audience ?? "operator photobooth"}.
       </div>

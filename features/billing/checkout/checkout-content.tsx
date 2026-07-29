@@ -4,16 +4,9 @@ import Link from "next/link";
 import Script from "next/script";
 import { useSearchParams } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
-import {
-  CheckCircle2,
-  CreditCard,
-  LockKeyhole,
-  ReceiptText,
-  ShieldCheck,
-} from "lucide-react";
+import { CreditCard, Minus, Plus, ReceiptText } from "lucide-react";
 import { createSubscriptionOrderAction } from "@/app/(admin)/checkout/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   businessProfile,
   calculateSubscriptionTotal,
@@ -62,6 +55,8 @@ export function CheckoutContent({
   const successMessage = searchParams.get("success");
   const errorMessage = searchParams.get("error");
   const visiblePlans = plans.length > 0 ? plans : fallbackPricingPlans;
+  // The checkout URL is the source of truth. This keeps the selected duration
+  // from the pricing page intact instead of silently falling back to monthly.
   const plan =
     visiblePlans.find((item) => item.id === selectedPlanId) ??
     visiblePlans.find((item) => item.id === "starter-monthly") ??
@@ -85,6 +80,15 @@ export function CheckoutContent({
   const quote = calculateSubscriptionTotal(plan, deviceCount);
   const selectedGatewayLabel =
     paymentGateway === "midtrans" ? "Midtrans" : "Duitku";
+  const plansInSameTier = visiblePlans
+    .filter((item) =>
+      plan.tierId ? item.tierId === plan.tierId : item.name === plan.name,
+    )
+    .sort((left, right) => left.durationMonths - right.durationMonths);
+  const longerDurationOffers = plansInSameTier
+    .filter((item) => item.durationMonths > plan.durationMonths)
+    .slice(0, 2);
+  const monthlyPlan = plansInSameTier.find((item) => item.durationMonths === 1);
   const showDuitku = gatewayMode === "duitku" || gatewayMode === "both";
   const visibleError = checkoutError ?? errorMessage;
   const waitingForDuitkuScript =
@@ -153,7 +157,7 @@ export function CheckoutContent({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mx-auto grid max-w-7xl gap-6 px-3 py-6 sm:px-5 lg:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:gap-8 xl:px-8 xl:py-10"
+      className="mx-auto grid max-w-6xl gap-5 px-3 py-5 sm:px-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,380px)] lg:items-start lg:px-6 lg:py-7"
     >
       {showDuitku ? (
         <Script
@@ -171,18 +175,17 @@ export function CheckoutContent({
       ) : null}
       <input type="hidden" name="planId" value={plan.id} />
       <input type="hidden" name="paymentGateway" value={paymentGateway} />
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div>
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600">
             <CreditCard className="size-3.5 text-red-500" />
             Checkout
           </div>
-          <h1 className="max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl xl:text-5xl">
+          <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
             Complete your POSKART subscription.
           </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600">
-            Review your selected subscription, set the device quantity, then
-            continue to the official payment flow.
+          <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-600">
+            Choose the number of devices for this subscription.
           </p>
         </div>
 
@@ -202,35 +205,135 @@ export function CheckoutContent({
           </div>
         ) : null}
 
-        <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="text-lg font-semibold">Subscription devices</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-500">
-            This plan includes {plan.includedDevices} device
-            {plan.includedDevices > 1 ? "s" : ""}. Additional devices are
-            charged {formatCurrency(plan.additionalDevicePriceMonthly)} per
-            device per month.
-          </p>
-          <label className="mt-5 block max-w-xs text-xs font-medium text-zinc-500">
-            Total devices
-            <Input
-              className="mt-1"
-              name="deviceCount"
-              type="number"
-              min={plan.includedDevices}
-              max={99}
-              value={quote.deviceCount}
-              onChange={(event) =>
-                setDeviceCount(
-                  Math.max(
-                    plan.includedDevices,
-                    Number(event.target.value) || plan.includedDevices,
-                  ),
-                )
-              }
-              required
-            />
-          </label>
-        </div>
+        {longerDurationOffers.length > 0 ? (
+          <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight">
+                  Perpanjang lebih hemat
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Pilih masa akses lebih panjang untuk harga yang lebih hemat.
+                </p>
+              </div>
+              <span className="shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
+                {plan.durationMonths} bulan dipilih
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {longerDurationOffers.map((offer) => {
+                const originalAmount =
+                  offer.compareAtAmount ??
+                  (monthlyPlan
+                    ? monthlyPlan.amount * offer.durationMonths
+                    : undefined);
+                const savingsPercent = getSavingsPercent(
+                  originalAmount,
+                  offer.amount,
+                );
+
+                return (
+                  <Link
+                    key={offer.id}
+                    href={`/checkout?plan=${offer.id}&devices=${quote.deviceCount}`}
+                    className="group rounded-2xl border border-zinc-200 bg-zinc-50 p-4 transition hover:border-[#00357B]/35 hover:bg-blue-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B] focus-visible:ring-offset-2"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-sm font-semibold text-zinc-950">
+                        {offer.durationMonths} bulan
+                      </span>
+                      {savingsPercent > 0 ? (
+                        <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
+                          Hemat {savingsPercent}%
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-4 flex items-end justify-between gap-3">
+                      <div>
+                        {originalAmount ? (
+                          <span className="block text-xs text-zinc-400">
+                            Harga normal{" "}
+                            <span className="line-through">
+                              {formatCurrency(originalAmount)}
+                            </span>
+                          </span>
+                        ) : null}
+                        <span className="mt-1 block text-lg font-semibold tracking-tight text-zinc-950">
+                          {offer.price}
+                        </span>
+                      </div>
+                      <span className="text-xs font-medium text-[#00357B] transition group-hover:translate-x-0.5">
+                        Pilih →
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Subscription devices
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                {plan.includedDevices} device
+                {plan.includedDevices > 1 ? "s are" : " is"} included in this
+                plan.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
+              {plan.name}
+            </span>
+          </div>
+
+          <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl bg-zinc-100 p-4 sm:p-5">
+            <div>
+              <p className="text-sm font-medium text-zinc-950">Total devices</p>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                Additional devices cost{" "}
+                {formatCurrency(plan.additionalDevicePriceMonthly)} per month.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 rounded-xl bg-white p-1 shadow-sm ring-1 ring-zinc-200">
+              <button
+                type="button"
+                aria-label="Kurangi jumlah device"
+                className="grid size-9 place-items-center rounded-lg text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-35"
+                disabled={quote.deviceCount <= plan.includedDevices}
+                onClick={() =>
+                  setDeviceCount((current) =>
+                    Math.max(plan.includedDevices, current - 1),
+                  )
+                }
+              >
+                <Minus className="size-4" />
+              </button>
+              <output
+                aria-live="polite"
+                className="min-w-8 text-center text-base font-semibold tabular-nums text-zinc-950"
+              >
+                {quote.deviceCount}
+              </output>
+              <button
+                type="button"
+                aria-label="Tambah jumlah device"
+                className="grid size-9 place-items-center rounded-lg text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-35"
+                disabled={quote.deviceCount >= 99}
+                onClick={() =>
+                  setDeviceCount((current) => Math.min(99, current + 1))
+                }
+              >
+                <Plus className="size-4" />
+              </button>
+            </div>
+          </div>
+          <input name="deviceCount" type="hidden" value={quote.deviceCount} />
+        </section>
 
         {/* <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -346,26 +449,16 @@ export function CheckoutContent({
             ) : null}
           </div>
         </div> */}
-
-        <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5 text-sm leading-7 text-zinc-600">
-          <div className="mb-2 flex items-center gap-2 font-medium text-zinc-950">
-            <LockKeyhole className="size-4" />
-            Payment Gateway
-          </div>
-          Checkout ini membuat order subscription POSKART dan mengarahkan
-          pelanggan ke halaman pembayaran resmi. Gateway pembayaran aktif
-          dikendalikan dari Super Admin.
-        </div>
       </div>
 
-      <aside className="h-fit rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="mb-5 flex items-center gap-2">
+      <aside className="h-fit rounded-[1.75rem] border border-zinc-200 bg-white p-5 sm:p-6">
+        <div className="mb-4 flex items-center gap-2">
           <ReceiptText className="size-5 text-zinc-500" />
           <h2 className="text-lg font-semibold">Order summary</h2>
         </div>
 
-        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="rounded-2xl bg-zinc-100 p-4">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold">{plan.name}</div>
               <div className="mt-1 text-xs text-zinc-500">
@@ -373,74 +466,41 @@ export function CheckoutContent({
                 {quote.deviceCount > 1 ? "s" : ""}
               </div>
             </div>
-            <div className="text-right">
+            <div className="shrink-0 text-right">
               <div className="text-lg font-semibold">{plan.price}</div>
               <div className="text-xs text-zinc-500">{plan.period}</div>
             </div>
           </div>
-          <div className="mt-4 border-t border-zinc-200 pt-4">
+          <div className="mt-4 space-y-3 border-t border-zinc-200 pt-4">
             <div className="flex justify-between text-sm">
-              <span>
-                Base subscription
-                <span className="block text-xs text-zinc-500">
-                  Includes {quote.includedDevices} device
-                  {quote.includedDevices > 1 ? "s" : ""}
-                </span>
-              </span>
+              <span>Base subscription</span>
               <span>{formatCurrency(quote.baseAmount)}</span>
             </div>
-            <div className="mt-2 flex justify-between text-sm">
-              <span>
-                Additional devices
-                <span className="block text-xs text-zinc-500">
-                  {quote.additionalDevices} x{" "}
-                  {formatCurrency(quote.additionalDevicePriceMonthly)} x{" "}
-                  {plan.durationMonths} month
-                  {plan.durationMonths > 1 ? "s" : ""}
+            {quote.additionalDevices > 0 ? (
+              <div className="flex justify-between text-sm">
+                <span>
+                  Additional devices
+                  <span className="ml-1 text-xs text-zinc-500">
+                    × {quote.additionalDevices}
+                  </span>
                 </span>
-              </span>
-              <span>{formatCurrency(quote.additionalDeviceAmount)}</span>
-            </div>
-            <div className="mt-2 flex justify-between text-sm text-zinc-500">
-              <span>Tax</span>
-              <span>Calculated on invoice</span>
-            </div>
-            <div className="mt-4 flex justify-between border-t border-zinc-200 pt-4 text-base font-semibold">
+                <span>{formatCurrency(quote.additionalDeviceAmount)}</span>
+              </div>
+            ) : null}
+            <div className="flex justify-between border-t border-zinc-200 pt-4 text-base font-semibold text-zinc-950">
               <span>Total due</span>
               <span>{formatCurrency(quote.totalAmount)}</span>
             </div>
           </div>
         </div>
 
-        <div className="mt-5 space-y-3">
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-            Payment gateway:{" "}
-            <span className="font-medium text-zinc-950">
-              {selectedGatewayLabel}
-            </span>
-          </div>
-          <div className="flex items-start gap-2 rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">
-            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-            <span>
-              {paymentGateway === "duitku"
-                ? "Duitku POP menampilkan semua metode pembayaran yang aktif untuk merchant POSKART, seperti QRIS, virtual account, e-wallet, atau kartu bila tersedia."
-                : "Payments are processed through Midtrans Snap and updated via notification webhook."}
-            </span>
-          </div>
-          {plan.features.map((feature) => (
-            <div
-              key={feature}
-              className="flex items-start gap-2 text-sm text-zinc-600"
-            >
-              <CheckCircle2 className="mt-0.5 size-4 text-emerald-600" />
-              <span>{feature}</span>
-            </div>
-          ))}
-        </div>
+        <p className="mt-4 text-xs text-zinc-500">
+          Secure payment via {selectedGatewayLabel}
+        </p>
 
         <Button
           type="submit"
-          className="mt-6 w-full"
+          className="mt-4 w-full bg-[#00357B] hover:bg-[#002a63]"
           size="lg"
           disabled={isPending || waitingForDuitkuScript}
         >
@@ -452,17 +512,16 @@ export function CheckoutContent({
           <CreditCard className="size-4" />
         </Button>
         <Link
-          href="/subscriptions"
+          href="/#pricing"
           className={buttonVariants({
             variant: "outline",
-            size: "lg",
-            className: "mt-3 w-full",
+            className: "mt-2 w-full",
           })}
         >
           Change plan
         </Link>
 
-        <p className="mt-5 text-xs leading-5 text-zinc-500">
+        <p className="mt-4 text-xs leading-5 text-zinc-500">
           By continuing, customer agrees to POSKART{" "}
           <Link href="/terms" className="font-medium text-zinc-950 underline">
             Terms
@@ -491,6 +550,12 @@ function appendDuitkuLanguage(paymentUrl: string) {
     url.searchParams.set("lang", "id");
   }
   return url.toString();
+}
+
+function getSavingsPercent(originalAmount: number | undefined, amount: number) {
+  if (!originalAmount || originalAmount <= amount) return 0;
+
+  return Math.round(((originalAmount - amount) / originalAmount) * 100);
 }
 
 function buildDuitkuReturnUrl(

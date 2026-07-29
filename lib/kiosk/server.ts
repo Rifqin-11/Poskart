@@ -6,7 +6,7 @@ import {
   type User,
 } from "@supabase/supabase-js";
 
-import { sanitizeLayoutSchema } from "@/lib/builder/schema";
+import { builderPages, sanitizeLayoutSchema } from "@/lib/builder/schema";
 import {
   applyAssetManifestDeliveryUrls,
   collectAssetUrls,
@@ -92,6 +92,27 @@ export class KioskApiError extends Error {
   ) {
     super(message);
   }
+}
+
+/**
+ * The theme picker only needs enough schema to paint a faithful landing-page
+ * thumbnail. Keeping the remaining pages out of this object avoids turning a
+ * normal kiosk bootstrap into a download of every complete visual builder.
+ */
+function buildLayoutPreviewSchema(rawSchema: unknown): LayoutSchema | null {
+  if (!rawSchema || typeof rawSchema !== "object") return null;
+
+  const schema = sanitizeLayoutSchema(rawSchema as LayoutSchema);
+  return {
+    version: 1,
+    canvas: schema.canvas,
+    pages: Object.fromEntries(
+      builderPages.map((page) => [
+        page,
+        page === "landing" ? schema.pages.landing ?? [] : [],
+      ]),
+    ) as LayoutSchema["pages"],
+  };
 }
 
 function getSupabaseCredentials() {
@@ -434,7 +455,7 @@ export async function buildKioskBootstrap(
       .maybeSingle(),
     context.client
       .from("layout_schemas")
-      .select("id,name,is_active,status,updated_at")
+      .select("id,name,schema,is_active,status,updated_at")
       .eq("organization_id", context.organizationId)
       .order("updated_at", { ascending: false }),
     context.client
@@ -719,7 +740,18 @@ export async function buildKioskBootstrap(
       isActive: l.is_active,
       status: l.status,
       updatedAt: l.updated_at,
-      schema: null,
+      // Flutter needs the selected layout schema not only for kiosk runtime,
+      // but also when reopening the visual builder. Do not send every schema
+      // here: the device's current layout is sufficient and avoids inflating
+      // every bootstrap response as an organization grows.
+      schema:
+        l.id === layout?.id && deliveredLayoutSchema
+          ? sanitizeLayoutSchema(deliveredLayoutSchema as LayoutSchema)
+          : null,
+      // Lightweight landing-page data for the Flutter theme picker. This is
+      // intentionally separate from `schema`, which remains the full editable
+      // schema of the layout currently assigned to this device.
+      previewSchema: buildLayoutPreviewSchema(l.schema),
     })),
     assetManifest,
     designTokens: deliveredThemeSchema ?? null,

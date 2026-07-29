@@ -1,7 +1,12 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { motion, useInView, useScroll, useMotionValueEvent } from "framer-motion";
+import {
+  motion,
+  useInView,
+  useScroll,
+  useMotionValueEvent,
+} from "framer-motion";
 import {
   BarChart3,
   Camera,
@@ -25,6 +30,7 @@ import {
   Timer,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 /* ── Data ─────────────────────────────────────────────────────────── */
@@ -438,7 +444,8 @@ export function BuilderSection() {
           </h2>
           <p className="mt-5 max-w-lg text-base leading-8 text-zinc-500">
             Susun halaman landing, kamera, preview, dan selesai dari builder.
-            Saat layout dipublish, perangkat booth memakai konfigurasi yang sama.
+            Saat layout dipublish, perangkat booth memakai konfigurasi yang
+            sama.
           </p>
           <div className="mt-7 flex flex-wrap gap-2">
             {["Visual builder", "Frame template", "Publish per booth"].map(
@@ -449,7 +456,7 @@ export function BuilderSection() {
                 >
                   {item}
                 </span>
-              )
+              ),
             )}
           </div>
         </AnimatedSection>
@@ -561,7 +568,7 @@ function useIsMobile() {
 export function BentoFeaturesSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  
+
   // Track scroll position of the bento section relative to viewport
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -584,7 +591,7 @@ export function BentoFeaturesSection() {
     setRevealedCards((prev) => {
       const next = [...prev];
       let changed = false;
-      
+
       for (let i = 0; i < 6; i++) {
         // Staggered thresholds: 0.05, 0.17, 0.29, 0.41, 0.53, 0.65
         const threshold = i * 0.12 + 0.05;
@@ -593,38 +600,40 @@ export function BentoFeaturesSection() {
           changed = true;
         }
       }
-      
+
       return changed ? next : prev;
     });
   });
 
   const cardVariants = {
     hidden: { opacity: 0, y: 30, scale: 0.95 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
+    visible: {
+      opacity: 1,
+      y: 0,
       scale: 1,
       transition: {
         type: "spring" as const,
         stiffness: 90,
         damping: 14,
-      }
-    }
+      },
+    },
   };
 
   return (
-    <section 
-      ref={containerRef} 
-      className="relative bg-zinc-50/50" 
+    <section
+      ref={containerRef}
+      className="relative bg-zinc-50/50"
       style={{ height: isMobile ? "auto" : "160vh" }}
     >
       <div className="section-divider" />
 
-      <div className={cn(
-        isMobile 
-          ? "mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8"
-          : "sticky top-0 flex h-screen flex-col justify-center overflow-hidden px-4 sm:px-6 lg:px-8"
-      )}>
+      <div
+        className={cn(
+          isMobile
+            ? "mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8"
+            : "sticky top-0 flex h-screen flex-col justify-center overflow-hidden px-4 sm:px-6 lg:px-8",
+        )}
+      >
         <div className="mx-auto max-w-7xl w-full">
           {/* Header */}
           <div className="mx-auto max-w-3xl text-center">
@@ -637,7 +646,8 @@ export function BentoFeaturesSection() {
               <span className="text-gradient-warm">photobooth.</span>
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-zinc-500">
-              Semua fitur yang dibutuhkan operator ada di satu platform, dari desain booth sampai monitoring perangkat dan transaksi.
+              Semua fitur yang dibutuhkan operator ada di satu platform, dari
+              desain booth sampai monitoring perangkat dan transaksi.
             </p>
           </div>
 
@@ -658,13 +668,13 @@ export function BentoFeaturesSection() {
                   <div
                     className={cn(
                       "bento-card relative h-full overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 transition-colors shadow-sm",
-                      feature.accent
+                      feature.accent,
                     )}
                   >
                     <div
                       className={cn(
                         "mb-4 grid size-10 place-items-center rounded-xl",
-                        feature.iconBg
+                        feature.iconBg,
                       )}
                     >
                       <Icon className={cn("size-5", feature.iconColor)} />
@@ -702,7 +712,9 @@ export function CompleteFeaturesSection() {
             </p>
             <h2 className="mt-4 text-balance text-3xl font-bold tracking-[-0.04em] text-zinc-950 sm:text-4xl lg:text-5xl">
               Bukan cuma aplikasi foto, tapi{" "}
-              <span className="text-gradient-warm">operating system booth.</span>
+              <span className="text-gradient-warm">
+                operating system booth.
+              </span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-zinc-500">
               Dari inspirasi dashboard photobooth modern sampai kebutuhan
@@ -961,20 +973,20 @@ export function CTASection({ planLabel }: { planLabel: string | null }) {
             </div>
 
             <div className="relative mt-7 flex flex-col gap-3 sm:flex-row lg:mt-0 lg:shrink-0">
-              <a
-                href="/subscriptions"
+              <Link
+                href="/#pricing"
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-6 text-sm font-semibold text-zinc-700 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
               >
                 Lihat paket
                 <Layers3 className="size-4" />
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/register"
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-zinc-950 px-6 text-sm font-semibold text-white shadow-lg shadow-zinc-950/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-zinc-800 hover:shadow-xl"
               >
                 Buat akun
                 <ArrowRight className="size-4" />
-              </a>
+              </Link>
             </div>
           </div>
         </AnimatedSection>

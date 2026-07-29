@@ -9,6 +9,7 @@ import {
   ProductShowcase,
   WorkflowBand,
 } from "@/features/root/home/landing-sections";
+import { PricingCards } from "@/features/billing/pricing/pricing-cards";
 import type { PricingPlan } from "@/lib/constants/business";
 import type { LatestAppRelease } from "@/features/root/home/api";
 
@@ -33,6 +34,15 @@ export function HomePage({
       <ScrollyFeatures />
       <ProductShowcase />
       <WorkflowBand />
+      <section
+        id="pricing"
+        aria-label="Paket langganan POSKART"
+        className="scroll-mt-24 border-y border-blue-100 bg-white"
+      >
+        <div className="mx-auto max-w-[90rem] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
+          <PricingCards plans={plans} />
+        </div>
+      </section>
       <LandingCTA planLabel={planLabel} />
       <PublicFooter className="border-t border-blue-100" />
     </main>
