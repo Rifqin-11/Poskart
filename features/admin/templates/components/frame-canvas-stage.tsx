@@ -96,7 +96,7 @@ export function FrameCanvasStage({
   return (
     <main
       ref={canvasSurfaceRef}
-      className="relative min-w-0 overflow-hidden bg-zinc-100"
+      className="relative min-w-0 touch-none overflow-hidden overscroll-none bg-zinc-100"
       style={{
         cursor: isPanning ? "grabbing" : spaceDown ? "grab" : "default",
       }}

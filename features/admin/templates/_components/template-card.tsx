@@ -51,10 +51,16 @@ export function SortableTemplateCard({
             "p-4",
             viewMode === "grid"
               ? "space-y-4"
-              : "grid grid-cols-[auto_96px_minmax(0,1fr)_auto] items-center gap-4",
+              : "grid grid-cols-[80px_minmax(0,1fr)] items-start gap-x-4 gap-y-4 sm:grid-cols-[auto_80px_minmax(0,1fr)] sm:items-center lg:grid-cols-[auto_96px_minmax(0,1fr)_auto]",
           )}
         >
-          <div className="flex items-center justify-between gap-3">
+          <div
+            className={cn(
+              "flex items-center justify-between gap-3",
+              viewMode === "list" &&
+                "col-span-2 sm:col-span-1 sm:flex-col sm:justify-center sm:gap-1 lg:flex-row lg:justify-between lg:gap-3",
+            )}
+          >
             <span className="text-xs font-medium text-zinc-400">
               Urutan {template.displayOrder + 1}
             </span>
@@ -95,7 +101,14 @@ export function SortableTemplateCard({
           </div>
 
           <div className="min-w-0 space-y-3">
-            <h2 className="truncate text-base font-semibold text-zinc-950">
+            <h2
+              className={cn(
+                "text-base font-semibold text-zinc-950",
+                viewMode === "grid"
+                  ? "truncate"
+                  : "line-clamp-2 break-words leading-snug",
+              )}
+            >
               {template.name}
             </h2>
             {template.tagline ? (
@@ -126,13 +139,18 @@ export function SortableTemplateCard({
           <div
             className={cn(
               "shrink-0 gap-1 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-1.5",
-              viewMode === "grid" ? "grid grid-cols-3" : "flex w-28 flex-col",
+              viewMode === "grid"
+                ? cn("grid", readOnly ? "grid-cols-1" : "grid-cols-3")
+                : cn(
+                    "col-span-2 grid sm:col-span-3 lg:col-span-1 lg:flex lg:w-28 lg:flex-col",
+                    readOnly ? "grid-cols-1" : "grid-cols-3",
+                  ),
             )}
           >
             <Button
               variant="outline"
               size="sm"
-              className="h-8 w-full justify-start rounded-xl border-blue-100 bg-blue-50/80 px-2.5 text-[#00357B] shadow-none hover:border-blue-200 hover:bg-blue-100"
+              className="h-8 w-full justify-center rounded-xl border-blue-100 bg-blue-50/80 px-2.5 text-[#00357B] shadow-none hover:border-blue-200 hover:bg-blue-100 lg:justify-start"
               onClick={() => onTest(template)}
             >
               <ImagePlus className="size-3.5" /> Test
@@ -142,7 +160,7 @@ export function SortableTemplateCard({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 w-full justify-start rounded-xl border-transparent bg-white px-2.5 text-zinc-700 shadow-none hover:border-zinc-200 hover:bg-zinc-100"
+                  className="h-8 w-full justify-center rounded-xl border-transparent bg-white px-2.5 text-zinc-700 shadow-none hover:border-zinc-200 hover:bg-zinc-100 lg:justify-start"
                   onClick={() => onEdit(template)}
                 >
                   <Edit2 className="size-3.5" /> Edit
@@ -150,7 +168,7 @@ export function SortableTemplateCard({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-full justify-start rounded-xl px-2.5 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  className="h-8 w-full justify-center rounded-xl px-2.5 text-red-600 hover:bg-red-50 hover:text-red-700 lg:justify-start"
                   onClick={() => onDelete(template)}
                 >
                   <Trash2 className="size-3.5" /> Delete

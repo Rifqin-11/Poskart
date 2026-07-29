@@ -21,6 +21,7 @@ import { BuilderHeader } from "@/features/builder/shared/builder-header";
 import { BuilderResponsiveWorkspace } from "@/features/builder/shared/builder-responsive-workspace";
 import { BuilderUnsavedDialog } from "@/features/builder/shared/builder-unsaved-dialog";
 import { BuilderZoomControls } from "@/features/builder/shared/builder-zoom-controls";
+import { useBuilderCanvasNavigation } from "@/features/builder/shared/use-builder-canvas-navigation";
 import { useBuilderExitGuard } from "@/features/builder/shared/use-builder-exit-guard";
 import { useBuilderResponsiveMode } from "@/features/builder/shared/use-builder-responsive-mode";
 import { FRAME_SNAP_THRESHOLD } from "@/features/admin/templates/frame-builder.constants";
@@ -121,12 +122,6 @@ export function FrameTemplateBuilder({
   const spaceRef = useRef(false);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
   const canvasSurfaceRef = useRef<HTMLDivElement>(null);
-  const touchStartDistRef = useRef(0);
-  const touchStartZoomRef = useRef(1);
-  const touchStartMidRef = useRef({ x: 0, y: 0 });
-  const touchStartPanRef = useRef({ x: 0, y: 0 });
-  const latestZoomRef = useRef(zoom);
-  const latestPanRef = useRef(pan);
   const longPressNodeRef = useRef<string | null>(null);
   const selectedNode = layout.nodes.find((node) => node.id === selectedId);
   const currentLayoutKey = JSON.stringify(normalizeFrameLayout(layout));
@@ -142,10 +137,17 @@ export function FrameTemplateBuilder({
     }),
   );
 
-  useEffect(() => {
-    latestZoomRef.current = zoom;
-    latestPanRef.current = pan;
-  }, [pan, zoom]);
+  useBuilderCanvasNavigation({
+    surfaceRef: canvasSurfaceRef,
+    surfaceKey: isPortraitBuilder,
+    enabled: open,
+    nodeSelector: ".frame-rnd-node",
+    zoom,
+    pan,
+    setZoom,
+    setPan,
+    clampZoom,
+  });
   const canvasTouchMenu = useTouchContextMenu(({ x, y }) => {
     setSelectedId(null);
     setContextMenu({ x, y, nodeId: null });
@@ -324,74 +326,6 @@ export function FrameTemplateBuilder({
       window.removeEventListener("resize", fitToScreen);
     };
   }, [fitToScreen, isPortraitBuilder, open, resetKey]);
-
-  useEffect(() => {
-    if (!open) return;
-    const surface = canvasSurfaceRef.current;
-    if (!surface) return;
-
-    const handleWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      if (event.ctrlKey || event.metaKey) {
-        const factor = event.deltaY < 0 ? 1.08 : 0.93;
-        setZoom((value) => clampZoom(value * factor));
-        return;
-      }
-      setPan((value) => ({
-        x: value.x - event.deltaX,
-        y: value.y - event.deltaY,
-      }));
-    };
-
-    const handleTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 2) return;
-      const [first, second] = [event.touches[0], event.touches[1]];
-      touchStartDistRef.current = Math.hypot(
-        first.clientX - second.clientX,
-        first.clientY - second.clientY,
-      );
-      touchStartZoomRef.current = latestZoomRef.current;
-      touchStartMidRef.current = {
-        x: (first.clientX + second.clientX) / 2,
-        y: (first.clientY + second.clientY) / 2,
-      };
-      touchStartPanRef.current = { ...latestPanRef.current };
-    };
-
-    const handleTouchMove = (event: TouchEvent) => {
-      if (event.touches.length !== 2) return;
-      event.preventDefault();
-      const [first, second] = [event.touches[0], event.touches[1]];
-      const distance = Math.hypot(
-        first.clientX - second.clientX,
-        first.clientY - second.clientY,
-      );
-      if (touchStartDistRef.current > 0) {
-        setZoom(
-          clampZoom(
-            touchStartZoomRef.current * (distance / touchStartDistRef.current),
-          ),
-        );
-      }
-      const midpoint = {
-        x: (first.clientX + second.clientX) / 2,
-        y: (first.clientY + second.clientY) / 2,
-      };
-      setPan({
-        x: touchStartPanRef.current.x + midpoint.x - touchStartMidRef.current.x,
-        y: touchStartPanRef.current.y + midpoint.y - touchStartMidRef.current.y,
-      });
-    };
-
-    surface.addEventListener("wheel", handleWheel, { passive: false });
-    surface.addEventListener("touchstart", handleTouchStart, { passive: true });
-    surface.addEventListener("touchmove", handleTouchMove, { passive: false });
-    return () => {
-      surface.removeEventListener("wheel", handleWheel);
-      surface.removeEventListener("touchstart", handleTouchStart);
-      surface.removeEventListener("touchmove", handleTouchMove);
-    };
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;

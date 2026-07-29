@@ -33,6 +33,7 @@ import { BuilderToolbarButton } from "@/features/builder/shared/builder-toolbar-
 import { BuilderUnsavedDialog } from "@/features/builder/shared/builder-unsaved-dialog";
 import { BuilderZoomControls } from "@/features/builder/shared/builder-zoom-controls";
 import { BuilderResponsiveWorkspace } from "@/features/builder/shared/builder-responsive-workspace";
+import { useBuilderCanvasNavigation } from "@/features/builder/shared/use-builder-canvas-navigation";
 import { useBuilderExitGuard } from "@/features/builder/shared/use-builder-exit-guard";
 import { useBuilderResponsiveMode } from "@/features/builder/shared/use-builder-responsive-mode";
 import { VisualCanvasStage } from "@/features/builder/components/visual-canvas-stage";
@@ -310,22 +311,21 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
 
-  // Touch tracking refs for pinch zoom & panning
-  const touchStartDistRef = useRef<number>(0);
-  const touchStartZoomRef = useRef<number>(1);
-  const touchStartMidRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const touchStartPanRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  const latestZoomRef = useRef(zoom);
-  latestZoomRef.current = zoom;
-
-  const latestPanRef = useRef(pan);
-  latestPanRef.current = pan;
-
   const clampZoom = useCallback(
     (z: number) => Math.min(4, Math.max(0.1, z)),
     [],
   );
+
+  useBuilderCanvasNavigation({
+    surfaceRef: canvasRef,
+    surfaceKey: isPortraitBuilder,
+    nodeSelector: ".builder-rnd-node",
+    zoom,
+    pan,
+    setZoom,
+    setPan,
+    clampZoom,
+  });
 
   /** Fit canvas in viewport with padding — like Figma Shift+1 */
   const fitToScreen = useCallback(() => {
@@ -381,78 +381,6 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
       window.removeEventListener("resize", fitToScreen);
     };
   }, [fitToScreen]);
-
-  useEffect(() => {
-    const el = canvasRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      if (e.ctrlKey || e.metaKey) {
-        const factor = e.deltaY < 0 ? 1.08 : 0.93;
-        setZoom((z) => clampZoom(z * factor));
-      } else {
-        setPan((p) => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }));
-      }
-    };
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-        const dist = Math.hypot(
-          touch1.clientX - touch2.clientX,
-          touch1.clientY - touch2.clientY,
-        );
-        touchStartDistRef.current = dist;
-        touchStartZoomRef.current = latestZoomRef.current;
-        touchStartMidRef.current = {
-          x: (touch1.clientX + touch2.clientX) / 2,
-          y: (touch1.clientY + touch2.clientY) / 2,
-        };
-        touchStartPanRef.current = { ...latestPanRef.current };
-      }
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        e.preventDefault(); // Prevent standard browser pinch zoom and scrolling
-        const touch1 = e.touches[0];
-        const touch2 = e.touches[1];
-
-        // Zoom
-        const dist = Math.hypot(
-          touch1.clientX - touch2.clientX,
-          touch1.clientY - touch2.clientY,
-        );
-        if (touchStartDistRef.current > 0) {
-          const ratio = dist / touchStartDistRef.current;
-          const newZoom = clampZoom(touchStartZoomRef.current * ratio);
-          setZoom(newZoom);
-        }
-
-        // Pan
-        const cx = (touch1.clientX + touch2.clientX) / 2;
-        const cy = (touch1.clientY + touch2.clientY) / 2;
-        const dx = cx - touchStartMidRef.current.x;
-        const dy = cy - touchStartMidRef.current.y;
-
-        setPan({
-          x: touchStartPanRef.current.x + dx,
-          y: touchStartPanRef.current.y + dy,
-        });
-      }
-    };
-
-    el.addEventListener("wheel", onWheel, { passive: false });
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: false });
-
-    return () => {
-      el.removeEventListener("wheel", onWheel);
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-    };
-  }, [clampZoom]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

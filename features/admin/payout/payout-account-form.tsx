@@ -5,6 +5,7 @@ import { Landmark, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BankSelect } from "@/features/admin/payout/bank-select";
 import { saveMyPayoutAccount } from "@/server/admin/actions/payout-actions";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import type { PayoutAccount } from "@/types/payout";
@@ -82,7 +83,8 @@ function PayoutAccountFields({
                   Payout account
                 </h2>
                 <p className="mt-1 text-xs leading-5 text-zinc-500">
-                  This account is snapshotted when a withdrawal request is created.
+                  This account is snapshotted when a withdrawal request is
+                  created.
                 </p>
               </div>
             </div>
@@ -97,13 +99,17 @@ function PayoutAccountFields({
             </div>
           </div>
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4">
-            <div className="text-xs font-medium text-zinc-500">Account number</div>
+            <div className="text-xs font-medium text-zinc-500">
+              Account number
+            </div>
             <div className="mt-1.5 text-sm font-semibold text-zinc-950">
               {account?.accountNumber || "-"}
             </div>
           </div>
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4">
-            <div className="text-xs font-medium text-zinc-500">Account holder</div>
+            <div className="text-xs font-medium text-zinc-500">
+              Account holder
+            </div>
             <div className="mt-1.5 text-sm font-semibold text-zinc-950">
               {account?.accountHolderName || "-"}
             </div>
@@ -140,14 +146,13 @@ function PayoutAccountFields({
       <div className="grid gap-3 md:grid-cols-3">
         <label className="block text-xs font-medium text-zinc-600">
           Bank
-          <Input
-            className="mt-1.5"
+          <BankSelect
             value={form.bankName}
-            placeholder="BCA / Mandiri / BRI"
-            onChange={(event) =>
+            disabled={isReadOnly("invoices")}
+            onValueChange={(bankName) =>
               setForm((current) => ({
                 ...current,
-                bankName: event.target.value,
+                bankName,
               }))
             }
           />

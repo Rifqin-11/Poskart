@@ -128,7 +128,7 @@ export function VisualCanvasStage({
     <div
       ref={canvasRef}
       data-builder-tour={tourTarget}
-      className="relative flex-1 overflow-hidden"
+      className="relative flex-1 touch-none overflow-hidden overscroll-none"
       style={{
         background: "#F0F0F2",
         cursor: isPanning ? "grabbing" : isSpacePanning ? "grab" : "default",

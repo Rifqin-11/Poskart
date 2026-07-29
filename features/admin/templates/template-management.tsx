@@ -413,7 +413,7 @@ export function TemplateManagement() {
         title="Template Management"
         description="Frame templates for the Flutter photobooth picker screen."
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end">
             <div className="flex rounded-full border border-zinc-200 bg-white p-1">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
@@ -581,13 +581,15 @@ function TemplateGroupSection({
   return (
     <section ref={setNodeRef} className="scroll-mt-6">
       {group.label ? (
-        <div className="mb-3 flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-zinc-900">{group.label}</h2>
-          <span className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] font-medium text-zinc-500">
+        <div className="mb-3 flex min-w-0 items-center gap-3">
+          <h2 className="min-w-0 truncate text-sm font-semibold text-zinc-900">
+            {group.label}
+          </h2>
+          <span className="shrink-0 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] font-medium text-zinc-500">
             {group.templates.length} frame
             {group.templates.length === 1 ? "" : "s"}
           </span>
-          <div className="h-px flex-1 bg-zinc-200" />
+          <div className="h-px min-w-4 flex-1 bg-zinc-200" />
         </div>
       ) : null}
       <SortableContext
