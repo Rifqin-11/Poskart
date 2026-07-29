@@ -2,6 +2,7 @@
 
 import { useState, type ComponentType, type ReactNode } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Building2,
@@ -57,6 +58,7 @@ import { SaasPricingManagement } from "./_components/saas-pricing-management";
 import { PayoutInvoiceManagement } from "./_components/payout-invoice-management";
 import { TransactionActionRequestManagement } from "./_components/transaction-action-request-management";
 import { GalleryStorageManagement } from "./_components/gallery-storage-management";
+import { DeviceErrorLogManagement } from "./_components/device-error-log-management";
 import { DEFAULT_ORGANIZATION_FEATURES } from "@/lib/organization-features";
 
 type AdminUserProfile = {
@@ -69,7 +71,8 @@ type AdminUserProfile = {
   memberRole: string | null;
 };
 
-type SuperAdminSection = "overview" | "organizations" | "SaaS" | "requests";
+type SuperAdminSection =
+  "overview" | "organizations" | "SaaS" | "requests" | "device-errors";
 
 const EMPTY_TENANT: TenantInput = {
   name: "",
@@ -89,7 +92,8 @@ const EMPTY_TENANT: TenantInput = {
 export function TenantManagement() {
   const { data = [] } = useTenants();
   const tenantsList = data as Organization[];
-  const { data: rawProfiles = [], isLoading: isLoadingProfiles } = useProfiles();
+  const { data: rawProfiles = [], isLoading: isLoadingProfiles } =
+    useProfiles();
   const profiles = rawProfiles as AdminUserProfile[];
   const { data: rawSubscriptionPlans = [] } = useSubscriptionPlans();
   const subscriptionPlans = rawSubscriptionPlans as SubscriptionPlan[];
@@ -160,7 +164,10 @@ export function TenantManagement() {
         title="Super Admin Dashboard"
         description="Multi-organization SaaS controls and registered user accounts."
         action={
-          <Button className="w-full sm:w-auto" onClick={() => setCreating(true)}>
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => setCreating(true)}
+          >
             <Users className="size-4" /> Create organization
           </Button>
         }
@@ -194,7 +201,7 @@ export function TenantManagement() {
             />
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <SuperAdminSectionButton
               icon={Building2}
               title="Organizations"
@@ -212,6 +219,12 @@ export function TenantManagement() {
               title="Requests"
               description="Review payout, withdrawal, verification, refund, and archive requests from organizations."
               onClick={() => setActiveSection("requests")}
+            />
+            <SuperAdminSectionButton
+              icon={AlertTriangle}
+              title="Device errors"
+              description="Monitor error reports from every booth and organization."
+              onClick={() => setActiveSection("device-errors")}
             />
           </div>
 
@@ -407,9 +420,7 @@ export function TenantManagement() {
                           <OrganizationStatusBadge
                             organization={organization}
                           />
-                          <PaymentCollectionBadge
-                            organization={organization}
-                          />
+                          <PaymentCollectionBadge organization={organization} />
                         </div>
                         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                           <CompactInfo label="Devices">
@@ -479,7 +490,9 @@ export function TenantManagement() {
                               {profile.organizationName || "None"}
                             </TableCell>
                             <TableCell>
-                              {new Date(profile.created_at).toLocaleDateString()}
+                              {new Date(
+                                profile.created_at,
+                              ).toLocaleDateString()}
                             </TableCell>
                             <TableCell className="text-right">
                               <Button
@@ -568,7 +581,9 @@ export function TenantManagement() {
             <div className="mb-4 rounded-[24px] bg-white p-2 shadow-sm">
               <TabsList className="w-full justify-start rounded-[18px]">
                 <TabsTrigger value="saas-pricing">Pricing</TabsTrigger>
-                <TabsTrigger value="payment-gateway">Payment Gateway</TabsTrigger>
+                <TabsTrigger value="payment-gateway">
+                  Payment Gateway
+                </TabsTrigger>
                 <TabsTrigger value="gallery-storage">
                   Gallery Storage
                 </TabsTrigger>
@@ -614,6 +629,27 @@ export function TenantManagement() {
               <TransactionActionRequestManagement />
             </TabsContent>
           </Tabs>
+        </div>
+      ) : null}
+      {activeSection === "device-errors" ? (
+        <div className="space-y-4">
+          <SuperAdminBackHeader
+            title="Device errors"
+            description="Review kiosk errors across all organizations and trace each report to its source device."
+            onBack={() => setActiveSection("overview")}
+          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Device error log</CardTitle>
+              <CardDescription>
+                Includes severity, occurrence count, source device,
+                organization, and diagnostic details from the Flutter kiosk.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DeviceErrorLogManagement />
+            </CardContent>
+          </Card>
         </div>
       ) : null}
 
@@ -910,7 +946,9 @@ function PaymentCollectionBadge({
   return (
     <Badge
       variant={
-        organization.paymentCollectionMode === "custom" ? "secondary" : "outline"
+        organization.paymentCollectionMode === "custom"
+          ? "secondary"
+          : "outline"
       }
     >
       {organization.paymentCollectionMode === "custom"

@@ -73,6 +73,11 @@ type CreateDuitkuPaymentInput = {
   deviceCount: number;
   returnUrl: string;
   callbackUrl: string;
+  /**
+   * Leave empty for Duitku POP so customers can choose from every payment
+   * channel enabled for the merchant. Supply a code only for a forced method.
+   */
+  paymentMethod?: string | null;
 };
 
 type CreateDuitkuDirectPaymentInput = {
@@ -169,13 +174,14 @@ export async function createDuitkuPayment(
     config.apiKey,
   );
 
+  const paymentMethod = input.paymentMethod?.trim();
   const body = {
     paymentAmount: input.amount,
     merchantOrderId: input.merchantOrderId,
     productDetails: `POSKART ${input.plan.name} Subscription`,
     additionalParam: "",
     merchantUserInfo: input.email,
-    paymentMethod: config.paymentMethod,
+    ...(paymentMethod ? { paymentMethod } : {}),
     customerVaName: input.customerName.slice(0, 20),
     email: input.email,
     itemDetails: [

@@ -1,5 +1,9 @@
 import { organizationService } from "@/server/admin/organization-service";
 import { profileService } from "@/server/admin/profile-service";
+import {
+  getSuperAdminDeviceErrors,
+  setSuperAdminDeviceErrorResolved,
+} from "@/server/admin/actions/superadmin-device-error-actions";
 import type { TenantInput } from "@/server/admin/_shared/admin-types";
 
 export const superadminApi = {
@@ -10,6 +14,8 @@ export const superadminApi = {
   getProfiles: profileService.getProfiles,
   updateProfile: profileService.updateProfile,
   deleteProfile: profileService.deleteProfile,
+  getDeviceErrors: getSuperAdminDeviceErrors,
+  setDeviceErrorResolved: setSuperAdminDeviceErrorResolved,
 };
 
 export type { TenantInput };

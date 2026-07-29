@@ -82,7 +82,18 @@ export function mapQueueEvent(row: QueueEventRow): QueueEvent {
   };
 }
 
-export function mapQueueDevice(row: QueueDeviceRow): QueueDevice {
+export function mapQueueDevice(
+  row: QueueDeviceRow,
+  assignedFrameNames?: string[],
+): QueueDevice {
+  if (assignedFrameNames && assignedFrameNames.length > 0) {
+    return {
+      id: row.id,
+      name: row.name,
+      location: row.location,
+      frameTemplates: assignedFrameNames,
+    };
+  }
   const assigned = Array.isArray(row.frame_templates)
     ? row.frame_templates.filter(Boolean)
     : [];

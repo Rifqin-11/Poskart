@@ -159,7 +159,7 @@ const DEVICE_TOUR_TAB_BY_STEP = [
 ] as const;
 
 type DeviceFormOptions = {
-  themes: string[];
+  themeOptions: Array<{ id: string; name: string }>;
   frameTemplates: Array<{
     id: string;
     name: string;
@@ -242,9 +242,12 @@ export function BoothManagement({
 
   const deviceFormOptions = useMemo<DeviceFormOptions>(
     () => ({
-      themes: layouts
-        .map((layout: LayoutSchemaRow) => layout.name)
-        .filter(Boolean),
+      themeOptions: layouts
+        .filter((layout: LayoutSchemaRow) => Boolean(layout.name))
+        .map((layout: LayoutSchemaRow) => ({
+          id: layout.id,
+          name: layout.name,
+        })),
       frameTemplates: templates
         .filter((template: Template) => template.category === "frame")
         .filter((template: Template) => Boolean(template.name))
@@ -463,7 +466,10 @@ export function BoothManagement({
                 </div>
                 <div className="rounded-md bg-zinc-50 p-3">
                   <Store className="mb-2 size-4" />
-                  {formatAssignmentList(device.pricingProfiles)}
+                  {formatPricingAssignments(
+                    device.pricingProfiles,
+                    pricingProducts,
+                  )}
                 </div>
               </div>
               <div className="grid gap-2 rounded-md bg-zinc-50 p-3 text-xs text-zinc-600 sm:grid-cols-2">
@@ -507,7 +513,10 @@ export function BoothManagement({
                 <div className="flex items-center gap-1.5">
                   <span className="text-zinc-500">Price:</span>
                   <span className="font-medium text-zinc-700">
-                    {formatAssignmentList(device.pricingProfiles)}
+                    {formatPricingAssignments(
+                      device.pricingProfiles,
+                      pricingProducts,
+                    )}
                   </span>
                 </div>
                 <div className="col-span-2 flex min-w-0 items-center gap-1.5">
@@ -745,16 +754,6 @@ function normalizeStringList(
   return fallback?.trim() ? [fallback.trim()] : [];
 }
 
-function formatAssignmentList(
-  values?: string[] | null,
-  fallback?: string | null,
-) {
-  const list = normalizeStringList(values, fallback);
-  if (list.length === 0) return "—";
-  if (list.length <= 2) return list.join(", ");
-  return `${list.slice(0, 2).join(", ")} +${list.length - 2}`;
-}
-
 function formatFrameTemplateAssignments(
   values: string[] | null | undefined,
   templates: Template[],
@@ -764,6 +763,21 @@ function formatFrameTemplateAssignments(
   );
   const resolved = normalizeStringList(values).map(
     (value) => templateNames.get(value) ?? value,
+  );
+  if (resolved.length === 0) return "—";
+  if (resolved.length <= 2) return resolved.join(", ");
+  return `${resolved.slice(0, 2).join(", ")} +${resolved.length - 2}`;
+}
+
+function formatPricingAssignments(
+  values: string[] | null | undefined,
+  pricingProducts: PricingProduct[],
+) {
+  const pricingNames = new Map(
+    pricingProducts.map((product) => [product.id, product.name]),
+  );
+  const resolved = normalizeStringList(values).map(
+    (value) => pricingNames.get(value) ?? value,
   );
   if (resolved.length === 0) return "—";
   if (resolved.length <= 2) return resolved.join(", ");

@@ -35,6 +35,7 @@ export type KioskDeviceRow = {
   battery: number;
   app_version: string;
   last_sync: string;
+  layout_schema_id: string | null;
   theme: string;
   template: string;
   pricing_profile: string;
@@ -244,7 +245,7 @@ export async function requireOrganizationDevice(
   const { data, error } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
     .eq("id", normalizedId)
     .eq("organization_id", context.organizationId)
@@ -273,7 +274,7 @@ export async function listOrganizationDevices(context: KioskRequestContext) {
   const { data, error } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
     .eq("organization_id", context.organizationId)
     .order("name", { ascending: true });
@@ -318,7 +319,7 @@ export async function requirePairedDeviceByHardwareId(
     await createSupabaseAdminClient()
       .from("devices")
       .select(
-        "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
+        "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
       )
       .eq("hardware_id", normalizedHwId)
       .maybeSingle();
@@ -401,6 +402,7 @@ export async function buildKioskBootstrap(
     configResult,
     layoutsResult,
     activeLayoutResult,
+    deviceLayoutResult,
     themeResult,
     templatesResult,
     frameCategoriesResult,
@@ -408,6 +410,7 @@ export async function buildKioskBootstrap(
     devices,
     voucherAllocationsResult,
     deviceFrameTemplatesResult,
+    devicePricingProductsResult,
   ] = await Promise.all([
     context.client
       .from("organizations")
@@ -439,6 +442,14 @@ export async function buildKioskBootstrap(
       .eq("organization_id", context.organizationId)
       .eq("is_active", true)
       .maybeSingle(),
+    device?.layout_schema_id
+      ? context.client
+          .from("layout_schemas")
+          .select("id,name,schema,is_active,status,updated_at")
+          .eq("organization_id", context.organizationId)
+          .eq("id", device.layout_schema_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
     context.client
       .from("theme_presets")
       .select("id,name,schema,status,updated_at")
@@ -487,6 +498,14 @@ export async function buildKioskBootstrap(
           .eq("device_id", device.id)
           .order("display_order", { ascending: true })
       : Promise.resolve({ data: [], error: null }),
+    device
+      ? context.client
+          .from("device_pricing_products")
+          .select("pricing_product_id")
+          .eq("organization_id", context.organizationId)
+          .eq("device_id", device.id)
+          .order("display_order", { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   const queryError = [
@@ -494,12 +513,14 @@ export async function buildKioskBootstrap(
     subscriptionResult.error,
     configResult.error,
     layoutsResult.error,
+    deviceLayoutResult.error,
     themeResult.error,
     templatesResult.error,
     frameCategoriesResult.error,
     pricingResult.error,
     voucherAllocationsResult.error,
     deviceFrameTemplatesResult.error,
+    devicePricingProductsResult.error,
   ].find(Boolean);
 
   if (queryError) {
@@ -533,7 +554,7 @@ export async function buildKioskBootstrap(
 
   const config = configResult.data;
   const layouts = layoutsResult.data ?? [];
-  let layout = activeLayoutResult.data;
+  let layout = deviceLayoutResult.data ?? activeLayoutResult.data;
   if (!layout && layouts[0]?.id) {
     const fallbackLayout = await context.client
       .from("layout_schemas")
@@ -553,10 +574,19 @@ export async function buildKioskBootstrap(
       ? assignedTemplateIds
       : (device?.frame_templates ?? []),
   );
-  const assignedPricing = new Set([
-    ...(device?.pricing_profiles ?? []),
-    ...(device?.pricing_profile ? [device.pricing_profile] : []),
-  ]);
+  const assignedPricingProductIds = (devicePricingProductsResult.data ?? [])
+    .map((assignment) => assignment.pricing_product_id)
+    .filter((pricingProductId): pricingProductId is string =>
+      Boolean(pricingProductId),
+    );
+  const assignedPricing = new Set(
+    assignedPricingProductIds.length > 0
+      ? assignedPricingProductIds
+      : [
+          ...(device?.pricing_profiles ?? []),
+          ...(device?.pricing_profile ? [device.pricing_profile] : []),
+        ],
+  );
 
   const allTemplates = templatesResult.data ?? [];
   const normalizedLayoutSchema = layout?.schema

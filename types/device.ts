@@ -6,6 +6,8 @@ export type Device = {
   battery: number;
   appVersion: string;
   lastSync: string;
+  /** Stable per-device layout identity. `theme` remains a display snapshot. */
+  layoutSchemaId?: string | null;
   theme: string;
   template: string;
   pricingProfile: string;

@@ -51,7 +51,11 @@ async function getPublicTemplatesForEvent(
   supabase: Awaited<ReturnType<typeof getServiceRoleClient>>,
   event: Pick<QueueEventRow, "organization_id" | "device_id">,
 ) {
-  const [{ data: deviceRow }, { data: templateRows }] = await Promise.all([
+  const [
+    { data: deviceRow },
+    { data: templateRows },
+    { data: deviceFrameRows },
+  ] = await Promise.all([
     event.device_id
       ? supabase
           .from("devices")
@@ -62,20 +66,37 @@ async function getPublicTemplatesForEvent(
       : Promise.resolve({ data: null, error: null }),
     supabase
       .from("templates")
-      .select("id,name,tagline,photo_count,frame_image_url,frame_layout,accent_color")
+      .select(
+        "id,name,tagline,photo_count,frame_image_url,frame_layout,accent_color",
+      )
       .eq("organization_id", event.organization_id)
       .eq("status", "published")
       .order("display_order", { ascending: true })
       .limit(100),
+    event.device_id
+      ? supabase
+          .from("device_frame_templates")
+          .select("template_id")
+          .eq("organization_id", event.organization_id)
+          .eq("device_id", event.device_id)
+          .order("display_order", { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
   ]);
   const device = deviceRow as QueueDeviceRow | null;
+  const assignedTemplateIds = (deviceFrameRows ?? [])
+    .map((assignment) => assignment.template_id)
+    .filter((id): id is string => Boolean(id));
   const assignedTemplates = new Set(
-    [
-      ...(Array.isArray(device?.frame_templates) ? device.frame_templates : []),
-      device?.template ?? null,
-    ]
-      .map((value) => value?.trim())
-      .filter((value): value is string => Boolean(value)),
+    assignedTemplateIds.length > 0
+      ? assignedTemplateIds
+      : [
+          ...(Array.isArray(device?.frame_templates)
+            ? device.frame_templates
+            : []),
+          device?.template ?? null,
+        ]
+          .map((value) => value?.trim())
+          .filter((value): value is string => Boolean(value)),
   );
   return ((templateRows ?? []) as PublicTemplateRow[])
     .filter(
@@ -87,9 +108,7 @@ async function getPublicTemplatesForEvent(
     .map(mapPublicTemplate);
 }
 
-export async function getPublicQueueEvent(
-  eventToken: string,
-): Promise<{
+export async function getPublicQueueEvent(eventToken: string): Promise<{
   event: PublicQueueEvent | null;
   templates: PublicQueueTemplate[];
 }> {
@@ -132,7 +151,7 @@ export async function getPublicQueueEvent(
   return {
     event: mapPublicQueueEvent(
       event,
-      ((organization as OrganizationRow | null)?.name ?? "POSKART Booth"),
+      (organization as OrganizationRow | null)?.name ?? "POSKART Booth",
     ),
     templates,
   };

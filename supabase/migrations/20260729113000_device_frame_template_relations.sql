@@ -91,7 +91,7 @@ with legacy_assignments as (
       else array[]::text[]
     end
   ) with ordinality as assignment(value, ordinality)
-), matched_assignments as (
+), matched_by_id as (
   select
     legacy.organization_id,
     legacy.device_id,
@@ -100,8 +100,35 @@ with legacy_assignments as (
   from legacy_assignments as legacy
   join public.templates as template
     on template.organization_id = legacy.organization_id
-   and (template.id = legacy.legacy_value or template.name = legacy.legacy_value)
+   and template.id = legacy.legacy_value
   group by legacy.organization_id, legacy.device_id, template.id
+), matched_by_unique_name as (
+  select
+    legacy.organization_id,
+    legacy.device_id,
+    template.id as template_id,
+    min(legacy.display_order) as display_order
+  from legacy_assignments as legacy
+  join public.templates as template
+    on template.organization_id = legacy.organization_id
+   and template.name = legacy.legacy_value
+  where not exists (
+    select 1
+    from public.templates as id_match
+    where id_match.organization_id = legacy.organization_id
+      and id_match.id = legacy.legacy_value
+  )
+    and 1 = (
+      select count(*)
+      from public.templates as matching_name
+      where matching_name.organization_id = legacy.organization_id
+        and matching_name.name = legacy.legacy_value
+    )
+  group by legacy.organization_id, legacy.device_id, template.id
+), matched_assignments as (
+  select * from matched_by_id
+  union all
+  select * from matched_by_unique_name
 )
 insert into public.device_frame_templates (
   device_id,

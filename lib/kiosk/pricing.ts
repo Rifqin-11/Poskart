@@ -63,10 +63,27 @@ export async function resolveKioskPricingProduct(
     }
   }
 
-  const assignedPricing = new Set([
-    ...(device.pricing_profiles ?? []),
-    ...(device.pricing_profile ? [device.pricing_profile] : []),
-  ]);
+  const { data: pricingAssignments, error: pricingAssignmentsError } =
+    await context.client
+      .from("device_pricing_products")
+      .select("pricing_product_id")
+      .eq("organization_id", context.organizationId)
+      .eq("device_id", device.id)
+      .order("display_order", { ascending: true });
+  if (pricingAssignmentsError) throw pricingAssignmentsError;
+
+  const assignedPricingIds = (pricingAssignments ?? [])
+    .map((assignment) => assignment.pricing_product_id)
+    .filter((id): id is string => Boolean(id));
+  // The legacy values are only for devices that have not been migrated yet.
+  const assignedPricing = new Set(
+    assignedPricingIds.length > 0
+      ? assignedPricingIds
+      : [
+          ...(device.pricing_profiles ?? []),
+          ...(device.pricing_profile ? [device.pricing_profile] : []),
+        ],
+  );
   if (accessMode === "event" && assignedPricing.size === 0) {
     throw new KioskApiError(
       "Event access must be explicitly assigned to this device.",

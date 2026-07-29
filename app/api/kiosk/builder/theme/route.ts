@@ -36,21 +36,24 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
     const id = body.id?.trim() || `LYT-${Date.now()}`;
     const isActive = body.isActive === true;
-
-    if (isActive) {
+    const { data: existingLayout, error: existingLayoutError } =
       await context.client
         .from("layout_schemas")
-        .update({ is_active: false, updated_at: now })
-        .eq("organization_id", context.organizationId);
-    }
+        .select("id,is_active")
+        .eq("id", id)
+        .eq("organization_id", context.organizationId)
+        .maybeSingle();
+    if (existingLayoutError) throw existingLayoutError;
 
     const { error } = await context.client.from("layout_schemas").upsert({
       id,
       organization_id: context.organizationId,
       name,
-      status: isActive ? "published" : body.status ?? "draft",
+      status: isActive ? "published" : (body.status ?? "draft"),
       schema: sanitizeLayoutSchema(body.schema),
-      is_active: isActive,
+      // Kiosk-created layouts can be selected by one device without changing
+      // the organization-wide fallback layout.
+      is_active: existingLayout?.is_active ?? false,
       updated_at: now,
     });
     if (error) throw error;
@@ -58,7 +61,11 @@ export async function POST(request: Request) {
     if (isActive) {
       await context.client
         .from("devices")
-        .update({ theme: name, updated_at: now })
+        .update({
+          layout_schema_id: id,
+          theme: name,
+          updated_at: now,
+        })
         .eq("id", device.id)
         .eq("organization_id", context.organizationId);
     }

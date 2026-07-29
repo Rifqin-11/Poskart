@@ -79,7 +79,9 @@ function computeMetrics(entries: GuestQueueEntry[]) {
   const activeEntries = entries.filter(
     (entry) => !["done", "cancelled", "no_show"].includes(entry.status),
   );
-  const inSession = activeEntries.find((entry) => entry.status === "in_session");
+  const inSession = activeEntries.find(
+    (entry) => entry.status === "in_session",
+  );
   const called = activeEntries.find((entry) => entry.status === "called");
   const waitingEntries = entries.filter((entry) => entry.status === "waiting");
 
@@ -153,23 +155,23 @@ export async function getQueueDashboard(
     { data: deviceRows, error: devicesError },
     { data: eventRows, error: eventsError },
   ] = await Promise.all([
-      supabase
-        .from("organizations")
-        .select("id,name")
-        .eq("id", organizationId)
-        .maybeSingle(),
-      supabase
-        .from("devices")
-        .select("id,name,location,frame_templates,template")
-        .eq("organization_id", organizationId)
-        .order("name", { ascending: true }),
-      supabase
-        .from("queue_events")
-        .select(QUEUE_EVENT_COLUMNS)
-        .eq("organization_id", organizationId)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
-    ]);
+    supabase
+      .from("organizations")
+      .select("id,name")
+      .eq("id", organizationId)
+      .maybeSingle(),
+    supabase
+      .from("devices")
+      .select("id,name,location,frame_templates,template")
+      .eq("organization_id", organizationId)
+      .order("name", { ascending: true }),
+    supabase
+      .from("queue_events")
+      .select(QUEUE_EVENT_COLUMNS)
+      .eq("organization_id", organizationId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (devicesError) {
     throw new Error(`Unable to load queue devices: ${devicesError.message}`);
@@ -179,7 +181,8 @@ export async function getQueueDashboard(
     if (eventsError.code === "42P01" || eventsError.code === "42703") {
       return {
         organizationId,
-        organizationName: (organization?.name as string | undefined) ?? "POSKART",
+        organizationName:
+          (organization?.name as string | undefined) ?? "POSKART",
         devices: [],
         events: [],
         selectedEvent: null,
@@ -196,7 +199,36 @@ export async function getQueueDashboard(
     throw new Error(`Unable to load queue events: ${eventsError.message}`);
   }
 
-  const devices = ((deviceRows ?? []) as QueueDeviceRow[]).map(mapQueueDevice);
+  const rawDevices = (deviceRows ?? []) as QueueDeviceRow[];
+  const deviceIds = rawDevices.map((device) => device.id);
+  const { data: frameAssignmentRows, error: frameAssignmentsError } =
+    deviceIds.length
+      ? await supabase
+          .from("device_frame_templates")
+          .select("device_id,templates(name)")
+          .in("device_id", deviceIds)
+      : { data: [], error: null };
+  if (frameAssignmentsError && frameAssignmentsError.code !== "42P01") {
+    throw new Error(
+      `Unable to load queue frame assignments: ${frameAssignmentsError.message}`,
+    );
+  }
+  const frameNamesByDevice = new Map<string, string[]>();
+  for (const row of frameAssignmentRows ?? []) {
+    const templateRelation = row.templates as
+      { name?: string | null } | Array<{ name?: string | null }> | null;
+    const template = Array.isArray(templateRelation)
+      ? templateRelation[0]
+      : templateRelation;
+    const name = template?.name?.trim();
+    if (!name) continue;
+    const names = frameNamesByDevice.get(row.device_id) ?? [];
+    names.push(name);
+    frameNamesByDevice.set(row.device_id, names);
+  }
+  const devices = rawDevices.map((device) =>
+    mapQueueDevice(device, frameNamesByDevice.get(device.id)),
+  );
   const events = ((eventRows ?? []) as QueueEventRow[]).map(mapQueueEvent);
   const selectedEvent =
     events.find((event) => event.id === selectedEventId) ??
@@ -260,7 +292,8 @@ export async function createQueueEvent(input: {
         .maybeSingle();
 
       if (deviceError) throw deviceError;
-      if (!device) return { success: false, error: "Selected device not found" };
+      if (!device)
+        return { success: false, error: "Selected device not found" };
     }
 
     const { data, error } = await supabase
@@ -348,7 +381,8 @@ export async function deleteQueueEvent(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unable to delete QR event",
+      error:
+        error instanceof Error ? error.message : "Unable to delete QR event",
     };
   }
 }
@@ -362,9 +396,14 @@ export async function updateGuestQueueStatus(
     assertCanManageQueue(role);
 
     if (
-      !["waiting", "called", "in_session", "done", "cancelled", "no_show"].includes(
-        status,
-      )
+      ![
+        "waiting",
+        "called",
+        "in_session",
+        "done",
+        "cancelled",
+        "no_show",
+      ].includes(status)
     ) {
       return { success: false, error: "Invalid queue status" };
     }

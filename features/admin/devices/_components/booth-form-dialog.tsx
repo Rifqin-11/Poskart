@@ -29,9 +29,14 @@ import { usePermission } from "@/features/admin/hooks/use-permission";
 import type { Device } from "@/types/device";
 
 type DeviceFormOptions = {
-  themes: string[];
+  themeOptions: ThemeOption[];
   frameTemplates: FrameTemplateOption[];
   pricingProducts: PricingProduct[];
+};
+
+type ThemeOption = {
+  id: string;
+  name: string;
 };
 
 type FrameTemplateOption = {
@@ -93,7 +98,7 @@ export function BoothFormDialog({
     )
     .map(
       (assignment) =>
-        findAssignedProduct(paidProducts, [assignment])?.name ?? assignment,
+        findAssignedProduct(paidProducts, [assignment])?.id ?? assignment,
     );
   const defaultPaidSelections = initialPaidSelections;
   const [sessionMode, setSessionMode] = useState<SessionAccessMode>(
@@ -105,17 +110,22 @@ export function BoothFormDialog({
   );
   const [paidSelections, setPaidSelections] = useState(defaultPaidSelections);
   const [eventSelection, setEventSelection] = useState(
-    initialEventProduct?.name ?? "",
+    initialEventProduct?.id ?? "",
   );
   const [activeTab, setActiveTab] = useState<DeviceConfigurationTab>("general");
   const [form, setForm] = useState<BoothInput>(() => {
     const { id: _ignored, ...rest } = initial as Device;
     void _ignored;
     const pricingProfiles = initialEventProduct
-      ? [initialEventProduct.name]
+      ? [initialEventProduct.id]
       : defaultPaidSelections;
     return {
       ...rest,
+      layoutSchemaId: normalizeLayoutSchemaAssignment(
+        rest.layoutSchemaId,
+        rest.theme,
+        options.themeOptions,
+      ),
       frameTemplates: normalizeFrameTemplateAssignments(
         rest.frameTemplates,
         rest.template,
@@ -315,18 +325,29 @@ export function BoothFormDialog({
                 </div>
                 <Select
                   className="mt-4 bg-white"
-                  value={form.theme}
-                  onChange={(e) => setForm({ ...form, theme: e.target.value })}
+                  value={form.layoutSchemaId ?? ""}
+                  onChange={(e) => {
+                    const layout = options.themeOptions.find(
+                      (option) => option.id === e.target.value,
+                    );
+                    setForm({
+                      ...form,
+                      layoutSchemaId: e.target.value || null,
+                      theme: layout?.name ?? "",
+                    });
+                  }}
                   disabled={readOnly}
                 >
                   <option value="">Use default theme</option>
-                  {includeCurrentOption(options.themes, form.theme).map(
-                    (theme) => (
-                      <option key={theme} value={theme}>
-                        {theme}
-                      </option>
-                    ),
-                  )}
+                  {includeCurrentThemeOptions(
+                    options.themeOptions,
+                    form.layoutSchemaId,
+                    form.theme,
+                  ).map((theme) => (
+                    <option key={theme.id} value={theme.id}>
+                      {theme.name}
+                    </option>
+                  ))}
                 </Select>
               </section>
 
@@ -409,9 +430,14 @@ export function BoothFormDialog({
                       values={paidSelections}
                       emptyLabel="No active paid packages yet"
                       options={includeCurrentOptions(
-                        paidProducts.map((product) => product.name),
+                        paidProducts.map((product) => product.id),
                         paidSelections,
-                      )}
+                      ).map((id) => ({
+                        value: id,
+                        label:
+                          paidProducts.find((product) => product.id === id)
+                            ?.name ?? id,
+                      }))}
                       disabled={readOnly}
                       onChange={(values) => {
                         setPaidSelections(values);
@@ -867,11 +893,6 @@ export function BoothFormDialog({
   );
 }
 
-function includeCurrentOption(options: string[], currentValue?: string | null) {
-  if (!currentValue || options.includes(currentValue)) return options;
-  return [currentValue, ...options];
-}
-
 function includeCurrentOptions(
   options: string[],
   currentValues?: string[] | null,
@@ -924,7 +945,9 @@ function EventProductSelect({
   const selectableProducts = products.filter(
     (product) => product.active && !isEventExpired(product),
   );
-  const currentProduct = products.find((product) => product.name === value);
+  const currentProduct = products.find(
+    (product) => product.id === value || product.name === value,
+  );
   const normalizedProducts =
     currentProduct &&
     !selectableProducts.some((product) => product.id === currentProduct.id)
@@ -951,7 +974,7 @@ function EventProductSelect({
             return (
               <option
                 key={product.id}
-                value={product.name}
+                value={product.id}
                 disabled={unavailable}
               >
                 {product.eventName || product.name}
@@ -1093,6 +1116,35 @@ function normalizeFrameTemplateAssignments(
   );
 }
 
+function normalizeLayoutSchemaAssignment(
+  value: string | null | undefined,
+  legacyName: string | null | undefined,
+  options: ThemeOption[],
+) {
+  const candidate = value?.trim() || legacyName?.trim() || "";
+  if (!candidate) return null;
+  return (
+    options.find(
+      (option) => option.id === candidate || option.name === candidate,
+    )?.id ?? candidate
+  );
+}
+
+function includeCurrentThemeOptions(
+  options: ThemeOption[],
+  currentId: string | null | undefined,
+  legacyName: string | null | undefined,
+) {
+  const normalizedId = currentId?.trim();
+  if (!normalizedId || options.some((option) => option.id === normalizedId)) {
+    return options;
+  }
+  return [
+    { id: normalizedId, name: legacyName?.trim() || normalizedId },
+    ...options,
+  ];
+}
+
 function DeviceMultiSelect({
   label,
   values,
@@ -1105,13 +1157,18 @@ function DeviceMultiSelect({
   label?: string;
   values: string[];
   emptyLabel: string;
-  options: string[];
+  options: Array<{ value: string; label: string }>;
   className?: string;
   onChange: (values: string[]) => void;
   disabled?: boolean;
 }) {
   const selectedValues = normalizeStringList(values);
-  const normalizedOptions = includeCurrentOptions(options, selectedValues);
+  const normalizedOptions = [
+    ...selectedValues
+      .filter((value) => !options.some((option) => option.value === value))
+      .map((value) => ({ value, label: value })),
+    ...options,
+  ];
 
   const toggleValue = (option: string) => {
     if (disabled) return;
@@ -1133,13 +1190,13 @@ function DeviceMultiSelect({
         ) : (
           <div className="flex flex-wrap gap-2">
             {normalizedOptions.map((option) => {
-              const selected = selectedValues.includes(option);
+              const selected = selectedValues.includes(option.value);
               return (
                 <button
-                  key={option}
+                  key={option.value}
                   type="button"
                   disabled={disabled}
-                  onClick={() => toggleValue(option)}
+                  onClick={() => toggleValue(option.value)}
                   className={cn(
                     "inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
                     selected
@@ -1149,7 +1206,7 @@ function DeviceMultiSelect({
                   )}
                 >
                   {selected ? <Check className="size-3.5" /> : null}
-                  {option}
+                  {option.label}
                 </button>
               );
             })}

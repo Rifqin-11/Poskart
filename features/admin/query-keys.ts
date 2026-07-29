@@ -12,10 +12,12 @@ export const adminQueryKeys = {
   transactionActionRequests: (page = 1, pageSize = 10) =>
     ["transaction-action-requests", { page, pageSize }] as const,
   adminNotifications: ["admin-notifications"] as const,
-  failedPrints: (boothName?: string | null) => ["failed-prints", boothName ?? null] as const,
+  failedPrints: (boothName?: string | null) =>
+    ["failed-prints", boothName ?? null] as const,
   devices: ["devices"] as const,
   deviceErrors: (deviceId?: string | null) =>
     ["device-errors", deviceId ?? null] as const,
+  superAdminDeviceErrors: ["superadmin-device-errors"] as const,
   vouchers: ["vouchers"] as const,
   templates: ["templates"] as const,
   frameCategories: ["frame-categories"] as const,

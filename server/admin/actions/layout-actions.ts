@@ -108,10 +108,15 @@ export async function saveLayoutAsTheme(
   schema: LayoutSchema,
   existingId?: string,
 ): Promise<string> {
-  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
+  const { supabase, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "designer",
+  ]);
   const id = existingId ?? `LYT-${Date.now()}`;
   const { error } = await supabase.from("layout_schemas").upsert({
     id,
+    organization_id: organizationId,
     name,
     status: "draft",
     schema: sanitizeLayoutSchema(schema),
@@ -123,11 +128,16 @@ export async function saveLayoutAsTheme(
 }
 
 export async function setActiveLayout(id: string): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
+  const { supabase, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "designer",
+  ]);
   // Deactivate all
   const { error: e1 } = await supabase
     .from("layout_schemas")
     .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq("organization_id", organizationId)
     .neq("id", id);
   if (e1) throw new Error(`Unable to deactivate layouts: ${e1.message}`);
   // Activate the chosen one
@@ -138,12 +148,17 @@ export async function setActiveLayout(id: string): Promise<void> {
       status: "published",
       updated_at: new Date().toISOString(),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("organization_id", organizationId);
   if (e2) throw new Error(`Unable to activate layout: ${e2.message}`);
 }
 
 export async function deactivateLayout(id: string): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
+  const { supabase, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "designer",
+  ]);
   const { error } = await supabase
     .from("layout_schemas")
     .update({
@@ -151,13 +166,36 @@ export async function deactivateLayout(id: string): Promise<void> {
       status: "draft",
       updated_at: new Date().toISOString(),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("organization_id", organizationId);
   if (error) throw new Error(`Unable to deactivate layout: ${error.message}`);
 }
 
 export async function deleteLayout(id: string): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
-  const { error } = await supabase.from("layout_schemas").delete().eq("id", id);
+  const { supabase, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "designer",
+  ]);
+  const { error: detachError } = await supabase
+    .from("devices")
+    .update({
+      layout_schema_id: null,
+      theme: "",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("layout_schema_id", id)
+    .eq("organization_id", organizationId);
+  if (detachError) {
+    throw new Error(
+      `Unable to detach devices from layout: ${detachError.message}`,
+    );
+  }
+  const { error } = await supabase
+    .from("layout_schemas")
+    .delete()
+    .eq("id", id)
+    .eq("organization_id", organizationId);
   if (error) throw new Error(`Unable to delete layout: ${error.message}`);
 }
 

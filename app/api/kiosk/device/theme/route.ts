@@ -7,14 +7,16 @@ import {
 
 type ThemeBody = {
   deviceId?: string;
-  /** The name of the builder layout/theme to activate (matches layout_schemas.name) */
+  /** Stable layout identity. New kiosk clients should send this value. */
+  layoutSchemaId?: string;
+  /** Legacy display name accepted while older kiosks migrate. */
   theme?: string;
 };
 
 /**
  * PATCH /api/kiosk/device/theme
- * Called by the Flutter kiosk app when the operator selects a new active Builder Theme.
- * Updates devices.theme and activates the matching layout_schema row for the org.
+ * Called by the Flutter kiosk app when the operator selects a Builder Theme.
+ * The selection is device-scoped; it must never change another booth's layout.
  */
 export async function POST(request: Request) {
   try {
@@ -25,51 +27,47 @@ export async function POST(request: Request) {
       body.deviceId ?? "",
     );
 
-    const themeName = (body.theme ?? "").trim();
-    if (!themeName) {
-      return jsonError(
-        new Error("theme field is required"),
-      );
+    const requestedLayoutId = (body.layoutSchemaId ?? "").trim();
+    const requestedThemeName = (body.theme ?? "").trim();
+    if (!requestedLayoutId && !requestedThemeName) {
+      return jsonError(new Error("layoutSchemaId or theme field is required"));
     }
 
     const now = new Date().toISOString();
+    const { data: layouts, error: layoutError } = await context.client
+      .from("layout_schemas")
+      .select("id,name")
+      .eq("organization_id", context.organizationId);
+    if (layoutError) throw layoutError;
 
-    // 1. Update the device row with the new active theme name
+    const matchedById = (layouts ?? []).find(
+      (layout) => layout.id === requestedLayoutId,
+    );
+    const matchedByName = requestedLayoutId
+      ? []
+      : (layouts ?? []).filter((layout) => layout.name === requestedThemeName);
+    const matchedLayout = matchedById ?? matchedByName[0] ?? null;
+    if (!matchedLayout || matchedByName.length > 1) {
+      return jsonError(new Error("The selected device layout is unavailable."));
+    }
+
     const { error: deviceError } = await context.client
       .from("devices")
-      .update({ theme: themeName, updated_at: now })
+      .update({
+        layout_schema_id: matchedLayout.id,
+        theme: matchedLayout.name,
+        updated_at: now,
+      })
       .eq("id", device.id)
       .eq("organization_id", context.organizationId);
 
     if (deviceError) throw deviceError;
 
-    // 2. Activate the matching layout_schema for this org (set is_active = true on it,
-    //    false on all others). This keeps the web dashboard in sync.
-    const { data: matchedLayouts } = await context.client
-      .from("layout_schemas")
-      .select("id")
-      .eq("organization_id", context.organizationId)
-      .eq("name", themeName)
-      .limit(1);
-
-    const matchedId = matchedLayouts?.[0]?.id;
-
-    if (matchedId) {
-      // Deactivate all layouts for this org first
-      await context.client
-        .from("layout_schemas")
-        .update({ is_active: false, updated_at: now })
-        .eq("organization_id", context.organizationId);
-
-      // Activate the matched one
-      await context.client
-        .from("layout_schemas")
-        .update({ is_active: true, updated_at: now })
-        .eq("id", matchedId)
-        .eq("organization_id", context.organizationId);
-    }
-
-    return jsonOk({ success: true, theme: themeName, activatedLayoutId: matchedId ?? null });
+    return jsonOk({
+      success: true,
+      theme: matchedLayout.name,
+      layoutSchemaId: matchedLayout.id,
+    });
   } catch (error) {
     return jsonError(error);
   }

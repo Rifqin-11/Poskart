@@ -423,7 +423,7 @@ export function CheckoutContent({
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
             <span>
               {paymentGateway === "duitku"
-                ? "Payments are processed through the configured Duitku flow."
+                ? "Duitku POP menampilkan semua metode pembayaran yang aktif untuk merchant POSKART, seperti QRIS, virtual account, e-wallet, atau kartu bila tersedia."
                 : "Payments are processed through Midtrans Snap and updated via notification webhook."}
             </span>
           </div>

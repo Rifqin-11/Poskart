@@ -149,7 +149,7 @@ function AssignDevicesModal({
               </button>
               {devices.map((device) => {
                 const isSelected = selected.has(device.id);
-                const hasCurrentTheme = device.theme === layout.name;
+                const hasCurrentTheme = device.layoutSchemaId === layout.id;
                 return (
                   <button
                     key={device.id}

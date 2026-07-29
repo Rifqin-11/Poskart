@@ -28,12 +28,13 @@ import {
 
 export async function getDevices(): Promise<Device[]> {
   const { supabase } = await getAdminContext();
-  const [{ data, error }, errorGroupsResult] = await Promise.all([
+  const [{ data, error }, errorGroupsResult, layoutResult] = await Promise.all([
     supabase
       .from("devices")
       .select(BOOTH_COLUMNS)
       .order("name", { ascending: true }),
     supabase.rpc("get_device_error_open_counts"),
+    supabase.from("layout_schemas").select("id,name"),
   ]);
 
   const devices = assertSupabaseResult(
@@ -42,6 +43,14 @@ export async function getDevices(): Promise<Device[]> {
     "Unable to load devices",
   ).map(mapBooth);
   const unresolvedByDevice = new Map<string, number>();
+  if (layoutResult.error) {
+    throw new Error(
+      `Unable to load device layouts: ${layoutResult.error.message}`,
+    );
+  }
+  const layoutNames = new Map(
+    (layoutResult.data ?? []).map((layout) => [layout.id, layout.name]),
+  );
   if (errorGroupsResult.error) {
     const missingTable =
       errorGroupsResult.error.code === "42P01" ||
@@ -66,6 +75,9 @@ export async function getDevices(): Promise<Device[]> {
 
   return devices.map((device) => ({
     ...device,
+    theme: device.layoutSchemaId
+      ? (layoutNames.get(device.layoutSchemaId) ?? device.theme)
+      : device.theme,
     unresolvedErrorCount: unresolvedByDevice.get(device.id) ?? 0,
   }));
 }
@@ -168,7 +180,16 @@ export async function createDevice(values: BoothInput): Promise<void> {
     values.pricingProfiles,
     values.pricingProfile,
   );
-  await assertPricingAssignmentModes(supabase, pricingProfiles);
+  const pricingProductIds = await resolvePricingProductAssignmentIds(
+    supabase,
+    pricingProfiles,
+  );
+  await assertPricingAssignmentModes(supabase, pricingProductIds);
+  const layout = await resolveDeviceLayoutSchema(
+    supabase,
+    organizationId,
+    values.layoutSchemaId ?? values.theme,
+  );
   const settingsPin = normalizeSettingsPin(values.settingsPin);
   if (values.protectSettings && !settingsPin) {
     throw new Error(
@@ -184,11 +205,12 @@ export async function createDevice(values: BoothInput): Promise<void> {
     battery: values.battery,
     app_version: values.appVersion,
     last_sync: values.lastSync,
-    theme: values.theme,
+    theme: layout?.name ?? "",
+    layout_schema_id: layout?.id ?? null,
     template: frameTemplates[0] ?? "",
-    pricing_profile: pricingProfiles[0] ?? "",
+    pricing_profile: pricingProductIds[0] ?? "",
     frame_templates: frameTemplates,
-    pricing_profiles: pricingProfiles,
+    pricing_profiles: pricingProductIds,
     session_countdown_seconds: values.sessionCountdownSeconds ?? null,
     payment_countdown_seconds: values.paymentCountdownSeconds ?? null,
     voucher_enabled: values.voucherEnabled,
@@ -223,6 +245,7 @@ export async function createDevice(values: BoothInput): Promise<void> {
   });
   if (error) throw new Error(`Unable to create device: ${error.message}`);
   await syncDeviceFrameTemplateAssignments(supabase, id, frameTemplates);
+  await syncDevicePricingProductAssignments(supabase, id, pricingProductIds);
 }
 
 export type DevicePairingClaim = {
@@ -264,7 +287,16 @@ export async function createPairedDevice(
     values.pricingProfiles,
     values.pricingProfile,
   );
-  await assertPricingAssignmentModes(supabase, pricingProfiles);
+  const pricingProductIds = await resolvePricingProductAssignmentIds(
+    supabase,
+    pricingProfiles,
+  );
+  await assertPricingAssignmentModes(supabase, pricingProductIds);
+  const layout = await resolveDeviceLayoutSchema(
+    supabase,
+    organizationId,
+    values.layoutSchemaId ?? values.theme,
+  );
 
   const id = `BTH-${Date.now()}`;
   const { error } = await createSupabaseAdminClient().rpc(
@@ -280,11 +312,12 @@ export async function createPairedDevice(
         battery: values.battery,
         appVersion: values.appVersion,
         lastSync: values.lastSync,
-        theme: values.theme,
+        theme: layout?.name ?? "",
+        layoutSchemaId: layout?.id ?? "",
         template: frameTemplates[0] ?? "",
-        pricingProfile: pricingProfiles[0] ?? "",
+        pricingProfile: pricingProductIds[0] ?? "",
         frameTemplates,
-        pricingProfiles,
+        pricingProfiles: pricingProductIds,
         sessionCountdownSeconds: values.sessionCountdownSeconds ?? null,
         paymentCountdownSeconds: values.paymentCountdownSeconds ?? null,
         voucherEnabled: values.voucherEnabled,
@@ -320,6 +353,7 @@ export async function createPairedDevice(
   );
   if (error) throw new Error(`Unable to pair device: ${error.message}`);
   await syncDeviceFrameTemplateAssignments(supabase, id, frameTemplates);
+  await syncDevicePricingProductAssignments(supabase, id, pricingProductIds);
 }
 
 export async function updateDevice(
@@ -336,7 +370,15 @@ export async function updateDevice(
   if (patch.battery !== undefined) dbPatch.battery = patch.battery;
   if (patch.appVersion !== undefined) dbPatch.app_version = patch.appVersion;
   if (patch.lastSync !== undefined) dbPatch.last_sync = patch.lastSync;
-  if (patch.theme !== undefined) dbPatch.theme = patch.theme;
+  if (patch.layoutSchemaId !== undefined || patch.theme !== undefined) {
+    const layout = await resolveDeviceLayoutSchema(
+      supabase,
+      organizationId,
+      patch.layoutSchemaId ?? patch.theme ?? "",
+    );
+    dbPatch.layout_schema_id = layout?.id ?? null;
+    dbPatch.theme = layout?.name ?? "";
+  }
   let frameTemplates: string[] | null = null;
   if (patch.frameTemplates !== undefined || patch.template !== undefined) {
     frameTemplates = await resolveFrameTemplateAssignmentIds(
@@ -345,18 +387,22 @@ export async function updateDevice(
       normalizeAssignmentList(patch.frameTemplates, patch.template),
     );
   }
-  if (patch.pricingProfile !== undefined) {
-    await assertPricingAssignmentModes(supabase, [patch.pricingProfile]);
-    dbPatch.pricing_profile = patch.pricingProfile;
-  }
-  if (patch.pricingProfiles !== undefined) {
+  let pricingProductIds: string[] | null = null;
+  if (
+    patch.pricingProfiles !== undefined ||
+    patch.pricingProfile !== undefined
+  ) {
     const pricingProfiles = normalizeAssignmentList(
       patch.pricingProfiles,
       patch.pricingProfile,
     );
-    await assertPricingAssignmentModes(supabase, pricingProfiles);
-    dbPatch.pricing_profiles = pricingProfiles;
-    dbPatch.pricing_profile = pricingProfiles[0] ?? "";
+    pricingProductIds = await resolvePricingProductAssignmentIds(
+      supabase,
+      pricingProfiles,
+    );
+    await assertPricingAssignmentModes(supabase, pricingProductIds);
+    dbPatch.pricing_profiles = pricingProductIds;
+    dbPatch.pricing_profile = pricingProductIds[0] ?? "";
   }
   if (patch.sessionCountdownSeconds !== undefined)
     dbPatch.session_countdown_seconds = patch.sessionCountdownSeconds ?? null;
@@ -453,6 +499,9 @@ export async function updateDevice(
   if (frameTemplates) {
     await syncDeviceFrameTemplateAssignments(supabase, id, frameTemplates);
   }
+  if (pricingProductIds) {
+    await syncDevicePricingProductAssignments(supabase, id, pricingProductIds);
+  }
 }
 
 async function resolveFrameTemplateAssignmentIds(
@@ -496,6 +545,84 @@ async function syncDeviceFrameTemplateAssignments(
   }
 }
 
+async function resolvePricingProductAssignmentIds(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  assignments: string[],
+) {
+  const normalizedAssignments = Array.from(
+    new Set(assignments.map((assignment) => assignment.trim()).filter(Boolean)),
+  );
+  if (normalizedAssignments.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("pricing_products")
+    .select("id,name");
+  if (error) {
+    throw new Error(`Unable to resolve pricing assignments: ${error.message}`);
+  }
+
+  return normalizedAssignments.map((assignment) => {
+    const byId = (data ?? []).find((product) => product.id === assignment);
+    if (byId) return byId.id;
+    const byName = (data ?? []).filter(
+      (product) => product.name === assignment,
+    );
+    if (byName.length === 1) return byName[0].id;
+    if (byName.length > 1) {
+      throw new Error(
+        `Pricing name "${assignment}" is ambiguous. Select the package again.`,
+      );
+    }
+    throw new Error(`Unknown pricing assignment: ${assignment}.`);
+  });
+}
+
+async function syncDevicePricingProductAssignments(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  deviceId: string,
+  pricingProductIds: string[],
+) {
+  const { error } = await supabase.rpc("set_device_pricing_products", {
+    target_device_id: deviceId,
+    target_pricing_product_ids: pricingProductIds,
+  });
+  if (error) {
+    throw new Error(
+      `Unable to save device pricing assignments: ${error.message}`,
+    );
+  }
+}
+
+async function resolveDeviceLayoutSchema(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  organizationId: string,
+  value: string | null | undefined,
+) {
+  const normalizedValue = value?.trim() ?? "";
+  if (!normalizedValue) return null;
+
+  const { data, error } = await supabase
+    .from("layout_schemas")
+    .select("id,name")
+    .eq("organization_id", organizationId);
+  if (error) {
+    throw new Error(`Unable to resolve device layout: ${error.message}`);
+  }
+
+  const byId = (data ?? []).find((layout) => layout.id === normalizedValue);
+  if (byId) return byId;
+  const byName = (data ?? []).filter(
+    (layout) => layout.name === normalizedValue,
+  );
+  if (byName.length === 1) return byName[0];
+  if (byName.length > 1) {
+    throw new Error(
+      `Layout name "${normalizedValue}" is ambiguous. Select the theme again.`,
+    );
+  }
+  throw new Error(`The selected device layout is unavailable.`);
+}
+
 async function assertPricingAssignmentModes(
   supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
   assignments: string[],
@@ -513,16 +640,11 @@ async function assertPricingAssignmentModes(
   if (error)
     throw new Error(`Unable to validate pricing assignment: ${error.message}`);
 
-  const products = (data ?? []).filter(
-    (product) =>
-      normalizedAssignments.includes(product.id) ||
-      normalizedAssignments.includes(product.name),
+  const products = (data ?? []).filter((product) =>
+    normalizedAssignments.includes(product.id),
   );
   const unknownAssignments = normalizedAssignments.filter(
-    (assignment) =>
-      !products.some(
-        (product) => product.id === assignment || product.name === assignment,
-      ),
+    (assignment) => !products.some((product) => product.id === assignment),
   );
   if (unknownAssignments.length > 0) {
     throw new Error(

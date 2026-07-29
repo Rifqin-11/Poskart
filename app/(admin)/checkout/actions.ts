@@ -1,15 +1,25 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { businessProfile, calculateSubscriptionTotal } from "@/lib/constants/business";
-import { createDuitkuPayment, createMerchantOrderId, getDuitkuConfig } from "@/server/payments/duitku";
+import {
+  businessProfile,
+  calculateSubscriptionTotal,
+} from "@/lib/constants/business";
+import {
+  createDuitkuPayment,
+  createMerchantOrderId,
+} from "@/server/payments/duitku";
 import { createMidtransPayment } from "@/server/payments/midtrans";
 import { getPublicSubscriptionPricingPlans } from "@/server/subscription/pricing";
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-function redirectWithStatus(planId: string, type: "success" | "error", message: string): never {
+function redirectWithStatus(
+  planId: string,
+  type: "success" | "error",
+  message: string,
+): never {
   const params = new URLSearchParams({ plan: planId, [type]: message });
   redirect(`/checkout?${params.toString()}`);
 }
@@ -40,7 +50,10 @@ function resolveAllowedPaymentGateway(
   return gatewayMode;
 }
 
-function stringFromMetadata(metadata: Record<string, unknown> | undefined, keys: string[]) {
+function stringFromMetadata(
+  metadata: Record<string, unknown> | undefined,
+  keys: string[],
+) {
   for (const key of keys) {
     const value = metadata?.[key];
     if (typeof value === "string" && value.trim()) {
@@ -74,7 +87,9 @@ export type SubscriptionCheckoutActionResult =
 
 export async function createSubscriptionOrderAction(formData: FormData) {
   const planId = valueFromForm(formData, "planId") || "starter-monthly";
-  const requestedPaymentGateway = normalizePaymentGateway(valueFromForm(formData, "paymentGateway"));
+  const requestedPaymentGateway = normalizePaymentGateway(
+    valueFromForm(formData, "paymentGateway"),
+  );
   const supabase = await createClient();
   const plans = await getPublicSubscriptionPricingPlans(supabase);
   const plan = plans.find((item) => item.id === planId);
@@ -110,8 +125,16 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     stringFromMetadata(metadata, ["full_name", "name", "display_name"]) ||
     email.split("@")[0] ||
     "POSKART Customer";
-  const whatsapp = stringFromMetadata(metadata, ["phone", "phone_number", "whatsapp"]);
-  const companyName = stringFromMetadata(metadata, ["company_name", "business_name", "organization_name"]);
+  const whatsapp = stringFromMetadata(metadata, [
+    "phone",
+    "phone_number",
+    "whatsapp",
+  ]);
+  const companyName = stringFromMetadata(metadata, [
+    "company_name",
+    "business_name",
+    "organization_name",
+  ]);
   const quote = calculateSubscriptionTotal(
     plan,
     numberFromForm(formData, "deviceCount", 1),
@@ -126,7 +149,6 @@ export async function createSubscriptionOrderAction(formData: FormData) {
   }
 
   const merchantOrderId = createMerchantOrderId();
-  const duitkuConfig = getDuitkuConfig();
   const { data: membership } = await supabase
     .from("organization_members")
     .select("organization_id")
@@ -161,10 +183,7 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     company_name: companyName || null,
     status: "pending",
     payment_gateway: paymentGateway,
-    payment_method:
-      paymentGateway === "midtrans"
-        ? "snap"
-        : duitkuConfig?.paymentMethod ?? "SQ",
+    payment_method: paymentGateway === "midtrans" ? "snap" : "duitku_pop",
     merchant_order_id: merchantOrderId,
   });
 
@@ -220,6 +239,8 @@ export async function createSubscriptionOrderAction(formData: FormData) {
         deviceCount: quote.deviceCount,
         returnUrl,
         callbackUrl: `${siteUrl}/api/payments/duitku/callback`,
+        // No paymentMethod means Duitku POP shows every channel enabled for
+        // the POSKART merchant instead of forcing a single QRIS channel.
       });
       if (!payment.reference || !payment.paymentUrl) {
         return {
@@ -250,7 +271,9 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     }
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Payment gateway could not be started.";
+      error instanceof Error
+        ? error.message
+        : "Payment gateway could not be started.";
     return {
       ok: false,
       message,
