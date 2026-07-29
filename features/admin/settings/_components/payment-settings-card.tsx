@@ -195,7 +195,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
           )}
 
           <SettingField
-            label="QRIS untuk aplikasi Flutter"
+            label="QRIS Merchant"
             className="md:col-span-2"
           >
             <Select
