@@ -11,6 +11,7 @@ const navLinks = [
   { href: "/#platform", label: "Platform" },
   { href: "/#workflow", label: "Workflow" },
   { href: "/#pricing", label: "Pricing" },
+  { href: "https://docs.poskart.my.id", label: "Docs", external: true },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -86,20 +87,37 @@ export async function PublicHeader({
             isLanding ? "text-zinc-600" : "text-zinc-500",
           )}
         >
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "rounded-full px-4 py-2 transition-colors",
-                isLanding
-                  ? "hover:bg-blue-50 hover:text-[#00357B]"
-                  : "hover:bg-zinc-100 hover:text-zinc-950",
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) =>
+            link.external ? (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+                className={cn(
+                  "rounded-full px-4 py-2 transition-colors",
+                  isLanding
+                    ? "hover:bg-blue-50 hover:text-[#00357B]"
+                    : "hover:bg-zinc-100 hover:text-zinc-950",
+                )}
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "rounded-full px-4 py-2 transition-colors",
+                  isLanding
+                    ? "hover:bg-blue-50 hover:text-[#00357B]"
+                    : "hover:bg-zinc-100 hover:text-zinc-950",
+                )}
+              >
+                {link.label}
+              </Link>
+            ),
+          )}
         </nav>
 
         {userEmail ? (
@@ -155,6 +173,7 @@ export function PublicPageShell({ children }: { children: React.ReactNode }) {
 
 export function PublicFooter({ className }: { className?: string }) {
   const legalLinks = [
+    { href: "https://docs.poskart.my.id", label: "Docs", external: true },
     { href: "/terms", label: "Terms of Service" },
     { href: "/privacy", label: "Privacy Policy" },
     { href: "/refund-policy", label: "Refund Policy" },
@@ -187,15 +206,27 @@ export function PublicFooter({ className }: { className?: string }) {
           </div>
           <div className="flex flex-col items-start gap-4 sm:items-end">
             <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2">
-              {legalLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="transition-colors hover:text-[#00357B]"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {legalLinks.map((link) =>
+                link.external ? (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="transition-colors hover:text-[#00357B]"
+                  >
+                    {link.label}
+                  </a>
+                ) : (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="transition-colors hover:text-[#00357B]"
+                  >
+                    {link.label}
+                  </Link>
+                ),
+              )}
             </nav>
             <Link
               href="/contact"
