@@ -38,7 +38,7 @@ export async function getPosSalesPageAction(
   filters: Partial<PosSaleFilters>,
 ): Promise<PosSalesPage> {
   if (!(await hasOrganizationFeatureAccess("posKasir"))) {
-    throw new Error("Anda tidak memiliki akses ke POS Kasir.");
+    throw new Error("You do not have access to POS.");
   }
   return getPosSalesPage(filters);
 }
@@ -47,7 +47,7 @@ export async function getPosSalesExportAction(
   filters: Partial<PosSaleFilters>,
 ) {
   if (!(await hasOrganizationFeatureAccess("posKasir"))) {
-    throw new Error("Anda tidak memiliki akses ke POS Kasir.");
+    throw new Error("You do not have access to POS.");
   }
   return getPosSalesForExport(filters);
 }
@@ -64,16 +64,16 @@ export async function createPosSale(
   const notes = String(formData.get("notes") ?? "").trim();
 
   if (!["Cash", "QRIS"].includes(paymentMethod)) {
-    return { success: false, error: "Pilih metode pembayaran yang valid." };
+    return { success: false, error: "Select a valid payment method." };
   }
 
   if (notes.length > 500) {
-    return { success: false, error: "Catatan maksimal 500 karakter." };
+    return { success: false, error: "Notes must be 500 characters or less." };
   }
 
   const context = await getPosActionContext();
   if (!context) {
-    return { success: false, error: "Akun belum terhubung ke organisasi." };
+    return { success: false, error: "Account is not connected to an organization." };
   }
   const { supabase, user, organizationId } = context;
 
@@ -88,12 +88,12 @@ export async function createPosSale(
   if (packageError) {
     return {
       success: false,
-      error: `Gagal memuat paket: ${packageError.message}`,
+      error: `Failed to load package: ${packageError.message}`,
     };
   }
 
   if (!selectedPackage) {
-    return { success: false, error: "Pilih paket print yang valid." };
+    return { success: false, error: "Select a valid print package." };
   }
 
   const { error } = await supabase.from("pos_sales").insert({
@@ -110,7 +110,7 @@ export async function createPosSale(
   if (error) {
     return {
       success: false,
-      error: `Gagal menyimpan transaksi: ${error.message}`,
+      error: `Failed to save transaction: ${error.message}`,
     };
   }
 
@@ -120,11 +120,11 @@ export async function createPosSale(
 
 export async function deletePosSale(saleId: string): Promise<PosActionState> {
   if (!saleId) {
-    return { success: false, error: "ID transaksi tidak valid." };
+    return { success: false, error: "Invalid transaction ID." };
   }
 
   const context = await getPosActionContext();
-  if (!context) return { success: false, error: "Akses POS tidak valid." };
+  if (!context) return { success: false, error: "Invalid POS access." };
   const { supabase, organizationId } = context;
 
   const { data, error } = await supabase
@@ -138,14 +138,14 @@ export async function deletePosSale(saleId: string): Promise<PosActionState> {
   if (error) {
     return {
       success: false,
-      error: `Gagal menghapus transaksi: ${error.message}`,
+      error: `Failed to delete transaction: ${error.message}`,
     };
   }
 
   if (!data) {
     return {
       success: false,
-      error: "Transaksi tidak ditemukan atau tidak dapat dihapus.",
+      error: "Transaction not found or could not be deleted.",
     };
   }
 
@@ -167,17 +167,17 @@ export async function updatePosSale(
     return { success: false, error: "Metode pembayaran tidak valid." };
   }
   if (!Number.isFinite(amount) || amount < 0) {
-    return { success: false, error: "Nominal transaksi tidak valid." };
+    return { success: false, error: "Invalid transaction amount." };
   }
   if (!Number.isFinite(printCount) || printCount < 1 || printCount > 100) {
     return { success: false, error: "Jumlah print harus antara 1-100." };
   }
   if (notes.length > 500) {
-    return { success: false, error: "Catatan maksimal 500 karakter." };
+    return { success: false, error: "Notes must be 500 characters or less." };
   }
 
   const context = await getPosActionContext();
-  if (!context) return { success: false, error: "Akses POS tidak valid." };
+  if (!context) return { success: false, error: "Invalid POS access." };
   const { supabase, organizationId } = context;
 
   const { data: selectedPackage, error: packageError } = await supabase
@@ -208,9 +208,9 @@ export async function updatePosSale(
   if (error)
     return {
       success: false,
-      error: `Gagal mengubah transaksi: ${error.message}`,
+      error: `Failed to update transaction: ${error.message}`,
     };
-  if (!data) return { success: false, error: "Transaksi tidak ditemukan." };
+  if (!data) return { success: false, error: "Transaction not found." };
 
   revalidatePath("/pos");
   return { success: true };
@@ -220,11 +220,11 @@ export async function deletePosSales(
   saleIds: string[],
 ): Promise<PosActionState> {
   if (!saleIds || saleIds.length === 0) {
-    return { success: false, error: "ID transaksi tidak valid." };
+    return { success: false, error: "Invalid transaction ID." };
   }
 
   const context = await getPosActionContext();
-  if (!context) return { success: false, error: "Akses POS tidak valid." };
+  if (!context) return { success: false, error: "Invalid POS access." };
   const { supabase, organizationId } = context;
 
   const { error } = await supabase
@@ -236,7 +236,7 @@ export async function deletePosSales(
   if (error) {
     return {
       success: false,
-      error: `Gagal menghapus transaksi: ${error.message}`,
+      error: `Failed to delete transaction: ${error.message}`,
     };
   }
 

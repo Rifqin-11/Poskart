@@ -245,7 +245,7 @@ export async function createSubscriptionOrderAction(formData: FormData) {
       if (!payment.reference || !payment.paymentUrl) {
         return {
           ok: false,
-          message: "Duitku tidak mengembalikan payment reference.",
+          message: "Duitku did not return a payment reference.",
           planId: plan.id,
         } satisfies SubscriptionCheckoutActionResult;
       }

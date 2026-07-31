@@ -58,6 +58,7 @@ import { Select } from "@/components/ui/select";
 import { getMyPayoutSummary } from "@/server/admin/actions/payout-actions";
 import type { PayoutAccount } from "@/types/payout";
 import { OrganizationDeleteDialog } from "./organization-delete-dialog";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 type OrganizationCardProps = {
   myEmail: string;
@@ -126,6 +127,7 @@ export function OrganizationCard({
   subscriptionRequired,
   isEditing,
 }: OrganizationCardProps) {
+  const { t } = useI18n();
   const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
   const { data: members = [] } = useTenantMembers();
   const { data: invitations = [] } = useTenantInvitations();
@@ -217,7 +219,7 @@ export function OrganizationCard({
       <SettingsCard
         icon={<Building2 className="size-4" />}
         title="Workspace"
-        description="Identitas organisasi, join code, dan status akses workspace."
+        description={t("settings.orgIdentityDesc")}
       >
         <div className="space-y-4">
           <SettingsPanelBlock className="bg-white">
@@ -327,7 +329,7 @@ export function OrganizationCard({
       <SettingsCard
         icon={<CreditCard className="size-4" />}
         title="Subscription"
-        description="Ringkasan plan, status, limit perangkat, dan masa aktif organisasi."
+        description={t("settings.subscriptionDesc")}
       >
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">

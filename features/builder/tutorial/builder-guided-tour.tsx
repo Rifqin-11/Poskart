@@ -15,15 +15,15 @@ type Spotlight = Pick<DOMRect, "top" | "right" | "bottom" | "left" | "width" | "
 const TOUR_STEPS: TourStep[] = [
   {
     selector: '[data-builder-tour="pages"]',
-    title: "Pilih halaman desain",
+    title: "Select design page",
     description:
-      "Pindah antar halaman alur kiosk. Halaman yang dimatikan tidak akan ditampilkan kepada pengunjung.",
+      "Switch between kiosk flow pages. Pages that are turned off will not be shown to visitors.",
   },
   {
     selector: '[data-builder-tour="layers"]',
-    title: "Tambah dan susun layer",
+    title: "Add and arrange layers",
     description:
-      "Gunakan panel ini untuk menambah elemen, memilih layer, dan mengatur urutan tampilannya.",
+      "Use this panel to add elements, select layers, and reorder their display sequence.",
   },
   {
     selector: '[data-builder-tour="canvas"]',
@@ -35,19 +35,19 @@ const TOUR_STEPS: TourStep[] = [
     selector: '[data-builder-tour="properties"]',
     title: "Atur detail elemen",
     description:
-      "Semua properti layer yang dipilih, seperti teks, warna, ukuran, dan perilaku, tersedia di sini.",
+      "All properties of the selected layer — text, color, size, and behavior — are available here.",
   },
   {
     selector: '[data-builder-tour="save"]',
-    title: "Simpan tema",
+    title: "Save theme",
     description:
-      "Simpan perubahan setelah selesai. Builder juga menyimpan draft otomatis agar pekerjaan tidak mudah hilang.",
+      "Save your changes when done. The builder also auto-saves drafts so your work is never lost.",
   },
   {
     selector: '[data-builder-tour="tutorial"]',
     title: "Butuh bantuan lagi?",
     description:
-      "Klik Show tutorial kapan saja dari header untuk menjalankan panduan ini kembali.",
+      "Click Show tutorial at any time from the header to run this guide again.",
   },
 ];
 

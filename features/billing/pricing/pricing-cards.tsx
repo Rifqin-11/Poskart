@@ -43,10 +43,10 @@ export function PricingCards({
       <div className="flex flex-col items-center gap-5 text-center">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
-            Paket POSKART
+            POSKART Plans
           </p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
-            Pilih paket berdasarkan jumlah device dan durasi.
+            Choose a plan based on device count and duration.
           </h2>
         </div>
 
@@ -194,7 +194,7 @@ function PricingCard({
           featured ? "mt-2 text-xs text-blue-100" : "mt-2 text-xs text-zinc-500"
         }
       >
-        {formatCurrency(monthlyDeviceEquivalent)}/bulan/device
+        {formatCurrency(monthlyDeviceEquivalent)}/mo/device
         {!plan.compareAtAmount && savingsPercent > 0
           ? ` · hemat ${savingsPercent}%`
           : ""}

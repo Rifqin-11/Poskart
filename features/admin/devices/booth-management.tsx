@@ -90,15 +90,15 @@ const EMPTY_BOOTH: BoothInput = {
 const DEVICE_TOUR_STEPS: FeatureTourStep[] = [
   {
     selectors: ['[data-devices-tour="add-device"]'],
-    title: "Pair perangkat baru",
+    title: "Pair a new device",
     description:
-      "Klik Add device lalu masukkan kode pairing yang muncul pada tablet setelah login. Kode hanya berlaku sementara.",
+      "Click Add device and enter the pairing code shown on the tablet after login. The code is only valid temporarily.",
   },
   {
     selectors: ['[data-devices-tour="capacity"]'],
     title: "Pantau kapasitas",
     description:
-      "Bagian ini menunjukkan jumlah device yang sudah digunakan dan sisa slot dari paket langganan organisasi.",
+      "This section shows how many devices are in use and remaining slots from the organization's subscription plan.",
   },
   {
     selectors: [
@@ -107,46 +107,46 @@ const DEVICE_TOUR_STEPS: FeatureTourStep[] = [
     ],
     title: "Konfigurasi setiap booth",
     description:
-      "Setelah pairing, buka Configure untuk mengatur theme, frame, paket atau event, voucher, printer, dan keamanan settings.",
+      "After pairing, open Configure to set up the theme, frames, pricing or event, vouchers, printer, and security settings.",
   },
 ];
 
 const DEVICE_CONFIGURATION_TOUR_STEPS: FeatureTourStep[] = [
   {
     selectors: ['[data-device-config-tour="tabs"]'],
-    title: "Tiga area konfigurasi",
+    title: "Three configuration areas",
     description:
-      "General mengatur pengalaman pengunjung, Frame menentukan pilihan frame, dan System mengatur keamanan serta perangkat.",
+      "General controls the visitor experience, Frame sets the available frame choices, and System handles security and device settings.",
   },
   {
     selectors: ['[data-device-config-tour="theme"]'],
     title: "Theme dan layout",
     description:
-      "Pilih visual theme yang akan ditampilkan kiosk. Perubahan diterapkan saat device melakukan sync berikutnya.",
+      "Select the visual theme displayed on the kiosk. Changes take effect the next time the device syncs.",
   },
   {
     selectors: ['[data-device-config-tour="session-access"]'],
-    title: "Pricing atau event",
+    title: "Pricing or event",
     description:
-      "Pricing meminta pengunjung memilih paket dan membayar. Event langsung memulai sesi gratis untuk kiosk yang ditugaskan.",
+      "Pricing requires visitors to choose a package and pay. Event skips checkout for kiosks assigned to a free session.",
   },
   {
     selectors: ['[data-device-config-tour="frames"]'],
-    title: "Frame yang tersedia",
+    title: "Available frames",
     description:
-      "Pilih frame yang dapat digunakan pengunjung pada booth ini. Gunakan Select all bila seluruh koleksi ingin tersedia, lalu aktifkan kategori frame bila kiosk perlu menampilkan tab Semua, General, dan kategori.",
+      "Choose which frames visitors can use on this booth. Use Select all to make your full collection available, then enable frame categories if the kiosk should display All, General, and category tabs.",
   },
   {
     selectors: ['[data-device-config-tour="settings-pin"]'],
-    title: "Keamanan settings kiosk",
+    title: "Kiosk security settings",
     description:
-      "Aktifkan PIN bila menu Settings tablet hanya boleh dibuka petugas. Reset dapat diminta melalui email owner dan admin.",
+      "Enable PIN if the tablet Settings menu should only be accessible to staff. A reset can be requested via the owner or admin email.",
   },
   {
     selectors: ['[data-device-config-tour="save"]'],
-    title: "Simpan konfigurasi",
+    title: "Save configuration",
     description:
-      "Simpan setelah semua pengaturan selesai. Kiosk mengambil konfigurasi terbaru saat online dan melakukan sinkronisasi.",
+      "Save when all settings are complete. The kiosk fetches the latest configuration when online and syncs automatically.",
   },
 ];
 

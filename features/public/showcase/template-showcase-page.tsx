@@ -68,7 +68,7 @@ export function TemplateShowcasePage({
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-zinc-600 sm:text-lg">
               {showcase.description ||
-                "Lihat pilihan frame, tampilan photobooth, dan referensi visual yang dapat disesuaikan untuk cafe, acara, atau kampanye Anda."}
+                "Lihat pilihan frame, tampilan photobooth, dan referensi visual yang dapat disesuaikan untuk bisnis, acara, atau kampanye Anda."}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               {hasContent ? (
@@ -119,7 +119,7 @@ export function TemplateShowcasePage({
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600 sm:text-base">
                 Setiap frame dapat dikembangkan kembali untuk warna brand, logo,
-                pesan kampanye, dan kebutuhan acara cafe.
+                pesan kampanye, dan kebutuhan acara Anda.
               </p>
             </div>
 
@@ -228,8 +228,8 @@ export function TemplateShowcasePage({
                 Detail lain yang dapat disiapkan untuk kolaborasi.
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600 sm:text-base">
-                Referensi berikut membantu cafe melihat pilihan setup, branding,
-                hasil cetak, dan kebutuhan khusus di luar frame serta theme.
+                Jelajahi koleksi referensi tambahan — mulai dari pilihan setup, identitas visual,
+                hingga kebutuhan cetak dan elemen eksklusif yang melengkapi frame dan theme Anda.
               </p>
             </div>
 
@@ -295,7 +295,7 @@ export function TemplateShowcasePage({
         <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              Punya konsep khusus untuk cafe Anda?
+              Punya konsep khusus untuk bisnis Anda?
             </h2>
             <p className="mt-4 text-sm leading-7 text-blue-100 sm:text-base">
               Kirim identitas brand atau tema acara. Tim POSKART akan membantu

@@ -95,7 +95,7 @@ export function MoneyEntryDialog({
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title={entry ? "Edit transaksi" : "Tambah transaksi"}
+      title={entry ? "Edit transaction" : "Add transaction"}
     >
       <form
         className="space-y-4"
@@ -134,7 +134,7 @@ export function MoneyEntryDialog({
             onClick={() => changeType("income")}
           >
             <ArrowUpCircle className="size-4" />
-            Pemasukan
+            Income
           </Button>
           <Button
             type="button"
@@ -142,7 +142,7 @@ export function MoneyEntryDialog({
             onClick={() => changeType("expense")}
           >
             <ArrowDownCircle className="size-4" />
-            Pengeluaran
+            Expense
           </Button>
           {!entry ? (
             <Button
@@ -159,7 +159,7 @@ export function MoneyEntryDialog({
           <>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-1.5 text-sm font-medium">
-                Dari dompet
+                From wallet
                 <Select
                   value={fromWalletType}
                   onChange={(event) => {
@@ -181,7 +181,7 @@ export function MoneyEntryDialog({
                 </Select>
               </label>
               <label className="space-y-1.5 text-sm font-medium">
-                Ke dompet
+                To wallet
                 <Select
                   value={toWalletType}
                   onChange={(event) =>
@@ -198,7 +198,7 @@ export function MoneyEntryDialog({
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-1.5 text-sm font-medium">
-                Nominal transfer
+                Transfer amount
                 <Input
                   type="number"
                   min={1}
@@ -209,19 +209,19 @@ export function MoneyEntryDialog({
                 />
               </label>
               <label className="space-y-1.5 text-sm font-medium">
-                Catatan transfer
+                Transfer notes
                 <Input
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                   maxLength={120}
-                  placeholder="Contoh: Setor tunai ke bank"
+                  placeholder="e.g. Cash deposit to bank"
                   required
                 />
               </label>
             </div>
             {transferWalletInvalid ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                Pilih dua dompet yang berbeda untuk melakukan transfer.
+                Select two different wallets to make a transfer.
               </div>
             ) : null}
           </>
@@ -229,7 +229,7 @@ export function MoneyEntryDialog({
           <>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-1.5 text-sm font-medium">
-                Kategori
+                Category
                 <Select
                   value={category}
                   onChange={(event) =>
@@ -244,7 +244,7 @@ export function MoneyEntryDialog({
                 </Select>
               </label>
               <label className="space-y-1.5 text-sm font-medium">
-                Nominal transaksi
+                Transaction amount
                 <Input
                   type="number"
                   min={1}
@@ -257,7 +257,7 @@ export function MoneyEntryDialog({
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-1.5 text-sm font-medium">
-                Dompet
+                Wallet
                 <Select
                   value={walletType}
                   onChange={(event) =>
@@ -272,12 +272,12 @@ export function MoneyEntryDialog({
                 </Select>
               </label>
               <label className="space-y-1.5 text-sm font-medium">
-                Catatan transaksi
+                Transaction notes
                 <Input
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                   maxLength={120}
-                  placeholder="Contoh: Pendapatan acara"
+                  placeholder="e.g. Event revenue"
                   required
                 />
               </label>
@@ -286,7 +286,7 @@ export function MoneyEntryDialog({
         )}
         {walletType === "qris" && entryType === "income" ? (
           <label className="block space-y-1.5 text-sm font-medium">
-            Potongan QRIS (opsional)
+            QRIS fee (optional)
             <div className="relative">
               <Input
                 type="number"
@@ -305,7 +305,7 @@ export function MoneyEntryDialog({
               </span>
             </div>
             <span className="block text-xs font-normal text-zinc-500">
-              Diterima bersih:{" "}
+              Net received:{" "}
               {formatCurrency(
                 amount -
                   Math.round((amount * Math.max(feePercentage, 0)) / 100),
@@ -314,7 +314,7 @@ export function MoneyEntryDialog({
           </label>
         ) : null}
         <label className="block space-y-1.5 text-sm font-medium">
-          Waktu
+          Time
           <Input
             type="datetime-local"
             value={occurredAt}
@@ -323,18 +323,18 @@ export function MoneyEntryDialog({
           />
         </label>
         <label className="block space-y-1.5 text-sm font-medium">
-          Keterangan tambahan
+          Additional notes
           <Textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             maxLength={500}
-            placeholder="Informasi opsional mengenai transaksi"
+            placeholder="Optional information about this transaction"
           />
         </label>
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium">Tag transaksi</span>
-            <span className="text-xs text-zinc-500">Maksimal 10 tag</span>
+            <span className="text-sm font-medium">Transaction tags</span>
+            <span className="text-xs text-zinc-500">Maximum 10 tags</span>
           </div>
           {tags.length ? (
             <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-xl border border-zinc-200 p-3">
@@ -364,23 +364,23 @@ export function MoneyEntryDialog({
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
-              Belum ada tag. Tambahkan melalui tombol Tag pada halaman utama.
+              No tags yet. Add them using the Tag button on the main page.
             </div>
           )}
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>
-            Batal
+            Cancel
           </Button>
           <Button
             type="submit"
             disabled={pending || (entryType === "transfer" && transferWalletInvalid)}
           >
             {pending
-              ? "Menyimpan..."
+              ? "Saving..."
               : entryType === "transfer"
-                ? "Simpan transfer"
-                : "Simpan transaksi"}
+                ? "Save transfer"
+                : "Save transaction"}
           </Button>
         </div>
       </form>
@@ -408,13 +408,13 @@ export function WalletManagerDialog({
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title="Kelola dompet"
+      title="Manage wallets"
       overlayClassName="z-[80]"
     >
       <div className="space-y-5">
         <p className="text-sm text-zinc-500">
-          Tambahkan dompet operasional selain Tunai dan QRIS, misalnya Bank BCA,
-          E-Wallet, atau Kas Event.
+          Add operational wallets beyond Cash and QRIS, such as Bank BCA,
+          E-Wallet, or Event Cash.
         </p>
         <form
           className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:flex-row"
@@ -429,18 +429,18 @@ export function WalletManagerDialog({
             onChange={(event) => setName(event.target.value)}
             minLength={2}
             maxLength={40}
-            placeholder="Contoh: Bank BCA, Kas Event"
+            placeholder="e.g. Bank BCA, Event Cash"
             required
           />
           <Button type="submit" disabled={pending || name.trim().length < 2}>
             <Plus className="size-4" />
-            Tambah dompet
+            Add wallet
           </Button>
         </form>
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <WalletCards className="size-4" />
-            Dompet tersedia
+            Available wallets
           </div>
           <div className="divide-y overflow-hidden rounded-xl border border-zinc-200">
             {wallets.map((wallet) => (
@@ -451,7 +451,7 @@ export function WalletManagerDialog({
                 <div>
                   <div className="text-sm font-medium">{wallet.name}</div>
                   <div className="text-xs text-zinc-500">
-                    {wallet.isDefault ? "Dompet bawaan" : "Dompet kustom"}
+                    {wallet.isDefault ? "Default wallet" : "Custom wallet"}
                   </div>
                 </div>
                 {!wallet.isDefault ? (
@@ -461,7 +461,7 @@ export function WalletManagerDialog({
                     size="icon"
                     className="text-zinc-400 hover:bg-red-50 hover:text-red-600"
                     onClick={() => onDelete(wallet)}
-                    aria-label={`Hapus dompet ${wallet.name}`}
+                    aria-label={`Delete wallet ${wallet.name}`}
                   >
                     <Trash2 className="size-4" />
                   </Button>
@@ -471,13 +471,13 @@ export function WalletManagerDialog({
           </div>
           {!customWallets.length ? (
             <div className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
-              Belum ada dompet kustom.
+              No custom wallets yet.
             </div>
           ) : null}
         </div>
         <div className="flex justify-end">
           <Button type="button" variant="outline" onClick={onClose}>
-            Selesai
+            Done
           </Button>
         </div>
       </div>
@@ -504,12 +504,11 @@ export function TagManagerDialog({
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title="Kelola tag transaksi"
+      title="Manage transaction tags"
     >
       <div className="space-y-5">
         <p className="text-sm text-zinc-500">
-          Tag dapat dipakai pada beberapa transaksi sekaligus untuk
-          pengelompokan dan penyaringan laporan.
+          Tags can be applied to multiple transactions at once for grouping and filtering reports.
         </p>
         <form
           className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:flex-row"
@@ -524,12 +523,12 @@ export function TagManagerDialog({
             onChange={(event) => setName(event.target.value)}
             minLength={2}
             maxLength={40}
-            placeholder="Contoh: CFD, Cabang A, Event Juni"
+            placeholder="e.g. CFD, Branch A, June Event"
             required
           />
           <Button type="submit" disabled={pending || name.trim().length < 2}>
             <Plus className="size-4" />
-            Tambah tag
+            Add tag
           </Button>
         </form>
         {tags.length ? (
@@ -549,7 +548,7 @@ export function TagManagerDialog({
                   size="icon"
                   className="text-zinc-400 hover:bg-red-50 hover:text-red-600"
                   onClick={() => onDelete(tag)}
-                  aria-label={`Hapus tag ${tag.name}`}
+                  aria-label={`Delete tag ${tag.name}`}
                 >
                   <Trash2 className="size-4" />
                 </Button>
@@ -558,12 +557,12 @@ export function TagManagerDialog({
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center text-sm text-zinc-500">
-            Belum ada tag kustom.
+            No custom tags yet.
           </div>
         )}
         <div className="flex justify-end">
           <Button type="button" variant="outline" onClick={onClose}>
-            Selesai
+            Done
           </Button>
         </div>
       </div>
@@ -591,12 +590,12 @@ export function CategoryManagerDialog({
     <Dialog
       open
       onOpenChange={(open) => !open && onClose()}
-      title="Kelola kategori transaksi"
+      title="Manage transaction categories"
     >
       <div className="space-y-5">
         <p className="text-sm text-zinc-500">
-          Buat kategori khusus untuk kebutuhan operasional organisasi Anda.
-          Kategori bawaan tetap tersedia untuk menjaga konsistensi laporan.
+          Create custom categories for your organization's operational needs.
+          Default categories remain available to maintain report consistency.
         </p>
         <form
           className="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:grid-cols-[150px_1fr_auto]"
@@ -611,28 +610,28 @@ export function CategoryManagerDialog({
             onChange={(event) =>
               setEntryType(event.target.value as MoneyEntryType)
             }
-            aria-label="Jenis kategori"
+            aria-label="Category type"
           >
-            <option value="income">Pemasukan</option>
-            <option value="expense">Pengeluaran</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
           </Select>
           <Input
             value={name}
             onChange={(event) => setName(event.target.value)}
             minLength={2}
             maxLength={60}
-            placeholder="Contoh: Sewa peralatan"
+            placeholder="e.g. Equipment rental"
             required
           />
           <Button type="submit" disabled={pending || name.trim().length < 2}>
             <Plus className="size-4" />
-            Tambah
+            Add
           </Button>
         </form>
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <Tags className="size-4" />
-            Kategori kustom
+            Custom categories
           </div>
           {customCategories.length ? (
             <div className="max-h-72 divide-y overflow-y-auto rounded-xl border border-zinc-200">
@@ -645,8 +644,8 @@ export function CategoryManagerDialog({
                     <div className="text-sm font-medium">{category.name}</div>
                     <div className="text-xs text-zinc-500">
                       {category.entryType === "income"
-                        ? "Pemasukan"
-                        : "Pengeluaran"}
+                        ? "Income"
+                        : "Expense"}
                     </div>
                   </div>
                   <Button
@@ -655,7 +654,7 @@ export function CategoryManagerDialog({
                     size="icon"
                     className="text-zinc-400 hover:bg-red-50 hover:text-red-600"
                     onClick={() => onDelete(category)}
-                    aria-label={`Hapus kategori ${category.name}`}
+                    aria-label={`Delete category ${category.name}`}
                   >
                     <Trash2 className="size-4" />
                   </Button>
@@ -664,13 +663,13 @@ export function CategoryManagerDialog({
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center text-sm text-zinc-500">
-              Belum ada kategori kustom.
+              No custom categories yet.
             </div>
           )}
         </div>
         <div className="flex justify-end">
           <Button type="button" variant="outline" onClick={onClose}>
-            Selesai
+            Done
           </Button>
         </div>
       </div>

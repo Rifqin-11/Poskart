@@ -1,6 +1,7 @@
 "use client";
 
 import { Dialog } from "@/components/ui/dialog";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { DialogActions } from "@/features/admin/_components/dialog-actions";
@@ -34,6 +35,7 @@ export function EditProfileDialog({
   email,
   currentMemberRole,
 }: EditProfileDialogProps) {
+  const { t } = useI18n();
   return (
     <Dialog
       open={open}
@@ -51,7 +53,7 @@ export function EditProfileDialog({
           Display name
           <Input
             className="mt-1"
-            placeholder="Nama lengkap"
+            placeholder={t("profile.fullNamePlaceholder")}
             value={profileDraft.fullName}
             onChange={(ev) =>
               setProfileDraft((d) => ({ ...d, fullName: ev.target.value }))

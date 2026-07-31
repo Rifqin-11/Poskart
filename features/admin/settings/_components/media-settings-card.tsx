@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { Image as ImageIcon, Link2, Timer, Warehouse } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -37,6 +38,7 @@ export function MediaSettingsCard<T extends SettingsForm>({
   setForm,
   mode = "summary",
 }: MediaSettingsCardProps<T>) {
+  const { t } = useI18n();
   const summary = (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <div className="rounded-3xl border border-zinc-200 bg-white p-4">
@@ -125,7 +127,7 @@ export function MediaSettingsCard<T extends SettingsForm>({
           </div>
           <SwitchSetting
             title="Watermark enabled"
-            description="Terapkan watermark pada output media."
+            description={t("settings.watermarkDesc")}
             checked={form.watermark_enabled}
             onCheckedChange={(v) =>
               setForm((f) => ({ ...f, watermark_enabled: v }))

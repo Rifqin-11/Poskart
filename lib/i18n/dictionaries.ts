@@ -51,6 +51,48 @@ export const dictionaries = {
     "payout.page.title": "Payout / Withdraw",
     "payout.page.description":
       "Monitor verified QRIS photobooth revenue and request organization withdrawals.",
+    "gallery.noOrg": "This account is not connected to an organization.",
+    "gallery.empty":
+      "Photobooth results will appear after the kiosk creates a QR code and completes the upload.",
+    "gallery.openResult": "Open photo result",
+    "profile.fullNamePlaceholder": "Full name",
+    "profile.identityDesc":
+      "Manage the account identity used for the POSKART dashboard.",
+    "settings.watermarkDesc": "Apply watermark to media output.",
+    "settings.orgIdentityDesc":
+      "Organization identity, join code, and workspace access status.",
+    "settings.subscriptionDesc":
+      "Plan summary, status, device limit, and organization subscription period.",
+    "settings.payoutAccountDesc":
+      "Bank account for withdrawing photobooth revenue from POSKART payment gateway.",
+    "settings.membersDesc":
+      "Manage members and invitations with access to this workspace.",
+    "settings.changeRoleFailed": "Failed to change role",
+    "settings.transferOwnershipSuccess": "Ownership transferred successfully",
+    "settings.transferOwnershipFailed": "Failed to transfer ownership",
+    "settings.acceptRequestFailed": "Failed to accept request",
+    "settings.rejectRequestFailed": "Failed to reject request",
+    "settings.leaveOrgDesc": "Leave this organization / workspace.",
+    "settings.duitkuMerchantRequired":
+      "Merchant code is required for Private Payment.",
+    "superadmin.showPosDesc":
+      "Show the POS Cashier page for manual sales input.",
+    "superadmin.showMoneyDesc":
+      "Show the Finance page for wallets, income, expenses, and transfers.",
+    "tour.welcomeTitle": "Welcome to POSKART",
+    "tour.welcomeDesc":
+      "Manage all photobooth operations from one connected workspace.",
+    "tour.navDesc":
+      "Navigate to transactions, devices, templates, gallery, and settings from this menu.",
+    "tour.searchTitle": "Search faster",
+    "tour.searchDesc":
+      "Use search to open pages or find important data without browsing the menu one by one.",
+    "tour.orgStatusTitle": "Organization status",
+    "tour.orgStatusDesc":
+      "View the active workspace, subscription expiry, and organization settings access here.",
+    "tour.profileTitle": "Profile and help",
+    "tour.profileDesc":
+      "Open the profile menu to set preferences, change language, or run this tutorial again at any time.",
   },
   id: {
     "nav.dashboard": "Dashboard",
@@ -99,6 +141,48 @@ export const dictionaries = {
     "payout.page.title": "Pencairan / Penarikan",
     "payout.page.description":
       "Pantau saldo hasil QRIS photobooth dan ajukan pencairan dana organisasi.",
+    "gallery.noOrg": "Akun ini belum terhubung ke organisasi.",
+    "gallery.empty":
+      "Hasil photobooth akan muncul setelah kiosk membuat QR dan menyelesaikan upload.",
+    "gallery.openResult": "Buka hasil foto",
+    "profile.fullNamePlaceholder": "Nama lengkap",
+    "profile.identityDesc":
+      "Kelola identitas akun yang dipakai untuk dashboard POSKART.",
+    "settings.watermarkDesc": "Terapkan watermark pada output media.",
+    "settings.orgIdentityDesc":
+      "Identitas organisasi, join code, dan status akses workspace.",
+    "settings.subscriptionDesc":
+      "Ringkasan plan, status, limit perangkat, dan masa aktif organisasi.",
+    "settings.payoutAccountDesc":
+      "Rekening tujuan pencairan hasil photobooth dari payment gateway POSKART.",
+    "settings.membersDesc":
+      "Kelola member dan invitation yang memiliki akses ke workspace.",
+    "settings.changeRoleFailed": "Gagal mengubah role",
+    "settings.transferOwnershipSuccess": "Kepemilikan berhasil dipindahkan",
+    "settings.transferOwnershipFailed": "Gagal memindahkan kepemilikan",
+    "settings.acceptRequestFailed": "Gagal menerima permintaan",
+    "settings.rejectRequestFailed": "Gagal menolak permintaan",
+    "settings.leaveOrgDesc": "Keluar dari organisasi/workspace ini.",
+    "settings.duitkuMerchantRequired":
+      "Merchant code Duitku wajib diisi untuk Payment Private.",
+    "superadmin.showPosDesc":
+      "Tampilkan halaman POS Kasir untuk input penjualan manual.",
+    "superadmin.showMoneyDesc":
+      "Tampilkan halaman Keuangan untuk dompet, pemasukan, pengeluaran, dan transfer.",
+    "tour.welcomeTitle": "Selamat datang di POSKART",
+    "tour.welcomeDesc":
+      "Kelola seluruh operasional photobooth dari satu workspace yang terhubung.",
+    "tour.navDesc":
+      "Pindah ke transaksi, device, template, galeri, dan pengaturan dari menu ini.",
+    "tour.searchTitle": "Cari lebih cepat",
+    "tour.searchDesc":
+      "Gunakan pencarian untuk membuka halaman atau menemukan data penting tanpa menelusuri menu satu per satu.",
+    "tour.orgStatusTitle": "Status organisasi",
+    "tour.orgStatusDesc":
+      "Lihat workspace aktif, masa berlaku langganan, dan akses pengaturan organisasi di sini.",
+    "tour.profileTitle": "Profil dan bantuan",
+    "tour.profileDesc":
+      "Buka menu profil untuk mengatur preferensi, mengganti bahasa, atau menjalankan tutorial ini kembali kapan saja.",
   },
 } as const;
 

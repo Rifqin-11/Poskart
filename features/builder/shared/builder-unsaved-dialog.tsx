@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export function BuilderUnsavedDialog({
   open,
-  title = "Perubahan belum disimpan",
+  title = "Unsaved changes",
   description,
   isSaving = false,
   onCancel,

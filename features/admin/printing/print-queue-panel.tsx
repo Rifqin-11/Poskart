@@ -32,7 +32,7 @@ async function fetchPrintQueue(): Promise<ActivePrintJob[]> {
     error?: string;
   };
   if (!response.ok)
-    throw new Error(body.error || "Gagal memuat antrean print.");
+    throw new Error(body.error || "Failed to load print queue.");
   return body.jobs ?? [];
 }
 
@@ -44,7 +44,7 @@ async function cancelPrintJob(jobId: string) {
   });
   const body = (await response.json()) as { error?: string };
   if (!response.ok) {
-    throw new Error(body.error || "Gagal membatalkan print.");
+    throw new Error(body.error || "Failed to cancel print.");
   }
 }
 
@@ -64,12 +64,12 @@ export function PrintQueuePanel() {
   const cancelJob = useMutation({
     mutationFn: cancelPrintJob,
     onSuccess: () => {
-      toast.success("Antrean print dibatalkan");
+      toast.success("Print job cancelled");
       void queryClient.invalidateQueries({ queryKey: printQueueKey });
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Gagal membatalkan print.",
+        error instanceof Error ? error.message : "Failed to cancel print.",
       );
       void queryClient.invalidateQueries({ queryKey: printQueueKey });
     },
@@ -86,10 +86,10 @@ export function PrintQueuePanel() {
           </span>
           <div>
             <div className="text-sm font-semibold text-zinc-950">
-              Antrean print
+              Print queue
             </div>
             <div className="text-[11px] text-zinc-500">
-              {jobs.length} job aktif
+              {jobs.length} active jobs
             </div>
           </div>
         </div>
@@ -127,11 +127,11 @@ export function PrintQueuePanel() {
                   </div>
                   <button
                     type="button"
-                    aria-label={`Batalkan print ${job.templateName}`}
+                    aria-label={`Cancel print for ${job.templateName}`}
                     title={
                       job.status === "queued"
-                        ? "Batalkan antrean"
-                        : "Print sedang diproses dan tidak dapat dibatalkan"
+                        ? "Cancel queue"
+                        : "Print is being processed and cannot be cancelled"
                     }
                     disabled={job.status !== "queued" || cancelling}
                     onClick={() => cancelJob.mutate(job.id)}
@@ -156,7 +156,7 @@ export function PrintQueuePanel() {
                   </Badge>
                   {job.attempts > 0 ? (
                     <span className="text-[10px] text-zinc-400">
-                      Percobaan {job.attempts}
+                      Attempt {job.attempts}
                     </span>
                   ) : null}
                 </div>

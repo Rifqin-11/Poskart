@@ -103,8 +103,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
                   Payment Sharing
                 </div>
                 <div className="mt-1 text-xs leading-5 text-zinc-500">
-                  Gunakan QRIS bawaan POSKART. Hasil penjualan akan dikumpulkan
-                  di akun Anda dan dapat dicairkan (payout) kapan saja.
+                  Use POSKART's built-in QRIS. Sales revenue is collected in your account and can be withdrawn (payout) at any time.
                 </div>
               </div>
             </button>
@@ -136,8 +135,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
                   Payment Private
                 </div>
                 <div className="mt-1 text-xs leading-5 text-zinc-500">
-                  Gunakan akun Duitku Anda sendiri. Pendapatan langsung masuk ke
-                  akun Anda tanpa biaya admin POSKART.
+                  Use your own Duitku account. Revenue goes directly to your account with no POSKART admin fee.
                 </div>
               </div>
             </button>
@@ -147,11 +145,10 @@ export function PaymentSettingsCard<T extends SettingsForm>({
             <div className="md:col-span-2 grid gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <div className="text-sm font-semibold text-emerald-950">
-                  Credential Duitku organisasi
+                  Organization Duitku credentials
                 </div>
                 <div className="mt-1 text-xs leading-5 text-emerald-800/80">
-                  QRIS kiosk akan dibuat memakai merchant code dan API key ini.
-                  API key disimpan terenkripsi dan tidak ditampilkan ulang.
+                  Kiosk QRIS will be generated using this merchant code and API key. The API key is stored encrypted and will not be shown again.
                 </div>
               </div>
 
@@ -173,8 +170,8 @@ export function PaymentSettingsCard<T extends SettingsForm>({
                   type="password"
                   placeholder={
                     privateGateway?.hasApiKey
-                      ? `Tersimpan ••••${privateGateway.apiKeyLast4 ?? ""}`
-                      : "Masukkan API key Duitku"
+                      ? `Saved ••••${privateGateway.apiKeyLast4 ?? ""}`
+                      : "Enter Duitku API key"
                   }
                   value={privateGatewayDraft.apiKey}
                   onChange={(event) =>
@@ -186,7 +183,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
                 />
                 {privateGateway?.hasApiKey ? (
                   <div className="mt-2 text-xs text-emerald-800/75">
-                    Kosongkan jika tidak ingin mengganti API key.
+                    Leave blank to keep the current API key.
                   </div>
                 ) : null}
               </SettingField>
@@ -212,10 +209,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
               <option value="SP">ShopeePay QRIS</option>
             </Select>
             <div className="mt-2 text-xs leading-5 text-zinc-500">
-              Berlaku untuk QRIS baru dari booth Flutter. Jika satu kanal
-              sedang gangguan, pilih kanal lain lalu simpan; perangkat akan
-              memakai pilihan baru pada pembayaran berikutnya. QR yang sudah
-              dibuat tetap memakai kanal sebelumnya.
+              Applies to new QRIS from Flutter booths. If one channel is experiencing issues, select another channel and save; devices will use the new selection on the next payment. QR codes already generated will continue using the previous channel.
             </div>
           </SettingField>
 
@@ -235,14 +229,14 @@ export function PaymentSettingsCard<T extends SettingsForm>({
               ))}
             </Select>
             <div className="mt-2 text-xs text-zinc-500">
-              Gateway checkout subscription mengikuti konfigurasi Super Admin.
+              Gateway checkout subscription follows Super Admin configuration.
             </div>
           </SettingField>
         </div>
         <div className="border-t border-zinc-100 pt-5">
           <SwitchSetting
             title="Auto retry failed QRIS payment"
-            description="Retry otomatis saat transaksi QRIS gagal diproses."
+            description="Automatically retry when a QRIS transaction fails to process."
             checked={form.qris_auto_retry}
             onCheckedChange={(v) =>
               setForm((f) => ({ ...f, qris_auto_retry: v }))

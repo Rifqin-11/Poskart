@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { AppConfigRow } from "@/types/app-config";
 import { PageHeader } from "@/features/admin/_components/page-header";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { ProfileCard } from "./_components/profile-card";
 import { EditProfileDialog } from "./_components/edit-profile-dialog";
 import { OrganizationCard } from "./_components/organization-card";
@@ -235,7 +236,7 @@ export function SettingsPanel({
     scope: Extract<SettingsTab, "payment" | "media">,
   ) => {
     if (!config) {
-      toast.error("Konfigurasi belum siap dimuat.");
+      toast.error("Configuration is not ready to load.");
       return false;
     }
 

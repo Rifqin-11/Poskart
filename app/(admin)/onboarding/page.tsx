@@ -61,7 +61,7 @@ export default async function OnboardingPage({
     const organization = Array.isArray(pendingOrganization)
       ? pendingOrganization[0]
       : pendingOrganization;
-    const orgName = organization?.name ?? "organisasi";
+    const orgName = organization?.name ?? "organization";
     return (
       <div className="flex min-h-[70vh] items-center justify-center p-4">
         <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -70,10 +70,10 @@ export default async function OnboardingPage({
               <UsersRound className="size-6 text-amber-600" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-              Menunggu Persetujuan
+              Pending Approval
             </h1>
             <p className="mt-2 text-sm text-zinc-500">
-              Permintaan Anda untuk bergabung dengan <strong className="text-zinc-900 font-medium">{orgName}</strong> sedang ditinjau. Anda akan mendapatkan akses setelah disetujui.
+              Your request to join <strong className="text-zinc-900 font-medium">{orgName}</strong> is under review. You will receive access once approved.
             </p>
           </div>
 
@@ -97,15 +97,15 @@ export default async function OnboardingPage({
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
                     <span className="relative inline-flex size-2 rounded-full bg-amber-500"></span>
                   </span>
-                  Dalam Peninjauan
+                  Under Review
                 </div>
               </div>
             </div>
             <div className="px-6 py-5">
               <div className="mb-6 space-y-1.5">
-                <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Dikirim Pada</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Submitted On</p>
                 <p className="text-sm font-medium text-zinc-900">
-                  {new Date(pendingRequest.created_at).toLocaleString("id-ID", {
+                  {new Date(pendingRequest.created_at).toLocaleString("en-US", {
                     dateStyle: "medium",
                     timeStyle: "short",
                   })}
@@ -118,15 +118,15 @@ export default async function OnboardingPage({
                   variant="outline"
                   className="w-full rounded-xl border-zinc-200 text-zinc-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
                 >
-                  Batalkan Permintaan
+                  Cancel Request
                 </Button>
               </form>
             </div>
           </div>
 
           <p className="text-center text-xs leading-relaxed text-zinc-400">
-            Ingin bergabung dengan workspace lain? <br/>
-            Batalkan permintaan ini untuk memasukkan kode baru.
+            Want to join a different workspace? <br/>
+            Cancel this request to enter a new code.
           </p>
         </div>
       </div>

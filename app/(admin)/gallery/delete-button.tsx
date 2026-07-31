@@ -20,10 +20,10 @@ export function DeleteSessionButton({ sessionId }: { sessionId: string }) {
     setLoading(true);
     try {
       await deleteGallerySession(sessionId);
-      toast.success("Foto berhasil dihapus");
+      toast.success("Photo deleted successfully");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Gagal menghapus foto",
+        error instanceof Error ? error.message : "Failed to delete photo",
       );
     } finally {
       setLoading(false);
@@ -35,7 +35,7 @@ export function DeleteSessionButton({ sessionId }: { sessionId: string }) {
       <button
         disabled={loading}
         onClick={() => setConfirmOpen(true)}
-        aria-label="Hapus hasil foto"
+        aria-label="Delete photo"
         className="grid size-8 place-items-center rounded-lg bg-zinc-100 text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
       >
         {loading ? (
@@ -48,10 +48,10 @@ export function DeleteSessionButton({ sessionId }: { sessionId: string }) {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         options={{
-          title: "Hapus foto ini?",
-          description: "Tindakan ini akan menghapus foto dari galeri web dan menghapus file secara permanen dari server cloud. Tindakan ini tidak dapat dibatalkan.",
-          confirmLabel: "Hapus Permanen",
-          cancelLabel: "Batal",
+          title: "Delete this photo?",
+          description: "This will permanently remove the photo from the web gallery and delete the file from cloud storage. This action cannot be undone.",
+          confirmLabel: "Delete Permanently",
+          cancelLabel: "Cancel",
           destructive: true,
           onConfirm: handleDelete,
         }}

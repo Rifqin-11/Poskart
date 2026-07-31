@@ -30,10 +30,10 @@ export function PrintSessionButton({
       await queryClient.invalidateQueries({
         queryKey: ["active-device-print-jobs"],
       });
-      toast.success("Perintah print dikirim ke device");
+      toast.success("Print command sent to device");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Gagal mengirim print",
+        error instanceof Error ? error.message : "Failed to send print",
       );
     } finally {
       setLoading(false);
@@ -45,9 +45,9 @@ export function PrintSessionButton({
       type="button"
       disabled={disabled || loading}
       onClick={handlePrint}
-      aria-label="Print foto pada device"
+      aria-label="Print photo on device"
       title={
-        disabled ? "Foto framed atau device tidak tersedia" : "Print di device"
+        disabled ? "Framed photo or device unavailable" : "Print on device"
       }
       className="grid size-8 place-items-center rounded-lg bg-zinc-100 text-zinc-700 transition-colors hover:bg-zinc-950 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
     >

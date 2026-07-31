@@ -551,7 +551,7 @@ export function NodeRenderer({
               fontWeight: 700,
             }}
           >
-            Kembali ke halaman awal
+            Back to home screen
           </span>
           <span
             style={{

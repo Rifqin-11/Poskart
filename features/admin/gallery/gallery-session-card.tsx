@@ -12,6 +12,7 @@ import {
   useGalleryShareSelection,
 } from "@/features/admin/gallery/gallery-share-manager";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 type GalleryPhoto = {
   id: string;

@@ -53,17 +53,17 @@ export function OrganizationDeleteDialog({
             <div>
               <p className="font-semibold">This action cannot be undone.</p>
               <p className="mt-1 leading-6 text-red-800">
-                Semua konfigurasi, perangkat, transaksi, voucher, dan data
-                workspace <span className="font-semibold">{organizationName}</span>{" "}
-                akan dihapus permanen.
+                All configuration, devices, transactions, vouchers, and data workspace{" "}
+                <span className="font-semibold">{organizationName}</span>{" "}
+                will be permanently deleted.
               </p>
             </div>
           </div>
         </div>
 
         <label className="block text-sm font-medium text-zinc-800">
-          Ketik <span className="font-mono text-red-700">{expectedConfirmation}</span>{" "}
-          untuk melanjutkan.
+          Type <span className="font-mono text-red-700">{expectedConfirmation}</span>{" "}
+          to continue.
           <Input
             className="mt-2 font-mono"
             value={confirmation}

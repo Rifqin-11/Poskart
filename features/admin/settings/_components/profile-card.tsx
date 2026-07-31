@@ -19,6 +19,7 @@ import {
   SettingsInlineHeader,
   SettingsPanelBlock,
 } from "./settings-card";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 type Account = {
   email: string;
@@ -62,6 +63,7 @@ export function ProfileCard({
   currentMemberRole,
   onEditProfile,
 }: ProfileCardProps) {
+  const { t } = useI18n();
   const accountInitials = account.fullName
     ? account.fullName
         .split(" ")
@@ -81,7 +83,7 @@ export function ProfileCard({
         <SettingsInlineHeader
           icon={<UserRound className="size-4" />}
           title="My details"
-          description="Kelola identitas akun yang dipakai untuk dashboard POSKART."
+          description={t("profile.identityDesc")}
         />
         <SettingsPanelBlock className="min-w-0 overflow-hidden">
           <div className="flex min-w-0 flex-col gap-5 md:flex-row md:items-center md:justify-between">

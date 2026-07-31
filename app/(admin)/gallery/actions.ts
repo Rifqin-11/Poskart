@@ -227,7 +227,7 @@ export async function queueGalleryPrint(sessionId: string, copies = 1) {
     .eq("organization_id", organizationId)
     .maybeSingle();
   if (sessionError || !session?.device_id) {
-    throw new Error("Device asal foto tidak ditemukan.");
+    throw new Error("Source device not found.");
   }
 
   const { data: framed, error: photoError } = await supabase
@@ -240,7 +240,7 @@ export async function queueGalleryPrint(sessionId: string, copies = 1) {
     .limit(1)
     .maybeSingle();
   if (photoError || !framed?.secure_url) {
-    throw new Error("Foto framed belum tersedia untuk dicetak.");
+    throw new Error("Framed photo not yet available for printing.");
   }
 
   const { error } = await supabase.from("device_print_jobs").insert({

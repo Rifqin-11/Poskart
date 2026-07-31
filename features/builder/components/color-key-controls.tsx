@@ -33,7 +33,7 @@ export function ColorKeyControls({
   const pickColor = async () => {
     const EyeDropper = (window as EyeDropperWindow).EyeDropper;
     if (!EyeDropper) {
-      toast.message("EyeDropper belum tersedia di browser ini. Pakai color input.");
+      toast.message("EyeDropper is not available in this browser. Use the color input instead.");
       return;
     }
 

@@ -64,27 +64,27 @@ const EMPTY_EVENT: PricingProductInput = {
 const PRICING_TOUR_STEPS: FeatureTourStep[] = [
   {
     selectors: ['[data-pricing-tour="packages"]'],
-    title: "Paket berbayar",
+    title: "Paid packages",
     description:
-      "Gunakan bagian ini untuk paket reguler. Pengunjung memilih paket dan menyelesaikan pembayaran sebelum sesi dimulai.",
+      "Use this section for regular packages. Visitors select a package and complete payment before the session starts.",
   },
   {
     selectors: ['[data-pricing-tour="package-info"]'],
-    title: "Atur manfaat paket",
+    title: "Configure package benefits",
     description:
-      "Setiap paket dapat memiliki harga, promo, batas cetak, QR download, GIF, dan Live Photo yang berbeda.",
+      "Each package can have different pricing, promotions, print limits, QR download, GIF, and Live Photo settings.",
   },
   {
     selectors: ['[data-pricing-tour="events"]'],
-    title: "Akses event",
+    title: "Event access",
     description:
-      "Event dipakai untuk sesi gratis yang ditanggung penyelenggara. Kiosk yang ditugaskan akan melewati pilihan paket dan pembayaran.",
+      "Events are used for free sessions covered by the organizer. Assigned kiosks will skip package selection and payment.",
   },
   {
     selectors: ['[data-pricing-tour="event-info"]'],
-    title: "Pilih mode yang tepat",
+    title: "Choose the right mode",
     description:
-      "Gunakan paket berbayar untuk operasional normal. Gunakan event hanya saat pengunjung memang tidak perlu checkout.",
+      "Use paid packages for normal operations. Use events only when visitors genuinely do not need to check out.",
   },
 ];
 

@@ -74,7 +74,7 @@ export async function GalleryPage() {
   const organizationId = membership?.organizationId;
 
   if (!organizationId) {
-    return <GalleryEmpty message="Akun ini belum terhubung ke organisasi." />;
+    return <GalleryEmptyLocalized noOrg />;
   }
 
   const [{ data: sessions }, { data: sharedGalleryRows }] = await Promise.all([

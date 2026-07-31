@@ -26,7 +26,7 @@ export default async function PosPage() {
 
       return {
         packages: [],
-        error: "Paket POS tidak dapat dimuat. Muat ulang halaman untuk mencoba lagi.",
+        error: "POS packages could not be loaded. Reload the page to try again.",
       };
     });
 

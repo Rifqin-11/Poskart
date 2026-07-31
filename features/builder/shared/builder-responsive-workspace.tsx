@@ -101,7 +101,7 @@ export function BuilderResponsiveWorkspace({
     activePanel === "layers"
       ? "Atur urutan, visibilitas, dan kunci layer."
       : activePanel === "add"
-        ? "Pilih komponen untuk ditambahkan ke canvas."
+        ? "Select a component to add to the canvas."
         : selectedPropertiesLabel
           ? `Mengatur ${selectedPropertiesLabel}.`
           : "Mengatur canvas dan halaman aktif.";

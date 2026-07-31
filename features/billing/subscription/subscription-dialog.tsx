@@ -43,7 +43,7 @@ export function SubscriptionDialog({
         duration: `${durationLabel} access`,
         description:
           fallback?.description ??
-          `Paket subscription POSKART untuk ${durationLabel} dengan ${deviceLabel}.`,
+          `POSKART subscription package for ${durationLabel} with ${deviceLabel}.`,
         cta: fallback?.cta ?? `Subscribe ${plan.name}`,
         highlighted: fallback?.highlighted ?? plan.includedDevices === 3,
         features: fallback?.features ?? [
@@ -75,8 +75,7 @@ export function SubscriptionDialog({
             Choose a POSKART subscription plan.
           </h3>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
-            Pilih paket langganan tanpa keluar dari dashboard. Setelah memilih
-            paket, checkout tetap berjalan di area admin.
+            Choose a subscription plan without leaving the dashboard. After selecting a plan, checkout continues within the admin area.
           </p>
         </div>
         {isLoading ? (
@@ -105,7 +104,7 @@ export function SubscriptionDialog({
 }
 
 function periodLabel(durationMonths: number) {
-  if (durationMonths === 1) return "/bulan";
-  if (durationMonths === 12) return "/tahun";
-  return `/${durationMonths} bulan`;
+  if (durationMonths === 1) return "/mo";
+  if (durationMonths === 12) return "/yr";
+  return `/${durationMonths} mo`;
 }

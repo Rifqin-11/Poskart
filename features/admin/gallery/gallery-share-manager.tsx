@@ -57,15 +57,15 @@ const GALLERY_TOUR_STEPS: FeatureTourStep[] = [
       '[data-gallery-tour="sessions"]',
       '[data-gallery-tour="empty"]',
     ],
-    title: "Hasil sesi photobooth",
+    title: "Photobooth session results",
     description:
-      "Setiap sesi yang selesai diproses dari kiosk muncul di sini. Buka card untuk melihat hasil dan tindakan yang tersedia.",
+      "Every completed session processed from the kiosk appears here. Open a card to view results and available actions.",
   },
   {
     selectors: ['[data-gallery-tour="shared-galleries"]'],
-    title: "Bagikan beberapa sesi",
+    title: "Share multiple sessions",
     description:
-      "Shared galleries menggabungkan beberapa sesi ke satu link publik yang dapat dibagikan kepada klien atau penyelenggara event.",
+      "Shared galleries combine multiple sessions into a single public link that can be shared with clients or event organizers.",
   },
 ];
 

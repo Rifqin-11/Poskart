@@ -60,7 +60,7 @@ export async function joinOrganizationAction(formData: FormData) {
   return encodedRedirect(
     "success",
     "/onboarding",
-    "Permintaan bergabung berhasil dikirim. Menunggu persetujuan pemilik atau admin.",
+    "Join request sent successfully. Waiting for owner or admin approval.",
   );
 }
 
@@ -79,7 +79,7 @@ export async function cancelMyPendingRequestAction(formData: FormData) {
     return encodedRedirect(
       "success",
       "/onboarding",
-      "Permintaan bergabung berhasil dibatalkan.",
+      "Join request cancelled successfully.",
     );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan.";

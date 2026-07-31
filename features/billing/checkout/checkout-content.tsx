@@ -210,14 +210,14 @@ export function CheckoutContent({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div>
                 <h2 className="text-lg font-semibold tracking-tight">
-                  Perpanjang lebih hemat
+                  Save more with longer plans
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">
-                  Pilih masa akses lebih panjang untuk harga yang lebih hemat.
+                  Choose a longer access period for a better price.
                 </p>
               </div>
               <span className="w-fit shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
-                {plan.durationMonths} bulan dipilih
+                {plan.durationMonths} months selected
               </span>
             </div>
 
@@ -241,7 +241,7 @@ export function CheckoutContent({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-zinc-950">
-                        {offer.durationMonths} bulan
+                        {offer.durationMonths} months
                       </span>
                       {savingsPercent > 0 ? (
                         <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
@@ -253,7 +253,7 @@ export function CheckoutContent({
                       <div className="min-w-0">
                         {originalAmount ? (
                           <span className="block text-xs text-zinc-400">
-                            Harga normal{" "}
+                            Regular price{" "}
                             <span className="line-through">
                               {formatCurrency(originalAmount)}
                             </span>
@@ -264,7 +264,7 @@ export function CheckoutContent({
                         </span>
                       </div>
                       <span className="shrink-0 text-xs font-medium text-[#00357B] transition group-hover:translate-x-0.5">
-                        Pilih →
+                        Select →
                       </span>
                     </div>
                   </Link>
@@ -302,7 +302,7 @@ export function CheckoutContent({
             <div className="flex shrink-0 items-center gap-2 self-start rounded-xl bg-white p-1 shadow-sm ring-1 ring-zinc-200 sm:self-auto">
               <button
                 type="button"
-                aria-label="Kurangi jumlah device"
+                aria-label="Decrease device count"
                 className="grid size-9 place-items-center rounded-lg text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-35"
                 disabled={quote.deviceCount <= plan.includedDevices}
                 onClick={() =>
@@ -321,7 +321,7 @@ export function CheckoutContent({
               </output>
               <button
                 type="button"
-                aria-label="Tambah jumlah device"
+                aria-label="Increase device count"
                 className="grid size-9 place-items-center rounded-lg text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-35"
                 disabled={quote.deviceCount >= 99}
                 onClick={() =>
