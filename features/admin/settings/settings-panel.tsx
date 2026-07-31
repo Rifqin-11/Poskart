@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { PencilLine, UserRound } from "lucide-react";
+import {
+  Building2,
+  CreditCard,
+  Image as ImageIcon,
+  Landmark,
+  PencilLine,
+  UserRound,
+  UsersRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -41,6 +49,7 @@ const SETTINGS_TABS = [
 ] as const;
 
 type SettingsTab = (typeof SETTINGS_TABS)[number]["id"];
+type OrganizationEditSection = "workspace" | "payout" | "team";
 
 function readSettingsTab(value: string | null): SettingsTab | null {
   return SETTINGS_TABS.some((tab) => tab.id === value)
@@ -50,10 +59,26 @@ function readSettingsTab(value: string | null): SettingsTab | null {
 
 function getSettingsTabs(t: (key: DictionaryKey) => string) {
   return [
-    { id: "details" as const, label: t("settings.tabDetails") },
-    { id: "organization" as const, label: t("settings.tabOrganization") },
-    { id: "payment" as const, label: t("settings.tabPayment") },
-    { id: "media" as const, label: t("settings.tabMedia") },
+    {
+      id: "details" as const,
+      label: t("settings.tabDetails"),
+      icon: UserRound,
+    },
+    {
+      id: "organization" as const,
+      label: t("settings.tabOrganization"),
+      icon: Building2,
+    },
+    {
+      id: "payment" as const,
+      label: t("settings.tabPayment"),
+      icon: CreditCard,
+    },
+    {
+      id: "media" as const,
+      label: t("settings.tabMedia"),
+      icon: ImageIcon,
+    },
   ];
 }
 
@@ -143,6 +168,9 @@ export function SettingsPanel({
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const [editOrganizationOpen, setEditOrganizationOpen] = useState(false);
+  const [organizationEditSection, setOrganizationEditSection] =
+    useState<OrganizationEditSection>("workspace");
+  const [editPaymentOpen, setEditPaymentOpen] = useState(false);
   const [editMediaOpen, setEditMediaOpen] = useState(false);
   const [form, setForm] = useState<SettingsForm>(DEFAULT_SETTINGS_FORM);
   const [account, setAccount] = useState<SettingsAccount>(initialAccount);
@@ -177,6 +205,8 @@ export function SettingsPanel({
   const updateQrisPaymentMethod = useUpdateQrisPaymentMethod();
   const savePrivateGateway = useSavePaymentGatewaySettings();
   const tabsListRef = useRef<HTMLDivElement>(null);
+  const formSnapshotRef = useRef<SettingsForm | null>(null);
+  const gatewaySnapshotRef = useRef<typeof privateGatewayDraft | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
@@ -380,6 +410,37 @@ export function SettingsPanel({
     updatePaymentMode.isPending ||
     updateQrisPaymentMethod.isPending ||
     savePrivateGateway.isPending;
+
+  const openPaymentEditor = () => {
+    formSnapshotRef.current = { ...form };
+    gatewaySnapshotRef.current = { ...privateGatewayDraft };
+    setEditPaymentOpen(true);
+  };
+
+  const closePaymentEditor = (restoreDraft = true) => {
+    if (restoreDraft && formSnapshotRef.current) {
+      setForm(formSnapshotRef.current);
+    }
+    if (restoreDraft && gatewaySnapshotRef.current) {
+      setPrivateGatewayDraft(gatewaySnapshotRef.current);
+    }
+    formSnapshotRef.current = null;
+    gatewaySnapshotRef.current = null;
+    setEditPaymentOpen(false);
+  };
+
+  const openMediaEditor = () => {
+    formSnapshotRef.current = { ...form };
+    setEditMediaOpen(true);
+  };
+
+  const closeMediaEditor = (restoreDraft = true) => {
+    if (restoreDraft && formSnapshotRef.current) {
+      setForm(formSnapshotRef.current);
+    }
+    formSnapshotRef.current = null;
+    setEditMediaOpen(false);
+  };
   const visibleActiveTab: SettingsTab = organizationOnly
     ? "organization"
     : visibleTabs.some((t) => t.id === activeTab)
@@ -412,7 +473,7 @@ export function SettingsPanel({
             });
             setEditProfileOpen(true);
           }}
-          className="rounded-2xl"
+          className="rounded-xl"
         >
           <UserRound className="size-4" />
           Change profile
@@ -425,11 +486,27 @@ export function SettingsPanel({
       return (
         <Button
           type="button"
-          onClick={() => setEditOrganizationOpen(true)}
-          className="rounded-2xl"
+          onClick={() => {
+            setOrganizationEditSection("workspace");
+            setEditOrganizationOpen(true);
+          }}
+          className="rounded-xl"
         >
           <PencilLine className="size-4" />
           Edit organization
+        </Button>
+      );
+    }
+
+    if (visibleActiveTab === "payment") {
+      return (
+        <Button
+          type="button"
+          onClick={openPaymentEditor}
+          className="rounded-xl"
+        >
+          <PencilLine className="size-4" />
+          Edit payment
         </Button>
       );
     }
@@ -438,8 +515,8 @@ export function SettingsPanel({
       return (
         <Button
           type="button"
-          onClick={() => setEditMediaOpen(true)}
-          className="rounded-2xl"
+          onClick={openMediaEditor}
+          className="rounded-xl"
         >
           <PencilLine className="size-4" />
           Edit
@@ -451,22 +528,23 @@ export function SettingsPanel({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="-mx-4 min-w-0 sm:mx-0">
       <PageHeader
         title="Settings"
         description="Manage account profile, workspace, payment, media, and POSKART defaults."
         action={getHeaderAction()}
       />
 
-      <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm shadow-zinc-200/70">
-        <div className="border-b border-zinc-100 p-3">
+      <div className="space-y-3">
+        <nav className="flex items-stretch gap-2">
           <div
             ref={tabsListRef}
-            className="flex max-w-full flex-nowrap gap-1.5 overflow-x-auto rounded-[1.35rem] bg-zinc-50 p-1.5 [-ms-overflow-style:none] [mask-image:linear-gradient(to_right,transparent,black_18px,black_calc(100%-18px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-zinc-50 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {visibleTabs.map((tab) => {
               const active = visibleActiveTab === tab.id;
               const disabled = organizationOnly && tab.id !== "organization";
+              const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
@@ -477,38 +555,29 @@ export function SettingsPanel({
                   }}
                   disabled={disabled}
                   className={cn(
-                    "h-10 shrink-0 rounded-2xl px-4 text-sm font-medium leading-tight transition-colors",
+                    "flex min-w-[150px] flex-1 shrink-0 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]/20",
                     active
-                      ? "bg-white text-zinc-950 shadow-sm"
+                      ? "bg-white text-zinc-950 shadow-sm hover:bg-white"
                       : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",
                     disabled &&
-                      "cursor-not-allowed opacity-45 hover:bg-transparent",
+                      "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-zinc-500",
                   )}
                 >
-                  {tab.label}
+                  <Icon className="size-4 shrink-0" />
+                  <span className="truncate">{tab.label}</span>
                 </button>
               );
             })}
           </div>
-        </div>
+        </nav>
 
-        <div className="p-5 sm:p-6 lg:p-8">
+        <div className="min-w-0 rounded-3xl border border-zinc-200 bg-white p-4 shadow-sm shadow-zinc-200/40 sm:p-6 lg:p-8">
           {visibleActiveTab === "details" ? (
             <ProfileCard
               account={account}
               currentMemberRole={
                 currentMember?.role ?? initialMemberRole ?? undefined
               }
-              onEditProfile={() => {
-                setProfileDraft({
-                  fullName: account.fullName,
-                  phone: account.phone,
-                  jobTitle: account.jobTitle,
-                  timezone: account.timezone,
-                  memberRole: currentMember?.role ?? initialMemberRole ?? "",
-                });
-                setEditProfileOpen(true);
-              }}
             />
           ) : null}
 
@@ -531,8 +600,7 @@ export function SettingsPanel({
               privateGateway={privateGateway}
               privateGatewayDraft={privateGatewayDraft}
               setPrivateGatewayDraft={setPrivateGatewayDraft}
-              saving={isSavingSettings}
-              onSave={() => void handleSave("payment")}
+              mode="summary"
             />
           ) : null}
 
@@ -560,20 +628,107 @@ export function SettingsPanel({
           open={editOrganizationOpen}
           onOpenChange={(open) => setEditOrganizationOpen(open)}
           title="Edit organization"
-          className="max-w-5xl rounded-3xl"
+          className="max-w-3xl rounded-3xl"
         >
+          <div
+            className="mb-3 grid gap-1 rounded-full border border-zinc-200 bg-zinc-50 p-1"
+            style={{
+              gridTemplateColumns: `repeat(${myRole === "owner" ? 3 : 2}, minmax(0, 1fr))`,
+            }}
+          >
+            {[
+              {
+                id: "workspace" as const,
+                label: "Workspace",
+                icon: Building2,
+              },
+              ...(myRole === "owner"
+                ? [
+                    {
+                      id: "payout" as const,
+                      label: "Payout",
+                      icon: Landmark,
+                    },
+                  ]
+                : []),
+              { id: "team" as const, label: "Team", icon: UsersRound },
+            ].map((section) => {
+              const Icon = section.icon;
+              const active = organizationEditSection === section.id;
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => setOrganizationEditSection(section.id)}
+                  className={cn(
+                    "flex items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-white text-zinc-950 shadow-sm"
+                      : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",
+                  )}
+                >
+                  <Icon className="size-4" />
+                  {section.label}
+                </button>
+              );
+            })}
+          </div>
           <OrganizationCard
             myEmail={account.email}
             subscriptionRequired={subscriptionRequired}
             isEditing
+            editSection={organizationEditSection}
           />
+        </Dialog>
+      ) : null}
+
+      {editPaymentOpen ? (
+        <Dialog
+          open={editPaymentOpen}
+          onOpenChange={(open) => {
+            if (!open) closePaymentEditor();
+          }}
+          title="Edit payment settings"
+          className="max-w-3xl rounded-3xl"
+        >
+          <form
+            className="space-y-5"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const saved = await handleSave("payment");
+              if (saved) closePaymentEditor(false);
+            }}
+          >
+            <PaymentSettingsCard
+              form={form}
+              setForm={setForm}
+              superadminGateway={
+                config?.subscription_payment_gateway ??
+                form.subscription_payment_gateway
+              }
+              privateGateway={privateGateway}
+              privateGatewayDraft={privateGatewayDraft}
+              setPrivateGatewayDraft={setPrivateGatewayDraft}
+              mode="form"
+            />
+            <div className="-mx-4 -mb-4 border-t border-zinc-100 bg-white px-4 pt-3 sm:-mx-5 sm:-mb-5 sm:px-5">
+              <DialogActions
+                submitting={isSavingSettings}
+                submitLabel="Save changes"
+                submittingLabel="Saving..."
+                onCancel={() => closePaymentEditor()}
+              />
+            </div>
+          </form>
         </Dialog>
       ) : null}
 
       {editMediaOpen ? (
         <Dialog
           open={editMediaOpen}
-          onOpenChange={(open) => setEditMediaOpen(open)}
+          onOpenChange={(open) => {
+            if (!open) closeMediaEditor();
+          }}
           title="Edit media & gallery"
           className="max-w-3xl rounded-3xl"
         >
@@ -582,16 +737,16 @@ export function SettingsPanel({
             onSubmit={async (event) => {
               event.preventDefault();
               const saved = await handleSave("media");
-              if (saved) setEditMediaOpen(false);
+              if (saved) closeMediaEditor(false);
             }}
           >
             <MediaSettingsCard form={form} setForm={setForm} mode="form" />
-            <div className="border-t border-zinc-200 pt-4">
+            <div className="-mx-4 -mb-4 border-t border-zinc-100 bg-white px-4 pt-3 sm:-mx-5 sm:-mb-5 sm:px-5">
               <DialogActions
                 submitting={isSavingSettings}
                 submitLabel="Save changes"
                 submittingLabel="Saving..."
-                onCancel={() => setEditMediaOpen(false)}
+                onCancel={() => closeMediaEditor()}
               />
             </div>
           </form>

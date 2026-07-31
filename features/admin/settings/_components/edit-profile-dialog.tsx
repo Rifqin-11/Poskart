@@ -5,6 +5,8 @@ import { useI18n } from "@/lib/i18n/i18n-provider";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { DialogActions } from "@/features/admin/_components/dialog-actions";
+import { BriefcaseBusiness, Clock3, Mail, Phone, UserRound } from "lucide-react";
+import { SettingField, SettingsFormIntro } from "./settings-card";
 
 type ProfileDraft = {
   fullName: string;
@@ -40,80 +42,111 @@ export function EditProfileDialog({
     <Dialog
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title="Edit Profile"
+      title="Edit profile"
+      className="max-w-2xl rounded-3xl"
     >
       <form
-        className="grid gap-4 md:grid-cols-2"
+        className="space-y-5"
         onSubmit={(e) => {
           e.preventDefault();
           onSubmit();
         }}
       >
-        <label className="block text-xs font-medium text-zinc-600">
-          Display name
-          <Input
-            className="mt-1"
-            placeholder={t("profile.fullNamePlaceholder")}
-            value={profileDraft.fullName}
-            onChange={(ev) =>
-              setProfileDraft((d) => ({ ...d, fullName: ev.target.value }))
-            }
-          />
-        </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Email
-          <Input
-            className="mt-1 bg-zinc-50"
-            value={email}
-            readOnly
-          />
-        </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Phone
-          <Input
-            className="mt-1"
-            placeholder="+62..."
-            value={profileDraft.phone}
-            onChange={(ev) =>
-              setProfileDraft((d) => ({ ...d, phone: ev.target.value }))
-            }
-          />
-        </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Job title
-          <Input
-            className="mt-1"
-            placeholder="Owner, Operator, Admin..."
-            value={profileDraft.jobTitle}
-            onChange={(ev) =>
-              setProfileDraft((d) => ({ ...d, jobTitle: ev.target.value }))
-            }
-          />
-        </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Timezone
-          <Select
-            className="mt-1"
-            value={profileDraft.timezone}
-            onChange={(ev) =>
-              setProfileDraft((d) => ({ ...d, timezone: ev.target.value }))
-            }
-          >
-            <option value="Asia/Jakarta">Asia/Jakarta</option>
-            <option value="Asia/Makassar">Asia/Makassar</option>
-            <option value="Asia/Jayapura">Asia/Jayapura</option>
-            <option value="UTC">UTC</option>
-          </Select>
-        </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Role
-          <Input
-            className="mt-1 bg-zinc-50 font-semibold capitalize"
-            value={currentMemberRole ?? "member"}
-            readOnly
-          />
-        </label>
-        <div className="col-span-2 border-t border-zinc-200 pt-4">
+        <SettingsFormIntro
+          icon={<UserRound className="size-4" />}
+          title="Personal information"
+          description="Update the information shown to other members in your POSKART workspace."
+        />
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <SettingField label="Display name">
+            <div className="relative">
+              <UserRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+              <Input
+                className="pl-9"
+                placeholder={t("profile.fullNamePlaceholder")}
+                value={profileDraft.fullName}
+                onChange={(event) =>
+                  setProfileDraft((draft) => ({
+                    ...draft,
+                    fullName: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </SettingField>
+          <SettingField label="Email">
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+              <Input
+                className="bg-zinc-50 pl-9 text-zinc-500"
+                value={email}
+                readOnly
+              />
+            </div>
+          </SettingField>
+          <SettingField label="Phone">
+            <div className="relative">
+              <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+              <Input
+                className="pl-9"
+                placeholder="+62..."
+                value={profileDraft.phone}
+                onChange={(event) =>
+                  setProfileDraft((draft) => ({
+                    ...draft,
+                    phone: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </SettingField>
+          <SettingField label="Job title">
+            <div className="relative">
+              <BriefcaseBusiness className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+              <Input
+                className="pl-9"
+                placeholder="Owner, Operator, Admin..."
+                value={profileDraft.jobTitle}
+                onChange={(event) =>
+                  setProfileDraft((draft) => ({
+                    ...draft,
+                    jobTitle: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </SettingField>
+          <SettingField label="Timezone">
+            <div className="relative">
+              <Clock3 className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-zinc-400" />
+              <Select
+                className="pl-9"
+                value={profileDraft.timezone}
+                onChange={(event) =>
+                  setProfileDraft((draft) => ({
+                    ...draft,
+                    timezone: event.target.value,
+                  }))
+                }
+              >
+                <option value="Asia/Jakarta">Asia/Jakarta</option>
+                <option value="Asia/Makassar">Asia/Makassar</option>
+                <option value="Asia/Jayapura">Asia/Jayapura</option>
+                <option value="UTC">UTC</option>
+              </Select>
+            </div>
+          </SettingField>
+          <SettingField label="Workspace role">
+            <Input
+              className="bg-zinc-50 font-medium capitalize text-zinc-500"
+              value={currentMemberRole ?? "member"}
+              readOnly
+            />
+          </SettingField>
+        </div>
+
+        <div className="-mx-4 -mb-4 border-t border-zinc-100 bg-white px-4 pt-3 sm:-mx-5 sm:-mb-5 sm:px-5">
           <DialogActions
             submitting={profileSaving}
             submitLabel="Save changes"

@@ -22,24 +22,22 @@ export function SettingsCard({
   return (
     <section
       className={cn(
-        "grid gap-5 border-b border-zinc-100 pb-8 last:border-b-0 last:pb-0 lg:grid-cols-[240px_minmax(0,1fr)]",
+        "grid min-w-0 gap-6 border-b border-zinc-100 py-7 last:border-b-0 last:pb-0 lg:grid-cols-[200px_minmax(0,1fr)]",
         className,
       )}
     >
-      <div className="flex items-start gap-3">
-        {icon ? (
-          <div className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-zinc-50 text-zinc-600">
+      <div className="flex items-start gap-2.5">
+        {icon && (
+          <div className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl border border-zinc-200 bg-white text-zinc-500">
             {icon}
           </div>
-        ) : null}
+        )}
         <div>
-          <h3 className="text-sm font-semibold text-zinc-950">{title}</h3>
-          <p className="mt-1 text-sm leading-6 text-zinc-500">
-            {description}
-          </p>
+          <h3 className="text-[13px] font-semibold text-zinc-900">{title}</h3>
+          <p className="mt-1 text-xs leading-5 text-zinc-400">{description}</p>
         </div>
       </div>
-      <div>{children}</div>
+      <div className="min-w-0">{children}</div>
     </section>
   );
 }
@@ -54,11 +52,62 @@ export function SettingsPanelBlock({
   return (
     <div
       className={cn(
-        "rounded-3xl border border-zinc-200 bg-zinc-50/70 p-4 sm:p-5",
+        "rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5",
         className,
       )}
     >
       {children}
+    </div>
+  );
+}
+
+export function SettingsSummaryItem({
+  label,
+  value,
+  icon,
+  helper,
+}: {
+  label: string;
+  value: ReactNode;
+  icon?: ReactNode;
+  helper?: string;
+}) {
+  return (
+    <div className="min-w-0 border-b border-zinc-100 py-3 first:pt-0 last:border-b-0 last:pb-0 sm:border-b-0 sm:border-r sm:px-4 sm:py-0 sm:first:pl-0 sm:[&:nth-child(2)]:border-r-0 sm:last:border-r-0 sm:last:pr-0 xl:[&:nth-child(2)]:border-r">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400">
+        {icon}
+        {label}
+      </div>
+      <div className="mt-1.5 truncate text-sm font-semibold text-zinc-950">
+        {value}
+      </div>
+      {helper ? (
+        <p className="mt-1 text-xs leading-5 text-zinc-400">{helper}</p>
+      ) : null}
+    </div>
+  );
+}
+
+export function SettingsFormIntro({
+  title,
+  description,
+  icon,
+}: {
+  title: string;
+  description: string;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl bg-zinc-50 px-4 py-3.5">
+      <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#00357B] text-white">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <h3 className="text-sm font-semibold text-zinc-950">{title}</h3>
+        <p className="mt-0.5 max-w-2xl text-xs leading-5 text-zinc-500">
+          {description}
+        </p>
+      </div>
     </div>
   );
 }
@@ -76,15 +125,15 @@ export function SettingsInlineHeader({
 }) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div className="flex items-start gap-3">
-        {icon ? (
-          <div className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-2xl border border-zinc-200 bg-zinc-50 text-zinc-600">
+      <div className="flex items-start gap-2.5">
+        {icon && (
+          <div className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl border border-zinc-200 bg-white text-zinc-500">
             {icon}
           </div>
-        ) : null}
+        )}
         <div>
-          <h3 className="text-sm font-semibold text-zinc-950">{title}</h3>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-500">
+          <h3 className="text-[13px] font-semibold text-zinc-900">{title}</h3>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-zinc-400">
             {description}
           </p>
         </div>
@@ -106,7 +155,7 @@ export function SettingField({
   return (
     <label
       className={cn(
-        "block min-w-0 text-xs font-medium text-zinc-600",
+        "block min-w-0 text-[11px] font-medium uppercase tracking-wide text-zinc-400 [&_input:not([readonly]):not([disabled])]:border-zinc-300 [&_input:not([readonly]):not([disabled])]:bg-white [&_input:not([readonly]):not([disabled])]:text-zinc-950 [&_input:not([readonly]):not([disabled])]:shadow-sm [&_input:not([readonly]):not([disabled])]:focus:border-[#00357B] [&_input:not([readonly]):not([disabled])]:focus:ring-[#00357B]/15 [&_select:not([disabled])]:border-zinc-300 [&_select:not([disabled])]:bg-white [&_select:not([disabled])]:text-zinc-950 [&_select:not([disabled])]:shadow-sm [&_select:not([disabled])]:focus:border-[#00357B] [&_select:not([disabled])]:focus:ring-[#00357B]/15",
         className,
       )}
     >
@@ -128,14 +177,12 @@ export function SwitchSetting({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex min-h-20 items-center justify-between gap-4 rounded-3xl border border-zinc-200 bg-white p-4">
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3">
       <div className="min-w-0">
-        <div className="text-sm font-medium text-zinc-900">{title}</div>
-        {description ? (
-          <p className="mt-1 text-xs leading-5 text-zinc-500">
-            {description}
-          </p>
-        ) : null}
+        <div className="text-[13px] font-medium text-zinc-900">{title}</div>
+        {description && (
+          <p className="mt-0.5 text-xs leading-5 text-zinc-400">{description}</p>
+        )}
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
     </div>

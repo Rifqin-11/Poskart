@@ -59,11 +59,13 @@ import { getMyPayoutSummary } from "@/server/admin/actions/payout-actions";
 import type { PayoutAccount } from "@/types/payout";
 import { OrganizationDeleteDialog } from "./organization-delete-dialog";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { cn } from "@/lib/utils";
 
 type OrganizationCardProps = {
   myEmail: string;
   subscriptionRequired: boolean;
   isEditing: boolean;
+  editSection?: "workspace" | "payout" | "team";
 };
 
 type OrganizationMemberRow = {
@@ -110,12 +112,12 @@ function OrganizationMetric({
   value: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 rounded-3xl border border-zinc-200 bg-white p-4">
-      <div className="flex items-center gap-2 text-xs font-medium text-zinc-500">
+    <div className="min-w-0 rounded-xl border border-zinc-100 bg-zinc-50/60 px-4 py-3">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400">
         {icon}
         {label}
       </div>
-      <div className="mt-2 truncate text-sm font-semibold text-zinc-950">
+      <div className="mt-1.5 truncate text-sm font-semibold text-zinc-950">
         {value}
       </div>
     </div>
@@ -126,6 +128,7 @@ export function OrganizationCard({
   myEmail,
   subscriptionRequired,
   isEditing,
+  editSection = "workspace",
 }: OrganizationCardProps) {
   const { t } = useI18n();
   const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
@@ -189,16 +192,19 @@ export function OrganizationCard({
   const canEditDetails = isOwner || isAdmin;
   const canViewPayout = isOwner;
   const canViewSubscription = isOwner;
+  const showWorkspace = !isEditing || editSection === "workspace";
+  const showPayout = !isEditing || editSection === "payout";
+  const showTeam = !isEditing || editSection === "team";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-0">
       {confirmRemove.dialog}
       {confirmTransfer.dialog}
       {confirmLeave.dialog}
-      {subscriptionRequired || isFreeAccount ? (
-        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+      {!isEditing && (subscriptionRequired || isFreeAccount) ? (
+        <div className="mb-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-700">
+            <div className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
               <LockKeyhole className="size-4" />
             </div>
             <div>
@@ -216,161 +222,165 @@ export function OrganizationCard({
         </div>
       ) : null}
 
-      <SettingsCard
-        icon={<Building2 className="size-4" />}
-        title="Workspace"
-        description={t("settings.orgIdentityDesc")}
-      >
-        <div className="space-y-4">
-          <SettingsPanelBlock className="bg-white">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-400">
-                  Organization name
-                </div>
-                <div className="mt-2 truncate text-2xl font-semibold text-zinc-950">
-                  {isLoadingTenant
-                    ? "Loading organization..."
-                    : tenant?.name ?? "POSKART Workspace"}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={subscriptionActive ? "default" : "secondary"}
-                  className="capitalize"
-                >
-                  {subscriptionActive ? "active" : subscriptionStatus}
-                </Badge>
-              </div>
-            </div>
-          </SettingsPanelBlock>
-
-          {isEditing && canEditDetails && (
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-              <label className="block text-xs font-medium text-zinc-600">
-                Edit organization name
-                <Input
-                  className="mt-1.5"
-                  value={organizationName}
-                  onChange={(event) => setEditedName(event.target.value)}
-                  placeholder="POSKART Admin"
-                />
-              </label>
-              <div className="flex gap-2 self-end">
-                <Button
-                  className="rounded-2xl"
-                  disabled={
-                    !organizationName.trim() ||
-                    organizationName === tenant?.name ||
-                    updateName.isPending
-                  }
-                  onClick={() => {
-                    updateName.mutate(organizationName.trim(), {
-                      onSuccess: () => {
-                        toast.success("Organization name updated");
-                        setEditedName(null);
-                      },
-                      onError: (err) =>
-                        toast.error(
-                          err instanceof Error
-                            ? err.message
-                            : "Failed to update organization",
-                        ),
-                    });
-                  }}
-                >
-                  {updateName.isPending ? "Saving..." : "Save name"}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {canManageTeam && (
-            <div className="rounded-3xl border border-zinc-200 bg-zinc-50/70 p-4">
-              <div className="flex items-center gap-2 text-xs font-medium text-zinc-500">
-                <KeyRound className="size-3.5" />
-                Organization join code
-              </div>
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-2">
-                  <div className="inline-flex w-fit rounded-2xl border border-zinc-200 bg-white px-4 py-2 font-mono text-sm font-semibold tracking-[0.24em] text-zinc-950">
-                    {joinCode}
+      {showWorkspace ? (
+        <SettingsCard
+          icon={<Building2 className="size-4" />}
+          title="Workspace"
+          description={t("settings.orgIdentityDesc")}
+        >
+          <div className="space-y-4">
+            <SettingsPanelBlock className="bg-zinc-50/40">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-400">
+                    Organization name
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="rounded-2xl shrink-0"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(joinCode);
-                      toast.success("Join code disalin");
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    }}
-                    title="Salin join code"
+                  <div className="mt-1.5 truncate text-xl font-semibold text-zinc-950 sm:text-2xl">
+                    {isLoadingTenant
+                      ? "Loading organization..."
+                      : tenant?.name ?? "POSKART Workspace"}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={subscriptionActive ? "default" : "secondary"}
+                    className="capitalize"
                   >
-                    {copied ? (
-                      <Check className="size-4 text-emerald-500" />
-                    ) : (
-                      <Copy className="size-4 text-zinc-500" />
-                    )}
+                    {subscriptionActive ? "active" : subscriptionStatus}
+                  </Badge>
+                </div>
+              </div>
+            </SettingsPanelBlock>
+
+            {isEditing && canEditDetails && (
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <label className="block text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                  Edit organization name
+                  <Input
+                    className="mt-1.5"
+                    value={organizationName}
+                    onChange={(event) => setEditedName(event.target.value)}
+                    placeholder="POSKART Admin"
+                  />
+                </label>
+                <div className="flex gap-2 self-end">
+                  <Button
+                    className="rounded-xl"
+                    disabled={
+                      !organizationName.trim() ||
+                      organizationName === tenant?.name ||
+                      updateName.isPending
+                    }
+                    onClick={() => {
+                      updateName.mutate(organizationName.trim(), {
+                        onSuccess: () => {
+                          toast.success("Organization name updated");
+                          setEditedName(null);
+                        },
+                        onError: (err) =>
+                          toast.error(
+                            err instanceof Error
+                              ? err.message
+                              : "Failed to update organization",
+                          ),
+                      });
+                    }}
+                  >
+                    {updateName.isPending ? "Saving..." : "Save name"}
                   </Button>
                 </div>
-                <p className="text-xs leading-5 text-zinc-500">
-                  Bagikan code ini ke staff agar mereka bisa join workspace saat
-                  onboarding.
-                </p>
               </div>
-            </div>
-          )}
-        </div>
-      </SettingsCard>
+            )}
 
-      <SettingsCard
-        icon={<CreditCard className="size-4" />}
-        title="Subscription"
-        description={t("settings.subscriptionDesc")}
-      >
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <OrganizationMetric
-              icon={<CreditCard className="size-3.5" />}
-              label="Plan"
-              value={planName}
-            />
-            <OrganizationMetric
-              icon={<ShieldCheck className="size-3.5" />}
-              label="Status"
-              value={
-                <span className="capitalize">
-                  {subscriptionActive ? "active" : subscriptionStatus}
-                </span>
-              }
-            />
-            <OrganizationMetric
-              icon={<Store className="size-3.5" />}
-              label="Device limit"
-              value={`${deviceLimit} device${deviceLimit > 1 ? "s" : ""}`}
-            />
-            <OrganizationMetric
-              icon={<Timer className="size-3.5" />}
-              label="Expiry"
-              value={formatDate(tenant?.subscription_expires_at)}
-            />
+            {canManageTeam && (
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+                  <KeyRound className="size-3.5" />
+                  Organization join code
+                </div>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="inline-flex w-fit rounded-xl border border-zinc-200 bg-white px-4 py-2 font-mono text-sm font-semibold tracking-[0.24em] text-zinc-950">
+                      {joinCode}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0 rounded-xl"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(joinCode);
+                        toast.success("Join code disalin");
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      title="Salin join code"
+                    >
+                      {copied ? (
+                        <Check className="size-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="size-4 text-zinc-500" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs leading-5 text-zinc-500">
+                    Bagikan code ini ke staff agar mereka bisa join workspace saat
+                    onboarding.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-          {canViewSubscription && (
-            <Button
-              type="button"
-              className="w-full rounded-2xl"
-              onClick={() => setSubscriptionDialogOpen(true)}
-            >
-              {isFreeAccount ? "View subscription plans" : "Manage billing"}
-            </Button>
-          )}
-        </div>
-      </SettingsCard>
+        </SettingsCard>
+      ) : null}
 
-      {canViewPayout && (
+      {!isEditing ? (
+        <SettingsCard
+          icon={<CreditCard className="size-4" />}
+          title="Subscription"
+          description={t("settings.subscriptionDesc")}
+        >
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <OrganizationMetric
+                icon={<CreditCard className="size-3.5" />}
+                label="Plan"
+                value={planName}
+              />
+              <OrganizationMetric
+                icon={<ShieldCheck className="size-3.5" />}
+                label="Status"
+                value={
+                  <span className="capitalize">
+                    {subscriptionActive ? "active" : subscriptionStatus}
+                  </span>
+                }
+              />
+              <OrganizationMetric
+                icon={<Store className="size-3.5" />}
+                label="Device limit"
+                value={`${deviceLimit} device${deviceLimit > 1 ? "s" : ""}`}
+              />
+              <OrganizationMetric
+                icon={<Timer className="size-3.5" />}
+                label="Expiry"
+                value={formatDate(tenant?.subscription_expires_at)}
+              />
+            </div>
+            {canViewSubscription && (
+              <Button
+                type="button"
+                className="rounded-xl"
+                onClick={() => setSubscriptionDialogOpen(true)}
+              >
+                {isFreeAccount ? "View subscription plans" : "Manage billing"}
+              </Button>
+            )}
+          </div>
+        </SettingsCard>
+      ) : null}
+
+      {canViewPayout && showPayout ? (
         <SettingsCard
           icon={<Landmark className="size-4" />}
           title="Payout account"
@@ -383,21 +393,22 @@ export function OrganizationCard({
             isEditing={isEditing}
           />
         </SettingsCard>
-      )}
+      ) : null}
 
-      <SettingsCard
-        icon={<UserRound className="size-4" />}
-        title="Team"
-        description={t("settings.membersDesc")}
-        className="border-b-0 pb-0"
-      >
-        <div className="space-y-5">
+      {showTeam ? (
+        <SettingsCard
+          icon={<UserRound className="size-4" />}
+          title="Team"
+          description={t("settings.membersDesc")}
+          className="border-b-0 pb-0"
+        >
+          <div className="space-y-5">
           {canManageTeam && isEditing && (
             <div className="flex justify-end">
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-2xl"
+                className="rounded-xl"
                 onClick={() => setInviteDialogOpen(true)}
               >
                 <MailPlus className="size-4" />
@@ -406,25 +417,39 @@ export function OrganizationCard({
             </div>
           )}
 
-          <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white">
-            <Table>
+          <div className="max-w-full overflow-x-auto rounded-2xl border border-zinc-200 bg-white">
+            <Table className={cn(!isEditing && "table-fixed")}>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Joined At</TableHead>
+                  <TableHead className={!isEditing ? "w-[65%] sm:w-auto" : undefined}>
+                    User Email
+                  </TableHead>
+                  <TableHead className={!isEditing ? "w-[35%] sm:w-auto" : undefined}>
+                    Role
+                  </TableHead>
+                  <TableHead className={!isEditing ? "hidden sm:table-cell" : undefined}>
+                    Joined At
+                  </TableHead>
                   {canManageTeam && isEditing && <TableHead className="text-right">Action</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {memberRows.map((member) => (
                   <TableRow key={member.id}>
-                    <TableCell className="font-medium">
-                      {member.email}
+                    <TableCell className="min-w-0 align-top font-medium sm:align-middle">
+                      <span className="break-all">{member.email}</span>
                       {member.email === myEmail ? (
-                        <Badge variant="secondary" className="ml-2 text-[10px]">
+                        <Badge
+                          variant="secondary"
+                          className="ml-1.5 align-middle text-[10px]"
+                        >
                           You
                         </Badge>
+                      ) : null}
+                      {!isEditing ? (
+                        <span className="mt-1 block text-[11px] font-normal text-zinc-400 sm:hidden">
+                          Joined {formatDate(member.created_at)}
+                        </span>
                       ) : null}
                     </TableCell>
                     <TableCell>
@@ -467,7 +492,12 @@ export function OrganizationCard({
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-zinc-500">
+                    <TableCell
+                      className={cn(
+                        "text-zinc-500",
+                        !isEditing && "hidden sm:table-cell",
+                      )}
+                    >
                       {formatDate(member.created_at)}
                     </TableCell>
                     {canManageTeam && isEditing && (
@@ -557,7 +587,7 @@ export function OrganizationCard({
           </div>
 
           {canManageTeam && invitationRows.length > 0 && (
-            <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white">
+            <div className="max-w-full overflow-x-auto rounded-2xl border border-zinc-200 bg-white">
               <div className="border-b border-zinc-100 px-4 py-3 text-sm font-semibold text-zinc-950">
                 Pending invitations
               </div>
@@ -610,7 +640,7 @@ export function OrganizationCard({
           )}
 
           {canManageTeam && requestRows.length > 0 && (
-            <div className="overflow-hidden rounded-3xl border border-amber-200 bg-white shadow-sm">
+            <div className="max-w-full overflow-x-auto rounded-2xl border border-amber-200 bg-white">
               <div className="border-b border-amber-100 bg-amber-50/50 px-4 py-3 text-sm font-semibold text-amber-900 flex items-center justify-between">
                 <span>Pending Join Requests</span>
                 <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-100">{requestRows.length} requests</Badge>
@@ -683,10 +713,11 @@ export function OrganizationCard({
               </Table>
             </div>
           )}
-        </div>
-      </SettingsCard>
+          </div>
+        </SettingsCard>
+      ) : null}
 
-      {!isOwner ? (
+      {!isEditing && !isOwner ? (
         <SettingsCard
           icon={<LogOut className="size-4" />}
           title="Leave Workspace"
@@ -699,7 +730,7 @@ export function OrganizationCard({
             <Button
               type="button"
               variant="destructive"
-              className="rounded-2xl"
+              className="rounded-xl"
               disabled={leaveOrg.isPending}
               onClick={() => {
                 confirmLeave.confirm({
@@ -725,14 +756,14 @@ export function OrganizationCard({
         </SettingsCard>
       ) : null}
 
-      {isOwner && tenant ? (
+      {!isEditing && isOwner && tenant ? (
         <SettingsCard
           icon={<AlertTriangle className="size-4" />}
           title="Danger Zone"
           description="Tindakan permanen untuk workspace ini."
           className="border-red-200"
         >
-          <div className="flex flex-col gap-4 rounded-3xl border border-red-200 bg-red-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 rounded-2xl border border-red-200 bg-red-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="font-semibold text-red-950">Delete this workspace</div>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-red-800">
@@ -743,7 +774,7 @@ export function OrganizationCard({
             <Button
               type="button"
               variant="destructive"
-              className="rounded-2xl"
+              className="rounded-xl"
               onClick={() => setDeleteDialogOpen(true)}
             >
               <Trash2 className="size-4" />

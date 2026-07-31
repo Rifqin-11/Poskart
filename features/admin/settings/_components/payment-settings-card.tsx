@@ -1,13 +1,26 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import { Building2, CreditCard, Landmark, Save } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  Building2,
+  Check,
+  CreditCard,
+  Landmark,
+  RefreshCw,
+  ScanLine,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { SettingField, SettingsCard, SwitchSetting } from "./settings-card";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import {
+  SettingField,
+  SettingsCard,
+  SettingsFormIntro,
+  SettingsPanelBlock,
+  SettingsSummaryItem,
+  SwitchSetting,
+} from "./settings-card";
 
 type SubscriptionGatewayMode = "duitku" | "midtrans" | "both";
 
@@ -18,6 +31,13 @@ type SettingsForm = {
   qris_webhook_secret: string;
   subscription_payment_gateway: SubscriptionGatewayMode;
   qris_auto_retry: boolean;
+};
+
+type PrivateGatewayDraft = {
+  merchantCode: string;
+  apiKey: string;
+  sandbox: boolean;
+  paymentMethod: string;
 };
 
 type PaymentSettingsCardProps<T extends SettingsForm> = {
@@ -31,22 +51,15 @@ type PaymentSettingsCardProps<T extends SettingsForm> = {
     hasApiKey: boolean;
     apiKeyLast4: string | null;
   } | null;
-  privateGatewayDraft: {
-    merchantCode: string;
-    apiKey: string;
-    sandbox: boolean;
-    paymentMethod: string;
-  };
-  setPrivateGatewayDraft: Dispatch<
-    SetStateAction<{
-      merchantCode: string;
-      apiKey: string;
-      sandbox: boolean;
-      paymentMethod: string;
-    }>
-  >;
-  saving?: boolean;
-  onSave?: () => void;
+  privateGatewayDraft: PrivateGatewayDraft;
+  setPrivateGatewayDraft: Dispatch<SetStateAction<PrivateGatewayDraft>>;
+  mode?: "summary" | "form";
+};
+
+const GATEWAY_LABELS: Record<SubscriptionGatewayMode, string> = {
+  duitku: "Duitku",
+  midtrans: "Midtrans",
+  both: "Duitku + Midtrans",
 };
 
 export function PaymentSettingsCard<T extends SettingsForm>({
@@ -56,205 +69,236 @@ export function PaymentSettingsCard<T extends SettingsForm>({
   privateGateway,
   privateGatewayDraft,
   setPrivateGatewayDraft,
-  saving = false,
-  onSave,
+  mode = "summary",
 }: PaymentSettingsCardProps<T>) {
   const { t } = useI18n();
   const configuredGateway =
     superadminGateway ?? form.subscription_payment_gateway;
-  const gatewayOptions = [
-    { value: "duitku", label: "Duitku" },
-    { value: "midtrans", label: "Midtrans" },
-    { value: "both", label: "Duitku + Midtrans" },
-  ] satisfies Array<{ value: SubscriptionGatewayMode; label: string }>;
+
+  if (mode === "summary") {
+    return (
+      <SettingsCard
+        title={t("payment.settingsTitle")}
+        description={t("payment.settingsDesc")}
+        icon={<CreditCard className="size-4" />}
+      >
+        <SettingsPanelBlock>
+          <div className="grid gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
+            <SettingsSummaryItem
+              icon={<Landmark className="size-3.5" />}
+              label="Collection mode"
+              value={
+                form.payment_mode === "private"
+                  ? "Private payment"
+                  : "POSKART sharing"
+              }
+              helper={
+                form.payment_mode === "private"
+                  ? "Funds go to your Duitku account"
+                  : "Managed through POSKART"
+              }
+            />
+            <SettingsSummaryItem
+              icon={<ScanLine className="size-3.5" />}
+              label="QRIS channel"
+              value={
+                form.qris_payment_method === "SP"
+                  ? "ShopeePay QRIS"
+                  : "NusaPay QRIS"
+              }
+            />
+            <SettingsSummaryItem
+              icon={<CreditCard className="size-3.5" />}
+              label="Subscription gateway"
+              value={GATEWAY_LABELS[configuredGateway]}
+              helper="Set by Super Admin"
+            />
+            <SettingsSummaryItem
+              icon={<RefreshCw className="size-3.5" />}
+              label="Failed payment retry"
+              value={form.qris_auto_retry ? "Enabled" : "Disabled"}
+            />
+          </div>
+        </SettingsPanelBlock>
+      </SettingsCard>
+    );
+  }
 
   return (
-    <SettingsCard
-      title={t("payment.settingsTitle")}
-      description={t("payment.settingsDesc")}
-      icon={<CreditCard className="size-4" />}
-    >
-      <div className="space-y-5">
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Payment Mode Selection */}
-          <div className="md:col-span-2 grid gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() =>
-                setForm((f) => ({ ...f, payment_mode: "sharing" }))
-              }
-              className={cn(
-                "flex flex-col items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all",
-                form.payment_mode === "sharing"
-                  ? "border-blue-600 bg-blue-50/50"
-                  : "border-zinc-200 bg-white hover:border-zinc-300",
-              )}
-            >
-              <div
+    <div className="space-y-5">
+      <SettingsFormIntro
+        icon={<CreditCard className="size-4" />}
+        title="Payment preferences"
+        description="Choose where booth payments are collected and which QRIS channel new transactions use."
+      />
+
+      <section className="space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-zinc-950">
+            Payment collection
+          </h3>
+          <p className="mt-1 text-xs leading-5 text-zinc-500">
+            Select one collection method for all connected booths.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            {
+              value: "sharing" as const,
+              title: "POSKART sharing",
+              description:
+                "Use POSKART QRIS and withdraw collected revenue through payout.",
+              icon: Building2,
+            },
+            {
+              value: "private" as const,
+              title: "Private payment",
+              description:
+                "Use your own Duitku account so revenue goes directly to you.",
+              icon: Landmark,
+            },
+          ].map((option) => {
+            const selected = form.payment_mode === option.value;
+            const Icon = option.icon;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() =>
+                  setForm((current) => ({
+                    ...current,
+                    payment_mode: option.value,
+                  }))
+                }
                 className={cn(
-                  "grid size-10 place-items-center rounded-full",
-                  form.payment_mode === "sharing"
-                    ? "bg-blue-600 text-white"
-                    : "bg-zinc-100 text-zinc-600",
+                  "group relative flex items-start gap-3 rounded-2xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]/30",
+                  selected
+                    ? "border-[#00357B] bg-[#00357B]/[0.035]"
+                    : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50/70",
                 )}
               >
-                <Building2 className="size-5" />
-              </div>
-              <div>
-                <div className="font-semibold text-zinc-950">
-                  Payment Sharing
+                <div
+                  className={cn(
+                    "grid size-9 shrink-0 place-items-center rounded-xl",
+                    selected
+                      ? "bg-[#00357B] text-white"
+                      : "bg-zinc-100 text-zinc-500",
+                  )}
+                >
+                  <Icon className="size-4" />
                 </div>
-                <div className="mt-1 text-xs leading-5 text-zinc-500">
-                  Use POSKART's built-in QRIS. Sales revenue is collected in your account and can be withdrawn (payout) at any time.
+                <div className="min-w-0 pr-5">
+                  <div className="text-sm font-semibold text-zinc-950">
+                    {option.title}
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">
+                    {option.description}
+                  </p>
                 </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                setForm((f) => ({ ...f, payment_mode: "private" }))
-              }
-              className={cn(
-                "flex flex-col items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all",
-                form.payment_mode === "private"
-                  ? "border-emerald-600 bg-emerald-50/50"
-                  : "border-zinc-200 bg-white hover:border-zinc-300",
-              )}
-            >
-              <div
-                className={cn(
-                  "grid size-10 place-items-center rounded-full",
-                  form.payment_mode === "private"
-                    ? "bg-emerald-600 text-white"
-                    : "bg-zinc-100 text-zinc-600",
-                )}
-              >
-                <Landmark className="size-5" />
-              </div>
-              <div>
-                <div className="font-semibold text-zinc-950">
-                  Payment Private
-                </div>
-                <div className="mt-1 text-xs leading-5 text-zinc-500">
-                  Use your own Duitku account. Revenue goes directly to your account with no POSKART admin fee.
-                </div>
-              </div>
-            </button>
-          </div>
-
-          {form.payment_mode === "private" && (
-            <div className="md:col-span-2 grid gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <div className="text-sm font-semibold text-emerald-950">
-                  Organization Duitku credentials
-                </div>
-                <div className="mt-1 text-xs leading-5 text-emerald-800/80">
-                  Kiosk QRIS will be generated using this merchant code and API key. The API key is stored encrypted and will not be shown again.
-                </div>
-              </div>
-
-              <SettingField label="Merchant code">
-                <Input
-                  placeholder="DXXXX"
-                  value={privateGatewayDraft.merchantCode}
-                  onChange={(event) =>
-                    setPrivateGatewayDraft((draft) => ({
-                      ...draft,
-                      merchantCode: event.target.value,
-                    }))
-                  }
-                />
-              </SettingField>
-
-              <SettingField label="API key">
-                <Input
-                  type="password"
-                  placeholder={
-                    privateGateway?.hasApiKey
-                      ? `Saved ••••${privateGateway.apiKeyLast4 ?? ""}`
-                      : "Enter Duitku API key"
-                  }
-                  value={privateGatewayDraft.apiKey}
-                  onChange={(event) =>
-                    setPrivateGatewayDraft((draft) => ({
-                      ...draft,
-                      apiKey: event.target.value,
-                    }))
-                  }
-                />
-                {privateGateway?.hasApiKey ? (
-                  <div className="mt-2 text-xs text-emerald-800/75">
-                    Leave blank to keep the current API key.
+                {selected ? (
+                  <div className="absolute right-3 top-3 grid size-5 place-items-center rounded-full bg-[#00357B] text-white">
+                    <Check className="size-3" />
                   </div>
                 ) : null}
-              </SettingField>
-
-            </div>
-          )}
-
-          <SettingField
-            label="QRIS Merchant"
-            className="md:col-span-2"
-          >
-            <Select
-              value={form.qris_payment_method}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  qris_payment_method:
-                    event.target.value === "SP" ? "SP" : "SQ",
-                }))
-              }
-            >
-              <option value="SQ">NusaPay QRIS</option>
-              <option value="SP">ShopeePay QRIS</option>
-            </Select>
-            <div className="mt-2 text-xs leading-5 text-zinc-500">
-              Applies to new QRIS from Flutter booths. If one channel is experiencing issues, select another channel and save; devices will use the new selection on the next payment. QR codes already generated will continue using the previous channel.
-            </div>
-          </SettingField>
-
-          <SettingField
-            label="Subscription payment gateway"
-            className="md:col-span-2"
-          >
-            <Select
-              value={configuredGateway}
-              onChange={() => undefined}
-              disabled
-            >
-              {gatewayOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-            <div className="mt-2 text-xs text-zinc-500">
-              Gateway checkout subscription follows Super Admin configuration.
-            </div>
-          </SettingField>
+              </button>
+            );
+          })}
         </div>
-        <div className="border-t border-zinc-100 pt-5">
-          <SwitchSetting
-            title="Auto retry failed QRIS payment"
-            description="Automatically retry when a QRIS transaction fails to process."
-            checked={form.qris_auto_retry}
-            onCheckedChange={(v) =>
-              setForm((f) => ({ ...f, qris_auto_retry: v }))
+      </section>
+
+      {form.payment_mode === "private" ? (
+        <section className="space-y-3 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-950">
+              Duitku credentials
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-zinc-500">
+              The API key is encrypted and will not be shown again after saving.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <SettingField label="Merchant code">
+              <Input
+                placeholder="DXXXX"
+                value={privateGatewayDraft.merchantCode}
+                onChange={(event) =>
+                  setPrivateGatewayDraft((draft) => ({
+                    ...draft,
+                    merchantCode: event.target.value,
+                  }))
+                }
+              />
+            </SettingField>
+            <SettingField label="API key">
+              <Input
+                type="password"
+                placeholder={
+                  privateGateway?.hasApiKey
+                    ? `Saved ••••${privateGateway.apiKeyLast4 ?? ""}`
+                    : "Enter Duitku API key"
+                }
+                value={privateGatewayDraft.apiKey}
+                onChange={(event) =>
+                  setPrivateGatewayDraft((draft) => ({
+                    ...draft,
+                    apiKey: event.target.value,
+                  }))
+                }
+              />
+              {privateGateway?.hasApiKey ? (
+                <p className="mt-2 text-xs leading-5 text-zinc-500">
+                  Leave this blank to keep the saved API key.
+                </p>
+              ) : null}
+            </SettingField>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="grid gap-4 border-t border-zinc-100 pt-5 md:grid-cols-2">
+        <SettingField label="QRIS channel">
+          <Select
+            value={form.qris_payment_method}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                qris_payment_method:
+                  event.target.value === "SP" ? "SP" : "SQ",
+              }))
             }
-          />
-          <Button
-            type="button"
-            onClick={onSave}
-            disabled={saving}
-            className="mt-3 w-full rounded-2xl"
           >
-            <Save className="size-4" />
-            {saving ? t("payment.saving") : t("payment.save")}
-          </Button>
-        </div>
-      </div>
-    </SettingsCard>
+            <option value="SQ">NusaPay QRIS</option>
+            <option value="SP">ShopeePay QRIS</option>
+          </Select>
+          <p className="mt-2 text-xs leading-5 text-zinc-500">
+            Connected devices use the new channel on their next payment.
+          </p>
+        </SettingField>
+        <SettingField label="Subscription payment gateway">
+          <Select value={configuredGateway} onChange={() => undefined} disabled>
+            {Object.entries(GATEWAY_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+          <p className="mt-2 text-xs leading-5 text-zinc-500">
+            Subscription checkout follows the Super Admin configuration.
+          </p>
+        </SettingField>
+      </section>
+
+      <SwitchSetting
+        title="Retry failed QRIS payments"
+        description="Automatically retry when a QRIS transaction cannot be processed."
+        checked={form.qris_auto_retry}
+        onCheckedChange={(checked) =>
+          setForm((current) => ({
+            ...current,
+            qris_auto_retry: checked,
+          }))
+        }
+      />
+    </div>
   );
 }

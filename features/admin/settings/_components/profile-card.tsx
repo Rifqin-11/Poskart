@@ -8,7 +8,6 @@ import {
   Clock3,
   LogOut,
   Mail,
-  PencilLine,
   Phone,
   UserRound,
 } from "lucide-react";
@@ -33,7 +32,6 @@ type Account = {
 type ProfileCardProps = {
   account: Account;
   currentMemberRole?: string;
-  onEditProfile: () => void;
 };
 
 function ProfileDetail({
@@ -46,13 +44,13 @@ function ProfileDetail({
   value: ReactNode;
 }) {
   return (
-    <div className="min-w-0 rounded-3xl border border-zinc-200 bg-white p-4">
-      <div className="flex items-center gap-2 text-xs font-medium text-zinc-500">
+    <div className="min-w-0 rounded-xl border border-zinc-100 bg-zinc-50/60 px-4 py-3">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
         {icon}
         {label}
       </div>
-      <div className="mt-2 break-words text-sm font-medium text-zinc-900 sm:truncate">
-        {value || <span className="text-zinc-400">-</span>}
+      <div className="mt-1.5 break-words text-[13px] font-medium text-zinc-900 sm:truncate">
+        {value || <span className="text-zinc-300">—</span>}
       </div>
     </div>
   );
@@ -61,7 +59,6 @@ function ProfileDetail({
 export function ProfileCard({
   account,
   currentMemberRole,
-  onEditProfile,
 }: ProfileCardProps) {
   const { t } = useI18n();
   const accountInitials = account.fullName
@@ -85,10 +82,10 @@ export function ProfileCard({
           title="My details"
           description={t("profile.identityDesc")}
         />
-        <SettingsPanelBlock className="min-w-0 overflow-hidden">
+        <SettingsPanelBlock className="min-w-0 overflow-hidden bg-zinc-50/40">
           <div className="flex min-w-0 flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="relative grid size-16 shrink-0 place-items-center rounded-3xl border border-zinc-200 bg-[#00357B] text-xl font-semibold text-white shadow-sm sm:size-20 sm:text-2xl">
+              <div className="relative grid size-16 shrink-0 place-items-center rounded-2xl bg-[#00357B] text-xl font-semibold text-white shadow-sm shadow-[#00357B]/15 sm:size-20 sm:text-2xl">
                 {accountInitials || "PO"}
                 <button
                   type="button"
@@ -173,23 +170,15 @@ export function ProfileCard({
             />
           </div>
 
-          <div className="flex flex-col gap-2 border-t border-zinc-100 pt-5 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onEditProfile}
-              className="rounded-2xl sm:w-auto"
-            >
-              <PencilLine className="size-4" />
-              Change profile
-            </Button>
-            <form action={signOutAction}>
+          <div className="flex items-center gap-2 border-t border-zinc-100 pt-4">
+            <form action={signOutAction} className="ml-auto">
               <Button
                 type="submit"
-                variant="outline"
-                className="w-full rounded-2xl sm:w-auto"
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-lg px-3 text-xs font-medium text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
               >
-                <LogOut className="size-4" />
+                <LogOut className="mr-1.5 size-3.5" />
                 Sign out
               </Button>
             </form>

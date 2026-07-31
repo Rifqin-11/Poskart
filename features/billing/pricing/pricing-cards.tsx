@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import {
   PRICING_DURATION_OPTIONS,
@@ -26,6 +26,7 @@ export function PricingCards({
       visiblePlans[0]?.durationMonths ??
       1,
   );
+  const durationTabsRef = useRef<HTMLDivElement>(null);
   const monthlyPlans = useMemo(
     () => visiblePlans.filter((plan) => plan.durationMonths === 1),
     [visiblePlans],
@@ -37,6 +38,18 @@ export function PricingCards({
         .sort(comparePlansByTier),
     [activeDuration, visiblePlans],
   );
+
+  useEffect(() => {
+    const activeTab =
+      durationTabsRef.current?.querySelector<HTMLElement>(
+        '[aria-selected="true"]',
+      );
+    activeTab?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [activeDuration]);
 
   return (
     <div className="space-y-8">
@@ -51,7 +64,8 @@ export function PricingCards({
         </div>
 
         <div
-          className="grid w-full max-w-2xl rounded-full border border-zinc-200/90 bg-zinc-200/60 p-1 shadow-[0_10px_26px_rgba(15,23,42,0.06)] backdrop-blur-md sm:grid-cols-4"
+          ref={durationTabsRef}
+          className="flex w-full max-w-2xl touch-pan-x snap-x snap-mandatory flex-nowrap gap-1 overflow-x-auto overscroll-x-contain scroll-smooth rounded-full border border-zinc-200/90 bg-zinc-200/60 p-1 shadow-[0_10px_26px_rgba(15,23,42,0.06)] backdrop-blur-md [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="tablist"
           aria-label="Billing duration"
         >
@@ -68,7 +82,7 @@ export function PricingCards({
                   setActiveDuration(duration.months);
                 }}
                 className={cn(
-                  "h-11 rounded-full px-4 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B] focus-visible:ring-offset-2",
+                  "h-11 min-w-[140px] flex-1 shrink-0 snap-center rounded-full px-4 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B] focus-visible:ring-offset-2",
                   active
                     ? "bg-white text-[#00357B] shadow-[0_3px_10px_rgba(15,23,42,0.14)] ring-1 ring-[#00357B]/10"
                     : "text-zinc-500 hover:bg-white/60 hover:text-zinc-950",

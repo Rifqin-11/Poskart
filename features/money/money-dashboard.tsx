@@ -18,7 +18,14 @@ import {
   Trash2,
   WalletCards,
 } from "lucide-react";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -143,10 +150,24 @@ export function MoneyDashboard({
     "all" | MoneyEntryType | "transfer"
   >("all");
   const [walletFilter, setWalletFilter] = useState<WalletFilter>("all");
+  const walletTabsRef = useRef<HTMLDivElement>(null);
   const [tagFilter, setTagFilter] = useState("all");
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
+  useEffect(() => {
+    const activeTab =
+      walletTabsRef.current?.querySelector<HTMLElement>(
+        '[aria-pressed="true"]',
+      );
+    activeTab?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [walletFilter, wallets.length]);
+
   const monthOptions = useMemo(
     () =>
       Array.from(
@@ -796,10 +817,8 @@ export function MoneyDashboard({
             </div>
             <div className="flex items-stretch gap-2">
               <div
-                className="grid min-w-0 flex-1 gap-1 rounded-full border border-zinc-200 bg-zinc-50 p-1"
-                style={{
-                  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                }}
+                ref={walletTabsRef}
+                className="flex min-w-0 flex-1 touch-pan-x snap-x snap-mandatory flex-nowrap gap-1 overflow-x-auto overscroll-x-contain scroll-smooth rounded-full border border-zinc-200 bg-zinc-50 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <WalletFilterButton
                   active={walletFilter === "all"}
@@ -1289,8 +1308,9 @@ function WalletFilterButton({
     <Button
       type="button"
       variant="ghost"
+      aria-pressed={active}
       className={cn(
-        "min-w-0 rounded-full px-2",
+        "min-w-[150px] flex-1 shrink-0 snap-center rounded-full px-3",
         active
           ? "bg-white text-zinc-950 shadow-sm hover:bg-white"
           : "text-zinc-500",
