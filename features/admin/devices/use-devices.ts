@@ -10,8 +10,7 @@ export function useBooths() {
   return useQuery<Device[], Error>({
     queryKey: adminQueryKeys.devices,
     queryFn: devicesApi.getDevices,
-    // Poll every 30 s as fallback when Realtime is unavailable
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     refetchOnWindowFocus: true,
   });
 }

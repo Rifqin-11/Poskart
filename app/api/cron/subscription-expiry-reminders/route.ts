@@ -1,7 +1,7 @@
 import { sendSubscriptionExpiryReminders } from "@/server/subscription/expiry-reminders";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 10;
 
 function isAuthorized(request: Request) {
   const cronSecret = process.env.CRON_SECRET;

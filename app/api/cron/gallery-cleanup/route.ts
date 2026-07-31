@@ -1,7 +1,7 @@
 import { cleanupExpiredGalleryAssets } from "@/lib/gallery/retention";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 10;
 
 function isAuthorized(request: Request) {
   const cronSecret = process.env.CRON_SECRET;

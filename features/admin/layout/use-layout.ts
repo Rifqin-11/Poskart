@@ -16,8 +16,7 @@ export function useLayoutSchemas() {
   return useQuery<Awaited<ReturnType<typeof layoutApi.getLayoutSchemas>>, Error>({
     queryKey: adminQueryKeys.layoutSchemas,
     queryFn: layoutApi.getLayoutSchemas,
-    // Poll every 30 s as fallback when Realtime is unavailable
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     refetchOnWindowFocus: true,
   });
 }

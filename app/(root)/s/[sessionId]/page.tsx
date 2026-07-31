@@ -531,7 +531,7 @@ function ProcessingRefresh({ refreshUntil }: { refreshUntil: number }) {
   return (
     <>
       <noscript>
-        <meta httpEquiv="refresh" content="2" />
+        <meta httpEquiv="refresh" content="10" />
       </noscript>
       <script
         dangerouslySetInnerHTML={{

@@ -20,34 +20,47 @@ export async function GET(request: Request) {
     const device = await requireOrganizationDevice(context, deviceId);
     const staleBefore = new Date(Date.now() - 5 * 60_000).toISOString();
 
-    const { error: staleFailedError } = await context.client
+    // Only run stale-job cleanup if there are actually stale processing jobs.
+    const { count } = await context.client
       .from("device_print_jobs")
-      .update({
-        status: "failed",
-        last_error: "Device tidak menyelesaikan print setelah 3 percobaan.",
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      .select("id", { count: "exact", head: true })
       .eq("organization_id", context.organizationId)
       .eq("device_id", device.id)
       .eq("status", "processing")
-      .gte("attempts", 3)
-      .lt("started_at", staleBefore);
-    if (staleFailedError) throw staleFailedError;
+      .lt("started_at", staleBefore)
+      .limit(1)
+      .then((r) => ({ count: r.count ?? 0 }));
 
-    const { error: staleQueueError } = await context.client
-      .from("device_print_jobs")
-      .update({
-        status: "queued",
-        started_at: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("organization_id", context.organizationId)
-      .eq("device_id", device.id)
-      .eq("status", "processing")
-      .lt("attempts", 3)
-      .lt("started_at", staleBefore);
-    if (staleQueueError) throw staleQueueError;
+    if (count > 0) {
+      const { error: staleFailedError } = await context.client
+        .from("device_print_jobs")
+        .update({
+          status: "failed",
+          last_error: "Device did not complete print after 3 attempts.",
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("organization_id", context.organizationId)
+        .eq("device_id", device.id)
+        .eq("status", "processing")
+        .gte("attempts", 3)
+        .lt("started_at", staleBefore);
+      if (staleFailedError) throw staleFailedError;
+
+      const { error: staleQueueError } = await context.client
+        .from("device_print_jobs")
+        .update({
+          status: "queued",
+          started_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("organization_id", context.organizationId)
+        .eq("device_id", device.id)
+        .eq("status", "processing")
+        .lt("attempts", 3)
+        .lt("started_at", staleBefore);
+      if (staleQueueError) throw staleQueueError;
+    }
 
     const { data: queued, error: queueError } = await context.client
       .from("device_print_jobs")
