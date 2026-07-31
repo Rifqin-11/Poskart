@@ -374,7 +374,7 @@ export function OrganizationCard({
         <SettingsCard
           icon={<Landmark className="size-4" />}
           title="Payout account"
-          description="Rekening tujuan pencairan hasil photobooth dari payment gateway POSKART."
+          description={t("settings.payoutAccountDesc")}
         >
           <PayoutAccountForm
             account={payoutAccount}
@@ -388,7 +388,7 @@ export function OrganizationCard({
       <SettingsCard
         icon={<UserRound className="size-4" />}
         title="Team"
-        description="Kelola member dan invitation yang memiliki akses ke workspace."
+        description={t("settings.membersDesc")}
         className="border-b-0 pb-0"
       >
         <div className="space-y-5">
@@ -445,7 +445,7 @@ export function OrganizationCard({
                                   toast.error(
                                     err instanceof Error
                                       ? err.message
-                                      : "Gagal mengubah role",
+                                      : t("settings.changeRoleFailed"),
                                   );
                                 },
                               }
@@ -488,12 +488,12 @@ export function OrganizationCard({
                                       confirmLabel: "Transfer",
                                       onConfirm: () => {
                                         transferOwnership.mutate(member.profile_id!, {
-                                          onSuccess: () => toast.success("Kepemilikan berhasil dipindahkan"),
+                                          onSuccess: () => toast.success(t("settings.transferOwnershipSuccess")),
                                           onError: (err) =>
                                             toast.error(
                                               err instanceof Error
                                                 ? err.message
-                                                : "Gagal memindahkan kepemilikan",
+                                                : t("settings.transferOwnershipFailed"),
                                             ),
                                         });
                                       },
@@ -647,7 +647,7 @@ export function OrganizationCard({
                                   toast.error(
                                     err instanceof Error
                                       ? err.message
-                                      : "Gagal menerima permintaan",
+                                      : t("settings.acceptRequestFailed"),
                                   ),
                               });
                             }}
@@ -668,7 +668,7 @@ export function OrganizationCard({
                                   toast.error(
                                     err instanceof Error
                                       ? err.message
-                                      : "Gagal menolak permintaan",
+                                      : t("settings.rejectRequestFailed"),
                                   ),
                               });
                             }}
@@ -690,7 +690,7 @@ export function OrganizationCard({
         <SettingsCard
           icon={<LogOut className="size-4" />}
           title="Leave Workspace"
-          description="Keluar dari organisasi/workspace ini."
+          description={t("settings.leaveOrgDesc")}
         >
           <div className="space-y-4">
             <p className="text-sm text-zinc-500 leading-6">

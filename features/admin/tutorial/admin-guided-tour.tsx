@@ -13,38 +13,35 @@ type TourStep = {
 
 type Spotlight = Pick<DOMRect, "top" | "right" | "bottom" | "left" | "width" | "height">;
 
-const TOUR_STEPS: TourStep[] = [
-  {
-    selectors: ['[data-admin-tour="brand"]', '[data-admin-tour="menu"]'],
-    title: "Selamat datang di POSKART",
-    description:
-      "Kelola seluruh operasional photobooth dari satu workspace yang terhubung.",
-  },
-  {
-    selectors: ['[data-admin-tour="navigation"]', '[data-admin-tour="menu"]'],
-    title: "Navigasi workspace",
-    description:
-      "Pindah ke transaksi, device, template, galeri, dan pengaturan dari menu ini.",
-  },
-  {
-    selectors: ['[data-admin-tour="search"]'],
-    title: "Cari lebih cepat",
-    description:
-      "Gunakan pencarian untuk membuka halaman atau menemukan data penting tanpa menelusuri menu satu per satu.",
-  },
-  {
-    selectors: ['[data-admin-tour="organization"]', '[data-admin-tour="profile"]'],
-    title: "Status organisasi",
-    description:
-      "Lihat workspace aktif, masa berlaku langganan, dan akses pengaturan organisasi di sini.",
-  },
-  {
-    selectors: ['[data-admin-tour="profile"]'],
-    title: "Profil dan bantuan",
-    description:
-      "Buka menu profil untuk mengatur preferensi, mengganti bahasa, atau menjalankan tutorial ini kembali kapan saja.",
-  },
-];
+function getTourSteps(t: (key: import("@/lib/i18n/dictionaries").DictionaryKey) => string): TourStep[] {
+  return [
+    {
+      selectors: ['[data-admin-tour="brand"]', '[data-admin-tour="menu"]'],
+      title: t("tour.welcomeTitle"),
+      description: t("tour.welcomeDesc"),
+    },
+    {
+      selectors: ['[data-admin-tour="navigation"]', '[data-admin-tour="menu"]'],
+      title: "Navigasi workspace",
+      description: t("tour.navDesc"),
+    },
+    {
+      selectors: ['[data-admin-tour="search"]'],
+      title: t("tour.searchTitle"),
+      description: t("tour.searchDesc"),
+    },
+    {
+      selectors: ['[data-admin-tour="organization"]', '[data-admin-tour="profile"]'],
+      title: t("tour.orgStatusTitle"),
+      description: t("tour.orgStatusDesc"),
+    },
+    {
+      selectors: ['[data-admin-tour="profile"]'],
+      title: t("tour.profileTitle"),
+      description: t("tour.profileDesc"),
+    },
+  ];
+}
 
 function findVisibleTarget(selectors: string[]) {
   for (const selector of selectors) {
@@ -67,9 +64,11 @@ export function AdminGuidedTour({
   onClose: () => void;
   onComplete: () => void;
 }) {
+  const { t } = useI18n();
+  const tourSteps = getTourSteps(t);
   const [stepIndex, setStepIndex] = useState(0);
   const [spotlight, setSpotlight] = useState<Spotlight | null>(null);
-  const step = TOUR_STEPS[stepIndex];
+  const step = tourSteps[stepIndex];
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -128,7 +127,7 @@ export function AdminGuidedTour({
 
   if (!open) return null;
 
-  const isLastStep = stepIndex === TOUR_STEPS.length - 1;
+  const isLastStep = stepIndex === tourSteps.length - 1;
 
   return (
     <div className="fixed inset-0 z-[120]" role="dialog" aria-modal="true" aria-label="POSKART tutorial">
@@ -167,13 +166,13 @@ export function AdminGuidedTour({
         </div>
 
         <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#00357B]">
-          Quick tour · {stepIndex + 1} of {TOUR_STEPS.length}
+          Quick tour · {stepIndex + 1} of {tourSteps.length}
         </p>
         <h2 className="mt-2 text-lg font-semibold tracking-tight">{step.title}</h2>
         <p className="mt-2 text-sm leading-6 text-zinc-600">{step.description}</p>
 
-        <div className="mt-5 flex gap-1.5" aria-label={`Step ${stepIndex + 1} of ${TOUR_STEPS.length}`}>
-          {TOUR_STEPS.map((tourStep, index) => (
+        <div className="mt-5 flex gap-1.5" aria-label={`Step ${stepIndex + 1} of ${tourSteps.length}`}>
+          {tourSteps.map((tourStep, index) => (
             <span
               key={tourStep.title}
               className={cn(

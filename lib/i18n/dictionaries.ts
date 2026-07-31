@@ -93,6 +93,12 @@ export const dictionaries = {
     "tour.profileTitle": "Profile and help",
     "tour.profileDesc":
       "Open the profile menu to set preferences, change language, or run this tutorial again at any time.",
+    "voucher.timeSeconds": "sec",
+    "voucher.timeMinuteSuffix": "m",
+    "voucher.timeSecondSuffix": "s",
+    "voucher.timeLeft": "Time left",
+    "voucher.useVoucher": "Use Voucher",
+    "gallery.kiosk.subtitle": "Raw and framed photo results from the kiosk.",
   },
   id: {
     "nav.dashboard": "Dashboard",
@@ -183,6 +189,12 @@ export const dictionaries = {
     "tour.profileTitle": "Profil dan bantuan",
     "tour.profileDesc":
       "Buka menu profil untuk mengatur preferensi, mengganti bahasa, atau menjalankan tutorial ini kembali kapan saja.",
+    "voucher.timeSeconds": "detik",
+    "voucher.timeMinuteSuffix": "m",
+    "voucher.timeSecondSuffix": "d",
+    "voucher.timeLeft": "Sisa",
+    "voucher.useVoucher": "Gunakan Voucher",
+    "gallery.kiosk.subtitle": "Hasil raw dan framed photo dari kiosk.",
   },
 } as const;
 

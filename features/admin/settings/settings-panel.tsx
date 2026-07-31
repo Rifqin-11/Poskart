@@ -130,6 +130,7 @@ export function SettingsPanel({
   initialAccount: SettingsAccount;
   initialMemberRole: string | null;
 }) {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const [editOrganizationOpen, setEditOrganizationOpen] = useState(false);
   const [editMediaOpen, setEditMediaOpen] = useState(false);
@@ -279,9 +280,7 @@ export function SettingsPanel({
         form.payment_mode === "private" ? "custom" : "platform";
       if (paymentMode === "custom") {
         if (!privateGatewayDraft.merchantCode.trim()) {
-          toast.error(
-            "Merchant code Duitku wajib diisi untuk Payment Private.",
-          );
+          toast.error(t("settings.duitkuMerchantRequired"));
           return false;
         }
         if (!privateGateway?.hasApiKey && !privateGatewayDraft.apiKey.trim()) {

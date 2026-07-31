@@ -62,6 +62,7 @@ export function TenantFormDialog({
   onClose,
   onSubmit,
 }: TenantFormDialogProps) {
+  const { t } = useI18n();
   const [form, setForm] = useState<TenantInput>(() => {
     const { id: _ignored, ...rest } = initial as Organization;
     void _ignored;
@@ -286,8 +287,8 @@ export function TenantFormDialog({
                   </div>
                   <div className="mt-0.5 text-xs text-zinc-500">
                     {featureKey === "posKasir"
-                      ? "Tampilkan halaman POS Kasir untuk input penjualan manual."
-                      : "Tampilkan halaman Keuangan untuk dompet, pemasukan, pengeluaran, dan transfer."}
+                      ? t("superadmin.showPosDesc")
+                      : t("superadmin.showMoneyDesc")}
                   </div>
                 </div>
                 <Switch

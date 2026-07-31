@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { usePermission } from "@/features/admin/hooks/use-permission";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 const VOUCHER_REQUEST_TTL_MS = 5 * 60 * 1000;
 
@@ -56,15 +57,19 @@ function formatDateTimeLabel(value: number) {
   }).format(new Date(value));
 }
 
-function formatTimeLeft(ms: number) {
+function formatTimeLeft(
+  ms: number,
+  t: (key: "voucher.timeSeconds" | "voucher.timeMinuteSuffix" | "voucher.timeSecondSuffix") => string,
+) {
   const seconds = Math.max(0, Math.ceil(ms / 1000));
   const minutes = Math.floor(seconds / 60);
   const restSeconds = seconds % 60;
-  if (minutes <= 0) return `${restSeconds} detik`;
-  return `${minutes}m ${String(restSeconds).padStart(2, "0")}d`;
+  if (minutes <= 0) return `${restSeconds} ${t("voucher.timeSeconds")}`;
+  return `${minutes}${t("voucher.timeMinuteSuffix")} ${String(restSeconds).padStart(2, "0")}${t("voucher.timeSecondSuffix")}`;
 }
 
 export function VoucherApproval() {
+  const { t } = useI18n();
   const { data: devices = [], refetch, isLoading } = useBooths();
   const approveVoucher = useApproveVoucherRequest();
   const rejectVoucher = useRejectVoucherRequest();
@@ -201,7 +206,7 @@ export function VoucherApproval() {
                         <AlertCircle className="size-5 shrink-0 text-yellow-600" />
                         <div>
                           A user on this device selected{" "}
-                          <strong>Gunakan Voucher</strong>. Tap approve to allow
+                          <strong>{t("voucher.useVoucher")}</strong>. Tap approve to allow
                           them to proceed.
                         </div>
                       </div>
@@ -219,9 +224,9 @@ export function VoucherApproval() {
                           </strong>
                         </span>
                         <span>
-                          Sisa:{" "}
+                          {t("voucher.timeLeft")}:{" "}
                           <strong className="text-yellow-700">
-                            {formatTimeLeft(timeLeft)}
+                            {formatTimeLeft(timeLeft, t)}
                           </strong>
                         </span>
                       </div>

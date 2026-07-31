@@ -53,6 +53,7 @@ export function GallerySessionCard({
   const selected = shareSelection?.isSelected(session.id) ?? false;
   const [details, setDetails] = useState<GalleryDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     const element = cardRef.current;
@@ -193,7 +194,7 @@ export function GallerySessionCard({
               <Link
                 href={session.share_url || `/s/${session.id}`}
                 target="_blank"
-                aria-label="Buka hasil foto"
+                aria-label={t("gallery.openResult")}
                 className="grid size-8 place-items-center rounded-lg bg-zinc-100 text-zinc-700 transition-colors hover:bg-[#00357B] hover:text-white"
               >
                 <ExternalLink className="size-3.5" />

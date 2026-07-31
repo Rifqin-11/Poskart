@@ -7,6 +7,7 @@ import {
 } from "@/server/admin/context";
 import { GallerySessionCard } from "@/features/admin/gallery/gallery-session-card";
 import { GalleryLoadMore } from "@/features/admin/gallery/gallery-load-more";
+import { GalleryEmptyLocalized } from "@/features/admin/gallery/gallery-empty-localized";
 import {
   GalleryShareHeaderActions,
   GalleryShareProvider,
@@ -221,7 +222,7 @@ export async function GalleryPage() {
   if (visibleRows.length === 0) {
     return (
       <GalleryShareProvider initialSharedGalleries={sharedGalleries}>
-        <GalleryEmpty message="Hasil photobooth akan muncul setelah kiosk membuat QR dan menyelesaikan upload." />
+        <GalleryEmptyLocalized />
       </GalleryShareProvider>
     );
   }
