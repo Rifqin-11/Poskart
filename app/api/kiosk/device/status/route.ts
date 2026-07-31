@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       .eq("organization_id", context.organizationId);
 
     if (error) throw error;
-    return jsonOk({ success: true, lastSync: now });
+    return jsonOk({ success: true, lastSync: now, configUpdatedAt: device.updated_at });
   } catch (error) {
     return jsonError(error);
   }
