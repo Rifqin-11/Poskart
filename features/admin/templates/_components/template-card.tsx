@@ -2,7 +2,16 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Boxes, Edit2, GripVertical, ImagePlus, Trash2 } from "lucide-react";
+import {
+  Boxes,
+  Edit2,
+  Eye,
+  EyeOff,
+  GripVertical,
+  ImagePlus,
+  Trash2,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -15,6 +24,8 @@ type SortableTemplateCardProps = {
   onDelete: (template: Template) => void;
   onEdit: (template: Template) => void;
   onTest: (template: Template) => void;
+  onToggleShowcase: (template: Template) => void;
+  showcasePending: boolean;
 };
 
 export function SortableTemplateCard({
@@ -23,6 +34,8 @@ export function SortableTemplateCard({
   onDelete,
   onEdit,
   onTest,
+  onToggleShowcase,
+  showcasePending,
 }: SortableTemplateCardProps) {
   const { isReadOnly } = usePermission();
   const readOnly = isReadOnly("templates");
@@ -101,16 +114,23 @@ export function SortableTemplateCard({
           </div>
 
           <div className="min-w-0 space-y-3">
-            <h2
-              className={cn(
-                "text-base font-semibold text-zinc-950",
-                viewMode === "grid"
-                  ? "truncate"
-                  : "line-clamp-2 break-words leading-snug",
-              )}
-            >
-              {template.name}
-            </h2>
+            <div className="flex min-w-0 items-center gap-2">
+              <h2
+                className={cn(
+                  "min-w-0 text-base font-semibold text-zinc-950",
+                  viewMode === "grid"
+                    ? "truncate"
+                    : "line-clamp-2 break-words leading-snug",
+                )}
+              >
+                {template.name}
+              </h2>
+              {template.isShowcase ? (
+                <Badge className="shrink-0 border-blue-100 bg-blue-50 text-[#00357B]">
+                  Showcase
+                </Badge>
+              ) : null}
+            </div>
             {template.tagline ? (
               <p className="line-clamp-2 text-sm text-zinc-500">
                 {template.tagline}
@@ -140,10 +160,10 @@ export function SortableTemplateCard({
             className={cn(
               "shrink-0 gap-1 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-1.5",
               viewMode === "grid"
-                ? cn("grid", readOnly ? "grid-cols-1" : "grid-cols-3")
+                ? cn("grid", readOnly ? "grid-cols-1" : "grid-cols-2")
                 : cn(
                     "col-span-2 grid sm:col-span-3 lg:col-span-1 lg:flex lg:w-28 lg:flex-col",
-                    readOnly ? "grid-cols-1" : "grid-cols-3",
+                    readOnly ? "grid-cols-1" : "grid-cols-2",
                   ),
             )}
           >
@@ -157,6 +177,25 @@ export function SortableTemplateCard({
             </Button>
             {!readOnly && (
               <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-8 w-full justify-center rounded-xl px-2.5 shadow-none lg:justify-start",
+                    template.isShowcase
+                      ? "border-blue-100 bg-blue-50 text-[#00357B] hover:bg-blue-100"
+                      : "border-transparent bg-white text-zinc-700 hover:border-zinc-200 hover:bg-zinc-100",
+                  )}
+                  disabled={showcasePending}
+                  onClick={() => onToggleShowcase(template)}
+                >
+                  {template.isShowcase ? (
+                    <EyeOff className="size-3.5" />
+                  ) : (
+                    <Eye className="size-3.5" />
+                  )}
+                  {template.isShowcase ? "Remove" : "Showcase"}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"

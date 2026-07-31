@@ -6,11 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(value);
+  const normalizedValue = Number.isFinite(value) ? value : 0;
+  const roundedValue =
+    Math.sign(normalizedValue) * Math.round(Math.abs(normalizedValue));
+  const formattedDigits = Math.abs(roundedValue)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+  return `${roundedValue < 0 ? "-" : ""}Rp ${formattedDigits}`;
 }
 
 export function formatCompactNumber(value: number) {

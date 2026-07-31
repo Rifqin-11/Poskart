@@ -24,6 +24,8 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Boxes,
   CloudUpload,
+  Copy,
+  ExternalLink,
   FolderPlus,
   Grid2X2,
   GripVertical,
@@ -48,6 +50,8 @@ import {
   useMoveTemplateToFrameCategory,
   useReorderFrameCategories,
   useReorderTemplates,
+  useSetTemplateShowcase,
+  useTemplateShowcaseSettings,
   useTemplates,
   useUpdateFrameCategory,
 } from "@/features/admin/templates/use-templates";
@@ -78,6 +82,8 @@ export function TemplateManagement() {
   const router = useRouter();
   const { data = EMPTY_TEMPLATES } = useTemplates();
   const deleteTemplate = useDeleteTemplate();
+  const setTemplateShowcase = useSetTemplateShowcase();
+  const { data: showcaseSettings } = useTemplateShowcaseSettings();
   const reorderTemplates = useReorderTemplates();
   const moveTemplateToFrameCategory = useMoveTemplateToFrameCategory();
   const reorderFrameCategories = useReorderFrameCategories();
@@ -133,6 +139,43 @@ export function TemplateManagement() {
         });
       },
     });
+  };
+
+  const handleToggleShowcase = (template: Template) => {
+    const nextValue = !template.isShowcase;
+    setTemplateShowcase.mutate(
+      { id: template.id, isShowcase: nextValue },
+      {
+        onSuccess: () =>
+          toast.success(
+            nextValue
+              ? "Template added to public showcase"
+              : "Template removed from public showcase",
+          ),
+        onError: (error) =>
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Unable to update showcase",
+          ),
+      },
+    );
+  };
+
+  const showcasePath = showcaseSettings
+    ? `/showcase/${showcaseSettings.publicToken}`
+    : null;
+
+  const copyShowcaseLink = async () => {
+    if (!showcasePath) return;
+    try {
+      await navigator.clipboard.writeText(
+        new URL(showcasePath, window.location.origin).toString(),
+      );
+      toast.success("Public showcase link copied");
+    } catch {
+      toast.error("Unable to copy showcase link");
+    }
   };
 
   const handleDeleteFrameCategory = (category: FrameCategory) => {
@@ -414,6 +457,26 @@ export function TemplateManagement() {
         description="Frame templates for the Flutter photobooth picker screen."
         action={
           <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end">
+            {showcasePath ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={copyShowcaseLink}
+                >
+                  <Copy className="size-4" /> Copy showcase link
+                </Button>
+                <a
+                  href={showcasePath}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium transition-colors hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <ExternalLink className="size-4" /> View showcase
+                </a>
+              </>
+            ) : null}
             <div className="flex rounded-full border border-zinc-200 bg-white p-1">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
@@ -542,6 +605,12 @@ export function TemplateManagement() {
                 onDelete={handleDelete}
                 onEdit={openEdit}
                 onTest={setTestTemplate}
+                onToggleShowcase={handleToggleShowcase}
+                showcasePendingId={
+                  setTemplateShowcase.isPending
+                    ? setTemplateShowcase.variables?.id ?? null
+                    : null
+                }
               />
             ))}
           </div>
@@ -566,12 +635,16 @@ function TemplateGroupSection({
   onDelete,
   onEdit,
   onTest,
+  onToggleShowcase,
+  showcasePendingId,
 }: {
   group: TemplateGroup;
   viewMode: "grid" | "list";
   onDelete: (template: Template) => void;
   onEdit: (template: Template) => void;
   onTest: (template: Template) => void;
+  onToggleShowcase: (template: Template) => void;
+  showcasePendingId: string | null;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `${GROUP_DROP_PREFIX}${group.id}`,
@@ -621,6 +694,8 @@ function TemplateGroupSection({
                 onDelete={onDelete}
                 onEdit={onEdit}
                 onTest={onTest}
+                onToggleShowcase={onToggleShowcase}
+                showcasePending={showcasePendingId === template.id}
               />
             ))
           )}

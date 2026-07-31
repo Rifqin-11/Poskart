@@ -3,8 +3,10 @@ import {
   createTemplate,
   updateTemplate,
   deleteTemplate,
+  getTemplateShowcaseSettings,
   moveTemplateToFrameCategory,
   reorderTemplates,
+  setTemplateShowcase,
 } from "@/server/admin/actions/template-actions";
 import {
   createFrameCategory,
@@ -19,6 +21,8 @@ export const templateService = {
   createTemplate,
   updateTemplate,
   deleteTemplate,
+  getTemplateShowcaseSettings,
+  setTemplateShowcase,
   moveTemplateToFrameCategory,
   reorderTemplates,
   getFrameCategories,

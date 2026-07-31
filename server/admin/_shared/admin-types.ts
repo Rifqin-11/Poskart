@@ -275,6 +275,7 @@ export type TemplateRow = Omit<
   | "displayOrder"
   | "usageCount"
   | "frameCategoryId"
+  | "isShowcase"
 > & {
   assigned_booths: number;
   updated_at_label: string;
@@ -286,6 +287,7 @@ export type TemplateRow = Omit<
   frame_image_url: unknown;
   frame_layout: unknown;
   is_default: boolean;
+  is_showcase: boolean;
   frame_category_id: string | null;
 };
 
@@ -642,6 +644,7 @@ export const mapTemplate = (row: TemplateRow): Template => ({
   frameLayout: normalizeAssetReferences(row.frame_layout) as
     Template["frameLayout"] | null,
   isDefault: row.is_default ?? false,
+  isShowcase: row.is_showcase ?? false,
 });
 
 export const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({

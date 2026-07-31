@@ -8,10 +8,16 @@ import { requireOrganizationSubscriptionAccess } from "@/server/admin/page-acces
 export default async function TemplatesPage() {
   await requireOrganizationSubscriptionAccess("/templates");
   const queryClient = getQueryClient();
-  await queryClient.prefetchQuery({
-    queryKey: adminQueryKeys.templates,
-    queryFn: templateService.getTemplates,
-  });
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: adminQueryKeys.templates,
+      queryFn: templateService.getTemplates,
+    }),
+    queryClient.prefetchQuery({
+      queryKey: adminQueryKeys.templateShowcase,
+      queryFn: templateService.getTemplateShowcaseSettings,
+    }),
+  ]);
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

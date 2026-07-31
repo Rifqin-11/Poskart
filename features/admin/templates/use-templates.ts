@@ -46,6 +46,26 @@ export function useDeleteTemplate() {
   });
 }
 
+export function useTemplateShowcaseSettings() {
+  return useQuery<
+    Awaited<ReturnType<typeof templatesApi.getTemplateShowcaseSettings>>,
+    Error
+  >({
+    queryKey: adminQueryKeys.templateShowcase,
+    queryFn: templatesApi.getTemplateShowcaseSettings,
+  });
+}
+
+export function useSetTemplateShowcase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, isShowcase }: { id: string; isShowcase: boolean }) =>
+      templatesApi.setTemplateShowcase(id, isShowcase),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
+  });
+}
+
 export function useReorderTemplates() {
   const queryClient = useQueryClient();
   return useMutation({
