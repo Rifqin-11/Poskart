@@ -206,6 +206,7 @@ export function BoothManagement({
   );
   const [pairingCode, setPairingCode] = useState("");
   const [pairingId, setPairingId] = useState<string | null>(null);
+  const [createdDeviceId, setCreatedDeviceId] = useState<string | null>(null);
   const [failedFor, setFailedFor] = useState<Device | null>(null);
   const [errorsFor, setErrorsFor] = useState<Device | null>(null);
   const confirmDelete = useConfirmDialog();
@@ -301,8 +302,9 @@ export function BoothManagement({
 
   const confirmPairingCode = () => {
     validatePairing.mutate(pairingCode, {
-      onSuccess: ({ pairingId: nextPairingId }) => {
+      onSuccess: ({ pairingId: nextPairingId, deviceId }) => {
         setPairingId(nextPairingId);
+        setCreatedDeviceId(deviceId);
         setPairingDialogOpen(false);
         setCreating(true);
       },
@@ -725,31 +727,34 @@ export function BoothManagement({
 
       {creating &&
       pairingId &&
+      createdDeviceId &&
       !devicesLoading &&
       !subscriptionLoading &&
       !deviceLimitReached &&
       !isReadOnly("devices") ? (
         <BoothFormDialog
-          title="Configure paired device"
+          title="Configure new device"
           initial={EMPTY_BOOTH}
           options={deviceFormOptions}
-          submitting={createPairedBooth.isPending}
+          submitting={updateBooth.isPending}
           onClose={() => {
             setCreating(false);
             setPairingId(null);
+            setCreatedDeviceId(null);
           }}
           onSubmit={(values) => {
-            createPairedBooth.mutate(
-              { pairingId, values },
+            updateBooth.mutate(
+              { id: createdDeviceId!, patch: values },
               {
                 onSuccess: () => {
-                  toast.success("Device paired and configured");
+                  toast.success("Device configured");
                   setCreating(false);
                   setPairingId(null);
+                  setCreatedDeviceId(null);
                 },
                 onError: (err) =>
                   toast.error(
-                    err instanceof Error ? err.message : "Pairing failed",
+                    err instanceof Error ? err.message : "Configuration failed",
                   ),
               },
             );

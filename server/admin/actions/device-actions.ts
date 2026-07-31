@@ -252,17 +252,60 @@ export async function createDevice(values: BoothInput): Promise<void> {
 export type DevicePairingClaim = {
   pairingId: string;
   expiresAt: string;
+  deviceId: string;
 };
 
-/** Validates the short code before opening the existing booth configuration form. */
+/**
+ * Validates the short code and immediately creates the device with minimal
+ * defaults so the kiosk can enter using its built-in config right away.
+ * The admin configure modal still opens after this returns.
+ */
 export async function validateDevicePairingCode(
   code: string,
 ): Promise<DevicePairingClaim> {
   const { organizationId } = await verifyRole(["owner", "admin"]);
   const pairing = await getPairingForAdminCode(organizationId, code);
+
+  const id = `BTH-${Date.now()}`;
+  const { error } = await createSupabaseAdminClient().rpc(
+    "complete_device_pairing",
+    {
+      p_pairing_id: pairing.id,
+      p_organization_id: organizationId,
+      p_device_id: id,
+      p_device: {
+        name: "New Kiosk",
+        location: "",
+        status: "online",
+        battery: 100,
+        appVersion: "",
+        lastSync: new Date().toISOString(),
+        theme: "",
+        layoutSchemaId: null,
+        template: "",
+        pricingProfile: "",
+        frameTemplates: [],
+        frameCategoriesEnabled: false,
+        pricingProfiles: [],
+        sessionCountdownSeconds: null,
+        paymentCountdownSeconds: null,
+        voucherEnabled: false,
+        testVoucherEnabled: false,
+        settingsPin: "",
+        protectSettings: false,
+        printerBottomSafeZoneMm: 0,
+        printerBrightness: 0,
+        printerContrast: 0,
+        printerDotDensity: 1,
+      },
+    },
+  );
+  if (error) throw new Error(`Unable to pair device: ${error.message}`);
+
   return {
     pairingId: pairing.id,
     expiresAt: pairing.expires_at,
+    deviceId: id,
   };
 }
 
