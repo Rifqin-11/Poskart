@@ -52,6 +52,67 @@ export async function uploadBuilderImage(file: File) {
   return uploadBuilderMedia(file);
 }
 
+export async function uploadShowcaseImage(
+  file: File,
+): Promise<{ url: string; path: string }> {
+  const validationError = getBuilderImageValidationError(file);
+  if (validationError) throw new Error(validationError);
+
+  const supabase = createClient();
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
+  if (!accessToken) {
+    throw new Error("You must be signed in to upload showcase images.");
+  }
+
+  const intentResponse = await fetch("/api/admin/showcases/assets", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+    }),
+  });
+  const intent = (await intentResponse.json().catch(() => null)) as {
+    uploadUrl?: string;
+    url?: string;
+    path?: string;
+    error?: string;
+  } | null;
+
+  if (
+    !intentResponse.ok ||
+    !intent?.uploadUrl ||
+    !intent.url ||
+    !intent.path
+  ) {
+    throw new Error(intent?.error || "Unable to create showcase image upload.");
+  }
+
+  let uploadResponse: Response;
+  try {
+    uploadResponse = await fetch(intent.uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+  } catch {
+    throw new Error(
+      "Cloudflare R2 upload was blocked by CORS. Add your web origin to the R2 bucket CORS policy, then try again.",
+    );
+  }
+
+  if (!uploadResponse.ok) {
+    throw new Error("Unable to upload showcase image to Cloudflare R2.");
+  }
+
+  return { url: intent.url, path: intent.path };
+}
+
 /**
  * Upload image OR video to the private builder-assets API.
  * The API stores files in Cloudflare R2 and returns a public delivery URL.

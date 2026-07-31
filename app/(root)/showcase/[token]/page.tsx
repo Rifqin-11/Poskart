@@ -21,7 +21,7 @@ export async function generateMetadata({
     title: `${showcase.name} | POSKART`,
     description:
       showcase.description ||
-      "Lihat pilihan frame dan theme photobooth POSKART untuk kolaborasi cafe, acara, dan kampanye brand.",
+      "Lihat pilihan frame, theme, dan referensi visual photobooth POSKART untuk kolaborasi cafe, acara, dan kampanye brand.",
     robots: { index: false, follow: false },
   };
 }

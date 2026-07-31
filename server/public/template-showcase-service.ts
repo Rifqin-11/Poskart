@@ -26,12 +26,21 @@ export type PublicShowcaseTheme = {
   schema: LayoutSchema;
 };
 
+export type PublicShowcaseCustomItem = {
+  id: string;
+  category: string;
+  title: string;
+  description: string | null;
+  imageUrl: string;
+};
+
 export type PublicTemplateShowcase = {
   name: string;
   description: string | null;
   organizationName: string;
   templates: PublicShowcaseTemplate[];
   themes: PublicShowcaseTheme[];
+  customItems: PublicShowcaseCustomItem[];
 };
 
 type PublicTemplateRow = {
@@ -71,7 +80,13 @@ export const getPublicTemplateShowcase = cache(
     }
     if (!showcase) return null;
 
-    const [organizationResult, templateLinksResult, themeLinksResult, categoriesResult] =
+    const [
+      organizationResult,
+      templateLinksResult,
+      themeLinksResult,
+      categoriesResult,
+      customItemsResult,
+    ] =
       await Promise.all([
         supabase
           .from("organizations")
@@ -93,6 +108,11 @@ export const getPublicTemplateShowcase = cache(
           .select("id,name")
           .eq("organization_id", showcase.organization_id)
           .order("display_order", { ascending: true }),
+        supabase
+          .from("showcase_custom_items")
+          .select("id,category,title,description,image_url,display_order")
+          .eq("showcase_id", showcase.id)
+          .order("display_order", { ascending: true }),
       ]);
 
     if (organizationResult.error || !organizationResult.data) {
@@ -113,6 +133,11 @@ export const getPublicTemplateShowcase = cache(
     if (categoriesResult.error) {
       throw new Error(
         `Unable to load showcase categories: ${categoriesResult.error.message}`,
+      );
+    }
+    if (customItemsResult.error) {
+      throw new Error(
+        `Unable to load custom showcase items: ${customItemsResult.error.message}`,
       );
     }
 
@@ -199,6 +224,19 @@ export const getPublicTemplateShowcase = cache(
             id: theme.id,
             name: theme.name,
             schema: normalizeAssetReferences(theme.schema) as LayoutSchema,
+          },
+        ];
+      }),
+      customItems: (customItemsResult.data ?? []).flatMap((item) => {
+        const imageUrl = normalizeAssetUrl(item.image_url);
+        if (!imageUrl) return [];
+        return [
+          {
+            id: item.id,
+            category: item.category,
+            title: item.title,
+            description: item.description,
+            imageUrl,
           },
         ];
       }),

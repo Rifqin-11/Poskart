@@ -52,6 +52,7 @@ import type {
   PricingProduct,
   Template,
 } from "@/features/admin/devices/api";
+import type { LayoutSchema } from "@/types/builder";
 import type { Device } from "@/types/device";
 
 import { BoothFormDialog } from "./_components/booth-form-dialog";
@@ -160,7 +161,13 @@ const DEVICE_TOUR_TAB_BY_STEP = [
 ] as const;
 
 type DeviceFormOptions = {
-  themeOptions: Array<{ id: string; name: string }>;
+  themeOptions: Array<{
+    id: string;
+    name: string;
+    schema?: LayoutSchema;
+    status?: string;
+    isActive?: boolean;
+  }>;
   frameTemplates: Array<{
     id: string;
     name: string;
@@ -248,6 +255,9 @@ export function BoothManagement({
         .map((layout: LayoutSchemaRow) => ({
           id: layout.id,
           name: layout.name,
+          schema: layout.schema,
+          status: layout.status,
+          isActive: layout.is_active,
         })),
       frameTemplates: templates
         .filter((template: Template) => template.category === "frame")

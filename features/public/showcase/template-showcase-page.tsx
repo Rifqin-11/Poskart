@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   Camera,
   Frame,
+  ImageIcon,
   Images,
   MonitorPlay,
   Palette,
@@ -13,6 +14,7 @@ import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-sh
 import { FrameShowcasePreview } from "@/features/public/showcase/frame-showcase-preview";
 import { businessProfile } from "@/lib/constants/business";
 import type {
+  PublicShowcaseCustomItem,
   PublicShowcaseTemplate,
   PublicTemplateShowcase,
 } from "@/server/public/template-showcase-service";
@@ -26,6 +28,14 @@ function groupTemplates(templates: PublicShowcaseTemplate[]) {
   return [...groups.entries()];
 }
 
+function groupCustomItems(items: PublicShowcaseCustomItem[]) {
+  const groups = new Map<string, PublicShowcaseCustomItem[]>();
+  for (const item of items) {
+    groups.set(item.category, [...(groups.get(item.category) ?? []), item]);
+  }
+  return [...groups.entries()];
+}
+
 export function TemplateShowcasePage({
   showcase,
 }: {
@@ -33,8 +43,14 @@ export function TemplateShowcasePage({
 }) {
   const featuredTemplate = showcase.templates[0] ?? null;
   const featuredTheme = showcase.themes[0] ?? null;
+  const featuredCustomItem = showcase.customItems[0] ?? null;
   const templateGroups = groupTemplates(showcase.templates);
-  const primaryAnchor = featuredTemplate ? "#frames" : "#themes";
+  const customGroups = groupCustomItems(showcase.customItems);
+  const primaryAnchor = featuredTemplate
+    ? "#frames"
+    : featuredTheme
+      ? "#themes"
+      : "#custom";
 
   return (
     <main className="min-h-[100dvh] overflow-clip bg-[#f7f9ff] text-zinc-950">
@@ -51,10 +67,10 @@ export function TemplateShowcasePage({
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-zinc-600 sm:text-lg">
               {showcase.description ||
-                "Lihat pilihan frame dan tampilan photobooth yang dapat disesuaikan untuk cafe, acara, atau kampanye Anda."}
+                "Lihat pilihan frame, tampilan photobooth, dan referensi visual yang dapat disesuaikan untuk cafe, acara, atau kampanye Anda."}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              {featuredTemplate || featuredTheme ? (
+              {featuredTemplate || featuredTheme || featuredCustomItem ? (
                 <a
                   href={primaryAnchor}
                   className={buttonVariants({
@@ -77,6 +93,10 @@ export function TemplateShowcasePage({
                 <Palette className="size-4 text-[#00357B]" />
                 {showcase.themes.length} pilihan theme
               </span>
+              <span className="flex items-center gap-2">
+                <ImageIcon className="size-4 text-[#00357B]" />
+                {customGroups.length} kategori custom
+              </span>
             </div>
           </div>
 
@@ -86,7 +106,7 @@ export function TemplateShowcasePage({
               className="absolute -inset-4 rounded-[36px] border border-blue-100 bg-white/35 sm:-inset-6"
             />
             <div className="relative overflow-hidden rounded-[32px] border border-blue-100 bg-white p-4 shadow-[0_30px_80px_rgba(0,53,123,0.14)] sm:p-6">
-              <div className="grid h-[430px] place-items-center rounded-[24px] bg-[#eef3ff] p-7 sm:h-[500px] sm:p-10 lg:h-[540px]">
+              <div className="relative grid h-[430px] place-items-center overflow-hidden rounded-[24px] bg-[#eef3ff] p-7 sm:h-[500px] sm:p-10 lg:h-[540px]">
                 {featuredTemplate ? (
                   <FrameShowcasePreview
                     name={featuredTemplate.name}
@@ -99,6 +119,13 @@ export function TemplateShowcasePage({
                     schema={featuredTheme.schema}
                     className="max-w-2xl shadow-[0_24px_55px_rgba(15,23,42,0.16)]"
                   />
+                ) : featuredCustomItem ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={featuredCustomItem.imageUrl}
+                    alt={featuredCustomItem.title}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="max-w-sm text-center">
                     <Images className="mx-auto size-10 text-blue-200" />
@@ -106,24 +133,35 @@ export function TemplateShowcasePage({
                       Showcase sedang disiapkan
                     </p>
                     <p className="mt-2 text-sm leading-6 text-zinc-500">
-                      Koleksi frame dan theme akan segera tersedia pada halaman ini.
+                      Koleksi visual akan segera tersedia pada halaman ini.
                     </p>
                   </div>
                 )}
               </div>
-              {featuredTemplate || featuredTheme ? (
+              {featuredTemplate || featuredTheme || featuredCustomItem ? (
                 <div className="flex items-center justify-between gap-4 px-1 pb-1 pt-5">
                   <div className="min-w-0">
                     <p className="truncate text-base font-semibold">
-                      {featuredTemplate?.name ?? featuredTheme?.name}
+                      {featuredTemplate?.name ??
+                        featuredTheme?.name ??
+                        featuredCustomItem?.title}
                     </p>
                     <p className="mt-1 text-sm text-zinc-500">
                       {featuredTemplate?.tagline ||
-                        (featuredTemplate ? "Frame pilihan POSKART" : "Theme photobooth POSKART")}
+                        (featuredTemplate
+                          ? "Frame pilihan POSKART"
+                          : featuredTheme
+                            ? "Theme photobooth POSKART"
+                            : featuredCustomItem?.description ||
+                              "Referensi visual kolaborasi")}
                     </p>
                   </div>
                   <div className="shrink-0 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#00357B]">
-                    {featuredTemplate ? `${featuredTemplate.photoCount} foto` : "Theme"}
+                    {featuredTemplate
+                      ? `${featuredTemplate.photoCount} foto`
+                      : featuredTheme
+                        ? "Theme"
+                        : featuredCustomItem?.category}
                   </div>
                 </div>
               ) : null}
@@ -237,15 +275,77 @@ export function TemplateShowcasePage({
         </section>
       ) : null}
 
-      {!showcase.templates.length && !showcase.themes.length ? (
+      {customGroups.length ? (
+        <section
+          id="custom"
+          className="scroll-mt-20 border-t border-blue-100 bg-white px-5 py-20 sm:px-8 lg:px-12 lg:py-28"
+        >
+          <div className="mx-auto max-w-[90rem]">
+            <div className="max-w-3xl">
+              <p className="text-sm font-semibold text-[#00357B]">
+                Custom collection
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+                Detail lain yang dapat disiapkan untuk kolaborasi.
+              </h2>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600 sm:text-base">
+                Referensi berikut membantu cafe melihat pilihan setup, branding,
+                hasil cetak, dan kebutuhan khusus di luar frame serta theme.
+              </p>
+            </div>
+
+            <div className="mt-14 space-y-16">
+              {customGroups.map(([category, items]) => (
+                <section key={category}>
+                  <div className="mb-6 flex items-end justify-between gap-4 border-b border-zinc-200 pb-4">
+                    <h3 className="text-lg font-semibold">{category}</h3>
+                    <span className="text-sm text-zinc-400">
+                      {items.length} referensi
+                    </span>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    {items.map((item) => (
+                      <article
+                        key={item.id}
+                        className="group overflow-hidden rounded-[24px] border border-zinc-200 bg-white transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(15,23,42,0.09)]"
+                      >
+                        <div className="aspect-[4/3] overflow-hidden border-b border-zinc-100 bg-zinc-100">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.imageUrl}
+                            alt={item.title}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]"
+                          />
+                        </div>
+                        <div className="p-5">
+                          <h4 className="font-semibold text-zinc-950">
+                            {item.title}
+                          </h4>
+                          <p className="mt-2 text-sm leading-6 text-zinc-500">
+                            {item.description ||
+                              "Referensi visual yang dapat disesuaikan dengan kebutuhan partner."}
+                          </p>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {!showcase.templates.length &&
+      !showcase.themes.length &&
+      !showcase.customItems.length ? (
         <section className="bg-white px-5 py-20 sm:px-8 lg:px-12">
           <div className="mx-auto grid min-h-72 max-w-[90rem] place-items-center rounded-[28px] border border-dashed border-blue-100 bg-[#f7f9ff] px-6 text-center">
             <div className="max-w-md">
               <Images className="mx-auto size-10 text-blue-200" />
               <h2 className="mt-4 font-semibold">Koleksi sedang disiapkan</h2>
               <p className="mt-2 text-sm leading-6 text-zinc-500">
-                Tim POSKART sedang menyiapkan pilihan frame dan theme untuk
-                showcase ini.
+                Tim POSKART sedang menyiapkan pilihan visual untuk showcase ini.
               </p>
             </div>
           </div>

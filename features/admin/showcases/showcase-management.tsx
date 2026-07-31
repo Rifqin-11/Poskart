@@ -6,13 +6,16 @@ import {
   Copy,
   ExternalLink,
   Frame,
+  ImagePlus,
   Images,
   Loader2,
   Palette,
   Pencil,
   Plus,
   Search,
+  Tag,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -34,9 +37,17 @@ import {
 import { useTemplates } from "@/features/admin/templates/use-templates";
 import { ThemeThumbnail } from "@/features/admin/themes/theme-thumbnail";
 import { FrameShowcasePreview } from "@/features/public/showcase/frame-showcase-preview";
+import {
+  BUILDER_IMAGE_ACCEPT,
+  uploadShowcaseImage,
+} from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
 import type { LayoutSchemaRow } from "@/features/admin/layout/api";
-import type { Showcase, ShowcaseInput } from "@/types/showcase";
+import type {
+  Showcase,
+  ShowcaseCustomItemInput,
+  ShowcaseInput,
+} from "@/types/showcase";
 import type { Template } from "@/types/template";
 
 const EMPTY_SHOWCASES: Showcase[] = [];
@@ -50,9 +61,11 @@ function publicShowcasePath(showcase: Showcase) {
 function ShowcaseVisual({
   template,
   theme,
+  customItem,
 }: {
   template?: Template;
   theme?: LayoutSchemaRow;
+  customItem?: Showcase["customItems"][number];
 }) {
   if (template) {
     return (
@@ -73,6 +86,19 @@ function ShowcaseVisual({
         <ThemeThumbnail
           schema={theme.schema}
           className="max-h-full max-w-full shadow-lg shadow-zinc-950/10"
+        />
+      </div>
+    );
+  }
+
+  if (customItem) {
+    return (
+      <div className="h-56 overflow-hidden bg-zinc-100">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={customItem.imageUrl}
+          alt={customItem.title}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
         />
       </div>
     );
@@ -168,7 +194,7 @@ export function ShowcaseManagement() {
       {confirmDelete.dialog}
       <PageHeader
         title="Showcase Management"
-        description="Create public presentation links containing selected frame templates and kiosk themes."
+        description="Create public presentation links with frames, kiosk themes, and uploaded custom categories."
         action={
           !readOnly ? (
             <Button className="rounded-full" onClick={openCreate}>
@@ -212,8 +238,9 @@ export function ShowcaseManagement() {
               Create a presentation for your next partner
             </h2>
             <p className="mt-2 text-sm leading-6 text-zinc-500">
-              Combine published frames and kiosk themes into one public link that
-              cafes or event partners can open without signing in.
+              Combine published frames, kiosk themes, and uploaded custom
+              references into one public link that partners can open without
+              signing in.
             </p>
             {!readOnly ? (
               <Button className="mt-6 rounded-full" onClick={openCreate}>
@@ -231,13 +258,18 @@ export function ShowcaseManagement() {
             const firstTheme = showcase.themeIds
               .map((id) => layouts.find((layout) => layout.id === id))
               .find(Boolean);
+            const firstCustomItem = showcase.customItems[0];
 
             return (
               <Card
                 key={showcase.id}
                 className="group overflow-hidden border-zinc-100 transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-zinc-950/5"
               >
-                <ShowcaseVisual template={firstTemplate} theme={firstTheme} />
+                <ShowcaseVisual
+                  template={firstTemplate}
+                  theme={firstTheme}
+                  customItem={firstCustomItem}
+                />
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
@@ -246,7 +278,7 @@ export function ShowcaseManagement() {
                       </h2>
                       <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-zinc-500">
                         {showcase.description ||
-                          "Public frame and theme presentation for partners."}
+                          "Public visual presentation for partners."}
                       </p>
                     </div>
                     <a
@@ -266,6 +298,9 @@ export function ShowcaseManagement() {
                     </Badge>
                     <Badge variant="secondary" className="gap-1.5">
                       <Palette className="size-3" /> {showcase.themeIds.length} themes
+                    </Badge>
+                    <Badge variant="secondary" className="gap-1.5">
+                      <Images className="size-3" /> {showcase.customItems.length} custom
                     </Badge>
                   </div>
 
@@ -340,6 +375,17 @@ function ShowcaseEditorDialog({
     showcase?.templateIds ?? [],
   );
   const [themeIds, setThemeIds] = useState<string[]>(showcase?.themeIds ?? []);
+  const [customItems, setCustomItems] = useState<EditableCustomItem[]>(
+    showcase?.customItems.map((item) => ({
+      key: item.id,
+      category: item.category,
+      title: item.title,
+      description: item.description,
+      imageUrl: item.imageUrl,
+      storagePath: item.storagePath,
+    })) ?? [],
+  );
+  const [uploadingItemKeys, setUploadingItemKeys] = useState<string[]>([]);
   const [frameSearch, setFrameSearch] = useState("");
   const [themeSearch, setThemeSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -365,11 +411,73 @@ function ShowcaseEditorDialog({
     );
   };
 
+  const addCustomItem = () => {
+    setCustomItems((current) => [
+      ...current,
+      {
+        key: crypto.randomUUID(),
+        category: "",
+        title: "",
+        description: "",
+        imageUrl: "",
+        storagePath: "",
+      },
+    ]);
+  };
+
+  const updateCustomItem = (
+    key: string,
+    patch: Partial<ShowcaseCustomItemInput>,
+  ) => {
+    setCustomItems((current) =>
+      current.map((item) => (item.key === key ? { ...item, ...patch } : item)),
+    );
+  };
+
+  const uploadCustomItemImage = async (key: string, file: File) => {
+    setError(null);
+    setUploadingItemKeys((current) => [...current, key]);
+    try {
+      const uploaded = await uploadShowcaseImage(file);
+      updateCustomItem(key, {
+        imageUrl: uploaded.url,
+        storagePath: uploaded.path,
+      });
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Unable to upload showcase image.",
+      );
+    } finally {
+      setUploadingItemKeys((current) =>
+        current.filter((itemKey) => itemKey !== key),
+      );
+    }
+  };
+
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const normalizedName = name.trim();
     if (!normalizedName) {
       setError("Showcase name is required.");
+      return;
+    }
+    if (uploadingItemKeys.length) {
+      setError("Wait for all showcase images to finish uploading.");
+      return;
+    }
+    const invalidCustomItem = customItems.find(
+      (item) =>
+        !item.category.trim() ||
+        !item.title.trim() ||
+        !item.imageUrl ||
+        !item.storagePath,
+    );
+    if (invalidCustomItem) {
+      setError(
+        "Every custom item needs a category, title, and uploaded image.",
+      );
       return;
     }
     setError(null);
@@ -379,6 +487,13 @@ function ShowcaseEditorDialog({
         description: description.trim(),
         templateIds,
         themeIds,
+        customItems: customItems.map((item) => ({
+          category: item.category,
+          title: item.title,
+          description: item.description,
+          imageUrl: item.imageUrl,
+          storagePath: item.storagePath,
+        })),
       });
     } catch (saveError) {
       setError(
@@ -467,6 +582,183 @@ function ShowcaseEditorDialog({
           )}
         </SelectionSection>
 
+        <section className="rounded-[1.5rem] border border-blue-100 bg-[#f4f7ff] p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-3">
+              <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[#00357B] shadow-sm ring-1 ring-blue-100">
+                <ImagePlus className="size-4" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-semibold">Custom categories</h3>
+                  <Badge className="border-blue-100 bg-white text-[#00357B]">
+                    {customItems.length} items
+                  </Badge>
+                </div>
+                <p className="mt-1 max-w-2xl text-xs leading-5 text-zinc-500">
+                  Add booth setups, print samples, branding references, or any
+                  other category. Items with the same category are grouped on
+                  the public page.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 border-blue-200 bg-white"
+              disabled={customItems.length >= 40}
+              onClick={addCustomItem}
+            >
+              <Plus className="size-4" /> Add custom item
+            </Button>
+          </div>
+
+          {customItems.length ? (
+            <div className="mt-5 space-y-4">
+              {customItems.map((item, index) => {
+                const uploading = uploadingItemKeys.includes(item.key);
+                return (
+                  <article
+                    key={item.key}
+                    className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm"
+                  >
+                    <div className="grid lg:grid-cols-[0.7fr_1.3fr]">
+                      <div className="relative grid min-h-56 place-items-center overflow-hidden border-b border-blue-100 bg-zinc-50 lg:border-b-0 lg:border-r">
+                        {item.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.imageUrl}
+                            alt={item.title || `Custom showcase item ${index + 1}`}
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="px-6 text-center">
+                            <Images className="mx-auto size-9 text-blue-200" />
+                            <p className="mt-3 text-sm font-medium text-zinc-600">
+                              Upload a preview image
+                            </p>
+                            <p className="mt-1 text-xs text-zinc-400">
+                              JPG, PNG, WebP, GIF, or SVG up to 8 MB
+                            </p>
+                          </div>
+                        )}
+                        <label
+                          className={cn(
+                            "absolute bottom-3 left-3 inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white/95 px-3 text-xs font-semibold text-zinc-700 shadow-sm backdrop-blur transition-colors hover:border-blue-200 hover:text-[#00357B]",
+                            uploading && "cursor-wait opacity-70",
+                          )}
+                        >
+                          {uploading ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Upload className="size-3.5" />
+                          )}
+                          {uploading
+                            ? "Uploading..."
+                            : item.imageUrl
+                              ? "Replace image"
+                              : "Upload image"}
+                          <input
+                            type="file"
+                            accept={BUILDER_IMAGE_ACCEPT}
+                            className="sr-only"
+                            disabled={uploading}
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              event.target.value = "";
+                              if (file) void uploadCustomItemImage(item.key, file);
+                            }}
+                          />
+                        </label>
+                      </div>
+
+                      <div className="p-4 sm:p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#00357B]">
+                            <Tag className="size-3.5" /> Custom item {index + 1}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="-mr-2 -mt-2 text-zinc-400 hover:bg-red-50 hover:text-red-600"
+                            disabled={uploading}
+                            onClick={() =>
+                              setCustomItems((current) =>
+                                current.filter(
+                                  (customItem) => customItem.key !== item.key,
+                                ),
+                              )
+                            }
+                          >
+                            <Trash2 className="size-3.5" /> Remove
+                          </Button>
+                        </div>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                          <label className="text-xs font-medium text-zinc-600">
+                            Category name
+                            <Input
+                              value={item.category}
+                              maxLength={60}
+                              className="mt-1.5"
+                              placeholder="Booth setup"
+                              onChange={(event) =>
+                                updateCustomItem(item.key, {
+                                  category: event.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="text-xs font-medium text-zinc-600">
+                            Item title
+                            <Input
+                              value={item.title}
+                              maxLength={120}
+                              className="mt-1.5"
+                              placeholder="Compact cafe corner setup"
+                              onChange={(event) =>
+                                updateCustomItem(item.key, {
+                                  title: event.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="text-xs font-medium text-zinc-600 sm:col-span-2">
+                            Description
+                            <Textarea
+                              value={item.description}
+                              maxLength={400}
+                              className="mt-1.5 min-h-24 resize-y"
+                              placeholder="Explain what the partner should notice from this reference."
+                              onChange={(event) =>
+                                updateCustomItem(item.key, {
+                                  description: event.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-5 grid min-h-36 place-items-center rounded-2xl border border-dashed border-blue-200 bg-white/70 px-5 text-center">
+              <div>
+                <Images className="mx-auto size-8 text-blue-200" />
+                <p className="mt-3 text-sm font-medium text-zinc-700">
+                  No custom categories yet
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Add one when the partner needs references beyond frames and themes.
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
+
         <SelectionSection
           icon={Palette}
           title="Themes"
@@ -522,7 +814,10 @@ function ShowcaseEditorDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="submit" disabled={saving}>
+          <Button
+            type="submit"
+            disabled={saving || uploadingItemKeys.length > 0}
+          >
             {saving ? <Loader2 className="size-4 animate-spin" /> : null}
             {showcase ? "Save changes" : "Create showcase"}
           </Button>
@@ -531,6 +826,8 @@ function ShowcaseEditorDialog({
     </Dialog>
   );
 }
+
+type EditableCustomItem = ShowcaseCustomItemInput & { key: string };
 
 function SelectionSection({
   icon: Icon,
