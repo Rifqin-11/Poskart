@@ -2,16 +2,19 @@
 
 import { useMemo, useState } from "react";
 import {
-  BadgeCheck,
+  ArrowUpRight,
   AlertTriangle,
   Battery,
   CircleHelp,
+  Layers3,
+  MapPin,
+  MonitorCog,
+  Palette,
   Plus,
   Printer,
   RefreshCw,
   SlidersHorizontal,
   Store,
-  Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +25,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -56,6 +58,7 @@ import type { LayoutSchema } from "@/types/builder";
 import type { Device } from "@/types/device";
 
 import { BoothFormDialog } from "./_components/booth-form-dialog";
+import { BoothLocationMap } from "./_components/booth-location-map";
 import { DeviceErrorsDialog } from "./_components/device-errors-dialog";
 import { FailedPrintsDialog } from "./_components/printer-status-logs-dialog";
 
@@ -407,13 +410,26 @@ export function BoothManagement({
         className="grid gap-4 xl:grid-cols-2"
       >
         {data.map((device: Device) => (
-          <Card key={device.id}>
-            <CardHeader className="flex-row items-start justify-between">
-              <div>
-                <CardTitle>{device.name}</CardTitle>
-                <CardDescription>
-                  {device.location} · {device.appVersion}
-                </CardDescription>
+          <Card
+            key={device.id}
+            className="group overflow-hidden rounded-2xl border border-zinc-200/80 bg-white transition-shadow duration-200 hover:shadow-md"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3 border-b border-zinc-100 px-5 py-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#00357B] text-white">
+                  <MonitorCog className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-zinc-900">
+                    {device.name}
+                  </p>
+                  <p className="truncate text-[11px] text-zinc-400">
+                    <span className="font-mono">{device.id}</span>
+                    <span className="mx-1.5 text-zinc-300">·</span>
+                    <span>v{device.appVersion || "—"}</span>
+                  </p>
+                </div>
               </div>
               <Badge
                 variant={
@@ -423,156 +439,217 @@ export function BoothManagement({
                       ? "warning"
                       : "destructive"
                 }
+                className="h-6 shrink-0 gap-1.5 rounded-lg px-2 text-[11px] capitalize"
               >
+                <span
+                  className={cn(
+                    "size-1.5 rounded-full",
+                    device.status === "online"
+                      ? "bg-emerald-500"
+                      : device.status === "maintenance"
+                        ? "bg-amber-500"
+                        : "bg-red-500",
+                  )}
+                />
                 {device.status}
               </Badge>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <div className="rounded-md bg-zinc-50 p-3">
-                  <Battery className="mb-2 size-4" />
-                  {device.battery}% battery
+            </div>
+
+            <CardContent className="space-y-3 p-4">
+              {/* Battery + Printer row */}
+              <div className="grid grid-cols-2 gap-2">
+                {/* Battery */}
+                <div className="rounded-xl border border-zinc-100 bg-zinc-50/60 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+                      <Battery className="size-3.5" />
+                      Battery
+                    </span>
+                    <span
+                      className={cn(
+                        "text-xs font-semibold tabular-nums",
+                        device.battery <= 20 ? "text-red-600" : "text-zinc-800",
+                      )}
+                    >
+                      {device.battery}%
+                    </span>
+                  </div>
+                  <Progress
+                    value={device.battery}
+                    className={cn(
+                      "mt-2 h-1 bg-zinc-200 [&>div]:rounded-full [&>div]:bg-[#00357B]",
+                      device.battery <= 20 && "[&>div]:bg-red-500",
+                    )}
+                  />
+                  <p className="mt-1.5 truncate text-[10px] text-zinc-400">
+                    {device.lastSync}
+                  </p>
                 </div>
+
+                {/* Printer */}
                 <div
                   className={cn(
-                    "rounded-md border p-3",
+                    "rounded-xl border p-3",
                     device.printerStatus === "ready"
-                      ? "border-emerald-200 bg-emerald-50"
+                      ? "border-emerald-100 bg-emerald-50/40"
                       : device.printerStatus === "unknown"
-                        ? "border-zinc-200 bg-zinc-50"
-                        : "border-red-200 bg-red-50",
+                        ? "border-zinc-100 bg-zinc-50/60"
+                        : "border-red-100 bg-red-50/40",
                   )}
                 >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <Printer className="size-4 shrink-0" />
-                    <Badge
-                      variant={
+                  <div className="flex items-center gap-1.5">
+                    <Printer
+                      className={cn(
+                        "size-3.5",
                         device.printerStatus === "ready"
-                          ? "success"
+                          ? "text-emerald-600"
                           : device.printerStatus === "unknown"
-                            ? "secondary"
-                            : "destructive"
-                      }
-                      className="max-w-full truncate px-1.5 text-[10px]"
-                    >
-                      {device.printerStatus.replaceAll("_", " ")}
-                    </Badge>
+                            ? "text-zinc-400"
+                            : "text-red-600",
+                      )}
+                    />
+                    <span className="text-[11px] text-zinc-400">Printer</span>
                   </div>
-                  <div className="truncate font-medium text-zinc-900">
-                    {device.printerName || "Printer belum dikonfigurasi"}
-                  </div>
-                  <div
+                  <p className="mt-1.5 truncate text-xs font-semibold text-zinc-800">
+                    {device.printerName || "Not set"}
+                  </p>
+                  <p
                     className={cn(
-                      "mt-0.5 line-clamp-2 text-[11px]",
-                      device.printerLastError
-                        ? "font-medium text-red-700"
-                        : "text-zinc-500",
+                      "mt-0.5 text-[10px] capitalize",
+                      device.printerStatus === "ready"
+                        ? "text-emerald-600"
+                        : device.printerStatus === "unknown"
+                          ? "text-zinc-400"
+                          : "text-red-600",
                     )}
                   >
-                    {device.printerLastError ||
-                      (device.printerBidirectional
-                        ? "Status kertas didukung"
-                        : "Status koneksi saja")}
+                    {device.printerStatus ?? "unknown"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Location + Map */}
+              <div className="overflow-hidden rounded-xl border border-zinc-100">
+                <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <MapPin className="size-3.5 shrink-0 text-zinc-400" />
+                    <p className="truncate text-xs font-medium text-zinc-700">
+                      {device.location || "Location not set"}
+                    </p>
+                  </div>
+                  {device.location ? (
+                    <a
+                      href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(device.location)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[#00357B] hover:underline"
+                    >
+                      Open <ArrowUpRight className="size-3" />
+                    </a>
+                  ) : null}
+                </div>
+                <BoothLocationMap
+                  location={device.location}
+                  className="h-32 border-t border-zinc-100"
+                />
+              </div>
+
+              {/* Active setup */}
+              <div className="rounded-xl border border-zinc-100 bg-zinc-50/60 px-3.5 py-3">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+                  Active Setup
+                </p>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+                  <div>
+                    <p className="flex items-center gap-1 text-[10px] text-zinc-400">
+                      <Palette className="size-3" /> Theme
+                    </p>
+                    <p className="mt-0.5 truncate text-xs font-semibold text-zinc-700">
+                      {device.theme || "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="flex items-center gap-1 text-[10px] text-zinc-400">
+                      <Layers3 className="size-3" /> Frames
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-xs font-semibold leading-4 text-zinc-700">
+                      {formatFrameTemplateAssignments(
+                        device.frameTemplates,
+                        templates,
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="flex items-center gap-1 text-[10px] text-zinc-400">
+                      <Store className="size-3" /> Pricing
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-xs font-semibold leading-4 text-zinc-700">
+                      {formatPricingAssignments(
+                        device.pricingProfiles,
+                        pricingProducts,
+                      )}
+                    </p>
                   </div>
                 </div>
-                <div className="rounded-md bg-zinc-50 p-3">
-                  <Store className="mb-2 size-4" />
-                  {formatPricingAssignments(
-                    device.pricingProfiles,
-                    pricingProducts,
-                  )}
-                </div>
-              </div>
-              <div className="grid gap-2 rounded-md bg-zinc-50 p-3 text-xs text-zinc-600 sm:grid-cols-2">
-                <div className="flex items-center gap-1.5">
-                  <Timer className="size-3.5 text-zinc-400" />
-                  <span>
-                    Session:{" "}
-                    <span className="font-semibold text-zinc-800">
-                      {device.sessionCountdownSeconds
-                        ? `${device.sessionCountdownSeconds}s`
-                        : "default"}
-                    </span>
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  <span className="rounded-md bg-zinc-200/60 px-2 py-0.5 text-[10px] text-zinc-500">
+                    Session {device.sessionCountdownSeconds ? `${device.sessionCountdownSeconds}s` : "default"}
                   </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Timer className="size-3.5 text-zinc-400" />
-                  <span>
-                    Payment:{" "}
-                    <span className="font-semibold text-zinc-800">
-                      {device.paymentCountdownSeconds
-                        ? `${device.paymentCountdownSeconds}s`
-                        : "default"}
-                    </span>
+                  <span className="rounded-md bg-zinc-200/60 px-2 py-0.5 text-[10px] text-zinc-500">
+                    Payment {device.paymentCountdownSeconds ? `${device.paymentCountdownSeconds}s` : "default"}
                   </span>
-                </div>
-                <div className="col-span-2 flex items-center gap-1.5">
-                  <span className="text-zinc-500">Theme:</span>
-                  <span className="font-medium text-zinc-700">
-                    {device.theme || "—"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-zinc-500">Frame:</span>
-                  <span className="font-medium text-zinc-700">
-                    {formatFrameTemplateAssignments(
-                      device.frameTemplates,
-                      templates,
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-zinc-500">Price:</span>
-                  <span className="font-medium text-zinc-700">
-                    {formatPricingAssignments(
-                      device.pricingProfiles,
-                      pricingProducts,
-                    )}
-                  </span>
-                </div>
-                <div className="col-span-2 flex min-w-0 items-center gap-1.5">
-                  <BadgeCheck className="size-3.5 shrink-0 text-zinc-400" />
-                  <span className="shrink-0 text-zinc-500">Last sync:</span>
-                  <span className="truncate font-medium text-zinc-700">
-                    {device.lastSync}
-                  </span>
-                </div>
-              </div>
-              <Progress value={device.battery} />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={
-                    device.unresolvedErrorCount ? "destructive" : "outline"
-                  }
-                  size="sm"
-                  onClick={() => setErrorsFor(device)}
-                >
-                  <AlertTriangle className="size-4" />
-                  Errors
-                  {device.unresolvedErrorCount ? (
-                    <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
-                      {device.unresolvedErrorCount}
+                  {device.voucherEnabled ? (
+                    <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                      Voucher on
                     </span>
                   ) : null}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFailedFor(device)}
-                >
-                  <Printer className="size-4" /> Failed prints
-                </Button>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-between gap-2 pt-0.5">
+                <div className="flex gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-8 rounded-lg px-3 text-xs",
+                      device.unresolvedErrorCount
+                        ? "border-red-200 text-red-700 hover:bg-red-50"
+                        : "",
+                    )}
+                    onClick={() => setErrorsFor(device)}
+                  >
+                    <AlertTriangle className="size-3.5" />
+                    Errors
+                    {device.unresolvedErrorCount ? (
+                      <span className="ml-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
+                        {device.unresolvedErrorCount}
+                      </span>
+                    ) : null}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-lg px-3 text-xs"
+                    onClick={() => setFailedFor(device)}
+                  >
+                    <Printer className="size-3.5" /> Prints
+                  </Button>
+                </div>
                 <Button
                   data-devices-tour="configure"
                   size="sm"
+                  className="h-8 rounded-lg bg-[#00357B] px-4 text-xs hover:bg-[#014EB4]"
                   onClick={() => setEditingId(device.id)}
                 >
-                  <SlidersHorizontal className="size-4" />{" "}
-                  {isReadOnly("devices") ? "View details" : "Configure"}
+                  <SlidersHorizontal className="size-3.5" />{" "}
+                  {isReadOnly("devices") ? "View" : "Configure"}
                 </Button>
               </div>
             </CardContent>
           </Card>
+
         ))}
         {data.length === 0 ? (
           <Card className="xl:col-span-2">

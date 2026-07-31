@@ -13,6 +13,7 @@ import { ThemeThumbnail } from "@/features/admin/themes/theme-thumbnail";
 import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
 import { FrameShowcasePreview } from "@/features/public/showcase/frame-showcase-preview";
 import { businessProfile } from "@/lib/constants/business";
+import { ShowcaseHeroCarousel } from "@/features/public/showcase/showcase-hero-carousel";
 import type {
   PublicShowcaseCustomItem,
   PublicShowcaseTemplate,
@@ -36,21 +37,21 @@ function groupCustomItems(items: PublicShowcaseCustomItem[]) {
   return [...groups.entries()];
 }
 
+
+
 export function TemplateShowcasePage({
   showcase,
 }: {
   showcase: PublicTemplateShowcase;
 }) {
-  const featuredTemplate = showcase.templates[0] ?? null;
-  const featuredTheme = showcase.themes[0] ?? null;
-  const featuredCustomItem = showcase.customItems[0] ?? null;
   const templateGroups = groupTemplates(showcase.templates);
   const customGroups = groupCustomItems(showcase.customItems);
-  const primaryAnchor = featuredTemplate
+  const primaryAnchor = showcase.templates.length
     ? "#frames"
-    : featuredTheme
+    : showcase.themes.length
       ? "#themes"
       : "#custom";
+  const hasContent = showcase.templates.length > 0 || showcase.themes.length > 0 || showcase.customItems.length > 0;
 
   return (
     <main className="min-h-[100dvh] overflow-clip bg-[#f7f9ff] text-zinc-950">
@@ -70,7 +71,7 @@ export function TemplateShowcasePage({
                 "Lihat pilihan frame, tampilan photobooth, dan referensi visual yang dapat disesuaikan untuk cafe, acara, atau kampanye Anda."}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              {featuredTemplate || featuredTheme || featuredCustomItem ? (
+              {hasContent ? (
                 <a
                   href={primaryAnchor}
                   className={buttonVariants({
@@ -100,73 +101,11 @@ export function TemplateShowcasePage({
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-3xl">
-            <div
-              aria-hidden="true"
-              className="absolute -inset-4 rounded-[36px] border border-blue-100 bg-white/35 sm:-inset-6"
-            />
-            <div className="relative overflow-hidden rounded-[32px] border border-blue-100 bg-white p-4 shadow-[0_30px_80px_rgba(0,53,123,0.14)] sm:p-6">
-              <div className="relative grid h-[430px] place-items-center overflow-hidden rounded-[24px] bg-[#eef3ff] p-7 sm:h-[500px] sm:p-10 lg:h-[540px]">
-                {featuredTemplate ? (
-                  <FrameShowcasePreview
-                    name={featuredTemplate.name}
-                    accentColor={featuredTemplate.accentColor}
-                    frameImageUrl={featuredTemplate.frameImageUrl}
-                    frameLayout={featuredTemplate.frameLayout}
-                  />
-                ) : featuredTheme ? (
-                  <ThemeThumbnail
-                    schema={featuredTheme.schema}
-                    className="max-w-2xl shadow-[0_24px_55px_rgba(15,23,42,0.16)]"
-                  />
-                ) : featuredCustomItem ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={featuredCustomItem.imageUrl}
-                    alt={featuredCustomItem.title}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="max-w-sm text-center">
-                    <Images className="mx-auto size-10 text-blue-200" />
-                    <p className="mt-4 text-sm font-semibold text-zinc-700">
-                      Showcase sedang disiapkan
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-zinc-500">
-                      Koleksi visual akan segera tersedia pada halaman ini.
-                    </p>
-                  </div>
-                )}
-              </div>
-              {featuredTemplate || featuredTheme || featuredCustomItem ? (
-                <div className="flex items-center justify-between gap-4 px-1 pb-1 pt-5">
-                  <div className="min-w-0">
-                    <p className="truncate text-base font-semibold">
-                      {featuredTemplate?.name ??
-                        featuredTheme?.name ??
-                        featuredCustomItem?.title}
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-500">
-                      {featuredTemplate?.tagline ||
-                        (featuredTemplate
-                          ? "Frame pilihan POSKART"
-                          : featuredTheme
-                            ? "Theme photobooth POSKART"
-                            : featuredCustomItem?.description ||
-                              "Referensi visual kolaborasi")}
-                    </p>
-                  </div>
-                  <div className="shrink-0 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#00357B]">
-                    {featuredTemplate
-                      ? `${featuredTemplate.photoCount} foto`
-                      : featuredTheme
-                        ? "Theme"
-                        : featuredCustomItem?.category}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <ShowcaseHeroCarousel
+            templates={showcase.templates}
+            themes={showcase.themes}
+            customItems={showcase.customItems}
+          />
         </div>
       </section>
 
