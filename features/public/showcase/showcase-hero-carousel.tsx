@@ -133,29 +133,48 @@ export function ShowcaseHeroCarousel({
   themes: PublicShowcaseTheme[];
   customItems: PublicShowcaseCustomItem[];
 }) {
-  const slides: ShowcaseSlide[] = [
-    ...templates.map((t) => ({
+  // One representative per category
+  const seenFrameCategories = new Set<string>();
+  const seenCustomCategories = new Set<string>();
+
+  const frameSlides: ShowcaseSlide[] = templates
+    .filter((t) => {
+      const cat = t.categoryName || "default";
+      if (seenFrameCategories.has(cat)) return false;
+      seenFrameCategories.add(cat);
+      return true;
+    })
+    .map((t) => ({
       type: "frame" as const,
       title: t.name,
       description: t.tagline || "Frame pilihan POSKART",
       badge: `${t.photoCount} foto`,
       frame: t,
-    })),
-    ...themes.map((th) => ({
-      type: "theme" as const,
-      title: th.name,
-      description: "Theme photobooth POSKART",
-      badge: "Theme",
-      theme: th,
-    })),
-    ...customItems.map((c) => ({
+    }));
+
+  const themeSlides: ShowcaseSlide[] = themes.slice(0, 1).map((th) => ({
+    type: "theme" as const,
+    title: th.name,
+    description: "Theme photobooth POSKART",
+    badge: "Theme",
+    theme: th,
+  }));
+
+  const customSlides: ShowcaseSlide[] = customItems
+    .filter((c) => {
+      if (seenCustomCategories.has(c.category)) return false;
+      seenCustomCategories.add(c.category);
+      return true;
+    })
+    .map((c) => ({
       type: "image" as const,
       title: c.title,
       description: c.description || "Referensi visual kolaborasi",
       badge: c.category,
       imageUrl: c.imageUrl,
-    })),
-  ];
+    }));
+
+  const slides: ShowcaseSlide[] = [...frameSlides, ...themeSlides, ...customSlides];
 
   const [current, setCurrent] = React.useState(0);
   const [dragX, setDragX] = React.useState(0);
