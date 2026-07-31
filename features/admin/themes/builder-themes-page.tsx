@@ -39,6 +39,7 @@ import type { LayoutSchemaRow } from "@/features/admin/layout/api";
 import type { Device } from "@/types/device";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 // ── Assign Devices Modal ─────────────────────────────────────────────────────
 
@@ -274,6 +275,7 @@ function AssignDevicesModal({
 // ── BuilderThemesPage ────────────────────────────────────────────────────────
 
 export function BuilderThemesPage() {
+  const { t } = useI18n();
   const { isReadOnly } = usePermission();
   const { data: layouts = [], isLoading } = useLayoutSchemas();
   const setActive = useSetActiveLayout();
@@ -465,6 +467,7 @@ function ThemeCard({
   onCancelDelete,
   onConfirmDelete,
 }: ThemeCardProps) {
+  const { t } = useI18n();
   const { isReadOnly } = usePermission();
   const isActive = layout.is_active;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -630,11 +633,11 @@ function ThemeCard({
                 <Loader2 className="size-3.5 animate-spin" />
               ) : isActive ? (
                 <>
-                  <PowerOff className="size-3.5" /> Deactivate
+                  <PowerOff className="size-3.5" /> {t("themes.deactivate")}
                 </>
               ) : (
                 <>
-                  <Monitor className="size-3.5" /> Assign
+                  <Monitor className="size-3.5" /> {t("themes.assign")}
                 </>
               )}
             </button>

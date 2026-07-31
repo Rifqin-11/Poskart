@@ -10,8 +10,10 @@ import { Slider } from "@/components/ui/slider";
 import { layoutApi } from "@/features/admin/layout/api";
 import { useThemes } from "@/features/admin/themes/use-themes";
 import { useThemeStore } from "@/stores/theme-store";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function ThemeBuilder() {
+  const { t } = useI18n();
   const { data: presets = [] } = useThemes();
   const { schema, published, setSchema, setColor, setRadius, setAnimationPreset, publish } = useThemeStore();
 
@@ -19,23 +21,23 @@ export function ThemeBuilder() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Theme & Branding Builder</h1>
-          <p className="mt-1 text-sm text-zinc-500">Draft, preview, and publish kiosk branding systems.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("themeBuilder.title")}</h1>
+          <p className="mt-1 text-sm text-zinc-500">{t("themeBuilder.desc")}</p>
         </div>
         <div className="flex gap-2">
-          <Badge variant={published ? "success" : "warning"}>{published ? "Published" : "Draft mode"}</Badge>
+          <Badge variant={published ? "success" : "warning"}>{published ? t("themeBuilder.published") : t("themeBuilder.draftMode")}</Badge>
           <Button
             onClick={async () => {
               try {
                 await layoutApi.publishThemeSchema(schema);
                 publish();
-                toast.success("Theme schema published to Supabase");
+                toast.success(t("themeBuilder.publishSuccess"));
               } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Unable to publish theme schema");
+                toast.error(error instanceof Error ? error.message : t("themeBuilder.publishFailed"));
               }
             }}
           >
-            Save & publish
+            {t("themeBuilder.savePublish")}
           </Button>
         </div>
       </div>
@@ -44,8 +46,8 @@ export function ThemeBuilder() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Theme presets</CardTitle>
-              <CardDescription>Start from a POSKART brand direction.</CardDescription>
+              <CardTitle>{t("themeBuilder.presetsTitle")}</CardTitle>
+              <CardDescription>{t("themeBuilder.presetsDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {presets.map((preset) => (
@@ -87,16 +89,16 @@ export function ThemeBuilder() {
                 </label>
               ))}
               <label className="block text-xs font-medium text-zinc-500">
-                Animation preset
+                {t("themeBuilder.animationPreset")}
                 <Select
                   className="mt-1"
                   value={schema.animationPreset}
                   onChange={(event) => setAnimationPreset(event.target.value as typeof schema.animationPreset)}
                 >
-                  <option value="none">None</option>
-                  <option value="subtle">Subtle</option>
-                  <option value="playful">Playful</option>
-                  <option value="premium">Premium</option>
+                  <option value="none">{t("themeBuilder.animNone")}</option>
+                  <option value="subtle">{t("themeBuilder.animSubtle")}</option>
+                  <option value="playful">{t("themeBuilder.animPlayful")}</option>
+                  <option value="premium">{t("themeBuilder.animPremium")}</option>
                 </Select>
               </label>
             </CardContent>

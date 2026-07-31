@@ -53,6 +53,7 @@ import {
 } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { FrameCategory, Template } from "@/types/template";
 
 import { SortableTemplateCard } from "./_components/template-card";
@@ -86,6 +87,7 @@ export function TemplateManagement() {
   const updateFrameCategory = useUpdateFrameCategory();
   const deleteFrameCategory = useDeleteFrameCategory();
   const { isReadOnly } = usePermission();
+  const { t } = useI18n();
   const [orderedTemplates, setOrderedTemplates] = useState<Template[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [testTemplate, setTestTemplate] = useState<Template | null>(null);
@@ -410,8 +412,8 @@ export function TemplateManagement() {
     <div>
       {confirmDelete.dialog}
       <PageHeader
-        title="Template Management"
-        description="Frame templates for the Flutter photobooth picker screen."
+        title={t("templates.pageTitle")}
+        description={t("templates.pageDesc")}
         action={
           <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end">
             <div className="flex rounded-full border border-zinc-200 bg-white p-1">
@@ -443,12 +445,12 @@ export function TemplateManagement() {
                 className="rounded-full"
                 onClick={() => setFrameCategoriesOpen(true)}
               >
-                <FolderPlus className="size-4" /> Frame categories
+                <FolderPlus className="size-4" /> {t("templates.frameCategories")}
               </Button>
             )}
             {!isReadOnly("templates") && (
               <Button onClick={openAdd} className="rounded-full">
-                <CloudUpload className="size-4 " /> Add template
+                <CloudUpload className="size-4 " /> {t("templates.addTemplate")}
               </Button>
             )}
           </div>

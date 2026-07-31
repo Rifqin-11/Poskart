@@ -36,6 +36,8 @@ import {
   type FeatureTourStep,
 } from "@/features/admin/tutorial/feature-guided-tour";
 import { useFeatureTutorial } from "@/features/admin/tutorial/use-feature-tutorial";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+import { type DictionaryKey } from "@/lib/i18n/dictionaries";
 import type { PricingProduct, PricingProductInput } from "@/types/pricing";
 
 import { PricingFormDialog } from "./_components/pricing-form-dialog";
@@ -61,43 +63,43 @@ const EMPTY_EVENT: PricingProductInput = {
   accessMode: "event",
 };
 
-const PRICING_TOUR_STEPS: FeatureTourStep[] = [
-  {
-    selectors: ['[data-pricing-tour="packages"]'],
-    title: "Paid packages",
-    description:
-      "Use this section for regular packages. Visitors select a package and complete payment before the session starts.",
-  },
-  {
-    selectors: ['[data-pricing-tour="package-info"]'],
-    title: "Configure package benefits",
-    description:
-      "Each package can have different pricing, promotions, print limits, QR download, GIF, and Live Photo settings.",
-  },
-  {
-    selectors: ['[data-pricing-tour="events"]'],
-    title: "Event access",
-    description:
-      "Events are used for free sessions covered by the organizer. Assigned kiosks will skip package selection and payment.",
-  },
-  {
-    selectors: ['[data-pricing-tour="event-info"]'],
-    title: "Choose the right mode",
-    description:
-      "Use paid packages for normal operations. Use events only when visitors genuinely do not need to check out.",
-  },
-];
+function getPricingTourSteps(t: (key: DictionaryKey) => string): FeatureTourStep[] {
+  return [
+    {
+      selectors: ['[data-pricing-tour="packages"]'],
+      title: t("pricing.tourPaidTitle"),
+      description: t("pricing.tourPaidDesc"),
+    },
+    {
+      selectors: ['[data-pricing-tour="package-info"]'],
+      title: t("pricing.tourPackageInfoTitle"),
+      description: t("pricing.tourPackageInfoDesc"),
+    },
+    {
+      selectors: ['[data-pricing-tour="events"]'],
+      title: t("pricing.tourEventsTitle"),
+      description: t("pricing.tourEventsDesc"),
+    },
+    {
+      selectors: ['[data-pricing-tour="event-info"]'],
+      title: t("pricing.tourModeTitle"),
+      description: t("pricing.tourModeDesc"),
+    },
+  ];
+}
 
 export function PricingManagement() {
   const { data = [] } = usePricing();
   const createPricing = useCreatePricing();
   const { isReadOnly } = usePermission();
+  const { t } = useI18n();
   const updatePricing = useUpdatePricing();
   const deletePricing = useDeletePricing();
   const [editing, setEditing] = useState<PricingProduct | null>(null);
   const [creating, setCreating] = useState<PricingProductInput | null>(null);
   const confirmDelete = useConfirmDialog();
   const pricingTutorial = useFeatureTutorial("pricing");
+  const PRICING_TOUR_STEPS = getPricingTourSteps(t);
 
   const handleToggle = (
     product: PricingProduct,
@@ -107,24 +109,24 @@ export function PricingManagement() {
     updatePricing.mutate(
       { id: product.id, patch: { [field]: value } },
       {
-        onSuccess: () => toast.success("Updated"),
+        onSuccess: () => toast.success(t("pricing.updated")),
         onError: (err) =>
-          toast.error(err instanceof Error ? err.message : "Update failed"),
+          toast.error(err instanceof Error ? err.message : t("pricing.updateFailed")),
       },
     );
   };
 
   const handleDelete = (product: PricingProduct) => {
     confirmDelete.confirm({
-      title: "Delete access?",
-      description: `Delete "${product.name}"?`,
-      confirmLabel: "Delete",
+      title: t("pricing.deleteTitle"),
+      description: t("pricing.deleteDesc").replace("{name}", product.name),
+      confirmLabel: t("pricing.deleteConfirm"),
       destructive: true,
       onConfirm: () => {
         deletePricing.mutate(product.id, {
-          onSuccess: () => toast.success("Access deleted"),
+          onSuccess: () => toast.success(t("pricing.deleteSuccess")),
           onError: (err) =>
-            toast.error(err instanceof Error ? err.message : "Delete failed"),
+            toast.error(err instanceof Error ? err.message : t("pricing.deleteFailed")),
         });
       },
     });
@@ -134,20 +136,20 @@ export function PricingManagement() {
     <div>
       {confirmDelete.dialog}
       <PageHeader
-        title="Pricing & Product Management"
-        description="Configure paid packages and event access for POSKART kiosks."
+        title={t("pricing.pageTitle")}
+        description={t("pricing.pageDesc")}
         action={
           <Button variant="outline" onClick={pricingTutorial.show}>
             <CircleHelp className="size-4" />
-            Show tutorial
+            {t("pricing.showTutorial")}
           </Button>
         }
       />
 
       <div className="space-y-5">
         <PricingTableCard
-          title="Pricing packages"
-          description="Paid packages with payment, print, and media settings."
+          title={t("pricing.packagesTitle")}
+          description={t("pricing.packagesDesc")}
           products={data.filter((product) => product.accessMode === "paid")}
           eventMode={false}
           tourTarget="packages"
@@ -159,8 +161,8 @@ export function PricingManagement() {
           onToggle={handleToggle}
         />
         <PricingTableCard
-          title="Event access"
-          description="Complimentary sessions that skip package and payment selection on assigned kiosks."
+          title={t("pricing.eventsTitle")}
+          description={t("pricing.eventsDesc")}
           products={data.filter((product) => product.accessMode === "event")}
           eventMode
           tourTarget="events"
@@ -186,14 +188,14 @@ export function PricingManagement() {
               onSuccess: () => {
                 toast.success(
                   values.accessMode === "event"
-                    ? "Event access created"
-                    : "Package created",
+                    ? t("pricing.eventAccessCreated")
+                    : t("pricing.packageCreated"),
                 );
                 setCreating(null);
               },
               onError: (err) =>
                 toast.error(
-                  err instanceof Error ? err.message : "Create failed",
+                  err instanceof Error ? err.message : t("pricing.createFailed"),
                 ),
             });
           }}
@@ -210,12 +212,12 @@ export function PricingManagement() {
               { id: editing.id, patch: values },
               {
                 onSuccess: () => {
-                  toast.success("Access updated");
+                  toast.success(t("pricing.accessUpdated"));
                   setEditing(null);
                 },
                 onError: (err) =>
                   toast.error(
-                    err instanceof Error ? err.message : "Update failed",
+                    err instanceof Error ? err.message : t("pricing.updateFailed"),
                   ),
               },
             );
@@ -225,7 +227,7 @@ export function PricingManagement() {
       {pricingTutorial.open ? (
         <FeatureGuidedTour
           open
-          title="Pricing guide"
+          title={t("pricing.guide")}
           steps={PRICING_TOUR_STEPS}
           onClose={pricingTutorial.complete}
           onComplete={pricingTutorial.complete}
@@ -266,6 +268,7 @@ function PricingTableCard({
   onDelete,
   onToggle,
 }: PricingTableCardProps) {
+  const { t } = useI18n();
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const totalPages = Math.max(1, Math.ceil(products.length / pageSize));
@@ -288,7 +291,7 @@ function PricingTableCard({
           ) : (
             <Plus className="size-4" />
           )}
-          {eventMode ? "Add event" : "Add package"}
+          {eventMode ? t("pricing.addEvent") : t("pricing.addPackage")}
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -299,21 +302,21 @@ function PricingTableCard({
           <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow>
-                <TableHead>{eventMode ? "Event" : "Product"}</TableHead>
+                <TableHead>{eventMode ? t("pricing.colEvent") : t("pricing.colProduct")}</TableHead>
                 {eventMode ? (
-                  <TableHead>Expiry</TableHead>
+                  <TableHead>{t("pricing.colExpiry")}</TableHead>
                 ) : (
                   <>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Promo</TableHead>
+                    <TableHead>{t("pricing.colPrice")}</TableHead>
+                    <TableHead>{t("pricing.colPromo")}</TableHead>
                   </>
                 )}
-                <TableHead>Print limit</TableHead>
-                {!eventMode ? <TableHead>QR Download</TableHead> : null}
-                <TableHead>Live Photo</TableHead>
-                <TableHead>GIF</TableHead>
-                <TableHead>Active</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("pricing.colPrintLimit")}</TableHead>
+                {!eventMode ? <TableHead>{t("pricing.colQrDownload")}</TableHead> : null}
+                <TableHead>{t("pricing.colLivePhoto")}</TableHead>
+                <TableHead>{t("pricing.colGif")}</TableHead>
+                <TableHead>{t("pricing.colActive")}</TableHead>
+                <TableHead className="text-right">{t("pricing.colActions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

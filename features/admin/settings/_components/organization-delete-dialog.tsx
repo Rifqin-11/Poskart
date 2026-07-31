@@ -5,6 +5,7 @@ import { AlertTriangle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 export function OrganizationDeleteDialog({
   open,
@@ -19,6 +20,7 @@ export function OrganizationDeleteDialog({
   onOpenChange: (open: boolean) => void;
   onConfirm: (confirmation: string) => void;
 }) {
+  const { t } = useI18n();
   const [confirmation, setConfirmation] = useState("");
   const expectedConfirmation = useMemo(
     () => `delete ${organizationName}`,
@@ -42,7 +44,7 @@ export function OrganizationDeleteDialog({
         }
         onOpenChange(true);
       }}
-      title="Delete workspace permanently"
+      title={t("org.deleteTitle")}
       className="max-w-lg"
       overlayClassName="z-[90]"
     >
@@ -51,19 +53,16 @@ export function OrganizationDeleteDialog({
           <div className="flex gap-3">
             <AlertTriangle className="mt-0.5 size-5 shrink-0 text-red-600" />
             <div>
-              <p className="font-semibold">This action cannot be undone.</p>
+              <p className="font-semibold">{t("org.deleteWarning")}</p>
               <p className="mt-1 leading-6 text-red-800">
-                All configuration, devices, transactions, vouchers, and data workspace{" "}
-                <span className="font-semibold">{organizationName}</span>{" "}
-                will be permanently deleted.
+                {t("org.deleteDesc").replace("{name}", organizationName)}
               </p>
             </div>
           </div>
         </div>
 
         <label className="block text-sm font-medium text-zinc-800">
-          Type <span className="font-mono text-red-700">{expectedConfirmation}</span>{" "}
-          to continue.
+          {t("org.deleteTypeToContinue").replace("{code}", expectedConfirmation)}
           <Input
             className="mt-2 font-mono"
             value={confirmation}
@@ -83,7 +82,7 @@ export function OrganizationDeleteDialog({
             disabled={isDeleting}
             onClick={closeDialog}
           >
-            Cancel
+            {t("org.cancel")}
           </Button>
           <Button
             type="button"
@@ -92,7 +91,7 @@ export function OrganizationDeleteDialog({
             onClick={() => onConfirm(confirmation)}
           >
             <Trash2 className="size-4" />
-            {isDeleting ? "Deleting..." : "Delete workspace"}
+            {isDeleting ? t("org.deleting") : t("org.deleteWorkspace")}
           </Button>
         </div>
       </div>

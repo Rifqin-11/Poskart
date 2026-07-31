@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { SettingField, SettingsCard, SwitchSetting } from "./settings-card";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 type SubscriptionGatewayMode = "duitku" | "midtrans" | "both";
 
@@ -58,6 +59,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
   saving = false,
   onSave,
 }: PaymentSettingsCardProps<T>) {
+  const { t } = useI18n();
   const configuredGateway =
     superadminGateway ?? form.subscription_payment_gateway;
   const gatewayOptions = [
@@ -68,8 +70,8 @@ export function PaymentSettingsCard<T extends SettingsForm>({
 
   return (
     <SettingsCard
-      title="Payment settings"
-      description="QRIS provider settings and subscription checkout gateway."
+      title={t("payment.settingsTitle")}
+      description={t("payment.settingsDesc")}
       icon={<CreditCard className="size-4" />}
     >
       <div className="space-y-5">
@@ -249,7 +251,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
             className="mt-3 w-full rounded-2xl"
           >
             <Save className="size-4" />
-            {saving ? "Saving..." : "Save payment"}
+            {saving ? t("payment.saving") : t("payment.save")}
           </Button>
         </div>
       </div>

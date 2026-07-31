@@ -128,6 +128,34 @@ export async function updateTemplate(
 
 export async function deleteTemplate(id: string): Promise<void> {
   const { supabase } = await verifyRole(["owner", "admin", "designer"]);
+
+  // Check if this template is still assigned to any device before deleting.
+  const { data: assignments, error: assignmentError } = await supabase
+    .from("device_frame_templates")
+    .select("device_id, devices(name)")
+    .eq("template_id", id)
+    .limit(5);
+
+  if (assignmentError) {
+    throw new Error(`Unable to check template assignments: ${assignmentError.message}`);
+  }
+
+  if (assignments && assignments.length > 0) {
+    const deviceNames = assignments
+      .map((a: { devices: { name?: string }[] | null }) => {
+        const d = Array.isArray(a.devices) ? a.devices[0] : a.devices;
+        return (d as { name?: string } | null)?.name;
+      })
+      .filter(Boolean)
+      .join(", ");
+    const suffix = deviceNames
+      ? ` (${deviceNames})`
+      : ` (${assignments.length} device${assignments.length > 1 ? "s" : ""})`;
+    throw new Error(
+      `Template masih digunakan oleh ${assignments.length} device${suffix}. Hapus assignment dari halaman Devices terlebih dahulu sebelum menghapus template ini.`,
+    );
+  }
+
   const { error } = await supabase.from("templates").delete().eq("id", id);
   if (error) throw new Error(`Unable to delete template: ${error.message}`);
 }

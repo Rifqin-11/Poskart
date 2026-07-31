@@ -1322,7 +1322,7 @@ export function TransactionsMonitoring({
             })}
             {filtered.length === 0 && !isTableLoading && (
               <div className="rounded-lg border border-dashed border-zinc-200 px-4 py-10 text-center text-sm text-zinc-400">
-                No transactions found.
+                {t("transactions.notFound")}
               </div>
             )}
           </div>

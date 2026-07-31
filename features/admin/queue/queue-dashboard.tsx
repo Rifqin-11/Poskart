@@ -38,6 +38,7 @@ import { PageHeader } from "@/features/admin/_components/page-header";
 import { StatCard } from "@/features/admin/_components/stat-card";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn, formatDateTime } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import type {
   GuestQueueEntry,
   GuestQueueStatus,
@@ -98,6 +99,7 @@ function CreateQueueEventDialog({
     deviceId: string | null;
   }) => void;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [deviceId, setDeviceId] = useState("");
@@ -163,11 +165,11 @@ function CreateQueueEventDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
           >
-            Cancel
+            {t("queue.cancel")}
           </Button>
           <Button type="submit" disabled={pending}>
             <QrCode className="size-4" />
-            {pending ? "Creating..." : "Create QR"}
+            {pending ? t("queue.creating") : t("queue.createQr")}
           </Button>
         </div>
       </form>
@@ -182,6 +184,7 @@ export function QueueDashboard({
   data: QueueDashboardData;
   siteUrl: string;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -582,7 +585,7 @@ export function QueueDashboard({
             </div>
           ) : (
             <div className="grid min-h-32 place-items-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 text-center text-sm text-zinc-500">
-              No waiting visitor for the selected queue event.
+              {t("queue.noWaiting")}
             </div>
           )}
         </CardContent>
@@ -590,7 +593,7 @@ export function QueueDashboard({
 
       <Card>
         <CardHeader>
-          <CardTitle>Queue list</CardTitle>
+          <CardTitle>{t("queue.listTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           {data.entries.length > 0 ? (
@@ -598,12 +601,12 @@ export function QueueDashboard({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>No.</TableHead>
-                    <TableHead>Visitor</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Registered</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("queue.colNo")}</TableHead>
+                    <TableHead>{t("queue.colVisitor")}</TableHead>
+                    <TableHead>{t("queue.colContact")}</TableHead>
+                    <TableHead>{t("queue.colStatus")}</TableHead>
+                    <TableHead>{t("queue.colRegistered")}</TableHead>
+                    <TableHead className="text-right">{t("queue.colActions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -723,7 +726,7 @@ export function QueueDashboard({
             </div>
           ) : (
             <div className="grid min-h-44 place-items-center rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 text-center text-sm text-zinc-500">
-              Queue entries will appear here after visitors scan the event QR.
+              {t("queue.noEntries")}
             </div>
           )}
         </CardContent>

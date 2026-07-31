@@ -43,6 +43,8 @@ import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscri
 import { useTemplates } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+import { type DictionaryKey } from "@/lib/i18n/dictionaries";
 import {
   FeatureGuidedTour,
   type FeatureTourStep,
@@ -87,70 +89,65 @@ const EMPTY_BOOTH: BoothInput = {
   printerDotDensity: 1,
 };
 
-const DEVICE_TOUR_STEPS: FeatureTourStep[] = [
-  {
-    selectors: ['[data-devices-tour="add-device"]'],
-    title: "Pair a new device",
-    description:
-      "Click Add device and enter the pairing code shown on the tablet after login. The code is only valid temporarily.",
-  },
-  {
-    selectors: ['[data-devices-tour="capacity"]'],
-    title: "Pantau kapasitas",
-    description:
-      "This section shows how many devices are in use and remaining slots from the organization's subscription plan.",
-  },
-  {
-    selectors: [
-      '[data-devices-tour="configure"]',
-      '[data-devices-tour="device-list"]',
-    ],
-    title: "Konfigurasi setiap booth",
-    description:
-      "After pairing, open Configure to set up the theme, frames, pricing or event, vouchers, printer, and security settings.",
-  },
-];
+function getDeviceTourSteps(t: (key: DictionaryKey) => string): FeatureTourStep[] {
+  return [
+    {
+      selectors: ['[data-devices-tour="add-device"]'],
+      title: t("devices.tourPairTitle"),
+      description: t("devices.tourPairDesc"),
+    },
+    {
+      selectors: ['[data-devices-tour="capacity"]'],
+      title: t("devices.tourCapacityTitle"),
+      description: t("devices.tourCapacityDesc"),
+    },
+    {
+      selectors: [
+        '[data-devices-tour="configure"]',
+        '[data-devices-tour="device-list"]',
+      ],
+      title: t("devices.tourConfigTitle"),
+      description: t("devices.tourConfigDesc"),
+    },
+  ];
+}
 
-const DEVICE_CONFIGURATION_TOUR_STEPS: FeatureTourStep[] = [
-  {
-    selectors: ['[data-device-config-tour="tabs"]'],
-    title: "Three configuration areas",
-    description:
-      "General controls the visitor experience, Frame sets the available frame choices, and System handles security and device settings.",
-  },
-  {
-    selectors: ['[data-device-config-tour="theme"]'],
-    title: "Theme dan layout",
-    description:
-      "Select the visual theme displayed on the kiosk. Changes take effect the next time the device syncs.",
-  },
-  {
-    selectors: ['[data-device-config-tour="session-access"]'],
-    title: "Pricing or event",
-    description:
-      "Pricing requires visitors to choose a package and pay. Event skips checkout for kiosks assigned to a free session.",
-  },
-  {
-    selectors: ['[data-device-config-tour="frames"]'],
-    title: "Available frames",
-    description:
-      "Choose which frames visitors can use on this booth. Use Select all to make your full collection available, then enable frame categories if the kiosk should display All, General, and category tabs.",
-  },
-  {
-    selectors: ['[data-device-config-tour="settings-pin"]'],
-    title: "Kiosk security settings",
-    description:
-      "Enable PIN if the tablet Settings menu should only be accessible to staff. A reset can be requested via the owner or admin email.",
-  },
-  {
-    selectors: ['[data-device-config-tour="save"]'],
-    title: "Save configuration",
-    description:
-      "Save when all settings are complete. The kiosk fetches the latest configuration when online and syncs automatically.",
-  },
-];
+function getDeviceConfigTourSteps(t: (key: DictionaryKey) => string): FeatureTourStep[] {
+  return [
+    {
+      selectors: ['[data-device-config-tour="tabs"]'],
+      title: t("devices.configTourTabsTitle"),
+      description: t("devices.configTourTabsDesc"),
+    },
+    {
+      selectors: ['[data-device-config-tour="theme"]'],
+      title: t("devices.configTourThemeTitle"),
+      description: t("devices.configTourThemeDesc"),
+    },
+    {
+      selectors: ['[data-device-config-tour="session-access"]'],
+      title: t("devices.configTourAccessTitle"),
+      description: t("devices.configTourAccessDesc"),
+    },
+    {
+      selectors: ['[data-device-config-tour="frames"]'],
+      title: t("devices.configTourFramesTitle"),
+      description: t("devices.configTourFramesDesc"),
+    },
+    {
+      selectors: ['[data-device-config-tour="settings-pin"]'],
+      title: t("devices.configTourSecurityTitle"),
+      description: t("devices.configTourSecurityDesc"),
+    },
+    {
+      selectors: ['[data-device-config-tour="save"]'],
+      title: t("devices.configTourSaveTitle"),
+      description: t("devices.configTourSaveDesc"),
+    },
+  ];
+}
 
-const DEVICE_CONFIGURATION_TOUR_START = DEVICE_TOUR_STEPS.length;
+const DEVICE_CONFIGURATION_TOUR_START = 3; // DEVICE_TOUR_STEPS has 3 steps
 const DEVICE_TOUR_TAB_BY_STEP = [
   undefined,
   undefined,
@@ -194,6 +191,7 @@ export function BoothManagement({
   const { data: layouts = [] } = useLayoutSchemas();
   const { data: templates = [] } = useTemplates();
   const { isReadOnly } = usePermission();
+  const { t } = useI18n();
   const { data: pricingProducts = [] } = usePricing();
   const createPairedBooth = useCreatePairedBooth();
   const updateBooth = useUpdateBooth();
@@ -223,6 +221,8 @@ export function BoothManagement({
     deviceLimit > 0 ? Math.min(100, (usedDevices / deviceLimit) * 100) : 0;
   const deviceLimitReached = remainingDevices <= 0;
   const editing = data.find((item) => item.id === editingId) ?? null;
+  const DEVICE_TOUR_STEPS = getDeviceTourSteps(t);
+  const DEVICE_CONFIGURATION_TOUR_STEPS = getDeviceConfigTourSteps(t);
   const deviceTourSteps =
     data.length > 0 || creating
       ? [...DEVICE_TOUR_STEPS, ...DEVICE_CONFIGURATION_TOUR_STEPS]
@@ -279,15 +279,15 @@ export function BoothManagement({
 
   const handleDelete = (device: Device) => {
     confirmDelete.confirm({
-      title: "Delete device?",
-      description: `Delete device "${device.name}"?`,
-      confirmLabel: "Delete",
+      title: t("devices.deleteTitle"),
+      description: t("devices.deleteDesc").replace("{name}", device.name),
+      confirmLabel: t("devices.deleteConfirm"),
       destructive: true,
       onConfirm: () => {
         deleteBooth.mutate(device.id, {
-          onSuccess: () => toast.success("Device deleted"),
+          onSuccess: () => toast.success(t("devices.deleteSuccess")),
           onError: (err) =>
-            toast.error(err instanceof Error ? err.message : "Delete failed"),
+            toast.error(err instanceof Error ? err.message : t("devices.deleteFailed")),
         });
       },
     });
@@ -307,7 +307,7 @@ export function BoothManagement({
         setCreating(true);
       },
       onError: (error) =>
-        toast.error(error instanceof Error ? error.message : "Pairing failed"),
+        toast.error(error instanceof Error ? error.message : t("devices.pairingFailed")),
     });
   };
 
@@ -315,13 +315,13 @@ export function BoothManagement({
     <div>
       {confirmDelete.dialog}
       <PageHeader
-        title="Device Management"
-        description="Configure kiosk theme, frame template, pricing package, countdowns, sync status, and remote actions."
+        title={t("devices.pageTitle")}
+        description={t("devices.pageDesc")}
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => startDeviceTutorial()}>
               <CircleHelp className="size-4" />
-              Show tutorial
+              {t("devices.showTutorial")}
             </Button>
             <Button
               variant="outline"
@@ -330,7 +330,7 @@ export function BoothManagement({
                 toast.message("Refreshing network…");
               }}
             >
-              <RefreshCw className="size-4" /> Refresh network
+              <RefreshCw className="size-4" /> {t("devices.refreshNetwork")}
             </Button>
             <Button
               data-devices-tour="add-device"
@@ -344,7 +344,7 @@ export function BoothManagement({
                     : "Add device"
               }
             >
-              <Plus className="size-4" /> Add device
+              <Plus className="size-4" /> {t("devices.addDevice")}
             </Button>
           </div>
         }
@@ -463,7 +463,7 @@ export function BoothManagement({
                   <div className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-1.5 text-[11px] text-zinc-400">
                       <Battery className="size-3.5" />
-                      Battery
+                      {t("devices.battery")}
                     </span>
                     <span
                       className={cn(
@@ -511,7 +511,7 @@ export function BoothManagement({
                     <span className="text-[11px] text-zinc-400">Printer</span>
                   </div>
                   <p className="mt-1.5 truncate text-xs font-semibold text-zinc-800">
-                    {device.printerName || "Not set"}
+                    {device.printerName || t("devices.notSet")}
                   </p>
                   <p
                     className={cn(

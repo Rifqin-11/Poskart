@@ -49,6 +49,7 @@ import type {
   Transaction,
 } from "@/features/admin/dashboard/api";
 import { cn, formatCurrency } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 const dashboardInnerCardClass =
   "rounded-3xl border border-zinc-100 bg-white/90 shadow-sm shadow-zinc-200/60 backdrop-blur";
@@ -172,6 +173,7 @@ function useClientMounted() {
 }
 
 export function DashboardOverview() {
+  const { t } = useI18n();
   const { data, isError, isLoading } = useDashboardData();
   const { data: subscription } = useSubscriptionStatus();
   const chartsMounted = useClientMounted();
@@ -238,12 +240,12 @@ export function DashboardOverview() {
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">
-            {eventPeriod.label} Statistics
+            {t("dashboard.statistics").replace("{period}", eventPeriod.label)}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
             {selectedMonth === "all"
-              ? "All numbers below follow the selected period tab."
-              : "All numbers below are filtered by the selected month."}
+              ? t("dashboard.allPeriods")
+              : t("dashboard.filteredByMonth")}
           </p>
         </div>
         <div className="flex flex-col gap-2 rounded-3xl border border-zinc-200 bg-white/80 p-1.5 shadow-sm backdrop-blur sm:flex-row sm:items-center">
@@ -477,6 +479,7 @@ function EventAnalyticsSection({
   chartsMounted: boolean;
   period: EventPeriodStatistics;
 }) {
+  const { t } = useI18n();
   const hasTrend = period.revenueSeries.length > 0;
   const averageRevenuePerSession =
     period.totalSessions > 0
@@ -565,23 +568,23 @@ function EventAnalyticsSection({
 
       <div className="grid gap-3 md:grid-cols-3">
         <StatCard
-          title="Average session"
+          title={t("dashboard.avgSession")}
           value={formatCurrency(averageRevenuePerSession)}
-          description="Revenue per session"
+          description={t("dashboard.revenuePerSession")}
           icon={CircleDollarSign}
           className={dashboardSoftItemClass}
         />
         <StatCard
-          title="Prints per session"
+          title={t("dashboard.printsPerSession")}
           value={printsPerSession.toFixed(1)}
-          description="Confirmed prints per session"
+          description={t("dashboard.confirmedPrints")}
           icon={Printer}
           className={dashboardSoftItemClass}
         />
         <StatCard
-          title="Top method"
+          title={t("dashboard.topMethod")}
           value={topPaymentMethod}
-          description="Most-used payment method"
+          description={t("dashboard.mostUsedMethod")}
           icon={Activity}
           className={dashboardSoftItemClass}
         />
@@ -589,8 +592,8 @@ function EventAnalyticsSection({
 
       <EventPieCard
         chartsMounted={chartsMounted}
-        title="Used frames"
-        description="Top 5 by session"
+        title={t("dashboard.usedFrames")}
+        description={t("dashboard.top5BySession")}
         items={period.topFrames}
         valueKey="sessions"
         valueFormatter={(value) => `${value.toLocaleString("id-ID")} sessions`}

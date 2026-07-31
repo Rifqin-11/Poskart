@@ -24,6 +24,8 @@ import { useFeatureTutorial } from "@/features/admin/tutorial/use-feature-tutori
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { vouchersApi, type VoucherGenerationType } from "@/features/admin/vouchers/api";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+import { type DictionaryKey } from "@/lib/i18n/dictionaries";
 
 type VoucherForm = {
   name: string;
@@ -47,38 +49,35 @@ const initialForm: VoucherForm = {
   deviceIds: [],
 };
 
-const VOUCHER_TOUR_STEPS: FeatureTourStep[] = [
-  {
-    selectors: ['[data-vouchers-tour="campaigns"]'],
-    title: "Voucher campaign",
-    description:
-      "Setiap campaign menyimpan kode voucher dan allocation-nya. Voucher hanya tersedia untuk device yang menerima allocation.",
-  },
-  {
-    selectors: ['[data-vouchers-tour="generate"]'],
-    title: "Generate voucher",
-    description:
-      "Buat campaign baru dari tombol ini. Berikutnya, panduan membuka form generator agar Anda dapat melihat pengaturan pentingnya.",
-  },
-  {
-    selectors: ['[data-vouchers-tour="generation-types"]'],
-    title: "Pilih jenis kode",
-    description:
-      "Random membuat kode unik 6 karakter, berurutan memakai prefix dan nomor awal, sedangkan reusable memakai satu kode yang dapat digunakan berulang.",
-  },
-  {
-    selectors: ['[data-vouchers-tour="assign-devices"]'],
-    title: "Alokasikan ke device",
-    description:
-      "Pilih device penerima. Alokasi inilah yang membuat voucher tetap dapat divalidasi saat kiosk sedang offline.",
-  },
-  {
-    selectors: ['[data-vouchers-tour="generate-submit"]'],
-    title: "Buat dan kirim",
-    description:
-      "Setelah semua benar, generate voucher. Kode akan tersinkron ke device yang dipilih pada kesempatan sync berikutnya.",
-  },
-];
+function getVoucherTourSteps(t: (key: DictionaryKey) => string): FeatureTourStep[] {
+  return [
+    {
+      selectors: ['[data-vouchers-tour="campaigns"]'],
+      title: t("vouchers.tourCampaignTitle"),
+      description: t("vouchers.tourCampaignDesc"),
+    },
+    {
+      selectors: ['[data-vouchers-tour="generate"]'],
+      title: t("vouchers.tourGenerateTitle"),
+      description: t("vouchers.tourGenerateDesc"),
+    },
+    {
+      selectors: ['[data-vouchers-tour="generation-types"]'],
+      title: t("vouchers.tourTypesTitle"),
+      description: t("vouchers.tourTypesDesc"),
+    },
+    {
+      selectors: ['[data-vouchers-tour="assign-devices"]'],
+      title: t("vouchers.tourDevicesTitle"),
+      description: t("vouchers.tourDevicesDesc"),
+    },
+    {
+      selectors: ['[data-vouchers-tour="generate-submit"]'],
+      title: t("vouchers.tourSubmitTitle"),
+      description: t("vouchers.tourSubmitDesc"),
+    },
+  ];
+}
 
 export function VoucherManagement({
   initialOpen = false,
@@ -91,10 +90,12 @@ export function VoucherManagement({
 }) {
   const { data: devices = [], isLoading: devicesLoading } = useBooths();
   const { isReadOnly } = usePermission();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(initialOpen);
   const confirmDelete = useConfirmDialog();
   const vouchersTutorial = useFeatureTutorial("vouchers");
+  const VOUCHER_TOUR_STEPS = getVoucherTourSteps(t);
   const [form, setForm] = useState<VoucherForm>(initialForm);
   const { data: campaigns = [], isLoading: campaignsLoading } = useQuery({
     queryKey: adminQueryKeys.vouchers,
