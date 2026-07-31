@@ -75,11 +75,15 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const isProtectedCheckoutRoute = pathname === "/checkout";
+  const isProtectedShowcaseRoute = pathname === "/showcase";
   const isProtectedRoute =
     isProtectedCheckoutRoute ||
+    isProtectedShowcaseRoute ||
     protectedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const isAuthRoute = authRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
-  const isSubscriptionRoute = subscriptionRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  const isSubscriptionRoute =
+    isProtectedShowcaseRoute ||
+    subscriptionRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const featureRoute =
     pathname === "/pos" || pathname.startsWith("/pos/")
       ? "posKasir"

@@ -20,7 +20,7 @@ export const adminQueryKeys = {
   superAdminDeviceErrors: ["superadmin-device-errors"] as const,
   vouchers: ["vouchers"] as const,
   templates: ["templates"] as const,
-  templateShowcase: ["template-showcase"] as const,
+  showcases: ["showcases"] as const,
   frameCategories: ["frame-categories"] as const,
   pricing: ["pricing"] as const,
   organizations: ["organizations"] as const,

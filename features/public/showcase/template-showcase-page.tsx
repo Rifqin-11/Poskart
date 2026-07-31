@@ -1,5 +1,14 @@
-import { ArrowDown, ArrowUpRight, Camera, Images } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUpRight,
+  Camera,
+  Frame,
+  Images,
+  MonitorPlay,
+  Palette,
+} from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { ThemeThumbnail } from "@/features/admin/themes/theme-thumbnail";
 import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
 import { FrameShowcasePreview } from "@/features/public/showcase/frame-showcase-preview";
 import { businessProfile } from "@/lib/constants/business";
@@ -23,37 +32,51 @@ export function TemplateShowcasePage({
   showcase: PublicTemplateShowcase;
 }) {
   const featuredTemplate = showcase.templates[0] ?? null;
+  const featuredTheme = showcase.themes[0] ?? null;
   const templateGroups = groupTemplates(showcase.templates);
+  const primaryAnchor = featuredTemplate ? "#frames" : "#themes";
 
   return (
     <main className="min-h-[100dvh] overflow-clip bg-[#f7f9ff] text-zinc-950">
       <PublicHeader variant="landing" />
 
       <section className="hero-gradient-poskart border-b border-blue-100 px-5 pb-16 pt-28 sm:px-8 sm:pb-20 sm:pt-32 lg:px-12">
-        <div className="mx-auto grid min-h-[calc(100dvh-8rem)] max-w-[90rem] items-center gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+        <div className="mx-auto grid min-h-[calc(100dvh-8rem)] max-w-[90rem] items-center gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:gap-16">
           <div className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#00357B]">
-              Frame showcase by {showcase.organizationName}
+              Showcase by {showcase.organizationName}
             </p>
-            <h1 className="mt-5 text-4xl font-black uppercase leading-[0.9] tracking-tight text-zinc-950 sm:text-5xl lg:text-6xl">
-              Contoh frame untuk kolaborasi photobooth.
+            <h1 className="mt-5 text-wrap-balance text-4xl font-black uppercase leading-[0.9] tracking-tight text-zinc-950 sm:text-5xl lg:text-6xl">
+              {showcase.name}
             </h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-zinc-600 sm:text-lg">
-              Lihat desain POSKART yang dapat disesuaikan dengan identitas cafe,
-              acara, atau kampanye Anda.
+              {showcase.description ||
+                "Lihat pilihan frame dan tampilan photobooth yang dapat disesuaikan untuk cafe, acara, atau kampanye Anda."}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a
-                href="#frames"
-                className={buttonVariants({
-                  size: "lg",
-                  className:
-                    "h-12 rounded-full bg-[#00357B] px-6 text-white hover:bg-[#014EB4]",
-                })}
-              >
-                Lihat pilihan frame
-                <ArrowDown className="size-4" />
-              </a>
+              {featuredTemplate || featuredTheme ? (
+                <a
+                  href={primaryAnchor}
+                  className={buttonVariants({
+                    size: "lg",
+                    className:
+                      "h-12 rounded-full bg-[#00357B] px-6 text-white hover:bg-[#014EB4]",
+                  })}
+                >
+                  Lihat koleksi
+                  <ArrowDown className="size-4" />
+                </a>
+              ) : null}
+            </div>
+            <div className="mt-10 flex flex-wrap gap-6 border-t border-blue-100 pt-6 text-sm text-zinc-500">
+              <span className="flex items-center gap-2">
+                <Frame className="size-4 text-[#00357B]" />
+                {showcase.templates.length} pilihan frame
+              </span>
+              <span className="flex items-center gap-2">
+                <Palette className="size-4 text-[#00357B]" />
+                {showcase.themes.length} pilihan theme
+              </span>
             </div>
           </div>
 
@@ -71,6 +94,11 @@ export function TemplateShowcasePage({
                     frameImageUrl={featuredTemplate.frameImageUrl}
                     frameLayout={featuredTemplate.frameLayout}
                   />
+                ) : featuredTheme ? (
+                  <ThemeThumbnail
+                    schema={featuredTheme.schema}
+                    className="max-w-2xl shadow-[0_24px_55px_rgba(15,23,42,0.16)]"
+                  />
                 ) : (
                   <div className="max-w-sm text-center">
                     <Images className="mx-auto size-10 text-blue-200" />
@@ -78,24 +106,24 @@ export function TemplateShowcasePage({
                       Showcase sedang disiapkan
                     </p>
                     <p className="mt-2 text-sm leading-6 text-zinc-500">
-                      Pilihan frame akan tampil setelah ditambahkan dari Template
-                      Management.
+                      Koleksi frame dan theme akan segera tersedia pada halaman ini.
                     </p>
                   </div>
                 )}
               </div>
-              {featuredTemplate ? (
+              {featuredTemplate || featuredTheme ? (
                 <div className="flex items-center justify-between gap-4 px-1 pb-1 pt-5">
                   <div className="min-w-0">
                     <p className="truncate text-base font-semibold">
-                      {featuredTemplate.name}
+                      {featuredTemplate?.name ?? featuredTheme?.name}
                     </p>
                     <p className="mt-1 text-sm text-zinc-500">
-                      {featuredTemplate.tagline || "Frame pilihan POSKART"}
+                      {featuredTemplate?.tagline ||
+                        (featuredTemplate ? "Frame pilihan POSKART" : "Theme photobooth POSKART")}
                     </p>
                   </div>
                   <div className="shrink-0 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[#00357B]">
-                    {featuredTemplate.photoCount} foto
+                    {featuredTemplate ? `${featuredTemplate.photoCount} foto` : "Theme"}
                   </div>
                 </div>
               ) : null}
@@ -104,27 +132,26 @@ export function TemplateShowcasePage({
         </div>
       </section>
 
-      <section id="frames" className="scroll-mt-20 bg-white px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
-        <div className="mx-auto max-w-[90rem]">
-          <div className="max-w-3xl">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              Pilih suasana yang paling cocok.
-            </h2>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600 sm:text-base">
-              Setiap frame dapat dikembangkan kembali untuk warna brand, logo,
-              pesan kampanye, dan kebutuhan acara cafe.
-            </p>
-          </div>
+      {templateGroups.length ? (
+        <section id="frames" className="scroll-mt-20 bg-white px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
+          <div className="mx-auto max-w-[90rem]">
+            <div className="max-w-3xl">
+              <p className="text-sm font-semibold text-[#00357B]">Frame collection</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+                Pilih suasana yang paling cocok.
+              </h2>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-600 sm:text-base">
+                Setiap frame dapat dikembangkan kembali untuk warna brand, logo,
+                pesan kampanye, dan kebutuhan acara cafe.
+              </p>
+            </div>
 
-          {templateGroups.length ? (
             <div className="mt-14 space-y-16">
               {templateGroups.map(([category, templates]) => (
                 <section key={category}>
                   <div className="mb-6 flex items-end justify-between gap-4 border-b border-zinc-200 pb-4">
                     <h3 className="text-lg font-semibold">{category}</h3>
-                    <span className="text-sm text-zinc-400">
-                      {templates.length} frame
-                    </span>
+                    <span className="text-sm text-zinc-400">{templates.length} frame</span>
                   </div>
                   <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {templates.map((template) => (
@@ -134,9 +161,7 @@ export function TemplateShowcasePage({
                       >
                         <div
                           className="grid h-[360px] place-items-center border-b border-zinc-100 p-7 sm:h-[400px]"
-                          style={{
-                            backgroundColor: `${template.accentColor}10`,
-                          }}
+                          style={{ backgroundColor: `${template.accentColor}10` }}
                         >
                           <FrameShowcasePreview
                             name={template.name}
@@ -146,15 +171,13 @@ export function TemplateShowcasePage({
                           />
                         </div>
                         <div className="p-5">
-                          <div className="min-w-0">
-                            <h4 className="truncate font-semibold text-zinc-950">
-                              {template.name}
-                            </h4>
-                            <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-zinc-500">
-                              {template.tagline ||
-                                "Frame photobooth yang siap disesuaikan untuk kolaborasi."}
-                            </p>
-                          </div>
+                          <h4 className="truncate font-semibold text-zinc-950">
+                            {template.name}
+                          </h4>
+                          <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-zinc-500">
+                            {template.tagline ||
+                              "Frame photobooth yang siap disesuaikan untuk kolaborasi."}
+                          </p>
                           <div className="mt-5 flex items-center gap-2 text-xs font-medium text-zinc-500">
                             <Camera className="size-3.5" />
                             {template.photoCount} slot foto
@@ -166,20 +189,68 @@ export function TemplateShowcasePage({
                 </section>
               ))}
             </div>
-          ) : (
-            <div className="mt-12 grid min-h-72 place-items-center rounded-[28px] border border-dashed border-blue-100 bg-[#f7f9ff] px-6 text-center">
-              <div className="max-w-md">
-                <Images className="mx-auto size-10 text-blue-200" />
-                <h3 className="mt-4 font-semibold">Belum ada frame publik</h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-500">
-                  Tim POSKART sedang menyiapkan pilihan frame yang dapat dilihat
-                  pada halaman ini.
+          </div>
+        </section>
+      ) : null}
+
+      {showcase.themes.length ? (
+        <section id="themes" className="scroll-mt-20 border-y border-blue-100 bg-[#f7f9ff] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
+          <div className="mx-auto max-w-[90rem]">
+            <div className="grid gap-8 lg:grid-cols-[0.7fr_1.3fr] lg:gap-14">
+              <div className="max-w-lg lg:sticky lg:top-28 lg:self-start">
+                <p className="text-sm font-semibold text-[#00357B]">Theme collection</p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+                  Bukan hanya frame, seluruh pengalaman dapat disesuaikan.
+                </h2>
+                <p className="mt-4 text-sm leading-7 text-zinc-600 sm:text-base">
+                  Theme mengatur tampilan layar photobooth dari halaman pembuka
+                  sampai hasil foto, sehingga pengalaman pengunjung tetap selaras
+                  dengan identitas brand.
                 </p>
               </div>
+              <div className="grid gap-6 sm:grid-cols-2">
+                {showcase.themes.map((theme, index) => (
+                  <article
+                    key={theme.id}
+                    className={index === 0 ? "sm:col-span-2" : undefined}
+                  >
+                    <div className="overflow-hidden rounded-[28px] border border-blue-100 bg-white p-4 shadow-[0_18px_45px_rgba(0,53,123,0.08)] sm:p-5">
+                      <ThemeThumbnail
+                        schema={theme.schema}
+                        className="rounded-[18px] shadow-sm"
+                      />
+                      <div className="flex items-center gap-3 px-1 pb-1 pt-4">
+                        <span className="grid size-9 place-items-center rounded-xl bg-blue-50 text-[#00357B]">
+                          <MonitorPlay className="size-4" />
+                        </span>
+                        <div>
+                          <h3 className="font-semibold">{theme.name}</h3>
+                          <p className="mt-0.5 text-xs text-zinc-500">Kiosk visual theme</p>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      ) : null}
+
+      {!showcase.templates.length && !showcase.themes.length ? (
+        <section className="bg-white px-5 py-20 sm:px-8 lg:px-12">
+          <div className="mx-auto grid min-h-72 max-w-[90rem] place-items-center rounded-[28px] border border-dashed border-blue-100 bg-[#f7f9ff] px-6 text-center">
+            <div className="max-w-md">
+              <Images className="mx-auto size-10 text-blue-200" />
+              <h2 className="mt-4 font-semibold">Koleksi sedang disiapkan</h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">
+                Tim POSKART sedang menyiapkan pilihan frame dan theme untuk
+                showcase ini.
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="cta-gradient-poskart px-5 py-16 text-white sm:px-8 lg:px-12 lg:py-20">
         <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
@@ -189,12 +260,12 @@ export function TemplateShowcasePage({
             </h2>
             <p className="mt-4 text-sm leading-7 text-blue-100 sm:text-base">
               Kirim identitas brand atau tema acara. Tim POSKART akan membantu
-              menyiapkan arah frame yang sesuai.
+              menyiapkan arah visual yang sesuai.
             </p>
           </div>
           <a
             href={`${businessProfile.whatsappUrl}?text=${encodeURIComponent(
-              `Halo POSKART, saya ingin mendiskusikan kolaborasi photobooth dengan referensi frame dari showcase ${showcase.organizationName}.`,
+              `Halo POSKART, saya ingin mendiskusikan kolaborasi photobooth dengan referensi showcase ${showcase.name} dari ${showcase.organizationName}.`,
             )}`}
             target="_blank"
             rel="noreferrer"

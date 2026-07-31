@@ -11,6 +11,7 @@ import {
   LoaderCircle,
   MonitorSmartphone,
   Palette,
+  PanelsTopLeft,
   ReceiptText,
   Search,
   Settings,
@@ -142,6 +143,15 @@ const pages: PageItem[] = [
     keywords: "templates frame bingkai",
     requiresSubscription: true,
     icon: LayoutTemplate,
+  },
+  {
+    key: "page-showcase",
+    title: "Showcase",
+    description: "Public frame and theme presentations",
+    href: "/showcase",
+    keywords: "showcase public frame theme cafe partner presentation",
+    requiresSubscription: true,
+    icon: PanelsTopLeft,
   },
   {
     key: "page-gallery",

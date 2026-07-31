@@ -18,9 +18,10 @@ export async function generateMetadata({
   }
 
   return {
-    title: `Frame Showcase ${showcase.organizationName} | POSKART`,
+    title: `${showcase.name} | POSKART`,
     description:
-      "Lihat pilihan frame photobooth POSKART untuk kolaborasi cafe, acara, dan kampanye brand.",
+      showcase.description ||
+      "Lihat pilihan frame dan theme photobooth POSKART untuk kolaborasi cafe, acara, dan kampanye brand.",
     robots: { index: false, follow: false },
   };
 }

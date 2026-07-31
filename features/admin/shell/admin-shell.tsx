@@ -15,6 +15,7 @@ import {
   Menu,
   MonitorSmartphone,
   Palette,
+  PanelsTopLeft,
   ReceiptText,
   Settings,
   Store,
@@ -108,6 +109,12 @@ const navItems: AdminNavItem[] = [
     href: "/templates",
     labelKey: "nav.templates",
     icon: LayoutTemplate,
+    requiresSubscription: true,
+  },
+  {
+    href: "/showcase",
+    labelKey: "nav.showcase",
+    icon: PanelsTopLeft,
     requiresSubscription: true,
   },
   {

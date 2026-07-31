@@ -2,10 +2,8 @@
 
 import {
   getAdminContext,
-  getAdminMembership,
   verifyRole,
 } from "@/server/admin/context";
-import type { TemplateShowcaseSettings } from "@/types/template";
 import {
   assertSupabaseResult,
   mapTemplate,
@@ -40,7 +38,7 @@ export async function getTemplates(): Promise<Template[]> {
   const { data, error } = await supabase
     .from("templates")
     .select(
-      "id,name,category,status,assigned_booths,updated_at_label,display_order,usage_count,tagline,photo_count,accent_color,frame_category_id,frame_image_url,frame_layout,is_default,is_showcase",
+      "id,name,category,status,assigned_booths,updated_at_label,display_order,usage_count,tagline,photo_count,accent_color,frame_category_id,frame_image_url,frame_layout,is_default",
     )
     .order("display_order", { ascending: true })
     .order("updated_at", { ascending: false });
@@ -50,57 +48,6 @@ export async function getTemplates(): Promise<Template[]> {
     error,
     "Unable to load templates",
   ).map(mapTemplate);
-}
-
-export async function getTemplateShowcaseSettings(): Promise<TemplateShowcaseSettings> {
-  const { supabase } = await getAdminContext();
-  const membership = await getAdminMembership();
-  if (!membership) throw new Error("Organization membership not found");
-  const { data, error } = await supabase
-    .from("organizations")
-    .select("name,showcase_public_token")
-    .eq("id", membership.organizationId)
-    .maybeSingle();
-
-  if (error || !data?.showcase_public_token) {
-    throw new Error(
-      `Unable to load showcase settings${error ? `: ${error.message}` : ""}`,
-    );
-  }
-
-  return {
-    organizationName: data.name,
-    publicToken: data.showcase_public_token,
-  };
-}
-
-export async function setTemplateShowcase(
-  id: string,
-  isShowcase: boolean,
-): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin", "designer"]);
-  const { data: template, error: templateError } = await supabase
-    .from("templates")
-    .select("status")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (templateError || !template) {
-    throw new Error(
-      `Unable to load template${templateError ? `: ${templateError.message}` : ""}`,
-    );
-  }
-  if (isShowcase && template.status !== "published") {
-    throw new Error("Publish the template before adding it to the showcase.");
-  }
-
-  const { error } = await supabase
-    .from("templates")
-    .update({ is_showcase: isShowcase, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) {
-    throw new Error(`Unable to update showcase: ${error.message}`);
-  }
 }
 
 export async function createTemplate(

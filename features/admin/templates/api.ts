@@ -5,8 +5,6 @@ export const templatesApi = {
   createTemplate: templateService.createTemplate,
   updateTemplate: templateService.updateTemplate,
   deleteTemplate: templateService.deleteTemplate,
-  getTemplateShowcaseSettings: templateService.getTemplateShowcaseSettings,
-  setTemplateShowcase: templateService.setTemplateShowcase,
   moveTemplateToFrameCategory: templateService.moveTemplateToFrameCategory,
   reorderTemplates: templateService.reorderTemplates,
   getFrameCategories: templateService.getFrameCategories,

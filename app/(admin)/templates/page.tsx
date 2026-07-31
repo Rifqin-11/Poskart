@@ -13,10 +13,6 @@ export default async function TemplatesPage() {
       queryKey: adminQueryKeys.templates,
       queryFn: templateService.getTemplates,
     }),
-    queryClient.prefetchQuery({
-      queryKey: adminQueryKeys.templateShowcase,
-      queryFn: templateService.getTemplateShowcaseSettings,
-    }),
   ]);
 
   return (

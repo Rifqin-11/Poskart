@@ -16,7 +16,6 @@ export type Template = {
   frameCategoryId?: string;
   frameImageUrl?: string;
   isDefault: boolean;
-  isShowcase: boolean;
   /** Full visual frame layout — designed in the Frame Builder */
   frameLayout?: FrameLayout | null;
 };
@@ -25,11 +24,6 @@ export type FrameCategory = {
   id: string;
   name: string;
   displayOrder: number;
-};
-
-export type TemplateShowcaseSettings = {
-  organizationName: string;
-  publicToken: string;
 };
 
 export type TemplateFormValues = {

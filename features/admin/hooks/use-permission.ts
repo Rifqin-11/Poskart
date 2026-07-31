@@ -16,6 +16,7 @@ export function usePermission() {
       | "pricing"
       | "themes"
       | "templates"
+      | "showcase"
       | "vouchers"
       | "devices"
       | "gallery"
@@ -31,6 +32,7 @@ export function usePermission() {
 
       case "themes":
       case "templates":
+      case "showcase":
       case "vouchers":
         return role !== "designer"; // designer is read-write, others are read-only
 
