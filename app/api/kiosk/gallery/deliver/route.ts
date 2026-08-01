@@ -19,6 +19,11 @@ type DeliverBody = {
   };
 };
 
+type GalleryPreviewPhoto = {
+  secure_url: string | null;
+  storage_provider: string | null;
+};
+
 const MAX_EMAIL_ATTACHMENT_BYTES = 4 * 1024 * 1024;
 
 function isValidEmail(value: string) {
@@ -54,6 +59,39 @@ function attachmentExtension(content: Buffer) {
   if (isPng) return "png";
 
   return null;
+}
+
+function buildEmailPreviewUrl(photo: GalleryPreviewPhoto | null) {
+  const sourceUrl = photo?.secure_url?.trim();
+  if (!sourceUrl) return undefined;
+
+  try {
+    const url = new URL(sourceUrl);
+    if (url.protocol !== "https:") return undefined;
+
+    const provider = photo?.storage_provider?.trim().toLowerCase();
+    if (provider === "cloudinary" || url.hostname === "res.cloudinary.com") {
+      const uploadSegment = "/image/upload/";
+      if (!url.pathname.includes(uploadSegment)) return undefined;
+      url.pathname = url.pathname.replace(
+        uploadSegment,
+        `${uploadSegment}f_auto,q_auto:eco,w_960,h_620,c_pad,b_white/`,
+      );
+      return url.toString();
+    }
+
+    if (provider === "imagekit" || url.hostname.endsWith("imagekit.io")) {
+      url.searchParams.set(
+        "tr",
+        "w-960,h-620,cm-pad_resize,bg-FFFFFF,q-70,f-auto",
+      );
+      return url.toString();
+    }
+
+    return undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function readDeliverBody(request: Request): Promise<DeliverBody> {
@@ -163,9 +201,26 @@ export async function POST(request: Request) {
     }
 
     const shareUrl = session.share_url || getPublicGalleryUrl(sessionId);
+    const { data: previewPhoto, error: previewPhotoError } =
+      await context.client
+        .from("gallery_photos")
+        .select("secure_url,storage_provider")
+        .eq("session_id", sessionId)
+        .eq("organization_id", context.organizationId)
+        .eq("kind", "framed")
+        .eq("resource_type", "image")
+        .order("photo_index", { ascending: true })
+        .limit(1)
+        .maybeSingle<GalleryPreviewPhoto>();
+
+    if (previewPhotoError) {
+      console.warn("Unable to load gallery email preview:", previewPhotoError);
+    }
+
     const result = await deliverGalleryLink({
       eventName: session.theme_name || session.template_name || "POSKART",
       shareUrl,
+      previewUrl: buildEmailPreviewUrl(previewPhoto),
       ...(email ? { email } : {}),
       ...(phone ? { phone } : {}),
       ...(email && body.emailAttachment
