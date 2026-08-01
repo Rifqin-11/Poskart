@@ -52,6 +52,13 @@ const imageKitUrlEndpoint = normalizeImageKitEndpoint(
   process.env.IMAGEKIT_URL_ENDPOINT,
 );
 const supabaseOrigin = new URL(supabaseUrl).origin;
+const r2BuilderAssetOrigins = new Set(["https://assets.poskart.my.id"]);
+const configuredR2PublicOrigin = readHttpsOrigin(
+  process.env.R2_PUBLIC_BASE_URL,
+);
+if (configuredR2PublicOrigin) {
+  r2BuilderAssetOrigins.add(configuredR2PublicOrigin);
+}
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -821,7 +828,11 @@ function isAllowedImageKitUrl(value) {
 }
 
 function isAllowedImageNodeUrl(value) {
-  return isAllowedGallerySourceUrl(value) || isAllowedSupabaseBuilderAssetUrl(value);
+  return (
+    isAllowedGallerySourceUrl(value) ||
+    isAllowedSupabaseBuilderAssetUrl(value) ||
+    isAllowedR2BuilderAssetUrl(value)
+  );
 }
 
 function isAllowedSupabaseBuilderAssetUrl(value) {
@@ -832,6 +843,33 @@ function isAllowedSupabaseBuilderAssetUrl(value) {
     return url.pathname.startsWith("/storage/v1/object/public/builder-assets/");
   } catch {
     return false;
+  }
+}
+
+function isAllowedR2BuilderAssetUrl(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    if (!r2BuilderAssetOrigins.has(url.origin)) return false;
+
+    return (
+      url.pathname.startsWith("/legacy/builder-assets/") ||
+      /^\/organizations\/[^/]+\/builder\/(?:images|videos)\//.test(
+        url.pathname,
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+function readHttpsOrigin(value) {
+  try {
+    if (!value?.trim()) return null;
+    const url = new URL(value.trim());
+    return url.protocol === "https:" ? url.origin : null;
+  } catch {
+    return null;
   }
 }
 
