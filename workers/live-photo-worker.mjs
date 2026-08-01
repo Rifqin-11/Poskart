@@ -222,7 +222,8 @@ async function extractSourceFrames(inputPath, outputDir, mirrorHorizontal) {
   const pattern = path.join(outputDir, "frame-%03d.png");
   try {
     const sourceFrameRate = (FRAME_COUNT / 3).toFixed(3);
-    const videoFilter = [mirrorHorizontal ? "hflip" : null, `fps=${sourceFrameRate}`]
+    const scaleFilter = `scale=${TARGET_WIDTH}:-2:flags=lanczos`;
+    const videoFilter = [mirrorHorizontal ? "hflip" : null, scaleFilter, `fps=${sourceFrameRate}`]
       .filter(Boolean)
       .join(",");
     await run("ffmpeg", [
