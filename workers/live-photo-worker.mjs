@@ -121,8 +121,12 @@ async function processJob(job) {
       sessionId: job.session_id,
     });
 
-    await saveOutput(job, upload);
-    console.log(`[live-photo-worker] completed ${job.session_id}`);
+    const saved = await saveOutput(job, upload);
+    console.log(
+      saved
+        ? `[live-photo-worker] completed ${job.session_id}`
+        : `[live-photo-worker] skipped stale output ${job.session_id}`,
+    );
   } catch (error) {
     await markFailed(job, error);
     console.error(`[live-photo-worker] failed ${job.session_id}`, error);
@@ -710,43 +714,21 @@ async function uploadToImageKit({ filePath, organizationId, sessionId, config })
 }
 
 async function saveOutput(job, upload) {
-  const now = new Date().toISOString();
-  const { error: photoError } = await supabase.from("gallery_photos").upsert(
-    {
-      session_id: job.session_id,
-      organization_id: job.organization_id,
-      kind: "framed",
-      photo_index: 1,
-      storage_provider: upload.provider,
-      cloudinary_public_id: upload.publicId,
-      provider_public_id: upload.publicId,
-      secure_url: upload.secureUrl,
-      resource_type: upload.resourceType,
-      width: upload.width ?? null,
-      height: upload.height ?? null,
-      bytes: upload.bytes ?? null,
-      format: upload.format ?? "mp4",
-    },
-    { onConflict: "session_id,kind,photo_index" },
-  );
-  if (photoError) throw photoError;
-
-  const { error: jobError } = await supabase
-    .from("live_photo_render_jobs")
-    .update({
-      status: "succeeded",
-      output_public_id: upload.publicId,
-      output_secure_url: upload.secureUrl,
-      output_width: upload.width ?? null,
-      output_height: upload.height ?? null,
-      output_bytes: upload.bytes ?? null,
-      output_format: upload.format ?? "mp4",
-      error_message: null,
-      completed_at: now,
-      updated_at: now,
-    })
-    .eq("id", job.id);
-  if (jobError) throw jobError;
+  const { data, error } = await supabase.rpc("complete_live_photo_render_job", {
+    p_job_id: job.id,
+    p_render_generation: job.render_generation,
+    p_worker_id: job.worker_id ?? WORKER_ID,
+    p_storage_provider: upload.provider,
+    p_public_id: upload.publicId,
+    p_secure_url: upload.secureUrl,
+    p_resource_type: upload.resourceType,
+    p_width: upload.width ?? null,
+    p_height: upload.height ?? null,
+    p_bytes: upload.bytes ?? null,
+    p_format: upload.format ?? "mp4",
+  });
+  if (error) throw error;
+  return data === true;
 }
 
 async function markFailed(job, error) {
@@ -761,7 +743,10 @@ async function markFailed(job, error) {
       updated_at: now,
       completed_at: willRetry ? null : now,
     })
-    .eq("id", job.id);
+    .eq("id", job.id)
+    .eq("render_generation", job.render_generation)
+    .eq("status", "processing")
+    .eq("worker_id", job.worker_id ?? WORKER_ID);
   if (updateError) console.error("[live-photo-worker] failed to mark job failed", updateError);
 }
 

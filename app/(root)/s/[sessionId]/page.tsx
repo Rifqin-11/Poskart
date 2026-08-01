@@ -29,7 +29,7 @@ export default async function SharedGalleryPage({
   const supabase = createSupabaseAdminClient();
   const { data: session } = await supabase
     .from("gallery_sessions")
-    .select("id,template_name,created_at")
+    .select("id,template_name,created_at,updated_at")
     .eq("id", sessionId)
     .maybeSingle();
 
@@ -109,7 +109,11 @@ export default async function SharedGalleryPage({
   );
   const selectedPhoto = photos?.find((photo) => photo.id === viewPhotoId);
   const photoCount = photos?.length ?? 0;
-  const refreshUntil = new Date(session.created_at).getTime() + 120_000;
+  // A guest may already have this QR page open when the operator retakes a
+  // photo. Keep the existing bounded refresh alive briefly after each gallery
+  // update so the replacement generation appears without rescanning the QR.
+  const refreshUntil =
+    new Date(session.updated_at || session.created_at).getTime() + 120_000;
 
   const hasAnyRaw = raw.length > 0 || Boolean(gif);
 
@@ -118,8 +122,10 @@ export default async function SharedGalleryPage({
     !framedLivePhoto &&
     (livePhotoJob?.status === "queued" ||
       livePhotoJob?.status === "processing");
-  const shouldRefreshWhileProcessing =
-    !selectedPhoto && (waitingForAssets || livePhotoProcessing);
+  // The browser script below enforces the two-minute cutoff. Rendering it for
+  // the normal gallery view avoids reading the impure current time while this
+  // Server Component renders and lets an already-open QR link notice a retake.
+  const shouldRefreshWhileProcessing = !selectedPhoto;
 
   return (
     <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10">
@@ -529,15 +535,10 @@ function formatExpiryDuration(hours: number) {
 
 function ProcessingRefresh({ refreshUntil }: { refreshUntil: number }) {
   return (
-    <>
-      <noscript>
-        <meta httpEquiv="refresh" content="10" />
-      </noscript>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `if (Date.now() < ${JSON.stringify(refreshUntil)}) setTimeout(() => window.location.reload(), 30000);`,
-        }}
-      />
-    </>
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `if (Date.now() < ${JSON.stringify(refreshUntil)}) setTimeout(() => window.location.reload(), 30000);`,
+      }}
+    />
   );
 }

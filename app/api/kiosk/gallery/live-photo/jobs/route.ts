@@ -6,6 +6,7 @@ import {
 } from "@/lib/kiosk/server";
 import { getPublicGalleryUrl } from "@/lib/gallery/urls";
 import { normalizeProvider, type GalleryStorageProvider } from "@/lib/gallery/storage-provider";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type LivePhotoSourceAsset = {
   slotIndex?: number;
@@ -26,6 +27,7 @@ type LivePhotoJobBody = {
   themeName?: string;
   socialMediaConsent?: boolean;
   testMode?: boolean;
+  sourceGeneration?: number;
   template?: Record<string, unknown>;
   assets?: LivePhotoSourceAsset[];
 };
@@ -61,63 +63,43 @@ export async function POST(request: Request) {
     }
 
     const shareUrl = getPublicGalleryUrl(sessionId);
-    const now = new Date().toISOString();
+    const requestedGeneration = Number(body.sourceGeneration ?? 0);
+    const sourceGeneration =
+      Number.isSafeInteger(requestedGeneration) && requestedGeneration >= 0
+        ? requestedGeneration
+        : 0;
 
-    const { error: sessionError } = await context.client
-      .from("gallery_sessions")
-      .upsert({
-        id: sessionId,
-        organization_id: context.organizationId,
-        device_id: device.id,
-        template_name: body.templateName?.trim() ?? "",
-        theme_name: body.themeName?.trim() ?? "",
-        social_media_consent: body.socialMediaConsent === true,
-        test_mode: body.testMode === true,
-        share_url: shareUrl,
-        updated_at: now,
-      });
-    if (sessionError) throw sessionError;
-
-    const { data: job, error: jobError } = await context.client
-      .from("live_photo_render_jobs")
-      .upsert(
-        {
-          session_id: sessionId,
-          organization_id: context.organizationId,
-          device_id: device.id,
-          template_name: body.templateName?.trim() ?? "",
-          theme_name: body.themeName?.trim() ?? "",
-          social_media_consent: body.socialMediaConsent === true,
-          template,
-          source_assets: assets.map((asset) => ({
-            slotIndex: asset.slotIndex,
-            publicId: asset.publicId?.trim(),
-            secureUrl: asset.secureUrl?.trim(),
-            width: asset.width ?? null,
-            height: asset.height ?? null,
-            bytes: asset.bytes ?? null,
-            format: asset.format?.trim() || null,
-            storageProvider: normalizeProvider(asset.storageProvider),
-            mirrorHorizontal: asset.mirrorHorizontal === true,
-          })),
-          status: "queued",
-          attempts: 0,
-          output_public_id: null,
-          output_secure_url: null,
-          output_width: null,
-          output_height: null,
-          output_bytes: null,
-          output_format: null,
-          error_message: null,
-          started_at: null,
-          completed_at: null,
-          updated_at: now,
-        },
-        { onConflict: "session_id" },
-      )
-      .select("id,status")
-      .single();
+    const { data, error: jobError } = await createSupabaseAdminClient().rpc(
+      "enqueue_live_photo_render_job",
+      {
+        p_session_id: sessionId,
+        p_organization_id: context.organizationId,
+        p_device_id: device.id,
+        p_template_name: body.templateName?.trim() ?? "",
+        p_theme_name: body.themeName?.trim() ?? "",
+        p_social_media_consent: body.socialMediaConsent === true,
+        p_test_mode: body.testMode === true,
+        p_share_url: shareUrl,
+        p_source_generation: sourceGeneration,
+        p_template: template,
+        p_source_assets: assets.map((asset) => ({
+          slotIndex: asset.slotIndex,
+          publicId: asset.publicId?.trim(),
+          secureUrl: asset.secureUrl?.trim(),
+          width: asset.width ?? null,
+          height: asset.height ?? null,
+          bytes: asset.bytes ?? null,
+          format: asset.format?.trim() || null,
+          storageProvider: normalizeProvider(asset.storageProvider),
+          mirrorHorizontal: asset.mirrorHorizontal === true,
+        })),
+      },
+    );
     if (jobError) throw jobError;
+    const job = data as { id: string; status: string } | null;
+    if (!job) {
+      return jsonOk({ success: true, sessionId, shareUrl, skipped: true });
+    }
 
     return jsonOk({
       success: true,

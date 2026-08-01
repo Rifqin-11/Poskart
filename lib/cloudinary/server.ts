@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 import { KioskApiError } from "@/lib/kiosk/server";
 
@@ -44,6 +44,7 @@ export function createCloudinaryUploadSignatures({
 }) {
   const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
   const timestamp = Math.floor(Date.now() / 1000);
+  const uploadGeneration = `${Date.now().toString(36)}-${randomBytes(4).toString("hex")}`;
   const folder = [
     "poskart",
     safeSegment(organizationId),
@@ -55,7 +56,7 @@ export function createCloudinaryUploadSignatures({
     apiKey,
     uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
     uploads: files.map((file) => {
-      const publicId = `${file.kind}-${Math.max(0, file.photoIndex)}`;
+      const publicId = `${file.kind}-${Math.max(0, file.photoIndex)}-${uploadGeneration}`;
       const resourceType = file.resourceType === "video" ? "video" : "image";
       const parameters = {
         folder,

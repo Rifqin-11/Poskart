@@ -171,6 +171,7 @@ function createCloudinaryUploadSignaturesFromConfig({
   files: GalleryUploadDescriptor[];
 }) {
   const timestamp = Math.floor(Date.now() / 1000);
+  const uploadGeneration = createUploadGeneration();
   const folder = [
     "poskart",
     safeSegment(organizationId),
@@ -183,7 +184,10 @@ function createCloudinaryUploadSignaturesFromConfig({
     apiKey: config.apiKey,
     uploadUrl: `https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`,
     uploads: files.map((file) => {
-      const publicId = `${file.kind}-${Math.max(0, file.photoIndex)}`;
+      // A retake keeps the logical gallery slot but must produce a new cloud
+      // URL. Reusing the public ID lets provider/CDN caches keep serving the
+      // pre-retake image even after the database row is updated.
+      const publicId = `${file.kind}-${Math.max(0, file.photoIndex)}-${uploadGeneration}`;
       const resourceType = file.resourceType === "video" ? "video" : "image";
       const parameters = {
         folder,
@@ -221,6 +225,7 @@ function createImageKitUploadSignatures({
   sessionId: string;
   files: GalleryUploadDescriptor[];
 }) {
+  const uploadGeneration = createUploadGeneration();
   const folder = [
     "/poskart",
     safeSegment(organizationId),
@@ -237,11 +242,14 @@ function createImageKitUploadSignatures({
     uploads: files.map((file) => {
       const token = crypto.randomUUID();
       const resourceType = file.resourceType === "video" ? "video" : "image";
-      const fileName = safeFileName(
-        file.fileName,
-        `${file.kind}-${Math.max(0, file.photoIndex)}.${
-          resourceType === "video" ? "mp4" : "jpg"
-        }`,
+      const fileName = versionedFileName(
+        safeFileName(
+          file.fileName,
+          `${file.kind}-${Math.max(0, file.photoIndex)}.${
+            resourceType === "video" ? "mp4" : "jpg"
+          }`,
+        ),
+        uploadGeneration,
       );
 
       return {
@@ -407,4 +415,17 @@ function safeFileName(value: unknown, fallback: string) {
   const fileName = typeof value === "string" ? value.trim() : "";
   const candidate = fileName || fallback;
   return candidate.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 120);
+}
+
+function createUploadGeneration() {
+  return `${Date.now().toString(36)}-${crypto.randomBytes(4).toString("hex")}`;
+}
+
+function versionedFileName(fileName: string, generation: string) {
+  const extensionIndex = fileName.lastIndexOf(".");
+  const hasExtension =
+    extensionIndex > 0 && extensionIndex < fileName.length - 1;
+  const stem = hasExtension ? fileName.slice(0, extensionIndex) : fileName;
+  const extension = hasExtension ? fileName.slice(extensionIndex) : "";
+  return `${stem.slice(0, 88)}-${generation}${extension}`;
 }
