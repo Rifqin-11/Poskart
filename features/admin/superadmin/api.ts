@@ -9,6 +9,13 @@ import {
   getSuperAdminNotifications,
   deleteSuperAdminNotification,
 } from "@/server/admin/notifications";
+import {
+  listTrialRequests,
+  getTrialRequestDetail,
+  reviewTrialRequest,
+  revokeTrialClaim,
+  createTrialOverride,
+} from "@/server/admin/actions/trial-actions";
 import type { TenantInput } from "@/server/admin/_shared/admin-types";
 
 export const superadminApi = {
@@ -24,6 +31,11 @@ export const superadminApi = {
   broadcastAdminNotification,
   getSuperAdminNotifications,
   deleteSuperAdminNotification,
+  listTrialRequests,
+  getTrialRequestDetail,
+  reviewTrialRequest,
+  revokeTrialClaim,
+  createTrialOverride,
 };
 
 export type { TenantInput };

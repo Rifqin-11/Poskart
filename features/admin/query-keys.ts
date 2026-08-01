@@ -41,4 +41,8 @@ export const adminQueryKeys = {
   organizationMembers: ["organization-members"] as const,
   organizationInvitations: ["organization-invitations"] as const,
   organizationJoinRequests: ["organization-join-requests"] as const,
+  trialRequestsRoot: ["trial-requests"] as const,
+  trialRequests: (filters: Record<string, unknown> = {}) =>
+    ["trial-requests", filters] as const,
+  myTrialRequest: ["my-trial-request"] as const,
 };

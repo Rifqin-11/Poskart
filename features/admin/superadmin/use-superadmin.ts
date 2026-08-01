@@ -7,6 +7,7 @@ import {
   type TenantInput,
 } from "@/features/admin/superadmin/api";
 import type { Organization } from "@/types/organization";
+import type { TrialRequestFilters } from "@/types/trial";
 
 export function useTenants() {
   return useQuery<Organization[], Error>({
@@ -133,6 +134,40 @@ export function useDeleteSuperAdminNotification() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: adminQueryKeys.superAdminNotifications,
+      });
+    },
+  });
+}
+
+export function useTrialRequests(filters: TrialRequestFilters = {}) {
+  return useQuery({
+    queryKey: adminQueryKeys.trialRequests(filters as Record<string, unknown>),
+    queryFn: () => superadminApi.listTrialRequests(filters),
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useReviewTrialRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: superadminApi.reviewTrialRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.trialRequestsRoot,
+      });
+    },
+  });
+}
+
+export function useRevokeTrialClaim() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ claimId, reason }: { claimId: string; reason: string }) =>
+      superadminApi.revokeTrialClaim(claimId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.trialRequestsRoot,
       });
     },
   });

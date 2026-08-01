@@ -58,6 +58,7 @@ import { SubscriptionPlanDialog } from "./_components/subscription-plan-dialog";
 import { PaymentGatewayManagement } from "./_components/payment-gateway-management";
 import { SaasPricingManagement } from "./_components/saas-pricing-management";
 import { PayoutInvoiceManagement } from "./_components/payout-invoice-management";
+import { TrialRequestManagement } from "./_components/trial-request-management";
 import { TransactionActionRequestManagement } from "./_components/transaction-action-request-management";
 import { GalleryStorageManagement } from "./_components/gallery-storage-management";
 import { DeviceErrorLogManagement } from "./_components/device-error-log-management";
@@ -647,6 +648,9 @@ export function TenantManagement() {
                 <TabsTrigger value="transaction-requests">
                   Transaction Requests
                 </TabsTrigger>
+                <TabsTrigger value="trial-requests">
+                  Trial Requests
+                </TabsTrigger>
               </TabsList>
             </div>
             <TabsContent value="payout-invoices">
@@ -654,6 +658,9 @@ export function TenantManagement() {
             </TabsContent>
             <TabsContent value="transaction-requests">
               <TransactionActionRequestManagement />
+            </TabsContent>
+            <TabsContent value="trial-requests">
+              <TrialRequestManagement />
             </TabsContent>
           </Tabs>
         </div>
