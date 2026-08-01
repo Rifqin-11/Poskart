@@ -137,7 +137,7 @@ const pages: PageItem[] = [
   },
   {
     key: "page-templates",
-    title: "Templates",
+    title: "Frames",
     description: "Photo frame templates",
     href: "/templates",
     keywords: "templates frame bingkai",

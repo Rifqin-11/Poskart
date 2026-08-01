@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  Bell,
   Building2,
   ShieldCheck,
   Users,
@@ -42,6 +43,7 @@ import {
   useTenants,
   useUpdateProfile,
   useUpdateTenant,
+  useBroadcastAdminNotification,
 } from "@/features/admin/superadmin/use-superadmin";
 import {
   useSubscriptionPlans,
@@ -59,6 +61,7 @@ import { PayoutInvoiceManagement } from "./_components/payout-invoice-management
 import { TransactionActionRequestManagement } from "./_components/transaction-action-request-management";
 import { GalleryStorageManagement } from "./_components/gallery-storage-management";
 import { DeviceErrorLogManagement } from "./_components/device-error-log-management";
+import { NotificationManagement } from "./_components/notification-management";
 import { DEFAULT_ORGANIZATION_FEATURES } from "@/lib/organization-features";
 
 type AdminUserProfile = {
@@ -109,6 +112,15 @@ export function TenantManagement() {
   );
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
   const [creating, setCreating] = useState(false);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastTarget, setBroadcastTarget] = useState<"all" | "organization">("all");
+  const [broadcastOrgId, setBroadcastOrgId] = useState("");
+  const [broadcastType, setBroadcastType] = useState("info");
+  const [broadcastCustomType, setBroadcastCustomType] = useState("");
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastBody, setBroadcastBody] = useState("");
+  const [broadcastHref, setBroadcastHref] = useState("");
+  const broadcast = useBroadcastAdminNotification();
   const [activeSection, setActiveSection] =
     useState<SuperAdminSection>("overview");
   const [organizationPage, setOrganizationPage] = useState(1);
@@ -164,12 +176,21 @@ export function TenantManagement() {
         title="Super Admin Dashboard"
         description="Multi-organization SaaS controls and registered user accounts."
         action={
-          <Button
-            className="w-full sm:w-auto"
-            onClick={() => setCreating(true)}
-          >
-            <Users className="size-4" /> Create organization
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setBroadcastOpen(true)}
+            >
+              <Bell className="size-4" /> Send notification
+            </Button>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => setCreating(true)}
+            >
+              <Users className="size-4" /> Create organization
+            </Button>
+          </div>
         }
       />
       {activeSection === "overview" ? (
@@ -587,6 +608,9 @@ export function TenantManagement() {
                 <TabsTrigger value="gallery-storage">
                   Gallery Storage
                 </TabsTrigger>
+                <TabsTrigger value="notifications">
+                  Notifications
+                </TabsTrigger>
               </TabsList>
             </div>
             <TabsContent value="saas-pricing">
@@ -600,6 +624,9 @@ export function TenantManagement() {
             </TabsContent>
             <TabsContent value="gallery-storage">
               <GalleryStorageManagement />
+            </TabsContent>
+            <TabsContent value="notifications">
+              <NotificationManagement />
             </TabsContent>
           </Tabs>
         </div>
@@ -652,7 +679,6 @@ export function TenantManagement() {
           </Card>
         </div>
       ) : null}
-
       {creating ? (
         <TenantFormDialog
           title="Create organization"
@@ -697,6 +723,215 @@ export function TenantManagement() {
             );
           }}
         />
+      ) : null}
+
+      {broadcastOpen ? (
+        <Dialog
+          open
+          onOpenChange={(o) => {
+            if (!o) {
+              setBroadcastOpen(false);
+              setBroadcastTitle("");
+              setBroadcastBody("");
+              setBroadcastHref("");
+              setBroadcastTarget("all");
+              setBroadcastOrgId("");
+              setBroadcastType("info");
+              setBroadcastCustomType("");
+            }
+          }}
+          title="Send notification"
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const resolvedType =
+                broadcastType === "__custom__"
+                  ? broadcastCustomType.trim()
+                  : broadcastType;
+              if (!broadcastTitle.trim()) {
+                toast.error("Judul tidak boleh kosong.");
+                return;
+              }
+              if (!resolvedType) {
+                toast.error("Tipe tidak boleh kosong.");
+                return;
+              }
+              if (broadcastTarget === "organization" && !broadcastOrgId) {
+                toast.error("Pilih organisasi tujuan.");
+                return;
+              }
+              try {
+                await broadcast.mutateAsync({
+                  target: broadcastTarget,
+                  organizationId:
+                    broadcastTarget === "organization" ? broadcastOrgId : null,
+                  type: resolvedType,
+                  title: broadcastTitle.trim(),
+                  body: broadcastBody.trim() || null,
+                  href: broadcastHref.trim() || null,
+                });
+                toast.success("Notifikasi berhasil dikirim.");
+                setBroadcastOpen(false);
+                setBroadcastTitle("");
+                setBroadcastBody("");
+                setBroadcastHref("");
+                setBroadcastTarget("all");
+                setBroadcastOrgId("");
+                setBroadcastType("info");
+                setBroadcastCustomType("");
+              } catch (err) {
+                toast.error(
+                  err instanceof Error ? err.message : "Gagal mengirim notifikasi.",
+                );
+              }
+            }}
+            className="space-y-4"
+          >
+            {/* Target */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-zinc-700">
+                Target penerima
+              </label>
+              <div className="flex gap-2">
+                {(
+                  [
+                    { value: "all", label: "Semua pengguna" },
+                    { value: "organization", label: "Per organisasi" },
+                  ] as { value: "all" | "organization"; label: string }[]
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setBroadcastTarget(opt.value)}
+                    className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+                      broadcastTarget === opt.value
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {broadcastTarget === "organization" && (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-zinc-700">
+                  Organisasi
+                </label>
+                <Select
+                  value={broadcastOrgId}
+                  onChange={(e) => setBroadcastOrgId(e.target.value)}
+                >
+                  <option value="">— Pilih organisasi —</option>
+                  {tenantsList.map((org) => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
+
+            {/* Type presets */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-zinc-700">
+                Tipe notifikasi
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: "Info", value: "info" },
+                  { label: "Peringatan", value: "warning" },
+                  { label: "Error / Gangguan", value: "error" },
+                  { label: "Pembayaran QRIS", value: "payment_qris" },
+                  { label: "Pemeliharaan", value: "maintenance" },
+                  { label: "Custom…", value: "__custom__" },
+                ].map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setBroadcastType(preset.value)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      broadcastType === preset.value
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              {broadcastType === "__custom__" && (
+                <input
+                  type="text"
+                  placeholder="Masukkan tipe (contoh: qris_error)"
+                  value={broadcastCustomType}
+                  onChange={(e) => setBroadcastCustomType(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                />
+              )}
+            </div>
+
+            {/* Title */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-zinc-700">
+                Judul <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Pembayaran QRIS sedang gangguan"
+                value={broadcastTitle}
+                onChange={(e) => setBroadcastTitle(e.target.value)}
+                maxLength={200}
+                className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+              />
+            </div>
+
+            {/* Body */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-zinc-700">
+                Pesan <span className="text-zinc-400">(opsional)</span>
+              </label>
+              <textarea
+                placeholder="Contoh: Kami sedang menangani gangguan pada layanan QRIS. Gunakan metode pembayaran lain sementara ini."
+                value={broadcastBody}
+                onChange={(e) => setBroadcastBody(e.target.value)}
+                rows={3}
+                maxLength={1000}
+                className="w-full resize-none rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+              />
+            </div>
+
+            {/* Link */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-zinc-700">
+                Link <span className="text-zinc-400">(opsional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: /settings/payment"
+                value={broadcastHref}
+                onChange={(e) => setBroadcastHref(e.target.value)}
+                className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setBroadcastOpen(false)}
+              >
+                Batal
+              </Button>
+              <Button type="submit" disabled={broadcast.isPending}>
+                {broadcast.isPending ? "Mengirim…" : "Kirim notifikasi"}
+              </Button>
+            </div>
+          </form>
+        </Dialog>
       ) : null}
 
       {editingProfile ? (

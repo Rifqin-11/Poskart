@@ -14,6 +14,10 @@ export type AdminNotification = {
   createdAt: string;
 };
 
+export type AdminNotificationGroup = AdminNotification & {
+  recipientCount: number;
+};
+
 export type CreateAdminNotificationInput = {
   audience: AdminNotificationAudience;
   type: string;

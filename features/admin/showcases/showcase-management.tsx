@@ -534,11 +534,11 @@ function ShowcaseEditorDialog({
 
         <SelectionSection
           icon={Frame}
-          title="Frame templates"
-          description="Only published frame templates can be included in a public showcase."
+          title="Frames"
+          description="Only published frames can be included in a public showcase."
           selectedCount={templateIds.length}
           search={frameSearch}
-          searchPlaceholder="Search frame templates"
+          searchPlaceholder="Search frames"
           onSearchChange={setFrameSearch}
         >
           {visibleTemplates.length ? (

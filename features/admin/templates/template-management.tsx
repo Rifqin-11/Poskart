@@ -123,13 +123,13 @@ export function TemplateManagement() {
 
   const handleDelete = (t: Template) => {
     confirmDelete.confirm({
-      title: "Delete template?",
+      title: "Delete frame?",
       description: `Delete "${t.name}"? This cannot be undone.`,
       confirmLabel: "Delete",
       destructive: true,
       onConfirm: () => {
         deleteTemplate.mutate(t.id, {
-          onSuccess: () => toast.success("Template deleted"),
+          onSuccess: () => toast.success("Frame deleted"),
           onError: (err) =>
             toast.error(err instanceof Error ? err.message : "Delete failed"),
         });
@@ -301,13 +301,13 @@ export function TemplateManagement() {
         },
         {
           onSuccess: () =>
-            toast.success("Kategori dan urutan template disimpan"),
+            toast.success("Kategori dan urutan frame disimpan"),
           onError: (error) => {
             setTemplateOrder(activeDrag.initialTemplates);
             toast.error(
               error instanceof Error
                 ? error.message
-                : "Gagal menyimpan kategori template",
+                : "Gagal menyimpan kategori frame",
             );
           },
         },
@@ -396,13 +396,12 @@ export function TemplateManagement() {
         },
         {
           onSuccess: () =>
-            toast.success("Kategori dan urutan template disimpan"),
-          onError: rollback,
+            toast.success("Kategori dan urutan frame disimpan"),
         },
       );
     } else {
       reorderTemplates.mutate(templateIds, {
-        onSuccess: () => toast.success("Urutan template disimpan"),
+        onSuccess: () => toast.success("Urutan frame disimpan"),
         onError: rollback,
       });
     }
@@ -514,7 +513,7 @@ export function TemplateManagement() {
               No templates yet
             </div>
             <div className="mt-1 text-xs text-zinc-400">
-              Create your first frame template for the Flutter app.
+              Create your first frame for the Flutter app.
             </div>
             {!isReadOnly("templates") && (
               <Button className="mt-4" onClick={openAdd}>

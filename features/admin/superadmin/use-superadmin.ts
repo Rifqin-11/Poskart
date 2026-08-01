@@ -110,3 +110,30 @@ export function useSetSuperAdminDeviceErrorResolved() {
     },
   });
 }
+
+export function useBroadcastAdminNotification() {
+  return useMutation({
+    mutationFn: superadminApi.broadcastAdminNotification,
+  });
+}
+
+export function useSuperAdminNotifications() {
+  return useQuery({
+    queryKey: adminQueryKeys.superAdminNotifications,
+    queryFn: superadminApi.getSuperAdminNotifications,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useDeleteSuperAdminNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: superadminApi.deleteSuperAdminNotification,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.superAdminNotifications,
+      });
+    },
+  });
+}

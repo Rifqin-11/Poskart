@@ -21,6 +21,7 @@ import {
   Store,
   LogOut,
   Building,
+  BookOpen,
   CircleHelp,
   Shield,
   UserRound,
@@ -698,6 +699,17 @@ export function AdminShell({
                           <CircleHelp className="size-4" />
                           View tutorial
                         </button>
+                        <a
+                          href="https://docs.poskart.my.id"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          role="menuitem"
+                          className="flex items-center gap-2 rounded-2xl px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
+                          onClick={() => setAccountMenuOpen(false)}
+                        >
+                          <BookOpen className="size-4" />
+                          View docs
+                        </a>
                         <button
                           type="button"
                           role="menuitem"

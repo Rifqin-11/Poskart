@@ -18,6 +18,7 @@ export const adminQueryKeys = {
   deviceErrors: (deviceId?: string | null) =>
     ["device-errors", deviceId ?? null] as const,
   superAdminDeviceErrors: ["superadmin-device-errors"] as const,
+  superAdminNotifications: ["superadmin-notifications"] as const,
   vouchers: ["vouchers"] as const,
   templates: ["templates"] as const,
   showcases: ["showcases"] as const,

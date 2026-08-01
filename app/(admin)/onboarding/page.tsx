@@ -145,7 +145,7 @@ export default async function OnboardingPage({
         </h1>
         <p className="mt-3 text-sm leading-7 text-zinc-600">
           POSKART is organization-based. Before using dashboard data, themes,
-          templates, devices, and analytics, connect this account to a
+          frames, devices, and analytics, connect this account to a
           workspace.
         </p>
       </div>
