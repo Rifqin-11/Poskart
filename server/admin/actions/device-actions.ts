@@ -733,9 +733,27 @@ async function assertPricingAssignmentModes(
 }
 
 export async function deleteDevice(id: string): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin"]);
-  const { error } = await supabase.from("devices").delete().eq("id", id);
-  if (error) throw new Error(`Unable to delete device: ${error.message}`);
+  const { organizationId, supabase } = await verifyRole(["owner", "admin"]);
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("revoke_device_with_event", {
+    p_device_id: id,
+    p_organization_id: organizationId,
+  });
+  if (!error) return;
+
+  // Keep a safe rollout path if the web deployment reaches production before
+  // the migration has been applied. Once the RPC exists, all deletes use the
+  // atomic revoke-event path above.
+  if (error.code === "PGRST202" || error.code === "42883") {
+    const { error: fallbackError } = await supabase
+      .from("devices")
+      .delete()
+      .eq("id", id)
+      .eq("organization_id", organizationId);
+    if (!fallbackError) return;
+    throw new Error(`Unable to delete device: ${fallbackError.message}`);
+  }
+  throw new Error(`Unable to delete device: ${error.message}`);
 }
 
 export async function approveVoucherRequest(
