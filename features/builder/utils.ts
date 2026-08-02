@@ -24,6 +24,8 @@ export function isEditableTextNode(node: BuilderNode) {
   return (
     node.type === "text" ||
     node.type === "button" ||
-    node.type === "social-handle"
+    node.type === "social-handle" ||
+    node.type === "camera-timer" ||
+    node.type === "camera-shot-counter"
   );
 }

@@ -15,6 +15,7 @@ export const defaultBuilderCanvas: BuilderCanvas = {
   transitionType: "fade",
   transitionDurationMs: 300,
   transitionCurve: "easeInOut",
+  overlayMode: true,
 };
 
 export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
@@ -76,6 +77,9 @@ export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
       templateColumns: 0,
       templateGap: 8,
       radius: 12,
+      cardColor: "#FFFFFF",
+      activeCardColor: "#18181B",
+      checkColor: "#2F80ED",
     };
   }
 
@@ -103,6 +107,27 @@ export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
 
   if (type === "return-countdown") {
     return { countdownText: "Kembali ke halaman awal", countdownSeconds: 8 };
+  }
+
+  if (type === "camera-timer") {
+    return {
+      content: "3",
+      fontSize: 64,
+      color: "#ffffff",
+      fontWeight: 800,
+      textAlign: "center",
+    };
+  }
+
+  if (type === "camera-shot-counter") {
+    return {
+      content: "FOTO 1 DARI 4",
+      fontSize: 14,
+      color: "#ffffff",
+      fontWeight: 800,
+      letterSpacing: 1,
+      textAlign: "center",
+    };
   }
 
   return {

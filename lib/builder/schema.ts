@@ -35,6 +35,13 @@ const overlaySchemaComponentTypes = new Set<BuilderComponentType>([
   "return-countdown",
   "session-countdown",
   "payment-countdown",
+  // Kept in overlay mode so uploaded images / text layers still serialize.
+  "text",
+  "image",
+  "background-decoration",
+  "social-handle",
+  "camera-timer",
+  "camera-shot-counter",
 ]);
 
 export function isDeprecatedBuilderNode(node: BuilderNode): boolean {

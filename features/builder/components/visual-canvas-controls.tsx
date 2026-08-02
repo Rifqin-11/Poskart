@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import {
   Film,
-  Grid2X2,
   Image as ImageIcon,
   Smartphone,
   Type,
@@ -17,7 +16,6 @@ import { Slider } from "@/components/ui/slider";
 import { ColorKeyControls } from "@/features/builder/components/color-key-controls";
 import { AssetPreview } from "@/features/builder/components/asset-preview";
 import {
-  ColorField,
   PanelSection,
 } from "@/features/builder/components/visual-properties-primitives";
 import {
@@ -154,41 +152,6 @@ export function CanvasControls() {
       icon={<Smartphone className="size-3.5 text-zinc-500" />}
       defaultOpen={!selectedNode}
     >
-      {/* Canvas Mode toggle */}
-      <div className="space-y-1.5">
-        <div className="text-xs font-medium text-zinc-500">Mode</div>
-        <div className="grid grid-cols-2 gap-1 rounded-lg bg-zinc-100 p-0.5">
-          <button
-            onClick={() => updateCanvas({ overlayMode: false })}
-            className={cn(
-              "flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
-              !canvas.overlayMode
-                ? "bg-white text-zinc-900 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-700",
-            )}
-          >
-            <Type className="size-3.5" /> Custom
-          </button>
-          <button
-            onClick={() => updateCanvas({ overlayMode: true })}
-            className={cn(
-              "flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
-              canvas.overlayMode
-                ? "bg-white text-zinc-900 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-700",
-            )}
-          >
-            <Grid2X2 className="size-3.5" /> Overlay
-          </button>
-        </div>
-        {canvas.overlayMode && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] text-amber-700">
-            <strong>Overlay mode</strong> — set semantic roles so Flutter knows
-            where each widget goes.
-          </div>
-        )}
-      </div>
-
       {/* Device preset dropdown */}
       <label className="block text-xs font-medium text-zinc-500">
         Device
@@ -434,14 +397,6 @@ export function CanvasControls() {
           />
         ) : null}
       </div>
-
-      {!canvas.overlayMode && (
-        <ColorField
-          label="Background color"
-          value={canvas.backgroundColor ?? "#ffffff"}
-          onChange={(value) => updateCanvas({ backgroundColor: value })}
-        />
-      )}
     </PanelSection>
   );
 }

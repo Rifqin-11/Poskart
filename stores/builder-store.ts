@@ -287,7 +287,11 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
               ? 240
               : type === "qr-link"
                 ? 320
-                : 140;
+                : type === "camera-timer"
+                  ? 120
+                  : type === "camera-shot-counter"
+                    ? 240
+                    : 140;
 
       const defaultHeight =
         type === "text"
@@ -298,7 +302,11 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
               ? 48
               : type === "qr-link"
                 ? 48
-                : 140;
+                : type === "camera-timer"
+                  ? 120
+                  : type === "camera-shot-counter"
+                    ? 44
+                    : 140;
 
       const node: BuilderNode = {
         id,
@@ -425,6 +433,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         ...defaultBuilderCanvas,
         ...schema.canvas,
         pageBackgrounds: schema.canvas.pageBackgrounds,
+        // Custom mode is removed — every theme edits in overlay mode.
+        overlayMode: true,
       },
       selectedId: null,
       selectedIds: [],

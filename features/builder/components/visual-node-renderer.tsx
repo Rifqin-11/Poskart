@@ -21,7 +21,38 @@ const OVERLAY_REAL_RENDER_TYPES = new Set<BuilderNode["type"]>([
   "preview-media-toggle",
   "template-list",
   "template-preview",
+  // Live text layers on the camera page — render real text, not a hotspot.
+  "camera-timer",
+  "camera-shot-counter",
 ]);
+
+/** Parse #RRGGBB into [r,g,b]; returns null for malformed input. */
+function parseHex(hex: string): [number, number, number] | null {
+  const value = hex.replace("#", "").trim();
+  if (value.length !== 6) return null;
+  const num = Number.parseInt(value, 16);
+  if (Number.isNaN(num)) return null;
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
+/** Black or white text depending on the perceived luminance of the background. */
+function getContrastText(bg: string): string {
+  const rgb = parseHex(bg);
+  if (!rgb) return "#18181b";
+  const [r, g, b] = rgb;
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? "#18181b" : "#ffffff";
+}
+
+/** Subtle thumbnail placeholder tint that sits slightly off the card color. */
+function getThumbTint(bg: string): string {
+  const rgb = parseHex(bg);
+  if (!rgb) return "rgba(0,0,0,0.06)";
+  const [r, g, b] = rgb;
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.12)";
+}
+
 
 /** Hotspot overlay — shown when canvas has a background image/video */
 function HotspotOverlay({ node }: { node: BuilderNode }) {
@@ -160,15 +191,21 @@ export function NodeRenderer({
     readString((node.props.semanticRole as string | undefined) ?? "", "") ===
       "camera.continue";
 
+  // A node with an uploaded image renders that image (real preview) instead of
+  // the overlay hotspot — for every button role plus image/background-decoration.
+  const hasImage = readString(node.props.src, "") !== "";
+
   // Default font size scales with canvas (ref 1080px → 30px ≈ 2.8%; min 14px)
   const scaledDefaultFontSize = Math.max(14, Math.round(canvas.width * 0.028));
   const fontSize = readNumber(node.props.fontSize, scaledDefaultFontSize);
 
   // Overlay mode keeps generic controls as hotspots, while visual preview slots
-  // still render their real layout so the builder remains readable.
+  // and image-backed nodes still render their real content so the builder
+  // remains readable.
   if (
     isOverlayMode &&
     !isCameraContinue &&
+    !hasImage &&
     !OVERLAY_REAL_RENDER_TYPES.has(node.type) &&
     node.type !== "qr" &&
     node.type !== "qr-placeholder"
@@ -652,6 +689,10 @@ export function NodeRenderer({
   if (node.type === "template-list") {
     const grid = calculateTemplateGrid(node);
     const tiles = Array.from({ length: grid.count });
+    const cardColor = readString(node.props.cardColor, "#FFFFFF");
+    const activeCardColor = readString(node.props.activeCardColor, "#18181B");
+    const checkColor = readString(node.props.checkColor, "#2F80ED");
+    const activeTextColor = getContrastText(activeCardColor);
     const innerWidth = Math.max(1, node.width - 16);
     const headerHeight = 28;
     const viewportHeight = Math.max(1, node.height - 16 - headerHeight);
@@ -690,28 +731,44 @@ export function NodeRenderer({
                 gridTemplateColumns: `repeat(${grid.columns}, minmax(0, 1fr))`,
               }}
             >
-              {tiles.map((_, i) => (
-                <div
-                  key={i}
-                  className="relative overflow-hidden rounded-lg border border-orange-200 bg-white shadow-sm"
-                >
-                  <div className="absolute inset-0 flex flex-col gap-1 p-2">
-                    <div className="h-3/4 rounded bg-orange-100" />
-                    <div className="h-1/6 rounded bg-orange-50" />
-                  </div>
-                  <div className="absolute inset-1 rounded border border-dashed border-orange-300/60" />
-                  <div className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-semibold text-orange-400">
-                    Frame {i + 1}
-                  </div>
-                  {i === 0 && (
-                    <div className="absolute inset-0 rounded-lg border-2 border-orange-500 bg-orange-500/10">
-                      <div className="absolute right-1 top-1 rounded-full bg-orange-500 p-0.5">
-                        <div className="size-1.5 rounded-full bg-white" />
-                      </div>
+              {tiles.map((_, i) => {
+                const isSelected = i === 0;
+                const tileBg = isSelected ? activeCardColor : cardColor;
+                const tileText = isSelected ? activeTextColor : "#71717a";
+                return (
+                  <div
+                    key={i}
+                    className="relative flex flex-col overflow-hidden rounded-lg border p-2 shadow-sm"
+                    style={{
+                      backgroundColor: tileBg,
+                      borderColor: isSelected ? activeCardColor : "#e4e4e7",
+                    }}
+                  >
+                    <div
+                      className="flex-1 rounded"
+                      style={{ backgroundColor: getThumbTint(tileBg) }}
+                    />
+                    <div className="mt-1.5 flex items-center justify-between gap-1">
+                      <span
+                        className="truncate text-[8px] font-semibold"
+                        style={{ color: tileText }}
+                      >
+                        Frame {i + 1}
+                      </span>
+                      {isSelected ? (
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="size-3 shrink-0"
+                          fill={checkColor}
+                          aria-hidden="true"
+                        >
+                          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.2 14.2-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4-7 7z" />
+                        </svg>
+                      ) : null}
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
             {overflows ? (
               <>

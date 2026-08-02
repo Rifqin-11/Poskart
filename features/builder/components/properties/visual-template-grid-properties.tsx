@@ -1,9 +1,12 @@
 "use client";
 
-import { Grid2X2 } from "lucide-react";
+import { Grid2X2, Palette } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { PanelSection } from "@/features/builder/components/visual-properties-primitives";
+import {
+  ColorField,
+  PanelSection,
+} from "@/features/builder/components/visual-properties-primitives";
 import { readNumber, readString } from "@/features/builder/utils";
 import { calculateTemplateGrid } from "@/features/builder/visual-builder.utils";
 import type { BuilderNode } from "@/types/builder";
@@ -21,10 +24,11 @@ export function VisualTemplateGridProperties({
   const autoMinTileActive = templateLayout === "auto" && manualColumns <= 0;
 
   return (
-    <PanelSection
-      title="Template grid layout"
-      icon={<Grid2X2 className="size-3.5 text-zinc-500" />}
-    >
+    <>
+      <PanelSection
+        title="Template grid layout"
+        icon={<Grid2X2 className="size-3.5 text-zinc-500" />}
+      >
       <div className="rounded-lg border border-orange-100 bg-orange-50/70 p-2 text-xs text-orange-800">
         <div className="font-semibold">
           Preview: {grid.rows} rows x {grid.columns} columns
@@ -130,6 +134,38 @@ export function VisualTemplateGridProperties({
         Tile count is only a preview sample. The Flutter kiosk uses real
         templates and scrolls inside this grid when there are more items.
       </div>
-    </PanelSection>
+      </PanelSection>
+
+      <PanelSection
+        title="Template colors"
+        icon={<Palette className="size-3.5 text-zinc-500" />}
+      >
+        <ColorField
+          label="Card background"
+          value={readString(selectedNode.props.cardColor, "#FFFFFF")}
+          onChange={(value) =>
+            updateNodeProps(selectedNode.id, { cardColor: value })
+          }
+        />
+        <ColorField
+          label="Selected card"
+          value={readString(selectedNode.props.activeCardColor, "#18181B")}
+          onChange={(value) =>
+            updateNodeProps(selectedNode.id, { activeCardColor: value })
+          }
+        />
+        <ColorField
+          label="Check icon"
+          value={readString(selectedNode.props.checkColor, "#2F80ED")}
+          onChange={(value) =>
+            updateNodeProps(selectedNode.id, { checkColor: value })
+          }
+        />
+        <div className="text-[10px] leading-4 text-zinc-400">
+          Warna kartu template di kiosk: latar kartu, kartu terpilih, dan ikon
+          centang. Teks pada kartu terpilih menyesuaikan kontras otomatis.
+        </div>
+      </PanelSection>
+    </>
   );
 }

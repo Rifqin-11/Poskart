@@ -26,6 +26,8 @@ export type BuilderComponentType =
   | "return-countdown" // Spinning loader + auto-return text on thanks page
   | "session-countdown" // Total-session countdown shown on template/camera/preview/thanks
   | "payment-countdown"
+  | "camera-timer" // Live capture countdown number (text-only) on camera page
+  | "camera-shot-counter" // Live "Foto X dari Y" counter (text-only) on camera page
   | "background"; // Payment QRIS countdown shown on the payment page
 
 export type BuilderNode = {

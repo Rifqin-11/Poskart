@@ -14,6 +14,7 @@ import {
   ColorField,
   PanelSection,
 } from "@/features/builder/components/visual-properties-primitives";
+import { PAGE_ROLES, SEMANTIC_ROLES } from "@/features/builder/constants";
 import { readNumber, readString } from "@/features/builder/utils";
 import { cn } from "@/lib/utils";
 import type { BuilderCanvas, BuilderNode } from "@/types/builder";
@@ -313,80 +314,118 @@ function TextMetricsControls({
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
-      <label className="text-xs font-medium text-zinc-500">
-        Font size
-        <Input
-          className="mt-1"
-          type="number"
-          value={readNumber(
-            selectedNode.props.fontSize,
-            selectedNode.type === "button" ? 14 : 18,
-          )}
-          onChange={(event) =>
-            updateNodeProps(selectedNode.id, {
-              fontSize: Number(event.target.value),
-            })
-          }
-        />
-      </label>
-      <label className="text-xs font-medium text-zinc-500">
-        Weight
-        <Input
-          className="mt-1"
-          type="number"
-          step={100}
-          value={readNumber(
-            selectedNode.props.fontWeight,
-            selectedNode.type === "button" ? 600 : 500,
-          )}
-          onChange={(event) =>
-            updateNodeProps(selectedNode.id, {
-              fontWeight: Number(event.target.value),
-            })
-          }
-        />
-      </label>
-      <label className="text-xs font-medium text-zinc-500">
-        Letter spacing
-        <Input
-          className="mt-1"
-          type="number"
-          step={0.5}
-          placeholder="0"
-          value={
-            selectedNode.props.letterSpacing != null
-              ? String(selectedNode.props.letterSpacing)
-              : ""
-          }
-          onChange={(event) =>
-            updateNodeProps(selectedNode.id, {
-              letterSpacing:
-                event.target.value === "" ? null : Number(event.target.value),
-            })
-          }
-        />
-      </label>
-      <label className="text-xs font-medium text-zinc-500">
-        Line height
-        <Input
-          className="mt-1"
-          type="number"
-          step={0.1}
-          placeholder="1.4"
-          value={
-            selectedNode.props.lineHeight != null
-              ? String(selectedNode.props.lineHeight)
-              : ""
-          }
-          onChange={(event) =>
-            updateNodeProps(selectedNode.id, {
-              lineHeight:
-                event.target.value === "" ? null : Number(event.target.value),
-            })
-          }
-        />
-      </label>
-    </div>
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-xs font-medium text-zinc-500">
+          Font size
+          <Input
+            className="mt-1"
+            type="number"
+            value={readNumber(
+              selectedNode.props.fontSize,
+              selectedNode.type === "button" ? 14 : 18,
+            )}
+            onChange={(event) =>
+              updateNodeProps(selectedNode.id, {
+                fontSize: Number(event.target.value),
+              })
+            }
+          />
+        </label>
+
+        <label className="text-xs font-medium text-zinc-500">
+          Weight
+          <Input
+            className="mt-1"
+            type="number"
+            step={100}
+            value={readNumber(
+              selectedNode.props.fontWeight,
+              selectedNode.type === "button" ? 600 : 500,
+            )}
+            onChange={(event) =>
+              updateNodeProps(selectedNode.id, {
+                fontWeight: Number(event.target.value),
+              })
+            }
+          />
+        </label>
+
+        <label className="text-xs font-medium text-zinc-500">
+          Letter spacing
+          <Input
+            className="mt-1"
+            type="number"
+            step={0.5}
+            placeholder="0"
+            value={
+              selectedNode.props.letterSpacing != null
+                ? String(selectedNode.props.letterSpacing)
+                : ""
+            }
+            onChange={(event) =>
+              updateNodeProps(selectedNode.id, {
+                letterSpacing:
+                  event.target.value === "" ? null : Number(event.target.value),
+              })
+            }
+          />
+        </label>
+
+        <label className="text-xs font-medium text-zinc-500">
+          Line height
+          <Input
+            className="mt-1"
+            type="number"
+            step={0.1}
+            placeholder="1.4"
+            value={
+              selectedNode.props.lineHeight != null
+                ? String(selectedNode.props.lineHeight)
+                : ""
+            }
+            onChange={(event) =>
+              updateNodeProps(selectedNode.id, {
+                lineHeight:
+                  event.target.value === "" ? null : Number(event.target.value),
+              })
+            }
+          />
+        </label>
+      </div>
+
+      {selectedNode.page === "camera" && (
+        <label className="block text-xs font-medium text-zinc-500">
+          <div className="mb-1 flex items-center gap-1.5">
+            Semantic Role
+            <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+              Flutter binding
+            </span>
+          </div>
+
+          <Select
+            className="mt-0 font-mono text-xs"
+            value={readString(selectedNode.props.semanticRole ?? "", "")}
+            onChange={(event) =>
+              updateNodeProps(selectedNode.id, {
+                semanticRole: event.target.value || null,
+              })
+            }
+          >
+            <option value="">unassigned</option>
+
+            <optgroup label="camera">
+              {SEMANTIC_ROLES.filter((role) =>
+                PAGE_ROLES.camera.includes(role.value),
+              ).map((role) => (
+                <option key={role.value} value={role.value}>
+                  {role.label}
+                </option>
+              ))}
+            </optgroup>
+          </Select>
+        </label>
+      )}
+    </>
   );
 }
