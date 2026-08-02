@@ -21,14 +21,16 @@ async function getAppConfig(): Promise<AppConfigRow | null> {
 }
 
 async function saveAppConfig(
-  patch: Omit<AppConfigRow, "id" | "updated_at">,
+  patch: Partial<Omit<AppConfigRow, "id" | "updated_at">>,
 ): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("app_configs").upsert({
-    id: APP_CONFIG_ID,
-    ...patch,
-    updated_at: new Date().toISOString(),
-  });
+  const { error } = await supabase
+    .from("app_configs")
+    .update({
+      ...patch,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", APP_CONFIG_ID);
 
   if (error) {
     throw new Error(`Unable to save app config: ${error.message}`);

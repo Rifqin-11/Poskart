@@ -1,6 +1,12 @@
 import "server-only";
 
 import type { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  calculatePaymentGatewayFee,
+  DEFAULT_GATEWAY_FEE_SETTINGS,
+  normalizeGatewayFeeSettings,
+  type GatewayFeeSettings,
+} from "@/lib/payment-gateway-fee";
 import type {
   DuitkuCallbackPayload,
   DuitkuTransactionStatusResult,
@@ -22,12 +28,6 @@ type LedgerTransactionRow = {
   paid_at: string | null;
   created_at: string | null;
   gateway_response: Record<string, unknown> | null;
-};
-
-type PayoutFeeSettings = {
-  gatewayFeeType: "percentage" | "fixed";
-  gatewayFeePercentage: number;
-  gatewayFeeFixedAmount: number;
 };
 
 export async function recordDuitkuPaymentLedgerEntry(
@@ -75,15 +75,7 @@ export async function recordDuitkuPaymentLedgerEntry(
   if (existing?.id) return existing;
 
   const settings = await loadPayoutFeeSettings(supabase);
-  const gatewayFeeFromDuitku = parseMoney(verifiedStatus.fee);
-  const gatewayFeeAmount =
-    gatewayFeeFromDuitku ??
-    calculateConfiguredFee(
-      grossAmount,
-      settings.gatewayFeeType,
-      settings.gatewayFeePercentage,
-      settings.gatewayFeeFixedAmount,
-    );
+  const gatewayFeeAmount = calculatePaymentGatewayFee(grossAmount, settings);
   const platformFeeAmount = 0;
   const netAmount = Math.max(0, grossAmount - gatewayFeeAmount - platformFeeAmount);
   const now = new Date().toISOString();
@@ -132,7 +124,7 @@ export async function recordDuitkuPaymentLedgerEntry(
 
 async function loadPayoutFeeSettings(
   supabase: SupabaseAdminClient,
-): Promise<PayoutFeeSettings> {
+): Promise<GatewayFeeSettings> {
   const { data, error } = await supabase
     .from("app_configs")
     .select(
@@ -143,45 +135,14 @@ async function loadPayoutFeeSettings(
 
   if (error) {
     if (error.code === "42703" || error.code === "42P01") {
-      return {
-        gatewayFeeType: "percentage",
-        gatewayFeePercentage: 0,
-        gatewayFeeFixedAmount: 0,
-      };
+      return DEFAULT_GATEWAY_FEE_SETTINGS;
     }
     throw new Error(`Gagal memuat fee payout: ${error.message}`);
   }
 
-  return {
-    gatewayFeeType: normalizeFeeType(data?.gateway_fee_type),
-    gatewayFeePercentage: Number(data?.gateway_fee_percentage ?? 0),
-    gatewayFeeFixedAmount: Number(data?.gateway_fee_fixed_amount ?? 0),
-  };
-}
-
-function calculateConfiguredFee(
-  grossAmount: number,
-  feeType: "percentage" | "fixed",
-  percentage: number,
-  fixedAmount: number,
-) {
-  if (feeType === "fixed") {
-    return Math.max(0, Math.round(Number(fixedAmount)));
-  }
-  return Math.max(0, Math.round((grossAmount * Number(percentage ?? 0)) / 100));
-}
-
-function normalizeFeeType(value: unknown): "percentage" | "fixed" {
-  return value === "fixed" ? "fixed" : "percentage";
-}
-
-function parseMoney(value: unknown) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return Math.max(0, Math.round(value));
-  }
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value.replace(/[^\d.-]/g, ""));
-    if (Number.isFinite(parsed)) return Math.max(0, Math.round(parsed));
-  }
-  return null;
+  return normalizeGatewayFeeSettings({
+    gatewayFeeType: data?.gateway_fee_type,
+    gatewayFeePercentage: data?.gateway_fee_percentage,
+    gatewayFeeFixedAmount: data?.gateway_fee_fixed_amount,
+  });
 }

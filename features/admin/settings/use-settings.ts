@@ -17,7 +17,9 @@ export function useAppConfig(enabled = true) {
 export function useSaveAppConfig() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (patch: Omit<AppConfigRow, "id" | "updated_at">) =>
+    mutationFn: (
+      patch: Partial<Omit<AppConfigRow, "id" | "updated_at">>,
+    ) =>
       settingsApi.saveAppConfig(patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.appConfig }),
   });

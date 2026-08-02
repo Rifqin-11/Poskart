@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   Copy,
@@ -28,6 +29,7 @@ import {
   MobileFilterDrawer,
   MobileFilterField,
 } from "@/features/admin/_components";
+import { adminQueryKeys } from "@/features/admin/query-keys";
 import {
   approvePayoutInvoice,
   getPayoutInvoicesForSuperadmin,
@@ -508,6 +510,7 @@ function PayoutGlobalSettingsFields({
   settings: PayoutSettings;
   onSaved: (settings: PayoutSettings) => void;
 }) {
+  const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const [draft, setDraft] = useState({
     gatewayFeeType: settings.gatewayFeeType,
@@ -537,6 +540,18 @@ function PayoutGlobalSettingsFields({
         return;
       }
       onSaved(nextSettings);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.appConfig }),
+        queryClient.invalidateQueries({
+          queryKey: adminQueryKeys.transactionsRoot,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: adminQueryKeys.payoutSummary,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: adminQueryKeys.payoutInvoices,
+        }),
+      ]);
       toast.success("Payout settings saved");
     });
   };
@@ -849,8 +864,9 @@ function PayoutReviewContent({
         />
       </div>
       <div className="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-900">
-        Gateway fee is the Duitku deduction from QRIS transactions. Platform fee
-        is the POSKART withdrawal fee charged once for this payout.
+        Gateway fee follows the Super Admin configuration captured when this
+        payout was created. Platform fee is the POSKART withdrawal fee charged
+        once for this payout.
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">

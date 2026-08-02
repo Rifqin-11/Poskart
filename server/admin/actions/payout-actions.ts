@@ -9,6 +9,10 @@ import {
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAdminNotification } from "@/server/admin/notifications";
 import {
+  calculatePaymentGatewayFee,
+  normalizeGatewayFeeSettings,
+} from "@/lib/payment-gateway-fee";
+import {
   getJakartaDayStart,
   parseJakartaDateTimeInput,
 } from "@/lib/jakarta-time";
@@ -288,10 +292,14 @@ async function getPayoutSettings(
     throw new Error(`Failed to load payout settings: ${error.message}`);
   }
 
+  const gatewayFeeSettings = normalizeGatewayFeeSettings({
+    gatewayFeeType: data?.gateway_fee_type,
+    gatewayFeePercentage: data?.gateway_fee_percentage,
+    gatewayFeeFixedAmount: data?.gateway_fee_fixed_amount,
+  });
+
   return {
-    gatewayFeeType: normalizeFeeType(data?.gateway_fee_type),
-    gatewayFeePercentage: Number(data?.gateway_fee_percentage ?? 0),
-    gatewayFeeFixedAmount: Number(data?.gateway_fee_fixed_amount ?? 0),
+    ...gatewayFeeSettings,
     platformFeeType: normalizeFeeType(data?.platform_fee_type),
     platformFeePercentage: Number(data?.platform_fee_percentage ?? 0),
     platformFeeFixedAmount: Number(data?.platform_fee_fixed_amount ?? 0),
@@ -301,7 +309,7 @@ async function getPayoutSettings(
 
 function calculateLine(row: EligibleLedgerEntryRow, settings: PayoutSettings) {
   const grossAmount = Number(row.gross_amount);
-  const gatewayFeeAmount = calculateGatewayFee(row, settings, grossAmount);
+  const gatewayFeeAmount = calculatePaymentGatewayFee(grossAmount, settings);
   const platformFeeAmount = 0;
 
   return {
@@ -333,23 +341,6 @@ function calculatePayoutPlatformFee(
   );
 }
 
-function calculateGatewayFee(
-  row: EligibleLedgerEntryRow,
-  settings: PayoutSettings,
-  grossAmount: number,
-) {
-  const feeFromDuitku = parseMoney(readObject(row.verified_response)?.fee);
-  return (
-    feeFromDuitku ??
-    calculateConfiguredFee(
-      grossAmount,
-      settings.gatewayFeeType,
-      settings.gatewayFeePercentage,
-      settings.gatewayFeeFixedAmount,
-    )
-  );
-}
-
 function calculateConfiguredFee(
   grossAmount: number,
   feeType: "percentage" | "fixed",
@@ -360,23 +351,6 @@ function calculateConfiguredFee(
     return Math.max(0, Math.round(Number(fixedAmount)));
   }
   return Math.max(0, Math.round((grossAmount * Number(percentage ?? 0)) / 100));
-}
-
-function readObject(value: unknown) {
-  return value && typeof value === "object"
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function parseMoney(value: unknown) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return Math.max(0, Math.round(value));
-  }
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value.replace(/[^\d.-]/g, ""));
-    if (Number.isFinite(parsed)) return Math.max(0, Math.round(parsed));
-  }
-  return null;
 }
 
 async function notifySafely(
@@ -1202,6 +1176,7 @@ export async function savePayoutSettingsForSuperadmin(
     if (error) return { success: false, error: error.message };
     revalidatePath("/superadmin");
     revalidatePath("/withdraw");
+    revalidatePath("/transactions");
     return { success: true };
   } catch (error) {
     return {

@@ -5,6 +5,11 @@ import { isSuperAdminProfile } from "@/lib/auth/admin";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAdminNotification } from "@/server/admin/notifications";
 import {
+  DEFAULT_GATEWAY_FEE_SETTINGS,
+  normalizeGatewayFeeSettings,
+  type GatewayFeeSettings,
+} from "@/lib/payment-gateway-fee";
+import {
   assertSupabaseResult,
   mapTransaction,
   TRANSACTION_COLUMNS,
@@ -99,6 +104,7 @@ export type TransactionPageSummary = {
 
 export type TransactionPageResult = PaginatedResult<Transaction> & {
   summary: TransactionPageSummary;
+  gatewayFeeSettings: GatewayFeeSettings;
 };
 
 function normalizePagination(input?: PaginationInput) {
@@ -278,8 +284,18 @@ export async function getTransactionsPage(
     p_from_date: fromDate || null,
     p_to_date: toDate || null,
   });
-  const [{ data, error, count }, { data: summaryRows, error: summaryError }] =
-    await Promise.all([query, summaryQuery]);
+  const gatewayFeeSettingsQuery = supabase
+    .from("app_configs")
+    .select(
+      "gateway_fee_type,gateway_fee_percentage,gateway_fee_fixed_amount",
+    )
+    .eq("id", "default")
+    .maybeSingle();
+  const [
+    { data, error, count },
+    { data: summaryRows, error: summaryError },
+    { data: feeConfig, error: feeConfigError },
+  ] = await Promise.all([query, summaryQuery, gatewayFeeSettingsQuery]);
   const rows = assertSupabaseResult(
     data as TransactionRow[] | null,
     error,
@@ -301,6 +317,24 @@ export async function getTransactionsPage(
     .filter((row) => !isOrphanQrisPendingTransaction(row))
     .map(mapTransaction);
 
+  if (
+    feeConfigError &&
+    feeConfigError.code !== "42703" &&
+    feeConfigError.code !== "42P01"
+  ) {
+    throw new Error(
+      `Unable to load payment gateway fee: ${feeConfigError.message}`,
+    );
+  }
+
+  const gatewayFeeSettings = feeConfigError
+    ? DEFAULT_GATEWAY_FEE_SETTINGS
+    : normalizeGatewayFeeSettings({
+        gatewayFeeType: feeConfig?.gateway_fee_type,
+        gatewayFeePercentage: feeConfig?.gateway_fee_percentage,
+        gatewayFeeFixedAmount: feeConfig?.gateway_fee_fixed_amount,
+      });
+
   const summary: TransactionPageSummary = {
     transactionCount: Number(summaryData?.transaction_count ?? 0),
     paidCount: Number(summaryData?.paid_count ?? 0),
@@ -317,6 +351,7 @@ export async function getTransactionsPage(
       Math.max(0, count ?? 0),
     ),
     summary,
+    gatewayFeeSettings,
   };
 }
 

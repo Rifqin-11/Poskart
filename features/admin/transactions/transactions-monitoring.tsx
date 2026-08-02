@@ -49,14 +49,17 @@ import {
   useUnmarkTransactionAsTesting,
 } from "@/features/admin/transactions/use-transactions";
 import { TRANSACTION_PAGE_SIZE } from "@/features/admin/transactions/transaction-list-defaults";
-import { useAppConfig } from "@/features/admin/settings/use-settings";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useBooths } from "@/features/admin/devices/use-devices";
 import { usePricing } from "@/features/admin/pricing/use-pricing";
 import { transactionsApi } from "@/features/admin/transactions/api";
+import {
+  calculatePaymentGatewayFee,
+  DEFAULT_GATEWAY_FEE_SETTINGS,
+  type GatewayFeeSettings,
+} from "@/lib/payment-gateway-fee";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-provider";
-import type { AppConfigRow } from "@/types/app-config";
 import type { Transaction, TransactionActionType } from "@/types/transaction";
 
 function getTransactionPaymentMethod(transaction: Transaction) {
@@ -299,40 +302,23 @@ function BulkActionMenu({
   );
 }
 
-function calculateConfiguredFee(
-  amount: number,
-  feeType?: AppConfigRow["gateway_fee_type"],
-  percentage?: number,
-  fixedAmount?: number,
-) {
-  if (feeType === "fixed") {
-    return Math.max(0, Math.round(Number(fixedAmount ?? 0)));
-  }
-  return Math.max(0, Math.round((amount * Number(percentage ?? 0)) / 100));
-}
-
 function getTransactionGatewayFee(
   transaction: Transaction,
-  config?: AppConfigRow | null,
+  settings: GatewayFeeSettings,
 ) {
   const paymentMethod = getTransactionPaymentMethod(transaction);
   if (paymentMethod !== "QRIS" || transaction.status !== "paid") return 0;
 
-  return calculateConfiguredFee(
-    transaction.amount,
-    config?.gateway_fee_type,
-    config?.gateway_fee_percentage,
-    config?.gateway_fee_fixed_amount,
-  );
+  return calculatePaymentGatewayFee(transaction.amount, settings);
 }
 
 function getTransactionNetAmount(
   transaction: Transaction,
-  config?: AppConfigRow | null,
+  settings: GatewayFeeSettings,
 ) {
   return Math.max(
     0,
-    transaction.amount - getTransactionGatewayFee(transaction, config),
+    transaction.amount - getTransactionGatewayFee(transaction, settings),
   );
 }
 
@@ -342,21 +328,21 @@ function formatPercentage(value?: number) {
   })}%`;
 }
 
-function getConfiguredFeeRuleLabel(config?: AppConfigRow | null) {
-  if (config?.gateway_fee_type === "fixed") {
-    return formatCurrency(Number(config.gateway_fee_fixed_amount ?? 0));
+function getConfiguredFeeRuleLabel(settings: GatewayFeeSettings) {
+  if (settings.gatewayFeeType === "fixed") {
+    return formatCurrency(settings.gatewayFeeFixedAmount);
   }
-  return formatPercentage(config?.gateway_fee_percentage);
+  return formatPercentage(settings.gatewayFeePercentage);
 }
 
 function getTransactionFeeRuleLabel(
   transaction: Transaction,
-  config?: AppConfigRow | null,
+  settings: GatewayFeeSettings,
 ) {
-  const fee = getTransactionGatewayFee(transaction, config);
+  const fee = getTransactionGatewayFee(transaction, settings);
   if (fee <= 0) return "Rp 0";
-  if (config?.gateway_fee_type === "fixed") return formatCurrency(fee);
-  return formatPercentage(config?.gateway_fee_percentage);
+  if (settings.gatewayFeeType === "fixed") return formatCurrency(fee);
+  return formatPercentage(settings.gatewayFeePercentage);
 }
 
 function AmountBreakdown({
@@ -411,7 +397,6 @@ export function TransactionsMonitoring({
   initialAction?: string;
 }) {
   const { t } = useI18n();
-  const { data: config } = useAppConfig();
   const requestAction = useRequestTransactionAction();
   const markTesting = useMarkTransactionAsTesting();
   const unmarkTesting = useUnmarkTransactionAsTesting();
@@ -456,6 +441,9 @@ export function TransactionsMonitoring({
     booth: boothFilter === "all" ? "" : boothFilter,
   });
   const data = transactionQuery.data?.items ?? [];
+  const gatewayFeeSettings =
+    transactionQuery.data?.gatewayFeeSettings ??
+    DEFAULT_GATEWAY_FEE_SETTINGS;
   const packageOptions = pricingPackages.map((item) => item.name).filter(Boolean);
   const totalItems = transactionQuery.data?.totalItems ?? 0;
   const paymentMethodOptions = ["QRIS", "Cash", "Voucher", "Event"];
@@ -489,14 +477,12 @@ export function TransactionsMonitoring({
   const filtered = data;
   const serverSummary = transactionQuery.data?.summary;
   const qrisFee = serverSummary
-    ? config?.gateway_fee_type === "fixed"
+    ? gatewayFeeSettings.gatewayFeeType === "fixed"
       ? serverSummary.qrisPaidCount *
-        Number(config.gateway_fee_fixed_amount ?? 0)
-      : calculateConfiguredFee(
+        gatewayFeeSettings.gatewayFeeFixedAmount
+      : calculatePaymentGatewayFee(
           serverSummary.qrisGrossRevenue,
-          config?.gateway_fee_type,
-          config?.gateway_fee_percentage,
-          config?.gateway_fee_fixed_amount,
+          gatewayFeeSettings,
         )
     : 0;
   const summary = {
@@ -693,31 +679,58 @@ export function TransactionsMonitoring({
       booth: boothFilter === "all" ? "" : boothFilter,
     };
     const firstPage = await transactionsApi.getTransactionsPage(filters);
-    if (firstPage.totalPages <= 1) return firstPage.items;
+    if (firstPage.totalPages <= 1) {
+      return {
+        transactions: firstPage.items,
+        feeSettings: firstPage.gatewayFeeSettings,
+      };
+    }
     const pages = await Promise.all(
       Array.from({ length: firstPage.totalPages - 1 }, (_, index) =>
         transactionsApi.getTransactionsPage({ ...filters, page: index + 2 }),
       ),
     );
-    return [firstPage.items, ...pages.map((pageResult) => pageResult.items)].flat();
+    return {
+      transactions: [
+        firstPage.items,
+        ...pages.map((pageResult) => pageResult.items),
+      ].flat(),
+      feeSettings: firstPage.gatewayFeeSettings,
+    };
   }
 
   async function exportToExcel() {
     setIsExporting(true);
     try {
-      const transactions = await getTransactionsForExport();
-      const rows = transactions.map((transaction) => [
-        transaction.id,
-        formatDateTime(transaction.createdAtRaw),
-        transaction.device,
-        getTransactionPaymentMethod(transaction),
-        transaction.packageName,
-        transaction.amount,
-        transaction.printCount,
-        transaction.status,
-      ]);
+      const { transactions, feeSettings } = await getTransactionsForExport();
+      const rows = transactions.map((transaction) => {
+        const gatewayFee = getTransactionGatewayFee(transaction, feeSettings);
+        return [
+          transaction.id,
+          formatDateTime(transaction.createdAtRaw),
+          transaction.device,
+          getTransactionPaymentMethod(transaction),
+          transaction.packageName,
+          transaction.amount,
+          gatewayFee,
+          getTransactionNetAmount(transaction, feeSettings),
+          transaction.printCount,
+          transaction.status,
+        ];
+      });
       const csv = [
-        ["ID", "Date & Time", "Booth", "Payment", "Package", "Amount", "Prints", "Status"],
+        [
+          "ID",
+          "Date & Time",
+          "Booth",
+          "Payment",
+          "Package",
+          "Gross amount",
+          "Gateway fee",
+          "Net amount",
+          "Prints",
+          "Status",
+        ],
         ...rows,
       ]
         .map((row) => row.map(escapeCsv).join(","))
@@ -742,13 +755,23 @@ export function TransactionsMonitoring({
   async function exportToPdf() {
     setIsExporting(true);
     try {
-      const transactions = await getTransactionsForExport();
+      const { transactions, feeSettings } = await getTransactionsForExport();
       const printWindow = window.open("", "_blank");
       if (!printWindow) throw new Error("Izinkan pop-up untuk ekspor PDF.");
       const rows = transactions
-        .map((transaction) => `<tr><td>${escapeHtml(transaction.id)}</td><td>${escapeHtml(formatDateTime(transaction.createdAtRaw))}</td><td>${escapeHtml(transaction.device)}</td><td>${escapeHtml(getTransactionPaymentMethod(transaction))}</td><td>${escapeHtml(transaction.packageName)}</td><td>${escapeHtml(formatCurrency(transaction.amount))}</td><td>${escapeHtml(transaction.status)}</td></tr>`)
+        .map((transaction) => {
+          const gatewayFee = getTransactionGatewayFee(
+            transaction,
+            feeSettings,
+          );
+          const netAmount = getTransactionNetAmount(
+            transaction,
+            feeSettings,
+          );
+          return `<tr><td>${escapeHtml(transaction.id)}</td><td>${escapeHtml(formatDateTime(transaction.createdAtRaw))}</td><td>${escapeHtml(transaction.device)}</td><td>${escapeHtml(getTransactionPaymentMethod(transaction))}</td><td>${escapeHtml(transaction.packageName)}</td><td>${escapeHtml(formatCurrency(transaction.amount))}</td><td>${escapeHtml(formatCurrency(gatewayFee))}</td><td>${escapeHtml(formatCurrency(netAmount))}</td><td>${escapeHtml(transaction.status)}</td></tr>`;
+        })
         .join("");
-      printWindow.document.write(`<!doctype html><html><head><title>Laporan Transaksi POSKART</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#18181b}h1{font-size:20px;margin:0 0 8px}p{color:#71717a;margin:0 0 20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #e4e4e7;padding:7px;text-align:left}th{background:#f4f4f5}</style></head><body><h1>Laporan Transaksi POSKART</h1><p>${escapeHtml(formatDateRangeLabel(fromDateFilter, toDateFilter))} · ${transactions.length} transaksi</p><table><thead><tr><th>ID</th><th>Date & Time</th><th>Booth</th><th>Payment</th><th>Package</th><th>Amount</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table><script>window.print();</script></body></html>`);
+      printWindow.document.write(`<!doctype html><html><head><title>Laporan Transaksi POSKART</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#18181b}h1{font-size:20px;margin:0 0 8px}p{color:#71717a;margin:0 0 20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #e4e4e7;padding:7px;text-align:left}th{background:#f4f4f5}</style></head><body><h1>Laporan Transaksi POSKART</h1><p>${escapeHtml(formatDateRangeLabel(fromDateFilter, toDateFilter))} · ${transactions.length} transaksi</p><table><thead><tr><th>ID</th><th>Date & Time</th><th>Booth</th><th>Payment</th><th>Package</th><th>Gross</th><th>Gateway fee</th><th>Net</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table><script>window.print();</script></body></html>`);
       printWindow.document.close();
       toast.success("Jendela PDF laporan transaksi dibuka.");
     } catch (error) {
@@ -774,7 +797,9 @@ export function TransactionsMonitoring({
             description={
               <div className="space-y-0.5">
                 <div>Gross {formatCurrency(summary.grossRevenue)}</div>
-                <div>QRIS fee {getConfiguredFeeRuleLabel(config)}</div>
+                <div>
+                  QRIS fee {getConfiguredFeeRuleLabel(gatewayFeeSettings)}
+                </div>
               </div>
             }
           />
@@ -1105,13 +1130,13 @@ export function TransactionsMonitoring({
                     getTransactionPaymentMethod(transaction);
                   const netAmount = getTransactionNetAmount(
                     transaction,
-                    config,
+                    gatewayFeeSettings,
                   );
                   const hasGatewayFeeBreakdown =
                     paymentMethod === "QRIS" && transaction.status === "paid";
                   const feeRuleLabel = getTransactionFeeRuleLabel(
                     transaction,
-                    config,
+                    gatewayFeeSettings,
                   );
 
                   return (
@@ -1213,12 +1238,15 @@ export function TransactionsMonitoring({
             ) : null}
             {paginatedTransactions.map((transaction: Transaction) => {
               const paymentMethod = getTransactionPaymentMethod(transaction);
-              const netAmount = getTransactionNetAmount(transaction, config);
+              const netAmount = getTransactionNetAmount(
+                transaction,
+                gatewayFeeSettings,
+              );
               const hasGatewayFeeBreakdown =
                 paymentMethod === "QRIS" && transaction.status === "paid";
               const feeRuleLabel = getTransactionFeeRuleLabel(
                 transaction,
-                config,
+                gatewayFeeSettings,
               );
 
               return (

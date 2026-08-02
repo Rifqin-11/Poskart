@@ -281,35 +281,19 @@ export function SettingsPanel({
       return false;
     }
 
-    const appConfigPatch: Omit<AppConfigRow, "id" | "updated_at"> = {
-      merchant_name: form.merchant_name,
-      qris_payload_prefix: form.qris_payload_prefix,
-      share_base_url: form.share_base_url,
-      countdown_duration_seconds: form.countdown_duration_seconds,
-      flash_duration_ms: form.flash_duration_ms,
-      auto_return_duration_seconds: form.auto_return_duration_seconds,
-      default_template_id: form.default_template_id || null,
-      qris_provider_merchant_id: config.qris_provider_merchant_id ?? "",
-      qris_webhook_secret: config.qris_webhook_secret ?? "",
-      qris_auto_retry: form.qris_auto_retry,
-      subscription_payment_gateway:
-        config.subscription_payment_gateway ?? "duitku",
-      gateway_fee_type: config.gateway_fee_type ?? "percentage",
-      gateway_fee_percentage: config.gateway_fee_percentage ?? 0,
-      gateway_fee_fixed_amount: config.gateway_fee_fixed_amount ?? 0,
-      platform_fee_type: config.platform_fee_type ?? "percentage",
-      platform_fee_percentage: config.platform_fee_percentage ?? 0,
-      platform_fee_fixed_amount: config.platform_fee_fixed_amount ?? 0,
-      payout_adjustment_amount: config.payout_adjustment_amount ?? 0,
-      minimum_payout_amount: config.minimum_payout_amount ?? 0,
-      printer_name: form.printer_name,
-      booth_timeout_seconds: form.booth_timeout_seconds,
-      download_expiry_hours: form.download_expiry_hours,
-      gallery_retention_days: form.gallery_retention_days,
-      storage_provider: form.storage_provider,
-      watermark_enabled: form.watermark_enabled,
-      maintenance_mode: form.maintenance_mode,
-    };
+    const appConfigPatch: Partial<
+      Omit<AppConfigRow, "id" | "updated_at">
+    > =
+      scope === "payment"
+        ? {
+            qris_auto_retry: form.qris_auto_retry,
+          }
+        : {
+            download_expiry_hours: form.download_expiry_hours,
+            gallery_retention_days: form.gallery_retention_days,
+            storage_provider: form.storage_provider,
+            watermark_enabled: form.watermark_enabled,
+          };
 
     const mutations: Array<Promise<unknown>> = [
       saveConfig.mutateAsync(appConfigPatch),

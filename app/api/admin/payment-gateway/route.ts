@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { isSuperAdminProfile } from "@/lib/auth/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -109,6 +110,10 @@ export async function PATCH(request: NextRequest) {
   if (error) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
+
+  revalidatePath("/superadmin");
+  revalidatePath("/withdraw");
+  revalidatePath("/transactions");
 
   return NextResponse.json({
     gateway,

@@ -508,8 +508,9 @@ export function PayoutDashboard({
             />
           </div>
           <div className="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-900">
-            Fees consist of the Duitku gateway fee per QRIS transaction and the
-            one-time POSKART withdrawal fee for this request.
+            Fees consist of the globally configured payment gateway fee per
+            QRIS transaction and the one-time POSKART withdrawal fee for this
+            request.
           </div>
           {requestForm.amount < summary.settings.minimumPayoutAmount ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
@@ -587,13 +588,13 @@ function PayoutSettingsSummary({ summary }: { summary: PayoutSummary }) {
             </CardDescription>
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm leading-6 text-zinc-600">
-            Gateway fee is the Duitku deduction for each QRIS transaction.
-            Platform fee is the one-time POSKART withdrawal fee applied when a
-            payout request is created.
+            Gateway fee follows the global rate configured by Super Admin for
+            each QRIS transaction. Platform fee is the one-time POSKART
+            withdrawal fee applied when a payout request is created.
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <PayoutRuleStat
-              label="Gateway fee fallback"
+              label="Gateway fee"
               value={formatFeeSetting(
                 summary.settings.gatewayFeeType,
                 summary.settings.gatewayFeePercentage,
