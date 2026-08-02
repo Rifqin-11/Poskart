@@ -43,6 +43,9 @@ export function VisualTextProperties({
   const [fontName, setFontName] = useState("");
   const [fontUrl, setFontUrl] = useState("");
   const customFonts = canvas.customFonts ?? [];
+  const isLiveTextNode =
+    selectedNode.type === "camera-timer" ||
+    selectedNode.type === "camera-shot-counter";
 
   const loadCustomFont = () => {
     const name = fontName.trim();

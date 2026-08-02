@@ -136,7 +136,7 @@ export function PropertiesPanel({
         updateNode={updateNode}
       />
 
-      {editableText && !isOverlayMode && (
+      {editableText && (
         <VisualTextProperties
           canvas={canvas}
           selectedNode={selectedNode}
