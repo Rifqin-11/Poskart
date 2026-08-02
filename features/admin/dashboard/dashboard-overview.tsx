@@ -291,18 +291,32 @@ export function DashboardOverview() {
       {canUseOperatingTools && !hasDevices ? (
         <Link
           href="/devices?action=create"
-          className="flex items-center justify-between gap-6 rounded-3xl border border-zinc-200 bg-white px-6 py-5 shadow-sm transition hover:border-zinc-300"
+          className="group flex flex-col gap-4 rounded-3xl border border-[#00357B]/20 bg-[#00357B] px-5 py-5 text-white shadow-[0_12px_28px_rgba(0,53,123,0.16)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_16px_34px_rgba(0,53,123,0.22)] active:translate-y-px sm:flex-row sm:items-center sm:justify-between sm:px-6"
         >
-          <div className="flex items-center gap-4">
-            <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#00357B] text-white">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="grid size-12 shrink-0 place-items-center rounded-2xl border border-white/20 bg-white/10 text-white">
               <MonitorSmartphone className="size-5" />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-zinc-950">Pasangkan device kiosk pertama Anda</p>
-              <p className="text-xs text-zinc-500">Buka aplikasi POSKART di tablet → login → masukkan kode yang muncul di sini.</p>
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-blue-100">
+                <span className="size-1.5 rounded-full bg-[#F5A3AE]" />
+                Langkah pertama
+              </p>
+              <p className="mt-1 text-base font-semibold leading-6 tracking-tight sm:text-lg">
+                Pasangkan device kiosk pertama Anda
+              </p>
+              <p className="mt-1 text-xs leading-5 text-blue-100 sm:text-sm">
+                Login di tablet POSKART, lalu masukkan kode pairing di sini.
+              </p>
             </div>
           </div>
-          <ArrowRight className="size-4 shrink-0 text-zinc-400" />
+
+          <div className="flex shrink-0 items-center sm:pl-4">
+            <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-[#00357B] transition-colors duration-200 group-hover:bg-blue-50 sm:w-auto sm:min-w-36">
+              Mulai pairing
+              <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            </span>
+          </div>
         </Link>
       ) : null}
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -473,12 +487,25 @@ export function DashboardOverview() {
                 </div>
               ))
             ) : (
-              <EmptyPanelState
-                title="No devices connected"
-                description="Add a POSKART device to monitor battery, sync, frame, and pricing status."
-                href={canUseOperatingTools ? "/devices" : "/settings?tab=organization&subscription=required"}
-                action={canUseOperatingTools ? "Add device" : "Activate subscription"}
-              />
+              <div className="relative overflow-hidden rounded-4xl border border-blue-100 bg-[#f7f9ff] px-5 py-10 text-center">
+                <div className="absolute -right-14 -top-16 size-48 rounded-full bg-blue-100/70 blur-3xl" />
+                <div className="relative mx-auto max-w-xs">
+                  <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-white text-[#00357B] shadow-sm ring-1 ring-blue-100">
+                    <MonitorSmartphone className="size-5" />
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-zinc-950">Pasangkan device kiosk pertama Anda</p>
+                  <p className="mt-1.5 text-xs leading-5 text-zinc-500">
+                    Hubungkan tablet Android ke dashboard untuk memantau status, baterai, dan transaksi secara real-time.
+                  </p>
+                  <Link
+                    href={canUseOperatingTools ? "/devices" : "/settings?tab=organization&subscription=required"}
+                    className={buttonVariants({ size: "sm", className: "mt-5 rounded-full bg-[#00357B] hover:bg-[#014EB4]" })}
+                  >
+                    {canUseOperatingTools ? "Tambah device" : "Aktifkan langganan"}
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
