@@ -15,6 +15,7 @@ import {
   Clock,
   Timer,
   Hash,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import type { BuilderComponentType, BuilderPage } from "@/types/builder";
@@ -53,11 +54,6 @@ export const SEMANTIC_ROLES: {
     screen: "camera",
   },
   { value: "camera.retake", label: "Retake photo slot", screen: "camera" },
-  {
-    value: "camera.flash_toggle",
-    label: "Flash Toggle",
-    screen: "camera",
-  },
   {
     value: "camera.photo_result",
     label: "Photo Result Slot",
@@ -126,6 +122,7 @@ export const COMPONENT_META: Record<
   "payment-countdown": { label: "Payment Countdown", icon: Clock },
   "camera-timer": { label: "Countdown Timer", icon: Timer },
   "camera-shot-counter": { label: "Shot Counter", icon: Hash },
+  "camera-flash": { label: "Flash Toggle", icon: Zap },
   background: { label: "Page Background", icon: ImageIcon },
 };
 
@@ -153,6 +150,7 @@ export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
     "photo-result",
     "camera-timer",
     "camera-shot-counter",
+    "camera-flash",
     "button",
     "social-handle",
     "background-decoration",
@@ -189,7 +187,6 @@ export const PAGE_ROLES: Record<BuilderPage | "generic", string[]> = {
     "camera.continue",
     "camera.retake",
     "camera.photo_result",
-    "camera.flash_toggle",
   ],
   preview: [
     "preview.print",

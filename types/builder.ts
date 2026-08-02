@@ -28,6 +28,7 @@ export type BuilderComponentType =
   | "payment-countdown"
   | "camera-timer" // Live capture countdown number (text-only) on camera page
   | "camera-shot-counter" // Live "Foto X dari Y" counter (text-only) on camera page
+  | "camera-flash" // Flash on/off toggle button on camera page
   | "background"; // Payment QRIS countdown shown on the payment page
 
 export type BuilderNode = {

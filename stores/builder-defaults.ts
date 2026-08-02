@@ -130,6 +130,13 @@ export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
     };
   }
 
+  if (type === "camera-flash") {
+    return {
+      textColor: "#ffffff",
+      backgroundColor: "rgba(0,0,0,0.52)",
+    };
+  }
+
   return {
     content: type.replace("-", " "),
     fontSize: 18,

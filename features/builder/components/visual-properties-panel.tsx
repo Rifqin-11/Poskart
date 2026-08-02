@@ -146,6 +146,7 @@ export function PropertiesPanel({
       )}
 
       {(selectedNode.type === "camera-timer" ||
+        selectedNode.type === "camera-flash" ||
         selectedNode.type === "camera-shot-counter") && (
         <VisualTextProperties
           canvas={canvas}

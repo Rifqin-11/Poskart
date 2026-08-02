@@ -42,6 +42,7 @@ const overlaySchemaComponentTypes = new Set<BuilderComponentType>([
   "social-handle",
   "camera-timer",
   "camera-shot-counter",
+  "camera-flash",
 ]);
 
 export function isDeprecatedBuilderNode(node: BuilderNode): boolean {

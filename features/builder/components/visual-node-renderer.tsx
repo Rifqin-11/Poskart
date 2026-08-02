@@ -25,6 +25,7 @@ const OVERLAY_REAL_RENDER_TYPES = new Set<BuilderNode["type"]>([
   // Live text layers on the camera page — render real text, not a hotspot.
   "camera-timer",
   "camera-shot-counter",
+  "camera-flash",
 ]);
 
 /** Parse #RRGGBB into [r,g,b]; returns null for malformed input. */
@@ -286,6 +287,25 @@ export function NodeRenderer({
     const reverseOrder = iconPos === "right" || iconPos === "bottom";
 
     const src = readString(node.props.src, "");
+
+    // Flash toggle: render "Flash on / Flash off" text label instead of hotspot
+    if (role === "camera.flash_toggle") {
+      return (
+        <div
+          className="flex h-full w-full items-center justify-center rounded-full text-center"
+          style={{
+            background: readString(node.props.background, "rgba(0,0,0,0.45)"),
+            color: btnColor,
+            fontSize: Math.max(9, readNumber(node.props.fontSize, 11)),
+            fontWeight: 700,
+            border: `1px solid ${btnColor}33`,
+          }}
+        >
+          Flash on
+        </div>
+      );
+    }
+
     if (src) {
       return (
         <div
@@ -525,6 +545,15 @@ export function NodeRenderer({
           <div className="absolute left-1/2 h-full w-px -translate-x-1/2 bg-white/30" />
           <div className="absolute top-1/2 h-px w-full -translate-y-1/2 bg-white/30" />
         </div>
+        {/* Countdown number preview */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span
+            className="font-bold text-white/40 select-none"
+            style={{ fontSize: Math.max(24, node.height * 0.18) }}
+          >
+            3
+          </span>
+        </div>
       </div>
     );
   }
@@ -663,6 +692,30 @@ export function NodeRenderer({
         </div>
         <span className="shrink-0 rounded-full border border-emerald-200 bg-white px-1.5 py-0.5 text-[9px] font-medium text-emerald-600">
           {useGlobal ? "global" : "override"}
+        </span>
+      </div>
+    );
+  }
+
+  if (node.type === "camera-flash") {
+    const textColor = readString(node.props.color, "#ffffff");
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <span style={{ fontSize: Math.max(9, node.height * 0.28), fontWeight: 700, color: textColor }}>
+          Flash on
+        </span>
+      </div>
+    );
+  }
+
+  if (node.type === "camera-timer") {
+    const scale = node.height / 36;
+    const textColor = readString(node.props.color, "#ffffff");
+    const seconds = readNumber(node.props.countdownSeconds, 3);
+    return (
+      <div className="pointer-events-none flex h-full w-full items-center justify-center">
+        <span style={{ fontSize: 11 * scale, fontWeight: 800, color: textColor, lineHeight: 1 }}>
+          {seconds} dtk
         </span>
       </div>
     );

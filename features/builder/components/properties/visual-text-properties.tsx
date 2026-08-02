@@ -45,6 +45,7 @@ export function VisualTextProperties({
   const customFonts = canvas.customFonts ?? [];
   const isLiveTextNode =
     selectedNode.type === "camera-timer" ||
+    selectedNode.type === "camera-flash" ||
     selectedNode.type === "camera-shot-counter";
 
   const loadCustomFont = () => {
@@ -404,7 +405,10 @@ function TextMetricsControls({
         </label>
       </div>
 
-      {selectedNode.page === "camera" && (
+      {selectedNode.page === "camera" &&
+        selectedNode.type !== "camera-timer" &&
+        selectedNode.type !== "camera-flash" &&
+        selectedNode.type !== "camera-shot-counter" && (
         <label className="block text-xs font-medium text-zinc-500">
           <div className="mb-1 flex items-center gap-1.5">
             Semantic Role
