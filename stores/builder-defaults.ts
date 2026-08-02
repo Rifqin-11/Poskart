@@ -25,7 +25,7 @@ export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
       background: "#18181b",
       color: "#ffffff",
       radius: 6,
-      fontSize: 14,
+      fontSize: 28,
     };
   }
 

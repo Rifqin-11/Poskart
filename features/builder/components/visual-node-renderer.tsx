@@ -349,7 +349,7 @@ export function NodeRenderer({
 
     return (
       <div
-        className="relative h-full w-full overflow-hidden font-medium shadow-sm"
+        className="relative h-full w-full font-medium shadow-sm"
         style={{
           background: readString(node.props.background, "#18181b"),
           color: btnColor,
@@ -357,7 +357,10 @@ export function NodeRenderer({
             node.props.radius,
             Math.max(6, Math.round(canvas.width * 0.005)),
           ),
-          fontSize: readNumber(node.props.fontSize, scaledDefaultFontSize),
+          fontSize: Math.min(
+            Math.max(readNumber(node.props.fontSize, scaledDefaultFontSize), scaledDefaultFontSize * 0.6),
+            node.height * 0.45,
+          ),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
