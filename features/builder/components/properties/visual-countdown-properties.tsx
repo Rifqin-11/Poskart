@@ -1,8 +1,11 @@
 "use client";
 
-import { Clock, CreditCard } from "lucide-react";
+import { Clock, CreditCard, RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { PanelSection } from "@/features/builder/components/visual-properties-primitives";
+import {
+  ColorField,
+  PanelSection,
+} from "@/features/builder/components/visual-properties-primitives";
 import { readNumber, readString } from "@/features/builder/utils";
 import type { BuilderNode } from "@/types/builder";
 
@@ -13,6 +16,52 @@ export function VisualCountdownProperties({
   selectedNode: BuilderNode;
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
 }) {
+  if (selectedNode.type === "return-countdown") {
+    return (
+      <PanelSection
+        title="Return Countdown"
+        icon={<RotateCcw className="size-3.5 text-zinc-500" />}
+      >
+        <div className="space-y-2 text-xs text-zinc-500">
+          <label className="block">
+            Label
+            <Input
+              className="mt-1"
+              value={readString(selectedNode.props.countdownText, "Kembali ke halaman awal")}
+              placeholder="Kembali ke halaman awal"
+              onChange={(event) =>
+                updateNodeProps(selectedNode.id, { countdownText: event.target.value })
+              }
+            />
+          </label>
+          <CountdownDurationInput
+            disabled={false}
+            value={readNumber(selectedNode.props.countdownSeconds, 8)}
+            min={3}
+            max={60}
+            onChange={(value) =>
+              updateNodeProps(selectedNode.id, { countdownSeconds: value })
+            }
+          />
+          <ColorField
+            label="Text color"
+            value={readString(selectedNode.props.textColor, "#000000")}
+            onChange={(value) =>
+              updateNodeProps(selectedNode.id, { textColor: value })
+            }
+          />
+          <ColorField
+            label="Progress bar color"
+            value={readString(selectedNode.props.progressColor, "#27272A")}
+            onChange={(value) =>
+              updateNodeProps(selectedNode.id, { progressColor: value })
+            }
+          />
+        </div>
+      </PanelSection>
+    );
+  }
+
   if (selectedNode.type === "session-countdown") {
     return (
       <PanelSection

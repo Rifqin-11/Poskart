@@ -21,6 +21,7 @@ const OVERLAY_REAL_RENDER_TYPES = new Set<BuilderNode["type"]>([
   "preview-media-toggle",
   "template-list",
   "template-preview",
+  "return-countdown",
   // Live text layers on the camera page — render real text, not a hotspot.
   "camera-timer",
   "camera-shot-counter",
@@ -571,49 +572,30 @@ export function NodeRenderer({
 
   if (node.type === "return-countdown") {
     const scale = node.height / 72;
+    const textColor = readString(node.props.textColor, "#000000");
+    const progressColor = readString(node.props.progressColor, "#27272A");
     return (
       <div
-        className="flex h-full w-full flex-col justify-center text-zinc-900 select-none px-1"
-        style={{
-          fontFamily: "'Manrope', 'Outfit', 'Inter', sans-serif",
-        }}
+        className="flex h-full w-full flex-col justify-center select-none px-1"
+        style={{ fontFamily: "'Manrope', 'Outfit', 'Inter', sans-serif" }}
       >
         <div
           className="flex w-full items-center justify-between"
           style={{ marginBottom: 10 * scale }}
         >
-          <span
-            style={{
-              fontSize: 13 * scale,
-              fontWeight: 700,
-            }}
-          >
-            Back to home screen
+          <span style={{ fontSize: 13 * scale, fontWeight: 700, color: textColor }}>
+            {readString(node.props.countdownText, "Kembali ke halaman awal")}
           </span>
-          <span
-            style={{
-              fontSize: 12 * scale,
-              color: "#71717a",
-              fontWeight: 500,
-            }}
-          >
+          <span style={{ fontSize: 12 * scale, color: textColor, fontWeight: 500, opacity: 0.6 }}>
             39%
           </span>
         </div>
         <div
-          className="w-full bg-zinc-200"
-          style={{
-            height: 7 * scale,
-            borderRadius: 9999,
-            overflow: "hidden",
-          }}
+          className="w-full"
+          style={{ height: 7 * scale, borderRadius: 9999, overflow: "hidden", background: `${progressColor}33` }}
         >
           <div
-            className="h-full bg-zinc-800"
-            style={{
-              width: "39%",
-              borderRadius: 9999,
-            }}
+            style={{ width: "39%", height: "100%", borderRadius: 9999, background: progressColor }}
           />
         </div>
       </div>
