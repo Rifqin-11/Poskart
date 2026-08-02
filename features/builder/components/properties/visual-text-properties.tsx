@@ -70,24 +70,31 @@ export function VisualTextProperties({
       title="Text"
       icon={<Type className="size-3.5 text-zinc-500" />}
     >
-      <label className="block text-xs font-medium text-zinc-500">
-        Content
-        <Input
-          className="mt-1"
-          value={readString(
-            selectedNode.props.content,
-            readString(selectedNode.props.label, ""),
-          )}
-          onChange={(event) =>
-            updateNodeProps(
-              selectedNode.id,
-              selectedNode.type === "button"
-                ? { label: event.target.value }
-                : { content: event.target.value },
-            )
-          }
-        />
-      </label>
+      {isLiveTextNode ? (
+        <div className="rounded-md border border-blue-100 bg-blue-50 px-2 py-1.5 text-[10px] leading-4 text-blue-700">
+          Teks otomatis dari kamera (countdown / jumlah foto). Hanya warna, font,
+          dan ukuran yang bisa diatur.
+        </div>
+      ) : (
+        <label className="block text-xs font-medium text-zinc-500">
+          Content
+          <Input
+            className="mt-1"
+            value={readString(
+              selectedNode.props.content,
+              readString(selectedNode.props.label, ""),
+            )}
+            onChange={(event) =>
+              updateNodeProps(
+                selectedNode.id,
+                selectedNode.type === "button"
+                  ? { label: event.target.value }
+                  : { content: event.target.value },
+              )
+            }
+          />
+        </label>
+      )}
 
       <label className="block text-xs font-medium text-zinc-500">
         Font family
