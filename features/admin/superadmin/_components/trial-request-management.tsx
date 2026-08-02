@@ -25,6 +25,7 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import {
   useTrialRequests,
   useReviewTrialRequest,
+  useRevokeTrialByRequestId,
 } from "@/features/admin/superadmin/use-superadmin";
 import { formatDateTime } from "@/lib/utils";
 import type { TrialRequest, TrialRequestStatus } from "@/types/trial";
@@ -87,6 +88,7 @@ export function TrialRequestManagement() {
     pageSize,
   });
   const review = useReviewTrialRequest();
+  const revoke = useRevokeTrialByRequestId();
   const confirmDialog = useConfirmDialog();
 
   const requests = data?.items ?? [];
@@ -139,6 +141,24 @@ export function TrialRequestManagement() {
           {
             onSuccess: () => toast.success("Status diperbarui."),
             onError: (err) => toast.error(err instanceof Error ? err.message : "Gagal memperbarui."),
+          },
+        );
+      },
+    });
+  }
+
+  function handleRevoke(request: TrialRequest) {
+    confirmDialog.confirm({
+      title: "Batalkan trial?",
+      description: `Trial aktif organisasi "${request.organizationName ?? request.emailSnapshot}" akan dibatalkan dan subscription dikembalikan ke free.`,
+      confirmLabel: "Batalkan Trial",
+      destructive: true,
+      onConfirm: () => {
+        revoke.mutate(
+          { requestId: request.id, reason: "Revoked by superadmin" },
+          {
+            onSuccess: () => toast.success("Trial dibatalkan."),
+            onError: (err) => toast.error(err instanceof Error ? err.message : "Gagal membatalkan trial."),
           },
         );
       },
@@ -257,6 +277,21 @@ export function TrialRequestManagement() {
                             <XCircle className="size-4" />
                           </Button>
                         </div>
+                      )}
+                      {req.status === "activated" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={revoke.isPending}
+                          onClick={() => handleRevoke(req)}
+                          className="text-zinc-400 hover:text-red-500"
+                        >
+                          {revoke.isPending ? (
+                            <LoaderCircle className="size-4 animate-spin" />
+                          ) : (
+                            <XCircle className="size-4" />
+                          )}
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>

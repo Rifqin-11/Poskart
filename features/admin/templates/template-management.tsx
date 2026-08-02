@@ -383,7 +383,7 @@ export function TemplateManagement() {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Gagal menyimpan urutan template",
+          : "Gagal menyimpan urutan frame",
       );
     };
 
@@ -506,22 +506,25 @@ export function TemplateManagement() {
       />
 
       {orderedTemplates.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Boxes className="mb-4 size-10 text-zinc-300" />
-            <div className="text-sm font-medium text-zinc-500">
-              No templates yet
+        <div className="relative overflow-hidden rounded-4xl border border-blue-100 bg-[#f7f9ff] px-6 py-16 text-center sm:px-10">
+          <div className="absolute -right-20 -top-24 size-64 rounded-full bg-blue-100/70 blur-3xl" />
+          <div className="relative mx-auto max-w-lg">
+            <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-white text-[#00357B] shadow-sm ring-1 ring-blue-100">
+              <Boxes className="size-6" />
             </div>
-            <div className="mt-1 text-xs text-zinc-400">
-              Create your first frame for the Flutter app.
-            </div>
+            <h2 className="mt-5 text-xl font-semibold tracking-tight">
+              Belum ada frame template
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              Buat template frame pertama Anda untuk ditampilkan di kiosk. Template menentukan tampilan dan bingkai foto yang tersedia untuk tamu.
+            </p>
             {!isReadOnly("templates") && (
-              <Button className="mt-4" onClick={openAdd}>
-                Add template
+              <Button className="mt-6 rounded-full" onClick={openAdd}>
+                <Plus className="size-4" /> Tambah template
               </Button>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
         <DndContext
           sensors={sensors}

@@ -289,7 +289,7 @@ function OrganizationSettings({
             </div>
             <p className="mt-3 text-sm leading-6 text-zinc-600">
               {isFreeAccount
-                ? "Free organization can view dashboard and organization settings only. Activate a subscription to unlock builder, themes, templates, devices, analytics, transactions, and settings."
+                ? "Free organization can view dashboard and organization settings only. Activate a subscription to unlock builder, themes, frames, devices, analytics, transactions, and settings."
                 : "This organization can use the POSKART operating tools according to the active subscription and paid device limit."}
             </p>
             <button

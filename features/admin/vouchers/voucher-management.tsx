@@ -190,7 +190,25 @@ export function VoucherManagement({
         </CardHeader>
         <CardContent>
           {campaignsLoading ? <div className="flex justify-center py-10"><Loader2 className="size-5 animate-spin text-zinc-400" /></div> : campaigns.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-zinc-200 px-5 py-12 text-center text-sm text-zinc-500">Belum ada voucher campaign.</div>
+            <div className="relative overflow-hidden rounded-4xl border border-blue-100 bg-[#f7f9ff] px-6 py-16 text-center sm:px-10">
+              <div className="absolute -right-20 -top-24 size-64 rounded-full bg-blue-100/70 blur-3xl" />
+              <div className="relative mx-auto max-w-lg">
+                <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-white text-[#00357B] shadow-sm ring-1 ring-blue-100">
+                  <Ticket className="size-6" />
+                </div>
+                <h2 className="mt-5 text-xl font-semibold tracking-tight">
+                  Belum ada voucher campaign
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">
+                  Buat campaign voucher untuk memberikan diskon atau akses gratis kepada tamu. Voucher dapat dialokasikan ke device kiosk tertentu.
+                </p>
+                {!isReadOnly("vouchers") && (
+                  <Button className="mt-6 rounded-full" onClick={() => setOpen(true)}>
+                    <Plus className="size-4" /> Buat campaign
+                  </Button>
+                )}
+              </div>
+            </div>
           ) : (
             <div className="divide-y divide-zinc-100">
               {campaigns.map((campaign) => <CampaignRow key={campaign.id} campaign={campaign} deleting={deleteCampaign.isPending} readOnly={isReadOnly("vouchers")} highlighted={campaign.id === initialCampaignId} highlightedCode={campaign.id === initialCampaignId ? initialCode : undefined} onDelete={() => confirmDelete.confirm({

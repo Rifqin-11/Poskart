@@ -501,6 +501,7 @@ export async function buildKioskBootstrap(
       .select(
         "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,event_name,event_expires_at",
       )
+      .eq("organization_id", context.organizationId)
       .eq("active", true)
       .order("price", { ascending: true }),
     listOrganizationDevices(context),
@@ -565,7 +566,7 @@ export async function buildKioskBootstrap(
     periodEnd <= Date.now();
 
   if (
-    ["past_due", "canceled"].includes(subscriptionStatus) ||
+    ["past_due", "canceled", "free"].includes(subscriptionStatus) ||
     paidPeriodExpired
   ) {
     throw new KioskApiError(
@@ -702,6 +703,8 @@ export async function buildKioskBootstrap(
   return {
     version: 2,
     generatedAt: new Date().toISOString(),
+    // Passed through to Flutter so the kiosk can enforce expiry offline.
+    subscriptionEndsAt: subscriptionResult.data?.current_period_end ?? null,
     user: {
       id: context.user.id,
       email: context.user.email ?? "",

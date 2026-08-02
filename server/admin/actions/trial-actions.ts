@@ -1,8 +1,8 @@
 "use server";
 
-import { getAdminContext } from "@/server/admin/context";
-import { getAdminProfileRole } from "@/server/admin/context";
+import { getAdminContext, getAdminProfileRole } from "@/server/admin/context";
 import { getServiceRoleClient } from "@/lib/supabase/server";
+import { createAdminNotification } from "@/server/admin/notifications";
 import type {
   TrialRequest,
   TrialRequestFilters,
@@ -92,7 +92,7 @@ export async function listTrialRequests(
        rejection_code, rejection_reason, approved_at, activation_deadline,
        activated_at, created_at, updated_at,
        organization:organizations(name),
-       requester:profiles(email)`,
+       requester:profiles!requester_profile_id(email)`,
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -124,7 +124,7 @@ export async function getTrialRequestDetail(id: string): Promise<TrialRequest> {
        rejection_code, rejection_reason, approved_at, activation_deadline,
        activated_at, created_at, updated_at,
        organization:organizations(name),
-       requester:profiles(email)`,
+       requester:profiles!requester_profile_id(email)`,
     )
     .eq("id", id)
     .single();
@@ -137,7 +137,15 @@ export async function reviewTrialRequest(
   input: ReviewTrialRequestInput,
 ): Promise<void> {
   await requireSuperAdmin();
+  const { user } = await getAdminContext();
   const serviceRoleClient = await getServiceRoleClient();
+
+  // Set reviewed_by directly via update before calling RPC
+  // (RPC has no auth.uid() when called with service role key)
+  await serviceRoleClient
+    .from("trial_requests")
+    .update({ reviewed_by: user.id })
+    .eq("id", input.requestId);
 
   const { error } = await serviceRoleClient.rpc("review_trial_request", {
     p_request_id: input.requestId,
@@ -147,6 +155,84 @@ export async function reviewTrialRequest(
   });
 
   if (error) throw new Error(`Gagal memproses review: ${error.message}`);
+
+  // Auto-activate immediately on approval — no device activation step needed
+  if (input.decision === "approved") {
+    const { data: req } = await serviceRoleClient
+      .from("trial_requests")
+      .select("organization_id")
+      .eq("id", input.requestId)
+      .single();
+
+    if (req?.organization_id) {
+      const { error: activateError } = await serviceRoleClient.rpc(
+        "activate_approved_trial",
+        { p_request_id: input.requestId, p_organization_id: req.organization_id },
+      );
+      if (activateError) throw new Error(`Gagal mengaktifkan trial: ${activateError.message}`);
+
+      // Send 2 welcome notifications to the organization
+      await createAdminNotification(serviceRoleClient as never, {
+        audience: "organization",
+        organizationId: req.organization_id,
+        type: "trial_activated",
+        title: "Trial 14 hari Anda telah aktif!",
+        body: "Selamat! Akses penuh fitur Starter kini tersedia. Mulai eksplorasi dashboard, buat frame, dan siapkan kiosk Anda.",
+      });
+      await createAdminNotification(serviceRoleClient as never, {
+        audience: "organization",
+        organizationId: req.organization_id,
+        type: "trial_setup_guide",
+        title: "Cara memulai: pasangkan device kiosk",
+        body: "Login ke aplikasi POSKART di tablet Anda, lalu masuk ke Settings > Pair Device dan masukkan kode yang muncul di halaman Devices pada dashboard.",
+        href: "/devices",
+      });
+    }
+  }
+}
+
+export async function revokeTrialByRequestId(
+  requestId: string,
+  reason: string,
+): Promise<void> {
+  await requireSuperAdmin();
+  const { user } = await getAdminContext();
+  const serviceRoleClient = await getServiceRoleClient();
+
+  const { data: claim } = await serviceRoleClient
+    .from("trial_claims")
+    .select("id, organization_id")
+    .eq("request_id", requestId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!claim) throw new Error("Tidak ada trial aktif untuk request ini.");
+
+  const { error: claimError } = await serviceRoleClient
+    .from("trial_claims")
+    .update({
+      status: "revoked",
+      revoked_at: new Date().toISOString(),
+      revoked_by: user.id,
+      revoke_reason: reason,
+    })
+    .eq("id", claim.id);
+
+  if (claimError) throw new Error(`Gagal merevoke trial: ${claimError.message}`);
+
+  // Revert subscription to free
+  const { error: subError } = await serviceRoleClient
+    .from("subscriptions")
+    .update({ status: "free", plan_id: "free", current_period_end: null })
+    .eq("organization_id", claim.organization_id);
+
+  if (subError) throw new Error(`Gagal mereset subscription: ${subError.message}`);
+
+  // Mark request as canceled
+  await serviceRoleClient
+    .from("trial_requests")
+    .update({ status: "canceled" })
+    .eq("id", requestId);
 }
 
 export async function revokeTrialClaim(
@@ -191,27 +277,41 @@ export async function createTrialOverride(
   if (error) throw new Error(`Gagal membuat override: ${error.message}`);
 }
 
-export async function submitTrialRequest(input: {
-  organizationId: string;
-  deviceId: string;
+export async function submitTrialRequest(input?: {
   hardwareIdHash?: string | null;
-  contactPhone?: string | null;
-  businessName?: string | null;
-  city?: string | null;
-  intendedUse?: string | null;
-  eventDate?: string | null;
 }): Promise<{ requestId: string; autoRejected: boolean; rejectionCode: string | null }> {
-  const { supabase } = await getAdminContext();
+  const { supabase, user } = await getAdminContext();
+
+  // 3 trial submissions per user per 24 hours (anti-spam)
+  const { createSupabaseAdminClient } = await import("@/lib/supabase/admin");
+  const adminClient = createSupabaseAdminClient();
+  const { data: rlAllowed } = await adminClient.rpc("check_rate_limit", {
+    p_key: `trial_submit:${user.id}`,
+    p_window_secs: 86400,
+    p_max: 3,
+  });
+  if (rlAllowed === false) {
+    throw new Error("Terlalu banyak permintaan trial. Coba lagi besok.");
+  }
+
+  const { data: membership } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", user.id)
+    .eq("role", "owner")
+    .maybeSingle();
+
+  if (!membership) throw new Error("Hanya pemilik organisasi yang dapat mengajukan trial.");
 
   const { data, error } = await supabase.rpc("submit_trial_request", {
-    p_organization_id: input.organizationId,
-    p_device_id: input.deviceId,
-    p_hardware_id_hash: input.hardwareIdHash ?? null,
-    p_contact_phone: input.contactPhone ?? null,
-    p_business_name: input.businessName ?? null,
-    p_city: input.city ?? null,
-    p_intended_use: input.intendedUse ?? null,
-    p_event_date: input.eventDate ?? null,
+    p_organization_id: membership.organization_id,
+    p_device_id: null,
+    p_hardware_id_hash: input?.hardwareIdHash ?? null, // passed from device via UI
+    p_contact_phone: null,
+    p_business_name: null,
+    p_city: null,
+    p_intended_use: null,
+    p_event_date: null,
   });
 
   if (error) throw new Error(`Gagal mengajukan trial: ${error.message}`);
@@ -244,7 +344,7 @@ export async function getMyTrialRequest(): Promise<TrialRequest | null> {
        rejection_code, rejection_reason, approved_at, activation_deadline,
        activated_at, created_at, updated_at,
        organization:organizations(name),
-       requester:profiles(email)`,
+       requester:profiles!requester_profile_id(email)`,
     )
     .eq("organization_id", membership.organization_id)
     .eq("requester_profile_id", user.id)

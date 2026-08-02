@@ -1,6 +1,10 @@
 "use server";
 
-import { getAdminContext, verifyRole } from "@/server/admin/context";
+import {
+  getAdminContext,
+  requireSuperAdmin,
+  verifyRole,
+} from "@/server/admin/context";
 import { PRICING_PLAN_ORDER } from "@/lib/constants/business";
 import { parseJakartaDateTimeInput } from "@/lib/jakarta-time";
 import {
@@ -16,12 +20,17 @@ import {
 } from "../_shared/admin-types";
 
 export async function getPricingProducts(): Promise<PricingProduct[]> {
-  const { supabase } = await getAdminContext();
+  const { supabase, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "akuntan",
+  ]);
   const { data, error } = await supabase
     .from("pricing_products")
     .select(
       "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,event_name,event_expires_at",
     )
+    .eq("organization_id", organizationId)
     .order("price", { ascending: true });
 
   return assertSupabaseResult(
@@ -34,13 +43,18 @@ export async function getPricingProducts(): Promise<PricingProduct[]> {
 export async function createPricingProduct(
   values: PricingProductInput,
 ): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin", "akuntan"]);
+  const { supabase, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "akuntan",
+  ]);
   const id = `PRC-${Date.now()}`;
   const accessMode = values.accessMode === "event" ? "event" : "paid";
   const eventName = values.eventName?.trim() || null;
   const eventExpiresAt = normalizeEventExpiry(values.eventExpiresAt);
   const { error } = await supabase.from("pricing_products").insert({
     id,
+    organization_id: organizationId,
     name: values.name,
     price: accessMode === "event" ? 0 : Math.max(0, Math.round(values.price)),
     promo_price: accessMode === "event" ? null : (values.promoPrice ?? null),
@@ -62,14 +76,20 @@ export async function updatePricingProduct(
   id: string,
   patch: Partial<PricingProductInput>,
 ): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin", "akuntan"]);
+  const { supabase, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "akuntan",
+  ]);
   const { data: current, error: currentError } = await supabase
     .from("pricing_products")
     .select("access_mode")
     .eq("id", id)
+    .eq("organization_id", organizationId)
     .maybeSingle();
   if (currentError)
     throw new Error(`Unable to read pricing product: ${currentError.message}`);
+  if (!current) throw new Error("Pricing product not found in this organization.");
   const accessMode =
     patch.accessMode === "event" || patch.accessMode === "paid"
       ? patch.accessMode
@@ -116,7 +136,8 @@ export async function updatePricingProduct(
   const { error } = await supabase
     .from("pricing_products")
     .update(dbPatch)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("organization_id", organizationId);
   if (error)
     throw new Error(`Unable to update pricing product: ${error.message}`);
 }
@@ -131,11 +152,16 @@ function normalizeEventExpiry(value: string | undefined) {
 }
 
 export async function deletePricingProduct(id: string): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin", "akuntan"]);
+  const { supabase, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "akuntan",
+  ]);
   const { error } = await supabase
     .from("pricing_products")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("organization_id", organizationId);
   if (error)
     throw new Error(`Unable to delete pricing product: ${error.message}`);
 }
@@ -161,7 +187,7 @@ export async function updateSubscriptionPlan(
   id: string,
   values: SubscriptionPlanInput,
 ): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin", "akuntan"]);
+  const { supabase } = await requireSuperAdmin();
   const includedDevices = Math.max(1, Math.floor(values.includedDevices || 1));
   const durationMonths = Math.max(1, Math.floor(values.durationMonths || 1));
   const additionalDevicePriceMonthly = Math.max(

@@ -17,9 +17,11 @@ import {
 import {
   Activity,
   AlertCircle,
+  ArrowRight,
   CircleDollarSign,
   LayoutTemplate,
   MonitorCheck,
+  MonitorSmartphone,
   Plus,
   Printer,
 } from "lucide-react";
@@ -39,7 +41,7 @@ import {
   eventPeriodTabs,
   pieColors,
 } from "@/features/admin/dashboard/dashboard-overview.constants";
-import { useDashboardData, useSubscriptionStatus } from "@/features/admin/dashboard/use-dashboard";
+import { useDashboardData, useSubscriptionStatus, useMyTrialRequest } from "@/features/admin/dashboard/use-dashboard";
 import type {
   Device,
   DashboardTransactionStat,
@@ -50,6 +52,7 @@ import type {
 } from "@/features/admin/dashboard/api";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { TrialDialog } from "@/features/admin/trial/trial-dialog";
 
 const dashboardInnerCardClass =
   "rounded-3xl border border-zinc-100 bg-white/90 shadow-sm shadow-zinc-200/60 backdrop-blur";
@@ -176,10 +179,12 @@ export function DashboardOverview() {
   const { t } = useI18n();
   const { data, isError, isLoading } = useDashboardData();
   const { data: subscription } = useSubscriptionStatus();
+  const { data: trialRequest } = useMyTrialRequest();
   const chartsMounted = useClientMounted();
   const [selectedEventPeriod, setSelectedEventPeriod] =
     useState<EventPeriodKey>("daily");
   const [selectedMonth, setSelectedMonth] = useState("all");
+  const [trialOpen, setTrialOpen] = useState(false);
 
   const dashboardData = data ?? emptyDashboardData;
   const monthOptions = useMemo(
@@ -237,6 +242,69 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-6">
+      {!canUseOperatingTools && subscription?.status !== "trialing" ? (
+        trialRequest && !["rejected", "canceled", "activation_expired"].includes(trialRequest.status) ? (
+          <div className="flex items-center justify-between gap-6 rounded-3xl border border-zinc-200 bg-white px-6 py-5 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-700">
+                <span className="text-xs font-bold">14</span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-zinc-950">Trial sedang ditinjau</p>
+                <p className="text-xs text-zinc-500">
+                  {trialRequest.status === "approved"
+                    ? "Disetujui — aktifkan dari device kiosk Anda."
+                    : "Request Anda sedang dalam antrean review."}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTrialOpen(true)}
+              className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0 rounded-full" })}
+            >
+              Lihat status
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-6 rounded-3xl border border-zinc-200 bg-white px-6 py-5 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-zinc-950 text-white">
+                <span className="text-xs font-bold">14</span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-zinc-950">14 hari trial gratis</p>
+                <p className="text-xs text-zinc-500">1 device · fitur Starter · tanpa kartu kredit</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTrialOpen(true)}
+              className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0 rounded-full" })}
+            >
+              Ajukan sekarang
+            </button>
+          </div>
+        )
+      ) : null}
+      <TrialDialog open={trialOpen} onOpenChange={setTrialOpen} trialRequest={trialRequest ?? null} />
+      {canUseOperatingTools && !hasDevices ? (
+        <Link
+          href="/devices?action=create"
+          className="flex items-center justify-between gap-6 rounded-3xl border border-zinc-200 bg-white px-6 py-5 shadow-sm transition hover:border-zinc-300"
+        >
+          <div className="flex items-center gap-4">
+            <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#00357B] text-white">
+              <MonitorSmartphone className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-zinc-950">Pasangkan device kiosk pertama Anda</p>
+              <p className="text-xs text-zinc-500">Buka aplikasi POSKART di tablet → login → masukkan kode yang muncul di sini.</p>
+            </div>
+          </div>
+          <ArrowRight className="size-4 shrink-0 text-zinc-400" />
+        </Link>
+      ) : null}
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">
@@ -301,8 +369,8 @@ export function DashboardOverview() {
               <p className="mt-2 text-sm leading-6 text-zinc-500">
                 No devices, transactions, or analytics have been recorded yet.
                 {canUseOperatingTools
-                  ? "Add your first device, create templates, and publish a builder layout to start collecting operational data."
-                  : "Activate a subscription to unlock templates, builder, devices, transactions, analytics, and settings."}
+                  ? "Add your first device, create frames, and publish a builder layout to start collecting operational data."
+                  : "Activate a subscription to unlock frames, builder, devices, transactions, analytics, and settings."}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -310,7 +378,7 @@ export function DashboardOverview() {
                 <>
                   <Link href="/templates" className={buttonVariants({ variant: "outline" })}>
                     <LayoutTemplate className="size-4" />
-                    Create template
+                    Create frame
                   </Link>
                   <Link href="/devices" className={buttonVariants()}>
                     <Plus className="size-4" />
@@ -407,7 +475,7 @@ export function DashboardOverview() {
             ) : (
               <EmptyPanelState
                 title="No devices connected"
-                description="Add a POSKART device to monitor battery, sync, template, and pricing status."
+                description="Add a POSKART device to monitor battery, sync, frame, and pricing status."
                 href={canUseOperatingTools ? "/devices" : "/settings?tab=organization&subscription=required"}
                 action={canUseOperatingTools ? "Add device" : "Activate subscription"}
               />

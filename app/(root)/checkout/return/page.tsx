@@ -73,12 +73,25 @@ export default async function CheckoutReturnPage({
             </div>
           ) : null}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link href="/checkout" className={buttonVariants()}>
-              Back to checkout
-            </Link>
-            <Link href="/dashboard" className={buttonVariants({ variant: "outline" })}>
-              Open dashboard
-            </Link>
+            {paid ? (
+              <>
+                <Link href="/devices?action=create" className={buttonVariants()}>
+                  Pasangkan device kiosk
+                </Link>
+                <Link href="/dashboard" className={buttonVariants({ variant: "outline" })}>
+                  Buka dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/checkout" className={buttonVariants()}>
+                  Back to checkout
+                </Link>
+                <Link href="/dashboard" className={buttonVariants({ variant: "outline" })}>
+                  Open dashboard
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>

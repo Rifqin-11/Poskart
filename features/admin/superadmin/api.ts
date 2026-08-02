@@ -15,6 +15,7 @@ import {
   reviewTrialRequest,
   revokeTrialClaim,
   createTrialOverride,
+  revokeTrialByRequestId,
 } from "@/server/admin/actions/trial-actions";
 import type { TenantInput } from "@/server/admin/_shared/admin-types";
 
@@ -36,6 +37,7 @@ export const superadminApi = {
   reviewTrialRequest,
   revokeTrialClaim,
   createTrialOverride,
+  revokeTrialByRequestId,
 };
 
 export type { TenantInput };

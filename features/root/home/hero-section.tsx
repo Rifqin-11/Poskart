@@ -237,13 +237,13 @@ export function HeroSection({
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-                <a
-                  href="/download/app"
+                <Link
+                  href="/download"
                   className="inline-flex h-12 items-center justify-center gap-2 bg-[#00357B] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#014EB4]"
                 >
                   <Download className="size-4" />
                   Download {latestRelease?.version ?? "App"}
-                </a>
+                </Link>
                 <Link
                   href="/#pricing"
                   className="inline-flex h-12 items-center justify-center gap-2 border border-blue-200 bg-white px-5 text-sm font-semibold text-[#00357B] transition-colors hover:border-[#00357B] hover:bg-blue-50"

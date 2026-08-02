@@ -116,7 +116,7 @@ CREATE TRIGGER trial_requests_updated_at
 -- ─── RPC: submit_trial_request ───────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION submit_trial_request(
-  p_organization_id     uuid,
+  p_organization_id     text,
   p_device_id           uuid,
   p_hardware_id_hash    text,
   p_contact_phone       text DEFAULT NULL,

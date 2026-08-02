@@ -8,7 +8,7 @@ export function useDashboardData() {
   return useQuery<Awaited<ReturnType<typeof dashboardApi.getDashboard>>, Error>({
     queryKey: adminQueryKeys.dashboard,
     queryFn: dashboardApi.getDashboard,
-    staleTime: 2 * 60 * 1000, // 2 minutes — avoids re-fetch on every navigation
+    staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
 }
@@ -17,7 +17,15 @@ export function useSubscriptionStatus() {
   return useQuery<Awaited<ReturnType<typeof dashboardApi.getSubscriptionStatus>>, Error>({
     queryKey: adminQueryKeys.subscriptionStatus,
     queryFn: dashboardApi.getSubscriptionStatus,
-    staleTime: 5 * 60 * 1000, // 5 minutes — subscription status rarely changes
+    staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+  });
+}
+
+export function useMyTrialRequest() {
+  return useQuery({
+    queryKey: adminQueryKeys.myTrialRequest,
+    queryFn: dashboardApi.getMyTrialRequest,
+    staleTime: 30_000,
   });
 }

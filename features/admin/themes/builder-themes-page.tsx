@@ -392,26 +392,28 @@ export function BuilderThemesPage() {
         </div>
       )}
 
-      {/* Empty state */}
       {!isLoading && layouts.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200 py-20 text-center">
-          <Layers className="mb-3 size-10 text-zinc-300" />
-          <p className="text-sm font-medium text-zinc-500">
-            No themes saved yet
-          </p>
-          <p className="mt-1 text-xs text-zinc-400">
-            Create your first theme, customize the kiosk experience, then save
-            it to this library.
-          </p>
-          {!isReadOnly("themes") && (
-            <Link
-              href="/themes/builder/new"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#00357B] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#014EB4]"
-            >
-              <Plus className="size-4" />
-              Create Theme
-            </Link>
-          )}
+        <div className="relative overflow-hidden rounded-4xl border border-blue-100 bg-[#f7f9ff] px-6 py-16 text-center sm:px-10">
+          <div className="absolute -right-20 -top-24 size-64 rounded-full bg-blue-100/70 blur-3xl" />
+          <div className="relative mx-auto max-w-lg">
+            <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-white text-[#00357B] shadow-sm ring-1 ring-blue-100">
+              <Layers className="size-6" />
+            </div>
+            <h2 className="mt-5 text-xl font-semibold tracking-tight">
+              Belum ada tema tersimpan
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              Buat tema pertama Anda untuk mengatur tampilan kiosk — warna, font, dan layout — lalu simpan ke library ini.
+            </p>
+            {!isReadOnly("themes") && (
+              <Link
+                href="/themes/builder/new"
+                className="mt-6 inline-flex h-10 items-center gap-2 rounded-full bg-zinc-950 px-5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+              >
+                <Plus className="size-4" /> Buat tema
+              </Link>
+            )}
+          </div>
         </div>
       )}
 

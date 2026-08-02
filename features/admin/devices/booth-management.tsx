@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   ArrowUpRight,
   AlertTriangle,
@@ -18,7 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -655,18 +656,55 @@ export function BoothManagement({
         ))}
         {data.length === 0 ? (
           <Card className="xl:col-span-2">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Store className="mb-3 size-8 text-zinc-300" />
-              <div className="text-sm font-medium text-zinc-500">
-                No devices yet
+            <CardContent className="py-10">
+              <div className="mx-auto max-w-md">
+                <p className="mb-6 text-center text-sm font-semibold text-zinc-950">
+                  Pasangkan device kiosk pertama Anda
+                </p>
+                <div className="space-y-3">
+                  {[
+                    { step: "1", label: "Install aplikasi", desc: "Unduh POSKART Kiosk di tablet Android Anda." },
+                    { step: "2", label: "Login di tablet", desc: "Masuk menggunakan akun yang terdaftar di organisasi ini." },
+                    { step: "3", label: "Salin kode dari tablet", desc: "Kode 8 karakter muncul otomatis di layar setelah login. Kode berlaku 10 menit." },
+                    { step: "4", label: "Masukkan kode di sini", desc: "Klik \"Add device\" lalu ketik kode dari tablet.", action: true },
+                  ].map(({ step, label, desc, action }) => (
+                    <div key={step} className="flex gap-4 rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-3">
+                      <div className="grid size-7 shrink-0 place-items-center rounded-full bg-zinc-950 text-xs font-bold text-white">
+                        {step}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-zinc-950">{label}</p>
+                        <p className="mt-0.5 text-xs text-zinc-500">{desc}</p>
+                        {step === "1" ? (
+                          <Link
+                            href="/download"
+                            target="_blank"
+                            rel="noreferrer"
+                            className={buttonVariants({
+                              size: "sm",
+                              variant: "outline",
+                              className: "mt-2 text-[#00357B]",
+                            })}
+                          >
+                            Download aplikasi
+                            <ArrowUpRight className="size-3.5" />
+                          </Link>
+                        ) : null}
+                        {action && (
+                          <Button
+                            size="sm"
+                            className="mt-2"
+                            disabled={isReadOnly("devices")}
+                            onClick={openPairing}
+                          >
+                            <Plus className="size-3.5" /> Add device
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <Button
-                className="mt-3"
-                disabled={isReadOnly("devices")}
-                onClick={openPairing}
-              >
-                <Plus className="size-4" /> Add device
-              </Button>
             </CardContent>
           </Card>
         ) : null}
@@ -675,7 +713,7 @@ export function BoothManagement({
       <Dialog
         open={pairingDialogOpen}
         onOpenChange={setPairingDialogOpen}
-        title="Pair a new device"
+        title="Pasangkan device kiosk"
         className="max-w-md"
       >
         <form
@@ -685,15 +723,16 @@ export function BoothManagement({
             confirmPairingCode();
           }}
         >
-          <div>
-            <p className="text-sm font-medium text-zinc-900">
-              Enter the code shown on the tablet
-            </p>
-            <p className="mt-1 text-sm leading-6 text-zinc-500">
-              A new kiosk shows an 8-character code after login. The code is
-              valid for 10 minutes and this device remains locked until this
-              configuration is saved.
-            </p>
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+              <p className="font-medium text-zinc-950">Kode berasal dari tablet, bukan dari sini.</p>
+              <ol className="mt-2 space-y-1 text-xs leading-5">
+                <li>1. Buka aplikasi POSKART Kiosk di tablet</li>
+                <li>2. Login dengan akun organisasi ini</li>
+                <li>3. Kode 8 karakter muncul otomatis di layar tablet</li>
+                <li>4. Ketik kode tersebut di bawah — berlaku 10 menit</li>
+              </ol>
+            </div>
           </div>
           <Input
             autoFocus

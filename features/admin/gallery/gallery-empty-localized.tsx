@@ -2,7 +2,6 @@
 
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { Images } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import {
   GalleryShareHeaderActions,
 } from "@/features/admin/gallery/gallery-share-manager";
@@ -23,15 +22,21 @@ export function GalleryEmptyLocalized({ noOrg }: { noOrg?: boolean }) {
         </div>
         <GalleryShareHeaderActions />
       </header>
-      <Card
+      <div
         data-gallery-tour="empty"
-        className="grid min-h-80 place-items-center rounded-2xl border-dashed p-10 text-center"
+        className="relative overflow-hidden rounded-4xl border border-blue-100 bg-[#f7f9ff] px-6 py-16 text-center sm:px-10"
       >
-        <div>
-          <Images className="mx-auto size-10 text-zinc-400" />
-          <p className="mt-4 max-w-md text-sm text-zinc-500">{message}</p>
+        <div className="absolute -right-20 -top-24 size-64 rounded-full bg-blue-100/70 blur-3xl" />
+        <div className="relative mx-auto max-w-lg">
+          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-white text-[#00357B] shadow-sm ring-1 ring-blue-100">
+            <Images className="size-6" />
+          </div>
+          <h2 className="mt-5 text-xl font-semibold tracking-tight">
+            Belum ada foto di galeri
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-500">{message}</p>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

@@ -332,7 +332,11 @@ function SidebarContent({
                         : "text-amber-700",
                     )}
                   >
-                    {hasActiveSubscription ? t("common.active") : t("common.locked")}
+                    {hasActiveSubscription
+                      ? sub?.status === "trialing"
+                        ? "Trial"
+                        : t("common.active")
+                      : t("common.locked")}
                   </span>
                   <span className="mx-1.5 text-zinc-300">•</span>
                   <span>{t("common.exp")} {expiry}</span>

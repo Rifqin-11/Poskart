@@ -216,7 +216,7 @@ export function TemplateBuilderWorkspace({
     };
 
     if (!payload.name.trim()) {
-      toast.error("Template name is required");
+      toast.error("Frame name is required");
       return;
     }
 
@@ -239,9 +239,9 @@ export function TemplateBuilderWorkspace({
   const detailsPanel = (
     <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
       <div>
-        <div className="text-sm font-semibold">Template details</div>
+        <div className="text-sm font-semibold">Frame details</div>
         <div className="text-xs text-zinc-500">
-          {isNew ? "Create frame template" : `Edit ${template?.name}`}
+          {isNew ? "Create frame" : `Edit ${template?.name}`}
         </div>
       </div>
       <label className="block text-xs font-medium text-zinc-600">
@@ -360,7 +360,7 @@ export function TemplateBuilderWorkspace({
         onClose={() => router.push("/templates")}
         onSave={handleSave}
         saveLabel={
-          saving ? "Saving..." : isNew ? "Create template" : "Save template"
+          saving ? "Saving..." : isNew ? "Create frame" : "Save frame"
         }
         detailsPanel={detailsPanel}
       />

@@ -182,9 +182,14 @@ export async function createDevice(values: BoothInput): Promise<void> {
   );
   const pricingProductIds = await resolvePricingProductAssignmentIds(
     supabase,
+    organizationId,
     pricingProfiles,
   );
-  await assertPricingAssignmentModes(supabase, pricingProductIds);
+  await assertPricingAssignmentModes(
+    supabase,
+    organizationId,
+    pricingProductIds,
+  );
   const layout = await resolveDeviceLayoutSchema(
     supabase,
     organizationId,
@@ -333,9 +338,14 @@ export async function createPairedDevice(
   );
   const pricingProductIds = await resolvePricingProductAssignmentIds(
     supabase,
+    organizationId,
     pricingProfiles,
   );
-  await assertPricingAssignmentModes(supabase, pricingProductIds);
+  await assertPricingAssignmentModes(
+    supabase,
+    organizationId,
+    pricingProductIds,
+  );
   const layout = await resolveDeviceLayoutSchema(
     supabase,
     organizationId,
@@ -443,9 +453,14 @@ export async function updateDevice(
     );
     pricingProductIds = await resolvePricingProductAssignmentIds(
       supabase,
+      organizationId,
       pricingProfiles,
     );
-    await assertPricingAssignmentModes(supabase, pricingProductIds);
+    await assertPricingAssignmentModes(
+      supabase,
+      organizationId,
+      pricingProductIds,
+    );
     dbPatch.pricing_profiles = pricingProductIds;
     dbPatch.pricing_profile = pricingProductIds[0] ?? "";
   }
@@ -595,6 +610,7 @@ async function syncDeviceFrameTemplateAssignments(
 
 async function resolvePricingProductAssignmentIds(
   supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  organizationId: string,
   assignments: string[],
 ) {
   const normalizedAssignments = Array.from(
@@ -604,7 +620,8 @@ async function resolvePricingProductAssignmentIds(
 
   const { data, error } = await supabase
     .from("pricing_products")
-    .select("id,name");
+    .select("id,name")
+    .eq("organization_id", organizationId);
   if (error) {
     throw new Error(`Unable to resolve pricing assignments: ${error.message}`);
   }
@@ -673,6 +690,7 @@ async function resolveDeviceLayoutSchema(
 
 async function assertPricingAssignmentModes(
   supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  organizationId: string,
   assignments: string[],
 ) {
   const normalizedAssignments = assignments
@@ -684,7 +702,8 @@ async function assertPricingAssignmentModes(
 
   const { data, error } = await supabase
     .from("pricing_products")
-    .select("id,name,access_mode,active,event_expires_at");
+    .select("id,name,access_mode,active,event_expires_at")
+    .eq("organization_id", organizationId);
   if (error)
     throw new Error(`Unable to validate pricing assignment: ${error.message}`);
 

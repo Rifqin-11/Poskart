@@ -10,6 +10,7 @@ import {
   WorkflowBand,
 } from "@/features/root/home/landing-sections";
 import { PricingCards } from "@/features/billing/pricing/pricing-cards";
+import { LandingScrollReset } from "@/features/root/home/landing-scroll-reset";
 import type { PricingPlan } from "@/lib/constants/business";
 import type { LatestAppRelease } from "@/features/root/home/api";
 
@@ -29,6 +30,7 @@ export function HomePage({
 
   return (
     <main className="min-h-screen overflow-clip bg-[#f7f9ff] text-zinc-950">
+      <LandingScrollReset />
       <PublicHeader variant="landing" />
       <HeroSection latestRelease={latestRelease} />
       <ScrollyFeatures />

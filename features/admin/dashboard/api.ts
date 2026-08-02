@@ -1,5 +1,6 @@
 import { dashboardService } from "@/server/admin/dashboard-service";
 import { subscriptionService } from "@/server/subscription/subscription-service";
+import { getMyTrialRequest } from "@/server/admin/actions/trial-actions";
 import type {
   DashboardData,
   DashboardTransactionStat,
@@ -14,6 +15,7 @@ import type {
 export const dashboardApi = {
   getDashboard: dashboardService.getDashboard,
   getSubscriptionStatus: subscriptionService.getStatus,
+  getMyTrialRequest,
 };
 
 export type {

@@ -7,6 +7,7 @@ import {
   KioskApiError,
   resolveKioskContext,
 } from "@/lib/kiosk/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 type LoginBody = {
   email?: string;
@@ -20,6 +21,12 @@ export async function POST(request: Request) {
     const body = (await request.json()) as LoginBody;
     const email = body.email?.trim().toLowerCase() ?? "";
     const password = body.password ?? "";
+
+    // 10 attempts per email per 15 minutes
+    if (email) {
+      const rl = await checkRateLimit(`login:${email}`, 900, 10);
+      if (!rl.allowed) return rl.response;
+    }
 
     if (!email || !password) {
       return jsonOk(

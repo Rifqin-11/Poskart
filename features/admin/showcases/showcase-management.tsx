@@ -578,7 +578,7 @@ function ShowcaseEditorDialog({
               })}
             </div>
           ) : (
-            <SelectionEmpty message="No published frame templates match this search." />
+            <SelectionEmpty message="No published frames match this search." />
           )}
         </SelectionSection>
 

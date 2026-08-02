@@ -136,6 +136,7 @@ async function findPricingProduct(
       "id,name,price,promo_price,print_limit,active,access_mode,event_name,event_expires_at",
     )
     .eq("id", packageCode)
+    .eq("organization_id", context.organizationId)
     .maybeSingle();
   if (idError) throw idError;
   if (byId) return byId as PricingProductRow;
@@ -146,6 +147,7 @@ async function findPricingProduct(
       "id,name,price,promo_price,print_limit,active,access_mode,event_name,event_expires_at",
     )
     .eq("name", packageCode)
+    .eq("organization_id", context.organizationId)
     .maybeSingle();
   if (nameError) throw nameError;
   return (byName ?? null) as PricingProductRow | null;

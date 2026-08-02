@@ -35,6 +35,7 @@ export type SubscriptionExpiryReminderResult = {
   inAppNotifications: number;
   emails: number;
   skipped: number;
+  expired: number;
 };
 
 export async function sendSubscriptionExpiryReminders(): Promise<SubscriptionExpiryReminderResult> {
@@ -112,6 +113,7 @@ export async function sendSubscriptionExpiryReminders(): Promise<SubscriptionExp
     inAppNotifications: 0,
     emails: 0,
     skipped: 0,
+    expired: 0,
   };
 
   for (const subscription of subscriptions) {
@@ -351,5 +353,6 @@ function emptyReminderResult(): SubscriptionExpiryReminderResult {
     inAppNotifications: 0,
     emails: 0,
     skipped: 0,
+    expired: 0,
   };
 }
