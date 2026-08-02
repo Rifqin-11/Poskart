@@ -145,6 +145,16 @@ export function PropertiesPanel({
         />
       )}
 
+      {(selectedNode.type === "camera-timer" ||
+        selectedNode.type === "camera-shot-counter") && (
+        <VisualTextProperties
+          canvas={canvas}
+          selectedNode={selectedNode}
+          updateCanvas={updateCanvas}
+          updateNodeProps={updateNodeProps}
+        />
+      )}
+
       {selectedNode.type === "button" && (
         <VisualButtonProperties
           selectedNode={selectedNode}
