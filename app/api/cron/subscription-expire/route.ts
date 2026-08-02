@@ -20,29 +20,29 @@ export async function GET(request: Request) {
     const supabase = createSupabaseAdminClient();
 
     // Expire trialing subscriptions past their current_period_end
-    const { error: subError, count: expiredSubs } = await supabase
+    const { data: expiredSubscriptionRows, error: subError } = await supabase
       .from("subscriptions")
       .update({ status: "free", plan_id: "free" })
       .eq("status", "trialing")
       .lt("current_period_end", new Date().toISOString())
-      .select("*", { count: "exact", head: true });
+      .select("id");
 
     if (subError) throw new Error(`Failed to expire subscriptions: ${subError.message}`);
 
     // Mark trial claims as expired
-    const { error: claimError, count: expiredClaims } = await supabase
+    const { data: expiredClaimRows, error: claimError } = await supabase
       .from("trial_claims")
       .update({ status: "expired" })
       .eq("status", "active")
       .lt("ends_at", new Date().toISOString())
-      .select("*", { count: "exact", head: true });
+      .select("id");
 
     if (claimError) throw new Error(`Failed to expire claims: ${claimError.message}`);
 
     return Response.json({
       success: true,
-      expiredSubscriptions: expiredSubs ?? 0,
-      expiredClaims: expiredClaims ?? 0,
+      expiredSubscriptions: expiredSubscriptionRows?.length ?? 0,
+      expiredClaims: expiredClaimRows?.length ?? 0,
     });
   } catch (error) {
     return Response.json(
