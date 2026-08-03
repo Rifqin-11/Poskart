@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Copy, Lock, Trash2, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,13 +8,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { ColorKeyControls } from "@/features/builder/components/color-key-controls";
+import { InspectorTabs } from "@/features/builder/components/visual-properties-primitives";
 import {
+  TIMESTAMP_PART_OPTIONS,
+  previewTimestamp,
   readNumber,
   readString,
 } from "@/features/admin/templates/frame-builder.utils";
 import { BUILDER_IMAGE_ACCEPT } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
-import type { FrameLayout, FrameNode } from "@/types/frame-template";
+import type { FrameLayout, FrameNode, TimestampPart } from "@/types/frame-template";
+
+type FrameInspectorTab = "frame" | "canvas" | "layer";
 
 export function FramePropertiesPanel({
   detailsPanel,
@@ -48,17 +53,39 @@ export function FramePropertiesPanel({
       node.id === "frame-background" &&
       readString(node.props.src, "").trim().length > 0,
   );
+  const [activeTab, setActiveTab] = useState<FrameInspectorTab>(() =>
+    selectedNode ? "layer" : "frame",
+  );
+  const inspectorTabs = selectedNode
+    ? [
+        { id: "frame", label: "Frame" },
+        { id: "canvas", label: "Canvas" },
+        { id: "layer", label: "Layer" },
+      ]
+    : [
+        { id: "frame", label: "Frame" },
+        { id: "canvas", label: "Canvas" },
+      ];
 
   return (
     <aside
       className={cn(
-        "min-h-0 overflow-hidden",
-        embedded ? "h-full w-full" : "border-l border-zinc-100",
+        "flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-white",
+        !embedded && "border-l border-zinc-100",
       )}
     >
-      <ScrollArea className="h-full p-4">
-        <div className="space-y-4">
-          {detailsPanel}
+      <div className="shrink-0 border-b border-zinc-100 px-3 py-2.5">
+        <InspectorTabs
+          tabs={inspectorTabs}
+          active={activeTab}
+          onChange={(tab) => setActiveTab(tab as FrameInspectorTab)}
+        />
+      </div>
+      <ScrollArea className="min-h-0 flex-1 px-4 pb-4">
+        <div className="space-y-4 pt-4">
+          {activeTab === "frame" ? detailsPanel : null}
+          {activeTab === "canvas" ? (
+            <>
           <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
             <div className="text-sm font-semibold">Canvas</div>
             <div className="grid grid-cols-2 gap-2">
@@ -118,8 +145,10 @@ export function FramePropertiesPanel({
               }
             />
           ) : null}
+            </>
+          ) : null}
 
-          {selectedNode ? (
+          {activeTab === "layer" && selectedNode ? (
             <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -241,8 +270,10 @@ export function FramePropertiesPanel({
               ) : null}
 
               {selectedNode.type === "text" ||
-              selectedNode.type === "date-stamp" ? (
+              selectedNode.type === "date-stamp" ||
+              selectedNode.type === "timestamp" ? (
                 <>
+                  {selectedNode.type !== "timestamp" ? (
                   <label className="block text-xs font-medium text-zinc-500">
                     Text
                     <Input
@@ -255,6 +286,54 @@ export function FramePropertiesPanel({
                       }
                     />
                   </label>
+                  ) : null}
+                  {selectedNode.type === "timestamp" ? (
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-zinc-500">Format Timestamp</div>
+                    <div className="space-y-1">
+                      {TIMESTAMP_PART_OPTIONS.map(({ value, label, example }) => {
+                        const rawParts = selectedNode.props.parts;
+                        const parts: TimestampPart[] = Array.isArray(rawParts) ? (rawParts as TimestampPart[]) : ["date", "month", "year"];
+                        const isActive = parts.includes(value);
+                        return (
+                          <label key={value} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-zinc-50">
+                            <input
+                              type="checkbox"
+                              className="accent-zinc-800"
+                              checked={isActive}
+                              onChange={() => {
+                                const next = isActive
+                                  ? parts.filter((p) => p !== value)
+                                  : [...parts, value];
+                                onUpdateNodeProps(selectedNode.id, { parts: next });
+                              }}
+                            />
+                            <span className="flex-1 font-medium text-zinc-700">{label}</span>
+                            <span className="text-zinc-400">{example}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <label className="block text-xs font-medium text-zinc-500">
+                      Pemisah
+                      <Input
+                        className="mt-1"
+                        value={readString(selectedNode.props.separator, ".")}
+                        maxLength={3}
+                        onChange={(event) =>
+                          onUpdateNodeProps(selectedNode.id, { separator: event.target.value })
+                        }
+                      />
+                    </label>
+                    <p className="text-[11px] leading-4 text-zinc-400">
+                      Preview: {(() => {
+                        const rawParts = selectedNode.props.parts;
+                        const parts: TimestampPart[] = Array.isArray(rawParts) ? (rawParts as TimestampPart[]) : ["date", "month", "year"];
+                        return previewTimestamp(parts, readString(selectedNode.props.separator, "."));
+                      })()}
+                    </p>
+                  </div>
+                  ) : null}
                   <div className="grid grid-cols-2 gap-2">
                     <label className="text-xs font-medium text-zinc-500">
                       Font size
@@ -418,12 +497,7 @@ export function FramePropertiesPanel({
                 </>
               ) : null}
             </section>
-          ) : (
-            <div className="rounded-lg border border-dashed border-zinc-200 p-4 text-sm text-zinc-500">
-              Select a layer to edit its size, position, media, text, and frame
-              styling.
-            </div>
-          )}
+          ) : null}
         </div>
       </ScrollArea>
     </aside>

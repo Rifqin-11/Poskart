@@ -114,11 +114,15 @@ async function processJob(job) {
     }
 
     const layout = normalizeLayout(job.template);
+    const sessionTimestamp = normalizeFrameTimestamp(
+      job.template?.frameTimestamp,
+    );
     const sourceFrames = await prepareSourceFrames(sourceAssets, workDir);
     const renderedFramePaths = await renderOutputFrames({
       layout,
       sourceFrames,
       workDir,
+      sessionTimestamp,
     });
     const outputPath = path.join(workDir, "framed-live-photo.mp4");
     await encodeMp4(renderedFramePaths, outputPath);
@@ -257,7 +261,12 @@ async function extractSourceFrames(inputPath, outputDir, mirrorHorizontal) {
     .map((file) => path.join(outputDir, file));
 }
 
-async function renderOutputFrames({ layout, sourceFrames, workDir }) {
+async function renderOutputFrames({
+  layout,
+  sourceFrames,
+  workDir,
+  sessionTimestamp,
+}) {
   const canvas = layout.canvas ?? {};
   const canvasWidth = Math.max(1, Number(canvas.width ?? 600));
   const canvasHeight = Math.max(1, Number(canvas.height ?? 900));
@@ -278,6 +287,7 @@ async function renderOutputFrames({ layout, sourceFrames, workDir }) {
         sourceFrames,
         scale,
         imageCache,
+        sessionTimestamp,
       });
       if (overlay) composites.push(overlay);
     }
@@ -313,7 +323,14 @@ function normalizeNodes(nodes) {
     .sort((left, right) => left.zIndex - right.zIndex);
 }
 
-async function renderNodeOverlay({ node, frameIndex, sourceFrames, scale, imageCache }) {
+async function renderNodeOverlay({
+  node,
+  frameIndex,
+  sourceFrames,
+  scale,
+  imageCache,
+  sessionTimestamp,
+}) {
   const left = Math.round(Number(node.x ?? 0) * scale);
   const top = Math.round(Number(node.y ?? 0) * scale);
   const width = Math.max(1, Math.round(Number(node.width ?? 1) * scale));
@@ -365,15 +382,27 @@ async function renderNodeOverlay({ node, frameIndex, sourceFrames, scale, imageC
     return { input, left, top, opacity };
   }
 
-  if (node.type === "text" || node.type === "date-stamp") {
+  if (
+    node.type === "text" ||
+    node.type === "date-stamp" ||
+    node.type === "timestamp"
+  ) {
     const text =
       node.type === "date-stamp"
-        ? new Date().toISOString().slice(0, 10)
-        : String(readProp(node, "text", ""));
+        ? formatFrameTimestamp(sessionTimestamp, ["year", "month", "date"], "-")
+        : node.type === "timestamp"
+          ? formatFrameTimestamp(
+              sessionTimestamp,
+              readProp(node, "parts", []),
+              readProp(node, "separator", "."),
+            )
+          : String(readProp(node, "content", readProp(node, "text", "")));
     if (!text) return null;
     const fontSize = Math.max(8, Number(readProp(node, "fontSize", 20)) * scale);
     const color = readColor(readProp(node, "color", null), "#18181b");
-    const weight = readProp(node, "fontWeight", "") === "bold" ? "700" : "400";
+    const fontWeight = readProp(node, "fontWeight", "");
+    const weight =
+      fontWeight === "bold" || Number(fontWeight) >= 600 ? "700" : "400";
     const input = Buffer.from(
       `<svg width="${width}" height="${height}"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="${weight}" fill="${escapeXml(color)}">${escapeXml(text)}</text></svg>`,
     );
@@ -399,6 +428,65 @@ function readProp(node, key, fallback) {
     return node.props[key];
   }
   return fallback;
+}
+
+const FRAME_TIMESTAMP_PARTS = new Set([
+  "date",
+  "month",
+  "year",
+  "hour",
+  "minute",
+  "second",
+  "day",
+]);
+const INDONESIAN_DAY_NAMES = [
+  "Minggu",
+  "Senin",
+  "Selasa",
+  "Rabu",
+  "Kamis",
+  "Jumat",
+  "Sabtu",
+];
+
+function normalizeFrameTimestamp(value) {
+  if (!value || typeof value !== "object") return null;
+  const time = Date.parse(value.isoUtc);
+  const offsetMinutes = Number(value.utcOffsetMinutes);
+  if (!Number.isFinite(time) || !Number.isFinite(offsetMinutes)) return null;
+
+  return {
+    time,
+    offsetMinutes: Math.max(-14 * 60, Math.min(14 * 60, offsetMinutes)),
+  };
+}
+
+function formatFrameTimestamp(timestamp, rawParts, rawSeparator) {
+  const parts = Array.isArray(rawParts)
+    ? rawParts.filter((part) => FRAME_TIMESTAMP_PARTS.has(part))
+    : [];
+  const selectedParts = parts.length > 0 ? parts : ["date", "month", "year"];
+  const separator = typeof rawSeparator === "string" ? rawSeparator : ".";
+  const isSessionTime = timestamp !== null;
+  const date = isSessionTime
+    ? new Date(timestamp.time + timestamp.offsetMinutes * 60_000)
+    : new Date();
+  const read = (local, utc) => (isSessionTime ? utc.call(date) : local.call(date));
+  const pad = (value) => `${value}`.padStart(2, "0");
+
+  const values = {
+    date: pad(read(Date.prototype.getDate, Date.prototype.getUTCDate)),
+    month: pad(read(Date.prototype.getMonth, Date.prototype.getUTCMonth) + 1),
+    year: `${read(Date.prototype.getFullYear, Date.prototype.getUTCFullYear)}`,
+    hour: pad(read(Date.prototype.getHours, Date.prototype.getUTCHours)),
+    minute: pad(read(Date.prototype.getMinutes, Date.prototype.getUTCMinutes)),
+    second: pad(read(Date.prototype.getSeconds, Date.prototype.getUTCSeconds)),
+    day: INDONESIAN_DAY_NAMES[
+      read(Date.prototype.getDay, Date.prototype.getUTCDay)
+    ],
+  };
+
+  return selectedParts.map((part) => values[part]).filter(Boolean).join(separator);
 }
 
 function readImageSource(node) {

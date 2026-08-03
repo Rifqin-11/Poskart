@@ -870,7 +870,7 @@ export function FrameTemplateBuilder({
         <BuilderResponsiveWorkspace
           key={isPortraitBuilder ? "portrait" : "desktop"}
           isPortraitBuilder={isPortraitBuilder}
-          desktopClassName="grid grid-cols-[240px_minmax(0,1fr)_360px]"
+          desktopClassName="flex"
           layersCount={layers.length}
           activeContextLabel="frame"
           selectedPropertiesLabel={
@@ -889,6 +889,7 @@ export function FrameTemplateBuilder({
           }
           desktopProperties={
             <FramePropertiesPanel
+              key={selectedId ?? "frame-canvas"}
               detailsPanel={detailsPanel}
               layout={layout}
               selectedNode={selectedNode}
@@ -977,6 +978,7 @@ export function FrameTemplateBuilder({
           )}
           propertiesContent={
             <FramePropertiesPanel
+              key={selectedId ?? "frame-canvas"}
               embedded
               detailsPanel={detailsPanel}
               layout={layout}

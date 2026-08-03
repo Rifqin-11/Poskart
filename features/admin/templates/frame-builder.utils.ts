@@ -3,6 +3,7 @@ import {
   type FrameLayout,
   type FrameNode,
   type FrameNodeType,
+  type TimestampPart,
 } from "@/types/frame-template";
 
 export function clampZoom(value: number) {
@@ -155,8 +156,8 @@ export function createNode(type: FrameNodeType, layout: FrameLayout): FrameNode 
     type,
     x: 48,
     y: 88,
-    width: type === "text" || type === "date-stamp" ? 180 : 132,
-    height: type === "text" || type === "date-stamp" ? 40 : 132,
+    width: type === "text" || type === "date-stamp" || type === "timestamp" ? 180 : 132,
+    height: type === "text" || type === "date-stamp" || type === "timestamp" ? 40 : 132,
     rotation: 0,
     opacity: 1,
     zIndex,
@@ -201,7 +202,21 @@ export function createNode(type: FrameNodeType, layout: FrameLayout): FrameNode 
     };
   }
 
-  return {
+  if (type === "timestamp") {
+    return {
+      ...base,
+      props: {
+        // parts: which date/time tokens to show, in display order
+        parts: ["date", "month", "year"] as string[],
+        separator: ".",
+        color: "#18181b",
+        fontSize: 18,
+        fontWeight: 600,
+      },
+    };
+  }
+
+    return {
     ...base,
     props: {
       content: type === "date-stamp" ? "DD.MM.YYYY" : "Text",
@@ -265,4 +280,57 @@ export function getRotatedVisualInset(
     x: Math.max(0, (rotatedWidth - width) / 2),
     y: Math.max(0, (rotatedHeight - height) / 2),
   };
+}
+
+// ─── Timestamp node helpers ──────────────────────────────────────────────────
+
+export const TIMESTAMP_PART_OPTIONS: {
+  value: TimestampPart;
+  label: string;
+  example: string;
+}[] = [
+  { value: "date",   label: "Tanggal (DD)",  example: "25" },
+  { value: "month",  label: "Bulan (MM)",    example: "07" },
+  { value: "year",   label: "Tahun (YYYY)",  example: "2025" },
+  { value: "hour",   label: "Jam (HH)",      example: "14" },
+  { value: "minute", label: "Menit (mm)",    example: "30" },
+  { value: "second", label: "Detik (ss)",    example: "00" },
+  { value: "day",    label: "Hari",          example: "Jumat" },
+];
+
+const DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+/**
+ * Formats a Date according to the selected timestamp parts and separator.
+ * Parts are rendered in the order they appear in the `parts` array.
+ */
+export function formatTimestamp(
+  date: Date,
+  parts: TimestampPart[],
+  separator: string,
+): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  const segments = parts.map((part) => {
+    switch (part) {
+      case "date":   return pad(date.getDate());
+      case "month":  return pad(date.getMonth() + 1);
+      case "year":   return String(date.getFullYear());
+      case "hour":   return pad(date.getHours());
+      case "minute": return pad(date.getMinutes());
+      case "second": return pad(date.getSeconds());
+      case "day":    return DAY_NAMES[date.getDay()] ?? "";
+      default:       return "";
+    }
+  });
+
+  return segments.filter(Boolean).join(separator);
+}
+
+/** Preview string shown in the builder canvas (uses session-start time). */
+export function previewTimestamp(
+  parts: TimestampPart[],
+  separator: string,
+): string {
+  return formatTimestamp(new Date(), parts, separator);
 }

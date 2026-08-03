@@ -6,7 +6,21 @@ export type FrameNodeType =
   | "image"          // Logo, stamp, decorative image
   | "border"         // Decorative border/overlay layer
   | "date-stamp"     // Auto-populated with session date
+  | "timestamp"      // Dynamic timestamp with configurable parts
   | "background";    // Background fill / full-bleed image
+
+/**
+ * Individual date/time parts that can be toggled on a timestamp node.
+ * The order here also determines the default render order.
+ */
+export type TimestampPart =
+  | "date"    // DD
+  | "month"   // MM
+  | "year"    // YYYY
+  | "hour"    // HH
+  | "minute"  // mm
+  | "second"  // ss
+  | "day";    // e.g. Monday
 
 export type FrameNode = {
   id: string;

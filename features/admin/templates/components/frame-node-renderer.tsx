@@ -1,8 +1,8 @@
 "use client";
 
 import { ColorKeyImage } from "@/features/builder/components/color-key-image";
-import { readNumber, readString } from "@/features/admin/templates/frame-builder.utils";
-import type { FrameNode } from "@/types/frame-template";
+import { previewTimestamp, readNumber, readString } from "@/features/admin/templates/frame-builder.utils";
+import type { FrameNode, TimestampPart } from "@/types/frame-template";
 
 export function FrameNodeRenderer({ node }: { node: FrameNode }) {
   if (node.type === "photo-slot") {
@@ -58,7 +58,27 @@ export function FrameNodeRenderer({ node }: { node: FrameNode }) {
     );
   }
 
-  return (
+  if (node.type === "timestamp") {
+    const rawParts = node.props.parts;
+    const parts: TimestampPart[] = Array.isArray(rawParts) ? (rawParts as TimestampPart[]) : ["date", "month", "year"];
+    const separator = readString(node.props.separator, ".");
+    const text = previewTimestamp(parts, separator);
+
+    return (
+      <div
+        className="flex h-full w-full items-center"
+        style={{
+          color: readString(node.props.color, "#18181b"),
+          fontSize: readNumber(node.props.fontSize, 18),
+          fontWeight: readNumber(node.props.fontWeight, 600),
+        }}
+      >
+        {text}
+      </div>
+    );
+  }
+
+    return (
     <div
       className="flex h-full w-full items-center"
       style={{

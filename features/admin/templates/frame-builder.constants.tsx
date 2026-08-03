@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { CalendarDays, Grid2X2, Image as ImageIcon, Square, Type } from "lucide-react";
+import { CalendarDays, Clock, Grid2X2, Image as ImageIcon, Square, Type } from "lucide-react";
 import type { FrameNodeType } from "@/types/frame-template";
 
 export const FRAME_NODE_TYPES: {
@@ -16,6 +16,11 @@ export const FRAME_NODE_TYPES: {
     type: "date-stamp",
     label: "Date",
     icon: <CalendarDays className="size-3.5" />,
+  },
+  {
+    type: "timestamp",
+    label: "Timestamp",
+    icon: <Clock className="size-3.5" />,
   },
   { type: "background", label: "Bg", icon: <ImageIcon className="size-3.5" /> },
   {
