@@ -156,8 +156,16 @@ export function createNode(type: FrameNodeType, layout: FrameLayout): FrameNode 
     type,
     x: 48,
     y: 88,
-    width: type === "text" || type === "date-stamp" || type === "timestamp" ? 180 : 132,
-    height: type === "text" || type === "date-stamp" || type === "timestamp" ? 40 : 132,
+    width:
+      type === "timestamp"
+        ? 260
+        : type === "text" || type === "date-stamp"
+          ? 180
+          : 132,
+    height:
+      type === "text" || type === "date-stamp" || type === "timestamp"
+        ? 40
+        : 132,
     rotation: 0,
     opacity: 1,
     zIndex,
@@ -167,7 +175,7 @@ export function createNode(type: FrameNodeType, layout: FrameLayout): FrameNode 
   if (type === "photo-slot") {
     const nextOrder =
       layout.nodes.filter((node) => node.type === "photo-slot").length + 1;
-    return {
+  return {
       ...base,
       width: 160,
       height: 210,
@@ -289,20 +297,29 @@ export const TIMESTAMP_PART_OPTIONS: {
   label: string;
   example: string;
 }[] = [
-  { value: "date",   label: "Tanggal (DD)",  example: "25" },
-  { value: "month",  label: "Bulan (MM)",    example: "07" },
-  { value: "year",   label: "Tahun (YYYY)",  example: "2025" },
-  { value: "hour",   label: "Jam (HH)",      example: "14" },
-  { value: "minute", label: "Menit (mm)",    example: "30" },
-  { value: "second", label: "Detik (ss)",    example: "00" },
-  { value: "day",    label: "Hari",          example: "Jumat" },
+  { value: "date", label: "Tanggal (DD)", example: "25" },
+  { value: "month", label: "Bulan (MM)", example: "07" },
+  { value: "year", label: "Tahun (YYYY)", example: "2025" },
+  { value: "hour", label: "Jam (HH)", example: "14" },
+  { value: "minute", label: "Menit (mm)", example: "30" },
+  { value: "second", label: "Detik (ss)", example: "00" },
+  { value: "day", label: "Hari", example: "Jumat" },
 ];
 
-const DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+const DAY_NAMES = [
+  "Minggu",
+  "Senin",
+  "Selasa",
+  "Rabu",
+  "Kamis",
+  "Jumat",
+  "Sabtu",
+];
 
 /**
  * Formats a Date according to the selected timestamp parts and separator.
- * Parts are rendered in the order they appear in the `parts` array.
+ * Parts use the stored order. Date, time, and day groups are separated by a
+ * space while values inside a group use the selected separator.
  */
 export function formatTimestamp(
   date: Date,
@@ -313,18 +330,46 @@ export function formatTimestamp(
 
   const segments = parts.map((part) => {
     switch (part) {
-      case "date":   return pad(date.getDate());
-      case "month":  return pad(date.getMonth() + 1);
-      case "year":   return String(date.getFullYear());
-      case "hour":   return pad(date.getHours());
-      case "minute": return pad(date.getMinutes());
-      case "second": return pad(date.getSeconds());
-      case "day":    return DAY_NAMES[date.getDay()] ?? "";
-      default:       return "";
+      case "date":
+        return pad(date.getDate());
+      case "month":
+        return pad(date.getMonth() + 1);
+      case "year":
+        return String(date.getFullYear());
+      case "hour":
+        return pad(date.getHours());
+      case "minute":
+        return pad(date.getMinutes());
+      case "second":
+        return pad(date.getSeconds());
+      case "day":
+        return DAY_NAMES[date.getDay()] ?? "";
+      default:
+        return "";
     }
   });
 
-  return segments.filter(Boolean).join(separator);
+  const groupForPart = (part: TimestampPart) => {
+    if (part === "hour" || part === "minute" || part === "second") {
+      return "time";
+    }
+    if (part === "day") return "day";
+    return "date";
+  };
+
+  return segments.reduce((output, segment, index) => {
+    if (!segment) return output;
+    if (!output) return segment;
+
+    const previousPart = parts[index - 1];
+    const currentPart = parts[index];
+    const joiner =
+      previousPart && groupForPart(previousPart) === groupForPart(currentPart)
+        ? separator
+        : " ";
+
+    return `${output}${joiner}${segment}`;
+  }, "");
 }
 
 /** Preview string shown in the builder canvas (uses session-start time). */

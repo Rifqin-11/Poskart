@@ -486,7 +486,27 @@ function formatFrameTimestamp(timestamp, rawParts, rawSeparator) {
     ],
   };
 
-  return selectedParts.map((part) => values[part]).filter(Boolean).join(separator);
+  const groupForPart = (part) => {
+    if (part === "hour" || part === "minute" || part === "second") {
+      return "time";
+    }
+    if (part === "day") return "day";
+    return "date";
+  };
+
+  return selectedParts.reduce((output, part, index) => {
+    const value = values[part];
+    if (!value) return output;
+    if (!output) return value;
+
+    const previousPart = selectedParts[index - 1];
+    const joiner =
+      previousPart && groupForPart(previousPart) === groupForPart(part)
+        ? separator
+        : " ";
+
+    return `${output}${joiner}${value}`;
+  }, "");
 }
 
 function readImageSource(node) {

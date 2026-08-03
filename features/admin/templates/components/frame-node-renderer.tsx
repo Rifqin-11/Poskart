@@ -60,13 +60,15 @@ export function FrameNodeRenderer({ node }: { node: FrameNode }) {
 
   if (node.type === "timestamp") {
     const rawParts = node.props.parts;
-    const parts: TimestampPart[] = Array.isArray(rawParts) ? (rawParts as TimestampPart[]) : ["date", "month", "year"];
+    const parts: TimestampPart[] = Array.isArray(rawParts)
+      ? (rawParts as TimestampPart[])
+      : ["date", "month", "year"];
     const separator = readString(node.props.separator, ".");
     const text = previewTimestamp(parts, separator);
 
     return (
       <div
-        className="flex h-full w-full items-center"
+        className="flex h-full w-full items-center whitespace-nowrap tabular-nums"
         style={{
           color: readString(node.props.color, "#18181b"),
           fontSize: readNumber(node.props.fontSize, 18),
@@ -78,7 +80,7 @@ export function FrameNodeRenderer({ node }: { node: FrameNode }) {
     );
   }
 
-    return (
+  return (
     <div
       className="flex h-full w-full items-center"
       style={{

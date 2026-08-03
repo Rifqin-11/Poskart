@@ -10,11 +10,10 @@ import { Slider } from "@/components/ui/slider";
 import { ColorKeyControls } from "@/features/builder/components/color-key-controls";
 import { InspectorTabs } from "@/features/builder/components/visual-properties-primitives";
 import {
-  TIMESTAMP_PART_OPTIONS,
-  previewTimestamp,
   readNumber,
   readString,
 } from "@/features/admin/templates/frame-builder.utils";
+import { TimestampFormatEditor } from "@/features/admin/templates/components/timestamp-format-editor";
 import { BUILDER_IMAGE_ACCEPT } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
 import type { FrameLayout, FrameNode, TimestampPart } from "@/types/frame-template";
@@ -288,51 +287,24 @@ export function FramePropertiesPanel({
                   </label>
                   ) : null}
                   {selectedNode.type === "timestamp" ? (
-                  <div className="space-y-2">
-                    <div className="text-xs font-medium text-zinc-500">Format Timestamp</div>
-                    <div className="space-y-1">
-                      {TIMESTAMP_PART_OPTIONS.map(({ value, label, example }) => {
+                    <TimestampFormatEditor
+                      parts={(() => {
                         const rawParts = selectedNode.props.parts;
-                        const parts: TimestampPart[] = Array.isArray(rawParts) ? (rawParts as TimestampPart[]) : ["date", "month", "year"];
-                        const isActive = parts.includes(value);
-                        return (
-                          <label key={value} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-zinc-50">
-                            <input
-                              type="checkbox"
-                              className="accent-zinc-800"
-                              checked={isActive}
-                              onChange={() => {
-                                const next = isActive
-                                  ? parts.filter((p) => p !== value)
-                                  : [...parts, value];
-                                onUpdateNodeProps(selectedNode.id, { parts: next });
-                              }}
-                            />
-                            <span className="flex-1 font-medium text-zinc-700">{label}</span>
-                            <span className="text-zinc-400">{example}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    <label className="block text-xs font-medium text-zinc-500">
-                      Pemisah
-                      <Input
-                        className="mt-1"
-                        value={readString(selectedNode.props.separator, ".")}
-                        maxLength={3}
-                        onChange={(event) =>
-                          onUpdateNodeProps(selectedNode.id, { separator: event.target.value })
-                        }
-                      />
-                    </label>
-                    <p className="text-[11px] leading-4 text-zinc-400">
-                      Preview: {(() => {
-                        const rawParts = selectedNode.props.parts;
-                        const parts: TimestampPart[] = Array.isArray(rawParts) ? (rawParts as TimestampPart[]) : ["date", "month", "year"];
-                        return previewTimestamp(parts, readString(selectedNode.props.separator, "."));
+                        return Array.isArray(rawParts)
+                          ? (rawParts as TimestampPart[])
+                          : (["date", "month", "year"] as TimestampPart[]);
                       })()}
-                    </p>
-                  </div>
+                      separator={readString(
+                        selectedNode.props.separator,
+                        ".",
+                      )}
+                      onChangeParts={(parts) =>
+                        onUpdateNodeProps(selectedNode.id, { parts })
+                      }
+                      onChangeSeparator={(separator) =>
+                        onUpdateNodeProps(selectedNode.id, { separator })
+                      }
+                    />
                   ) : null}
                   <div className="grid grid-cols-2 gap-2">
                     <label className="text-xs font-medium text-zinc-500">
