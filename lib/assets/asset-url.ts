@@ -134,10 +134,14 @@ export function normalizeAssetReferences<T>(value: T): T {
       return directAssetUrl as T;
     }
 
+    // These canvas-level arrays store {name, url} records that must not be
+    // collapsed into plain URL strings by the asset-metadata normalizer.
+    const NON_ASSET_CANVAS_KEYS = new Set(["customFonts", "canvasImages"]);
+
     return Object.fromEntries(
       Object.entries(value).map(([key, item]) => [
         key,
-        normalizeAssetReferences(item),
+        NON_ASSET_CANVAS_KEYS.has(key) ? item : normalizeAssetReferences(item),
       ]),
     ) as T;
   }

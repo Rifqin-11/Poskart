@@ -1,11 +1,48 @@
 "use client";
 
-import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useRef, useState, useCallback, type PointerEvent, type ReactNode } from "react";
 import { Layers3, Plus, SlidersHorizontal } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 type BuilderPanel = "layers" | "add" | "properties";
+
+const LEFT_MIN = 180;
+const LEFT_MAX = 480;
+const LEFT_DEFAULT = 240;
+
+const RIGHT_MIN = 240;
+const RIGHT_MAX = 520;
+const RIGHT_DEFAULT = 288;
+
+function useResizableSidebar(defaultWidth: number, min: number, max: number, side: "left" | "right") {
+  const [width, setWidth] = useState(defaultWidth);
+  const [hidden, setHidden] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  const onDragStart = useCallback((e: PointerEvent<HTMLDivElement>) => {
+    dragRef.current = { startX: e.clientX, startWidth: width };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragging(true);
+  }, [width]);
+
+  const onDragMove = useCallback((e: PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const delta = side === "left" ? e.clientX - d.startX : d.startX - e.clientX;
+    setWidth(Math.min(max, Math.max(min, d.startWidth + delta)));
+  }, [side, min, max]);
+
+  const onDragEnd = useCallback(() => {
+    dragRef.current = null;
+    setDragging(false);
+  }, []);
+
+  const toggle = useCallback(() => setHidden((v) => !v), []);
+
+  return { width, hidden, dragging, toggle, onDragStart, onDragMove, onDragEnd };
+}
 
 export function BuilderResponsiveWorkspace({
   isPortraitBuilder,
@@ -43,6 +80,9 @@ export function BuilderResponsiveWorkspace({
     currentHeight: number;
   } | null>(null);
 
+  const left = useResizableSidebar(LEFT_DEFAULT, LEFT_MIN, LEFT_MAX, "left");
+  const right = useResizableSidebar(RIGHT_DEFAULT, RIGHT_MIN, RIGHT_MAX, "right");
+
   const closePanel = () => {
     setActivePanel(null);
     setPanelHeight(52);
@@ -67,11 +107,8 @@ export function BuilderResponsiveWorkspace({
   const handleDragMove = (event: PointerEvent<HTMLDivElement>) => {
     const dragState = panelDragRef.current;
     if (!dragState) return;
-
     const nextHeight =
-      ((dragState.startHeight + dragState.startY - event.clientY) /
-        window.innerHeight) *
-      100;
+      ((dragState.startHeight + dragState.startY - event.clientY) / window.innerHeight) * 100;
     const clampedHeight = Math.min(86, Math.max(24, nextHeight));
     dragState.currentHeight = clampedHeight;
     setPanelHeight(clampedHeight);
@@ -82,12 +119,7 @@ export function BuilderResponsiveWorkspace({
     panelDragRef.current = null;
     setIsDraggingPanel(false);
     if (!dragState) return;
-
-    if (dragState.currentHeight < 36) {
-      closePanel();
-      return;
-    }
-
+    if (dragState.currentHeight < 36) { closePanel(); return; }
     setPanelHeight(dragState.currentHeight >= 69 ? 86 : 52);
   };
 
@@ -97,6 +129,7 @@ export function BuilderResponsiveWorkspace({
       : activePanel === "properties"
         ? "Properties"
         : "Layers";
+
   const panelDescription =
     activePanel === "layers"
       ? "Atur urutan, visibilitas, dan kunci layer."
@@ -110,7 +143,7 @@ export function BuilderResponsiveWorkspace({
     <>
       <div
         className={cn(
-          "relative min-h-0 flex-1 overflow-hidden",
+          "relative flex min-h-0 flex-1",
           !isPortraitBuilder && desktopClassName,
         )}
       >
@@ -120,9 +153,38 @@ export function BuilderResponsiveWorkspace({
           </div>
         ) : (
           <>
-            {desktopLayers}
-            {canvas}
-            {desktopProperties}
+            {/* Left sidebar with resize handle */}
+            <div className="relative flex shrink-0" style={{ width: left.width, overflow: "hidden" }}>
+              {desktopLayers}
+              <div
+                className={cn(
+                  "absolute right-0 top-0 z-10 h-full w-1 cursor-ew-resize select-none transition-colors hover:bg-zinc-300/60",
+                  left.dragging && "bg-zinc-400/70",
+                )}
+                onPointerDown={left.onDragStart}
+                onPointerMove={left.onDragMove}
+                onPointerUp={left.onDragEnd}
+                onPointerCancel={left.onDragEnd}
+              />
+            </div>
+
+            {/* Canvas — flex-1 to fill remaining space */}
+            <div className="relative flex flex-1 min-w-0 min-h-0 overflow-hidden">{canvas}</div>
+
+            {/* Right sidebar with resize handle */}
+            <div className="relative flex shrink-0" style={{ width: right.width, overflow: "hidden" }}>
+              <div
+                className={cn(
+                  "absolute left-0 top-0 z-10 h-full w-1 cursor-ew-resize select-none transition-colors hover:bg-zinc-300/60",
+                  right.dragging && "bg-zinc-400/70",
+                )}
+                onPointerDown={right.onDragStart}
+                onPointerMove={right.onDragMove}
+                onPointerUp={right.onDragEnd}
+                onPointerCancel={right.onDragEnd}
+              />
+              {desktopProperties}
+            </div>
           </>
         )}
 
@@ -176,9 +238,7 @@ export function BuilderResponsiveWorkspace({
         <Sheet
           side="bottom"
           open={activePanel !== null}
-          onOpenChange={(open) => {
-            if (!open) closePanel();
-          }}
+          onOpenChange={(open) => { if (!open) closePanel(); }}
           className={cn(
             "sm:mx-4 sm:max-w-none",
             !isDraggingPanel && "transition-[height] duration-200 ease-out",
@@ -195,9 +255,7 @@ export function BuilderResponsiveWorkspace({
               onPointerMove={handleDragMove}
               onPointerUp={finishDrag}
               onPointerCancel={finishDrag}
-              onDoubleClick={() =>
-                setPanelHeight((height) => (height > 69 ? 52 : 86))
-              }
+              onDoubleClick={() => setPanelHeight((h) => (h > 69 ? 52 : 86))}
             >
               <div
                 className={cn(
@@ -209,12 +267,8 @@ export function BuilderResponsiveWorkspace({
 
             <div className="flex shrink-0 items-center gap-3 border-b border-zinc-100 py-3">
               <div className="min-w-0">
-                <h2 className="text-sm font-semibold capitalize text-zinc-950">
-                  {panelTitle}
-                </h2>
-                <p className="truncate text-xs text-zinc-500">
-                  {panelDescription}
-                </p>
+                <h2 className="text-sm font-semibold capitalize text-zinc-950">{panelTitle}</h2>
+                <p className="truncate text-xs text-zinc-500">{panelDescription}</p>
               </div>
               <p className="ml-auto shrink-0 text-[10px] text-zinc-400">
                 Tarik handle untuk mengatur panel

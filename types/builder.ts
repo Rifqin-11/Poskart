@@ -85,6 +85,8 @@ export type BuilderCanvas = {
   };
   /** User-imported custom fonts. Saved alongside theme so they can be re-injected on load. */
   customFonts?: { name: string; url: string }[];
+  /** User-uploaded images stored as canvas-level assets (url + original filename). */
+  canvasImages?: { url: string; name: string }[];
   /** Global page transition effect used by the tablet app */
   transitionType?: "fade" | "slide-horizontal" | "slide-vertical" | "zoom" | "none";
   /** Transition duration in milliseconds (default: 300) */

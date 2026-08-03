@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import {
   AlignCenter,
   AlignJustify,
@@ -42,34 +42,27 @@ export function VisualTextProperties({
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
   section?: "content" | "style" | "advanced";
 }) {
-  const [fontName, setFontName] = useState("");
-  const [fontUrl, setFontUrl] = useState("");
-  const customFonts = canvas.customFonts ?? [];
   const isLiveTextNode =
     selectedNode.type === "camera-timer" ||
     selectedNode.type === "camera-flash" ||
     selectedNode.type === "camera-shot-counter";
 
-  const loadCustomFont = () => {
-    const name = fontName.trim();
-    const url = fontUrl.trim();
-    if (!name || !url) return;
-
-    const id = `custom-font-${name}`;
-    if (!document.getElementById(id)) {
-      const link = document.createElement("link");
-      link.id = id;
-      link.rel = "stylesheet";
-      link.href = url;
-      document.head.appendChild(link);
+  // Reinject custom fonts into <head> on mount and whenever customFonts changes
+  // This ensures fonts loaded in a previous session are available after page refresh
+  const customFonts = canvas.customFonts ?? [];
+  useEffect(() => {
+    for (const font of customFonts) {
+      const id = `custom-font-${font.name}`;
+      if (!document.getElementById(id)) {
+        const link = document.createElement("link");
+        link.id = id;
+        link.rel = "stylesheet";
+        link.href = font.url;
+        document.head.appendChild(link);
+      }
     }
-
-    if (!customFonts.find((font) => font.name === name)) {
-      updateCanvas({ customFonts: [...customFonts, { name, url }] });
-    }
-    setFontName("");
-    setFontUrl("");
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(customFonts)]);
 
   // content: editable text value
   if (section === "content") {
@@ -132,10 +125,10 @@ export function VisualTextProperties({
                 </option>
               ))}
             </optgroup>
-            {customFonts.length > 0 && (
+            {(canvas.customFonts ?? []).length > 0 && (
               <optgroup label="Custom fonts">
-                {customFonts.map((font) => (
-                  <option key={font.name} value={`'${font.name}', sans-serif`}>
+                {(canvas.customFonts ?? []).map((font) => (
+                  <option key={font.name} value={`${font.name}, sans-serif`}>
                     {font.name}
                   </option>
                 ))}
@@ -164,69 +157,15 @@ export function VisualTextProperties({
     );
   }
 
-  // advanced: custom font import + semantic role (Flutter binding)
+  // advanced: semantic role (Flutter binding) — custom fonts moved to Assets panel
   if (section === "advanced") {
     return (
       <PanelSection
         title="Text"
         icon={<Type className="size-3.5 text-zinc-500" />}
       >
-        <div className="rounded-md border border-zinc-200 bg-zinc-50 p-2 text-xs">
-          <div className="mb-1.5 font-semibold text-zinc-600">
-            Import custom font
-          </div>
-          <label className="block text-zinc-500">
-            Font name
-            <Input
-              className="mt-0.5"
-              placeholder="e.g. MyBrand"
-              value={fontName}
-              onChange={(event) => setFontName(event.target.value)}
-            />
-          </label>
-          <label className="mt-1 block text-zinc-500">
-            CSS URL (Google Fonts / CDN)
-            <Input
-              className="mt-0.5"
-              placeholder="https://fonts.googleapis.com/css2?family=..."
-              value={fontUrl}
-              onChange={(event) => setFontUrl(event.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            onClick={loadCustomFont}
-            className="mt-1.5 w-full rounded bg-zinc-800 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-zinc-700"
-          >
-            Load font
-          </button>
-          {customFonts.length > 0 && (
-            <div className="mt-2 space-y-0.5">
-              {customFonts.map((font) => (
-                <div
-                  key={font.name}
-                  className="flex items-center justify-between rounded bg-white px-1.5 py-0.5 text-[10px] text-zinc-600"
-                >
-                  <span style={{ fontFamily: `'${font.name}', sans-serif` }}>
-                    {font.name}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateCanvas({
-                        customFonts: customFonts.filter(
-                          (item) => item.name !== font.name,
-                        ),
-                      })
-                    }
-                    className="text-zinc-400 hover:text-red-500"
-                  >
-                    x
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="rounded-md border border-zinc-100 bg-zinc-50 px-2.5 py-2 text-[10px] leading-[1.5] text-zinc-500">
+          Kelola custom font di panel <span className="font-semibold text-zinc-700">Assets</span> (sidebar kiri → ikon paket).
         </div>
         {selectedNode.page === "camera" &&
           !isLiveTextNode &&

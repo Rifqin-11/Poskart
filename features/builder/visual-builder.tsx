@@ -70,6 +70,20 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   const updateCanvas = useBuilderStore((state) => state.updateCanvas);
   const updateNodeProps = useBuilderStore((state) => state.updateNodeProps);
   const addNode = useBuilderStore((state) => state.addNode);
+
+  /** Insert an image asset from Assets panel as a new image node */
+  function handleInsertImage(url: string) {
+    addNode("image");
+    // After addNode, the newest node is at the end of the current page nodes
+    // Update its src prop via a small timeout so the node is already in state
+    setTimeout(() => {
+      const currentNodes = useBuilderStore.getState().nodes;
+      const newest = [...currentNodes].reverse().find((n) => n.type === "image");
+      if (newest) {
+        useBuilderStore.getState().updateNodeProps(newest.id, { src: url });
+      }
+    }, 0);
+  }
   const duplicateNode = useBuilderStore((state) => state.duplicateNode);
   const deleteNode = useBuilderStore((state) => state.deleteNode);
   const toggleNode = useBuilderStore((state) => state.toggleNode);
@@ -743,6 +757,31 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
         if (selectedId) duplicateNode(selectedId);
         return;
       }
+
+      // Arrow keys — move selected node(s) by 1px (or 10px with Shift)
+      if (
+        e.key === "ArrowUp" ||
+        e.key === "ArrowDown" ||
+        e.key === "ArrowLeft" ||
+        e.key === "ArrowRight"
+      ) {
+        if (!selectedId) return;
+        if (selectedNode?.locked) return;
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        const dx =
+          e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+        const dy =
+          e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+        // Move all selected nodes when multiple are selected
+        const ids = selectedIds.length > 1 ? selectedIds : [selectedId];
+        for (const id of ids) {
+          const node = nodes.find((n) => n.id === id);
+          if (!node || node.locked) continue;
+          updateNode(id, { x: node.x + dx, y: node.y + dy });
+        }
+        return;
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -756,6 +795,8 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
     cutNode,
     pasteNode,
     duplicateNode,
+    updateNode,
+    nodes,
   ]);
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -902,6 +943,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
             sensors={sensors}
             onAddNode={addNode}
             onLayerDragEnd={handleDragEnd}
+            onInsertImage={handleInsertImage}
           />
         }
         desktopProperties={
@@ -976,6 +1018,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
             sensors={sensors}
             onAddNode={addNode}
             onLayerDragEnd={handleDragEnd}
+            onInsertImage={handleInsertImage}
           />
         }
         renderAddContent={(closePanel) => (

@@ -65,7 +65,7 @@ export function VisualPropertiesSidebar({
       data-builder-tour="properties"
       className={cn(
         "flex shrink-0 flex-col bg-white",
-        embedded ? "h-full min-h-0 w-full" : "w-72 border-l border-zinc-200",
+        embedded ? "h-full min-h-0 w-full" : "w-full border-l border-zinc-200",
       )}
     >
       {/* Sticky header */}
