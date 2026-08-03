@@ -2,7 +2,8 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Eye, EyeOff, GripVertical, Lock, Unlock } from "lucide-react";
+import { Eye, EyeOff, GripVertical, Layers3, Lock, Unlock } from "lucide-react";
+import { COMPONENT_META } from "@/features/builder/constants";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { BuilderNode } from "@/types/builder";
@@ -14,43 +15,24 @@ export function SortableLayer({ node }: { node: BuilderNode }) {
   const selectedId = useBuilderStore((state) => state.selectedId);
   const toggleNode = useBuilderStore((state) => state.toggleNode);
   const isSelected = selectedId === node.id;
-
-  const TYPE_COLORS: Record<string, string> = {
-    button: "bg-blue-100 text-blue-700",
-    text: "bg-purple-100 text-purple-700",
-    "social-handle": "bg-purple-100 text-purple-700",
-    "camera-view": "bg-zinc-800 text-white",
-    "qr-placeholder": "bg-amber-100 text-amber-700",
-    qr: "bg-amber-100 text-amber-700",
-    image: "bg-emerald-100 text-emerald-700",
-    "frame-preview": "bg-emerald-100 text-emerald-700",
-    "preview-media-toggle": "bg-sky-100 text-sky-700",
-    "receipt-preview": "bg-violet-100 text-violet-700",
-    "template-list": "bg-orange-100 text-orange-700",
-    "template-preview": "bg-orange-50 text-orange-600",
-    "background-decoration": "bg-zinc-100 text-zinc-500",
-    background: "bg-amber-100 text-amber-700",
-  };
-  const badgeClass =
-    node.id === "page-background"
-      ? "bg-amber-100 text-amber-700"
-      : (TYPE_COLORS[node.type] ?? "bg-zinc-100 text-zinc-500");
+  const component = COMPONENT_META[node.type];
+  const ComponentIcon = component?.icon ?? Layers3;
 
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs transition-colors",
+        "group flex items-center gap-1.5 rounded-xl border px-1.5 py-1.5 text-xs shadow-sm shadow-zinc-950/[0.015] transition-all duration-200",
         isSelected
-          ? "border-zinc-900 bg-zinc-950 text-white"
-          : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50",
+          ? "border-[#aac5e6] bg-[#e7f0fb] text-[#174a7e] shadow-md shadow-blue-950/[0.07]"
+          : "border-zinc-200/80 bg-white text-zinc-700 hover:border-[#b7cbe6] hover:bg-[#f8fbff]",
       )}
     >
       <button
         className={cn(
-          "flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded",
-          isSelected ? "text-zinc-400" : "text-zinc-400",
+          "flex size-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg transition-colors active:cursor-grabbing",
+          isSelected ? "text-[#5c7fa5] hover:bg-white/70 hover:text-[#174a7e]" : "text-zinc-300 hover:bg-zinc-100 hover:text-zinc-500",
         )}
         aria-label={`Reorder ${node.id}`}
         {...attributes}
@@ -59,25 +41,25 @@ export function SortableLayer({ node }: { node: BuilderNode }) {
         <GripVertical className="size-4" />
       </button>
       <button
-        className="min-w-0 flex-1 text-left"
+        className="min-w-0 flex-1 text-left focus-visible:outline-none"
         onClick={() => selectNode(node.id)}
       >
         <div className="flex items-center gap-1.5">
           <span
             className={cn(
-              "shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide",
-              isSelected ? "bg-white/15 text-white" : badgeClass,
+              "grid size-6 shrink-0 place-items-center rounded-md",
+              isSelected ? "bg-white text-[#174a7e]" : "bg-zinc-100 text-zinc-500",
             )}
           >
-            {node.id === "page-background" ? "BACKGROUND" : node.type}
+            <ComponentIcon className="size-3.5" strokeWidth={2.1} />
           </span>
-          <span
-            className={cn(
-              "truncate text-[10px]",
-              isSelected ? "text-zinc-300" : "text-zinc-400",
-            )}
-          >
-            {node.id === "page-background" ? "Page Background" : node.id}
+          <span className="min-w-0">
+            <span className={cn("block truncate text-[11px] font-semibold", isSelected ? "text-[#174a7e]" : "text-zinc-700")}>
+              {node.id === "page-background" ? "Page background" : component?.label ?? node.type}
+            </span>
+            <span className={cn("block truncate text-[9px]", isSelected ? "text-[#5c7fa5]" : "text-zinc-400")}>
+              {node.id === "page-background" ? "Canvas base" : node.id}
+            </span>
           </span>
         </div>
       </button>
@@ -85,11 +67,11 @@ export function SortableLayer({ node }: { node: BuilderNode }) {
         <>
           <button
             onClick={() => toggleNode(node.id, "visible")}
-            className={
-              isSelected
-                ? "text-zinc-400 hover:text-white"
-                : "text-zinc-400 hover:text-zinc-700"
-            }
+            aria-label={node.visible ? `Hide ${node.id}` : `Show ${node.id}`}
+            className={cn(
+              "grid size-6 place-items-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white",
+              isSelected ? "text-[#5c7fa5] hover:bg-white/70 hover:text-[#174a7e]" : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700",
+            )}
           >
             {node.visible ? (
               <Eye className="size-3" />
@@ -99,11 +81,11 @@ export function SortableLayer({ node }: { node: BuilderNode }) {
           </button>
           <button
             onClick={() => toggleNode(node.id, "locked")}
-            className={
-              isSelected
-                ? "text-zinc-400 hover:text-white"
-                : "text-zinc-400 hover:text-zinc-700"
-            }
+            aria-label={node.locked ? `Unlock ${node.id}` : `Lock ${node.id}`}
+            className={cn(
+              "grid size-6 place-items-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white",
+              isSelected ? "text-[#5c7fa5] hover:bg-white/70 hover:text-[#174a7e]" : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700",
+            )}
           >
             {node.locked ? (
               <Lock className="size-3" />

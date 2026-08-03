@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ElementType, type ReactNode, useState } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -11,7 +11,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Layers, Shapes, Package } from "lucide-react";
+import { Layers3, Package, Plus, Shapes } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { COMPONENT_META, PAGE_COMPONENTS } from "@/features/builder/constants";
@@ -24,11 +24,15 @@ import type {
   BuilderPage,
 } from "@/types/builder";
 
-type SidebarTab = "layers" | "assets";
+type SidebarTab = "add" | "layers" | "assets";
 
-const SIDEBAR_TABS: { id: SidebarTab; icon: React.ElementType; label: string }[] = [
-  { id: "layers", icon: Layers, label: "Layers" },
-  { id: "assets", icon: Package, label: "Assets" },
+const PRIMARY_SIDEBAR_TABS: {
+  id: Exclude<SidebarTab, "assets">;
+  icon: ElementType;
+  label: string;
+}[] = [
+  { id: "add", icon: Plus, label: "Add node" },
+  { id: "layers", icon: Layers3, label: "Layers" },
 ];
 
 export function VisualLayerSidebar({
@@ -72,7 +76,6 @@ export function VisualLayerSidebar({
               </Badge>
             </div>
             <LayerListContent
-              activePage={activePage}
               layersList={layersList}
               sensors={sensors}
               onLayerDragEnd={onLayerDragEnd}
@@ -90,67 +93,44 @@ export function VisualLayerSidebar({
     );
   }
 
-  // desktop mode: icon strip + panel
+  // Desktop keeps creation separate from layer management.
   return (
     <aside
       data-builder-tour="layers"
-      className="flex h-full w-full border-r border-zinc-200 bg-white"
+      className="flex h-full w-full border-r border-zinc-200/80 bg-[#fcfcfb]"
     >
-      {/* Icon strip — vertical tabs */}
-      <div className="flex w-12 shrink-0 flex-col items-center gap-1.5 border-r border-zinc-100 py-3">
-        {SIDEBAR_TABS.map(({ id, icon: Icon, label }) => (
-          <button
-            key={id}
-            type="button"
-            title={label}
-            onClick={() => setActiveTab(id)}
-            className={cn(
-              "flex size-9 items-center justify-center rounded-md transition-colors",
-              activeTab === id
-                ? "bg-zinc-900 text-white"
-                : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700",
-            )}
-          >
-            <Icon className="size-[18px]" />
-          </button>
-        ))}
+      <div className="flex w-14 shrink-0 flex-col items-center border-r border-zinc-200/70 bg-white py-3">
+        <div className="mb-3 grid size-8 place-items-center rounded-xl bg-[#00357B] text-[11px] font-black text-white shadow-sm shadow-blue-950/20">
+          P
+        </div>
+        <div className="flex flex-col items-center gap-1.5">
+          {PRIMARY_SIDEBAR_TABS.map(({ id, icon: Icon, label }) => (
+            <SidebarTabButton
+              key={id}
+              active={activeTab === id}
+              icon={Icon}
+              label={label}
+              onClick={() => setActiveTab(id)}
+            />
+          ))}
+        </div>
+        <div className="my-3 h-px w-6 bg-zinc-100" />
+        <SidebarTabButton
+          active={activeTab === "assets"}
+          icon={Package}
+          label="Assets"
+          onClick={() => setActiveTab("assets")}
+        />
       </div>
 
-      {/* Panel content */}
-      <div className="flex min-w-0 flex-1 min-h-0 flex-col overflow-hidden">
-        {activeTab === "layers" && (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {activeTab === "add" && (
           <>
-            <div className="flex items-center justify-between px-3 py-2.5 shrink-0">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-                Layers
-              </span>
-              <Badge variant="secondary" className="h-4 px-1 text-[9px]">
-                {layersList.length}
-              </Badge>
-            </div>
-
-            {activePage === "template" && layersList.length === 0 && (
-              <div className="mx-2 mb-2 rounded-md border border-orange-200 bg-orange-50 px-2 py-1.5 text-[10px] leading-snug text-orange-800">
-                <div className="font-semibold">No nodes on this page</div>
-                <div className="mt-0.5 text-orange-700">
-                  Add components from the panel below.
-                </div>
-              </div>
-            )}
-
-            {activePage !== "template" && layersList.length === 0 && (
-              <div className="mx-2 mb-2 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-[10px] text-zinc-500">
-                No layers yet. Add a component below.
-              </div>
-            )}
-
-            <LayerListContent
-              activePage={activePage}
-              layersList={layersList}
-              sensors={sensors}
-              onLayerDragEnd={onLayerDragEnd}
+            <PanelHeading
+              icon={Plus}
+              title="Add node"
+              detail={`for ${activePage}`}
             />
-
             <AddComponentList
               activePage={activePage}
               isOverlayMode={isOverlayMode}
@@ -159,13 +139,45 @@ export function VisualLayerSidebar({
           </>
         )}
 
+        {activeTab === "layers" && (
+          <>
+            <PanelHeading
+              icon={Layers3}
+              title="Layers"
+              detail={`${layersList.length} on this page`}
+              trailing={
+                <Badge variant="secondary" className="h-5 bg-[#e9f0fb] px-1.5 text-[9px] text-[#00357B]">
+                  {layersList.length}
+                </Badge>
+              }
+            />
+
+            {activePage === "template" && layersList.length === 0 && (
+              <div className="mx-3 mb-3 rounded-xl border border-[#d9e6f7] bg-[#f3f7fd] px-3 py-2.5 text-[11px] leading-snug text-[#24466f]">
+                <div className="font-semibold">This page is empty</div>
+                <div className="mt-0.5 text-[#587292]">
+                  Use the Add node tab to start composing this screen.
+                </div>
+              </div>
+            )}
+
+            {activePage !== "template" && layersList.length === 0 && (
+              <div className="mx-3 mb-3 rounded-xl border border-dashed border-zinc-200 bg-white px-3 py-2.5 text-[11px] text-zinc-500">
+                No layers yet. Open Add node to place the first component.
+              </div>
+            )}
+
+            <LayerListContent
+              layersList={layersList}
+              sensors={sensors}
+              onLayerDragEnd={onLayerDragEnd}
+            />
+          </>
+        )}
+
         {activeTab === "assets" && (
           <>
-            <div className="flex items-center px-3 py-2.5 shrink-0">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-                Assets
-              </span>
-            </div>
+            <PanelHeading icon={Package} title="Assets" detail="images and fonts" />
             <VisualAssetsPanel
               onInsertImage={onInsertImage ?? (() => {})}
             />
@@ -178,27 +190,82 @@ export function VisualLayerSidebar({
 
 /* ─── Sub-components ─── */
 
+function SidebarTabButton({
+  active,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: ElementType;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "group relative grid size-10 place-items-center rounded-xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B] focus-visible:ring-offset-2",
+        active
+          ? "bg-[#dce9f8] text-[#174a7e] shadow-sm shadow-blue-950/[0.08]"
+          : "text-zinc-400 hover:bg-[#edf3fb] hover:text-[#00357B]",
+      )}
+    >
+      <Icon className="size-[18px]" strokeWidth={2.1} />
+      <span className="pointer-events-none absolute left-[calc(100%+10px)] z-30 hidden whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-[10px] font-medium text-white shadow-lg group-hover:block group-focus-visible:block">
+        {label}
+      </span>
+    </button>
+  );
+}
+
+function PanelHeading({
+  icon: Icon,
+  title,
+  detail,
+  trailing,
+}: {
+  icon: ElementType;
+  title: string;
+  detail: string;
+  trailing?: ReactNode;
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-2.5 border-b border-zinc-200/80 bg-white px-3 py-3">
+      <div className="grid size-7 place-items-center rounded-lg bg-[#e9f0fb] text-[#00357B]">
+        <Icon className="size-3.5" strokeWidth={2.2} />
+      </div>
+      <div className="min-w-0">
+        <div className="text-xs font-semibold tracking-tight text-zinc-900">{title}</div>
+        <div className="truncate text-[10px] text-zinc-400">{detail}</div>
+      </div>
+      {trailing ? <div className="ml-auto">{trailing}</div> : null}
+    </div>
+  );
+}
+
 function LayerListContent({
-  activePage,
   layersList,
   sensors,
   onLayerDragEnd,
 }: {
-  activePage: BuilderPage;
   layersList: BuilderNode[];
   sensors: SensorDescriptor<SensorOptions>[];
   onLayerDragEnd: (event: DragEndEvent) => void;
 }) {
   return (
-    <ScrollArea className="min-h-0 flex-1">
+    <ScrollArea className="min-h-0 flex-1 px-2.5 py-2">
       <DndContext sensors={sensors} onDragEnd={onLayerDragEnd}>
-        <SortableContext
-          items={layersList.map((n) => n.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {layersList.map((node) => (
-            <SortableLayer key={node.id} node={node} />
-          ))}
+        <SortableContext items={layersList.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-1.5">
+            {layersList.map((node) => (
+              <SortableLayer key={node.id} node={node} />
+            ))}
+          </div>
         </SortableContext>
       </DndContext>
     </ScrollArea>
@@ -215,16 +282,18 @@ function AddComponentList({
   onAddNode: (type: BuilderComponentType) => void;
 }) {
   return (
-    <div className="shrink-0 border-t border-zinc-100 p-2">
-      <div className="mb-1 flex items-center gap-1 px-1">
-        <Shapes className="size-3 text-zinc-300" />
-        <span className="text-[9px] font-semibold uppercase tracking-widest text-zinc-300">
-          Add
-        </span>
-        <span className="text-zinc-300">/</span>
-        <span className="text-zinc-500 text-[9px] normal-case">{activePage}</span>
-      </div>
-      <div className="grid grid-cols-1 gap-0.5">
+    <ScrollArea className="min-h-0 flex-1">
+      <div className="p-3">
+        <div className="mb-3 rounded-xl border border-[#d9e6f7] bg-[#f3f7fd] px-3 py-2.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[#00357B]">
+            <Shapes className="size-3.5" />
+            Add to {activePage}
+          </div>
+          <p className="mt-1 text-[10px] leading-4 text-[#587292]">
+            Choose a component, then position it on the canvas.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-1.5">
         {PAGE_COMPONENTS[activePage]
           .filter((type) => !(isOverlayMode && type === "text"))
           .map((type) => {
@@ -235,16 +304,18 @@ function AddComponentList({
                 key={type}
                 type="button"
                 onClick={() => onAddNode(type)}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+                className="group flex min-h-11 items-center gap-2.5 rounded-xl border border-zinc-200/80 bg-white px-2.5 text-left text-xs text-zinc-600 shadow-sm shadow-zinc-950/[0.02] transition-all duration-200 hover:-translate-y-px hover:border-[#a9c4e7] hover:bg-[#f8fbff] hover:text-[#00357B] hover:shadow-md hover:shadow-blue-950/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]"
               >
-                <span className="flex size-4 shrink-0 items-center justify-center text-[11px] text-zinc-400">
-                  <Icon className="size-[18px]" />
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-zinc-100 text-zinc-500 transition-colors group-hover:bg-[#e9f0fb] group-hover:text-[#00357B]">
+                  <Icon className="size-3.5" strokeWidth={2.2} />
                 </span>
-                <span>{meta.label}</span>
+                <span className="font-medium">{meta.label}</span>
+                <Plus className="ml-auto size-3.5 text-zinc-300 transition-colors group-hover:text-[#00357B]" />
               </button>
             );
           })}
+        </div>
       </div>
-    </div>
+    </ScrollArea>
   );
 }

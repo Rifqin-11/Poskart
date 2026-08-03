@@ -38,7 +38,7 @@ export function VisualPageTabs({
     return (
       <div
         data-builder-tour="pages"
-        className="flex min-w-0 items-center gap-1 rounded-lg bg-zinc-100 p-0.5"
+        className="flex min-w-0 items-center gap-1 rounded-xl border border-zinc-200/80 bg-white p-0.5 shadow-sm shadow-zinc-950/[0.03]"
       >
         <label className="relative flex h-8 min-w-0 items-center gap-1.5 rounded-md bg-white px-2 shadow-sm">
           <span className="hidden text-[10px] font-medium text-zinc-400 sm:inline">
@@ -93,7 +93,7 @@ export function VisualPageTabs({
   return (
     <div
       data-builder-tour="pages"
-      className="flex items-center gap-1 rounded-lg bg-zinc-100 p-0.5"
+        className="flex items-center gap-1 rounded-xl border border-zinc-200/80 bg-white p-0.5 shadow-sm shadow-zinc-950/[0.03]"
     >
       {pageLabels.map((page) => {
         const isEnabled =
@@ -104,10 +104,10 @@ export function VisualPageTabs({
           <div
             key={page}
             className={cn(
-              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium capitalize transition-all",
+              "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium capitalize transition-all duration-200",
               isActive
-                ? "bg-white text-zinc-950 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-800",
+                ? "bg-[#dce9f8] text-[#174a7e] shadow-sm shadow-blue-950/[0.07]"
+                : "text-zinc-500 hover:bg-[#edf3fb] hover:text-[#00357B]",
               !isEnabled && "opacity-75",
             )}
           >
@@ -140,7 +140,9 @@ export function VisualPageTabs({
               className={cn(
                 "grid size-4 place-items-center rounded transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400",
                 isEnabled
-                  ? "text-zinc-400 hover:bg-zinc-200/60 hover:text-zinc-800"
+                  ? isActive
+                    ? "text-[#5c7fa5] hover:bg-white/70 hover:text-[#174a7e]"
+                    : "text-zinc-400 hover:bg-[#dce9f8] hover:text-[#00357B]"
                   : "bg-amber-100/80 text-amber-700 hover:bg-amber-200 hover:text-amber-800",
               )}
             >

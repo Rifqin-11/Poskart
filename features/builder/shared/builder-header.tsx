@@ -47,7 +47,7 @@ export function BuilderHeader({
 }) {
   if (compact) {
     return (
-      <div className="relative z-40 flex h-14 shrink-0 items-center gap-1.5 border-b border-zinc-200 bg-white px-2">
+      <div className="relative z-40 flex h-14 shrink-0 items-center gap-1.5 border-b border-zinc-200/80 bg-[#fcfcfb] px-2 shadow-sm shadow-zinc-950/[0.02]">
         <BuilderToolbarButton onClick={onBack} title="Back">
           <ArrowLeft className="size-4" />
           <span className="hidden sm:inline">Back</span>
@@ -108,7 +108,7 @@ export function BuilderHeader({
             type="button"
             onClick={onSave}
             disabled={isSaving}
-            className="flex h-8 items-center gap-1.5 rounded-md bg-zinc-900 px-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-700 disabled:opacity-60"
+            className="flex h-8 items-center gap-1.5 rounded-lg bg-[#00357B] px-2.5 text-xs font-semibold text-white shadow-sm shadow-blue-950/20 transition-all hover:-translate-y-px hover:bg-[#002a62] disabled:opacity-60"
           >
             <Save className="size-3.5" />
             <span className="hidden sm:inline">
@@ -121,7 +121,7 @@ export function BuilderHeader({
   }
 
   return (
-    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-3">
+    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-zinc-200/80 bg-[#fcfcfb] px-3 shadow-sm shadow-zinc-950/[0.02]">
       <BuilderToolbarButton onClick={onBack} title="Back">
         <ArrowLeft className="size-3.5" />
         Back
@@ -184,7 +184,7 @@ export function BuilderHeader({
             data-builder-tour="tutorial"
             onClick={onShowTutorial}
             title="Show tutorial"
-            className="text-[#00357B] hover:bg-blue-50 hover:text-[#00357B]"
+            className="text-[#00357B] hover:bg-[#e9f0fb] hover:text-[#00357B]"
           >
             <CircleHelp className="size-3.5" />
             <span className="hidden lg:inline">Show tutorial</span>
@@ -197,7 +197,7 @@ export function BuilderHeader({
           onClick={onSave}
           disabled={isSaving}
           className={cn(
-            "flex items-center gap-1.5 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-700 disabled:opacity-60",
+            "flex items-center gap-1.5 rounded-lg bg-[#00357B] px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-950/20 transition-all hover:-translate-y-px hover:bg-[#002a62] disabled:opacity-60",
           )}
         >
           <Save className="size-3.5" />
