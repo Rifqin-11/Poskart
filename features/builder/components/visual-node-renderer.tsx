@@ -562,12 +562,69 @@ export function NodeRenderer({
   }
 
   if (node.type === "photo-result") {
+    const photoResultMode = readString(node.props.photoResultMode, "grid");
+    const radius = readNumber(node.props.radius, 8);
+
+    if (photoResultMode === "frame") {
+      // Frame mode: show a placeholder that mimics how FrameTemplatePreview looks
+      // in Flutter — frame image overlaid with photo slots, BoxFit.contain applied
+      const sampleCount = readNumber(node.props.samplePhotoCount, 4);
+      return (
+        <div
+          className="relative flex h-full w-full items-center justify-center overflow-hidden border-2 border-dashed border-teal-400 bg-teal-50/70 p-2"
+          style={{ borderRadius: radius }}
+        >
+          <div className="pointer-events-none flex h-full w-full flex-col gap-1.5">
+            {/* header badge */}
+            <div className="flex items-center justify-between gap-2 shrink-0">
+              <span className="rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-teal-600 shadow-sm">
+                Photo Result
+              </span>
+              <span className="rounded-full bg-teal-600 px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm">
+                Frame View
+              </span>
+            </div>
+            {/* frame preview placeholder — mimics BoxFit.contain */}
+            <div className="relative min-h-0 flex-1 flex items-center justify-center">
+              <div className="relative w-full h-full border-2 border-dashed border-teal-300/60 rounded bg-white/40 flex items-center justify-center">
+                {/* simulated photo slots inside frame */}
+                <div
+                  className="grid gap-1 p-2 w-full h-full"
+                  style={{
+                    gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(sampleCount))}, minmax(0, 1fr))`,
+                    gridTemplateRows: `repeat(${Math.ceil(sampleCount / Math.ceil(Math.sqrt(sampleCount)))}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {Array.from({ length: sampleCount }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded bg-white border border-teal-200/60 min-h-0"
+                    />
+                  ))}
+                </div>
+                {/* frame overlay hint */}
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                  <span className="rounded bg-teal-600/80 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                    frame overlay
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="text-center font-mono text-[10px] text-teal-600/80 shrink-0">
+              BoxFit.contain · ratio preserved
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Default grid mode
     const grid = calculatePhotoResultGrid(node);
     return (
       <div
         className="relative h-full w-full overflow-hidden border-2 border-dashed border-teal-400 bg-teal-50/70 p-2"
         style={{
-          borderRadius: readNumber(node.props.radius, 8),
+          borderRadius: radius,
         }}
       >
         <div className="pointer-events-none flex h-full w-full flex-col gap-1.5">
