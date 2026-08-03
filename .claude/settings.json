@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(rtk find *)",
-      "Bash(rtk git *)"
+      "Bash(rtk git *)",
+      "Bash(rtk read *)",
+      "Bash(mv /tmp/canvas_fixed.tsx features/builder/components/visual-canvas-controls.tsx)"
     ]
   }
 }

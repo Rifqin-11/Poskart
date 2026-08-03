@@ -73,3 +73,41 @@ export function PanelSection({
     </div>
   );
 }
+
+export type InspectorTab = "content" | "style" | "layout" | "advanced";
+export type CanvasTab = "device" | "background" | "motion";
+
+export function InspectorTabs({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: { id: string; label: string }[];
+  active: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      className="flex gap-0.5 rounded-lg bg-zinc-100 p-0.5"
+    >
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          role="tab"
+          aria-selected={active === tab.id}
+          onClick={() => onChange(tab.id)}
+          className={cn(
+            "flex-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors",
+            active === tab.id
+              ? "bg-white text-zinc-900 shadow-sm"
+              : "text-zinc-500 hover:text-zinc-700",
+          )}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}

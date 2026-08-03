@@ -12,141 +12,246 @@ import type { BuilderNode } from "@/types/builder";
 export function VisualCountdownProperties({
   selectedNode,
   updateNodeProps,
+  section,
 }: {
   selectedNode: BuilderNode;
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
+  section?: "content" | "style" | "advanced";
 }) {
   if (selectedNode.type === "return-countdown") {
-    return (
-      <PanelSection
-        title="Return Countdown"
-        icon={<RotateCcw className="size-3.5 text-zinc-500" />}
-      >
-        <div className="space-y-2 text-xs text-zinc-500">
-          <label className="block">
-            Label
-            <Input
-              className="mt-1"
-              value={readString(selectedNode.props.countdownText, "Kembali ke halaman awal")}
-              placeholder="Kembali ke halaman awal"
-              onChange={(event) =>
-                updateNodeProps(selectedNode.id, { countdownText: event.target.value })
+    if (section === "content") {
+      return (
+        <PanelSection
+          title="Auto Return Timer"
+          icon={<RotateCcw className="size-3.5 text-zinc-500" />}
+        >
+          <div className="space-y-2 text-xs text-zinc-500">
+            <label className="block">
+              Label
+              <Input
+                className="mt-1"
+                value={readString(selectedNode.props.countdownText, "Kembali ke halaman awal")}
+                placeholder="Kembali ke halaman awal"
+                onChange={(event) =>
+                  updateNodeProps(selectedNode.id, { countdownText: event.target.value })
+                }
+              />
+            </label>
+          </div>
+        </PanelSection>
+      );
+    }
+
+    if (section === "style") {
+      return (
+        <PanelSection
+          title="Auto Return Timer"
+          icon={<RotateCcw className="size-3.5 text-zinc-500" />}
+        >
+          <div className="space-y-2 text-xs text-zinc-500">
+            <ColorField
+              label="Text color"
+              value={readString(selectedNode.props.textColor, "#000000")}
+              onChange={(value) =>
+                updateNodeProps(selectedNode.id, { textColor: value })
               }
             />
-          </label>
-          <CountdownDurationInput
-            disabled={false}
-            value={readNumber(selectedNode.props.countdownSeconds, 8)}
-            min={3}
-            max={60}
-            onChange={(value) =>
-              updateNodeProps(selectedNode.id, { countdownSeconds: value })
-            }
-          />
-          <ColorField
-            label="Text color"
-            value={readString(selectedNode.props.textColor, "#000000")}
-            onChange={(value) =>
-              updateNodeProps(selectedNode.id, { textColor: value })
-            }
-          />
-          <ColorField
-            label="Progress bar color"
-            value={readString(selectedNode.props.progressColor, "#27272A")}
-            onChange={(value) =>
-              updateNodeProps(selectedNode.id, { progressColor: value })
-            }
-          />
-        </div>
-      </PanelSection>
-    );
+            <ColorField
+              label="Progress bar color"
+              value={readString(selectedNode.props.progressColor, "#27272A")}
+              onChange={(value) =>
+                updateNodeProps(selectedNode.id, { progressColor: value })
+              }
+            />
+          </div>
+        </PanelSection>
+      );
+    }
+
+    if (section === "advanced") {
+      return (
+        <PanelSection
+          title="Auto Return Timer"
+          icon={<RotateCcw className="size-3.5 text-zinc-500" />}
+        >
+          <div className="space-y-2 text-xs text-zinc-500">
+            <CountdownDurationInput
+              disabled={false}
+              value={readNumber(selectedNode.props.countdownSeconds, 8)}
+              min={3}
+              max={60}
+              onChange={(value) =>
+                updateNodeProps(selectedNode.id, { countdownSeconds: value })
+              }
+            />
+          </div>
+        </PanelSection>
+      );
+    }
+
+    return null;
   }
 
   if (selectedNode.type === "session-countdown") {
-    return (
-      <PanelSection
-        title="Session Countdown"
-        icon={<Clock className="size-3.5 text-zinc-500" />}
-      >
-        <div className="space-y-2 text-xs text-zinc-500">
-          <label className="block">
-            Label
-            <Input
-              className="mt-1"
-              value={readString(selectedNode.props.label, "Session ends in")}
-              placeholder="Session ends in"
-              onChange={(event) =>
-                updateNodeProps(selectedNode.id, { label: event.target.value })
+    if (section === "content") {
+      return (
+        <PanelSection
+          title="Session Timer"
+          icon={<Clock className="size-3.5 text-zinc-500" />}
+        >
+          <div className="space-y-2 text-xs text-zinc-500">
+            <label className="block">
+              Label
+              <Input
+                className="mt-1"
+                value={readString(selectedNode.props.label, "Session ends in")}
+                placeholder="Session ends in"
+                onChange={(event) =>
+                  updateNodeProps(selectedNode.id, { label: event.target.value })
+                }
+              />
+            </label>
+            <CountdownGlobalToggle
+              checked={selectedNode.props.useGlobalDuration === true}
+              description="Use the session duration from device settings."
+              onChange={(value) =>
+                updateNodeProps(selectedNode.id, { useGlobalDuration: value })
               }
             />
-          </label>
-          <CountdownGlobalToggle
-            checked={selectedNode.props.useGlobal !== false}
-            description="When checked, Flutter reads the device session_countdown_seconds or app_config fallback."
-            onChange={(checked) =>
-              updateNodeProps(selectedNode.id, { useGlobal: checked })
-            }
-          />
-          <CountdownDurationInput
-            disabled={selectedNode.props.useGlobal !== false}
-            value={readNumber(selectedNode.props.countdownSeconds, 300)}
-            min={30}
-            max={1800}
-            onChange={(value) =>
-              updateNodeProps(selectedNode.id, { countdownSeconds: value })
-            }
-          />
-          <div className="rounded border border-rose-200 bg-rose-50 p-2 text-[10px] leading-4 text-rose-600">
-            <strong>Flutter:</strong> total time across template, camera,
-            preview, and thanks. When the timer hits 0, the app auto-returns to
-            Landing.
           </div>
-        </div>
-      </PanelSection>
-    );
+        </PanelSection>
+      );
+    }
+
+    if (section === "style") {
+      return (
+        <PanelSection
+          title="Session Timer"
+          icon={<Clock className="size-3.5 text-zinc-500" />}
+        >
+          <div className="space-y-2 text-xs text-zinc-500">
+            <ColorField
+              label="Text color"
+              value={readString(selectedNode.props.textColor, "#000000")}
+              onChange={(value) =>
+                updateNodeProps(selectedNode.id, { textColor: value })
+              }
+            />
+            <ColorField
+              label="Progress bar color"
+              value={readString(selectedNode.props.progressColor, "#27272A")}
+              onChange={(value) =>
+                updateNodeProps(selectedNode.id, { progressColor: value })
+              }
+            />
+          </div>
+        </PanelSection>
+      );
+    }
+
+    if (section === "advanced") {
+      return (
+        <PanelSection
+          title="Session Timer"
+          icon={<Clock className="size-3.5 text-zinc-500" />}
+        >
+          <div className="space-y-2 text-xs text-zinc-500">
+            <CountdownDurationInput
+              disabled={selectedNode.props.useGlobalDuration === true}
+              value={readNumber(selectedNode.props.durationSeconds, 60)}
+              min={10}
+              max={3600}
+              onChange={(value) =>
+                updateNodeProps(selectedNode.id, { durationSeconds: value })
+              }
+            />
+          </div>
+        </PanelSection>
+      );
+    }
+
+    return null;
   }
 
   if (selectedNode.type === "payment-countdown") {
-    return (
-      <PanelSection
-        title="Payment Countdown"
-        icon={<CreditCard className="size-3.5 text-zinc-500" />}
-      >
-        <div className="space-y-2 text-xs text-zinc-500">
-          <label className="block">
-            Label
-            <Input
-              className="mt-1"
-              value={readString(selectedNode.props.label, "Pay within")}
-              placeholder="Pay within"
-              onChange={(event) =>
-                updateNodeProps(selectedNode.id, { label: event.target.value })
+    if (section === "content") {
+      return (
+        <PanelSection
+          title="Payment Timer"
+          icon={<CreditCard className="size-3.5 text-zinc-500" />}
+        >
+          <div className="space-y-2 text-xs text-zinc-500">
+            <label className="block">
+              Label
+              <Input
+                className="mt-1"
+                value={readString(selectedNode.props.label, "Payment expires in")}
+                placeholder="Payment expires in"
+                onChange={(event) =>
+                  updateNodeProps(selectedNode.id, { label: event.target.value })
+                }
+              />
+            </label>
+            <CountdownGlobalToggle
+              checked={selectedNode.props.useGlobalDuration === true}
+              description="Use the payment timeout from device settings."
+              onChange={(value) =>
+                updateNodeProps(selectedNode.id, { useGlobalDuration: value })
               }
             />
-          </label>
-          <CountdownGlobalToggle
-            checked={selectedNode.props.useGlobal !== false}
-            description="When checked, Flutter reads the device payment_countdown_seconds."
-            onChange={(checked) =>
-              updateNodeProps(selectedNode.id, { useGlobal: checked })
-            }
-          />
-          <CountdownDurationInput
-            disabled={selectedNode.props.useGlobal !== false}
-            value={readNumber(selectedNode.props.countdownSeconds, 60)}
-            min={10}
-            max={600}
-            onChange={(value) =>
-              updateNodeProps(selectedNode.id, { countdownSeconds: value })
-            }
-          />
-          <div className="rounded border border-emerald-200 bg-emerald-50 p-2 text-[10px] leading-4 text-emerald-700">
-            <strong>Flutter:</strong> when the QRIS payment timer reaches 0,
-            the payment dialog cancels and returns to Landing.
           </div>
-        </div>
-      </PanelSection>
-    );
+        </PanelSection>
+      );
+    }
+
+    if (section === "style") {
+      return (
+        <PanelSection
+          title="Payment Timer"
+          icon={<CreditCard className="size-3.5 text-zinc-500" />}
+        >
+          <div className="space-y-2 text-xs text-zinc-500">
+            <ColorField
+              label="Text color"
+              value={readString(selectedNode.props.textColor, "#000000")}
+              onChange={(value) =>
+                updateNodeProps(selectedNode.id, { textColor: value })
+              }
+            />
+            <ColorField
+              label="Progress bar color"
+              value={readString(selectedNode.props.progressColor, "#27272A")}
+              onChange={(value) =>
+                updateNodeProps(selectedNode.id, { progressColor: value })
+              }
+            />
+          </div>
+        </PanelSection>
+      );
+    }
+
+    if (section === "advanced") {
+      return (
+        <PanelSection
+          title="Payment Timer"
+          icon={<CreditCard className="size-3.5 text-zinc-500" />}
+        >
+          <div className="space-y-2 text-xs text-zinc-500">
+            <CountdownDurationInput
+              disabled={selectedNode.props.useGlobalDuration === true}
+              value={readNumber(selectedNode.props.durationSeconds, 300)}
+              min={30}
+              max={3600}
+              onChange={(value) =>
+                updateNodeProps(selectedNode.id, { durationSeconds: value })
+              }
+            />
+          </div>
+        </PanelSection>
+      );
+    }
+
+    return null;
   }
 
   return null;

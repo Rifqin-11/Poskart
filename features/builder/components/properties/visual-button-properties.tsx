@@ -19,54 +19,72 @@ export function VisualButtonProperties({
   uploading,
   onImageUpload,
   updateNodeProps,
+  section,
 }: {
   selectedNode: BuilderNode;
   uploading: boolean;
   onImageUpload: (file?: File) => void;
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
+  section?: "content" | "style" | "advanced";
 }) {
-  return (
-    <PanelSection
-      title="Button"
-      icon={<PaintBucket className="size-3.5 text-zinc-500" />}
-    >
-      <ColorField
-        label="Button color"
-        value={readString(selectedNode.props.background, "#18181b")}
-        onChange={(value) =>
-          updateNodeProps(selectedNode.id, { background: value })
-        }
-      />
-      <label className="text-xs font-medium text-zinc-500">
-        Radius
-        <Input
-          className="mt-1"
-          type="number"
-          value={readNumber(selectedNode.props.radius, 6)}
-          onChange={(event) =>
-            updateNodeProps(selectedNode.id, {
-              radius: Number(event.target.value),
-            })
+  // content: semantic role + page role (behavior/action bindings)
+  if (section === "content") {
+    return (
+      <PanelSection
+        title="Button"
+        icon={<PaintBucket className="size-3.5 text-zinc-500" />}
+      >
+        <ButtonSemanticRole
+          selectedNode={selectedNode}
+          updateNodeProps={updateNodeProps}
+        />
+      </PanelSection>
+    );
+  }
+
+  // style: visual design — color, radius, image, svg icon
+  if (section === "style") {
+    return (
+      <PanelSection
+        title="Button"
+        icon={<PaintBucket className="size-3.5 text-zinc-500" />}
+      >
+        <ColorField
+          label="Button color"
+          value={readString(selectedNode.props.background, "#18181b")}
+          onChange={(value) =>
+            updateNodeProps(selectedNode.id, { background: value })
           }
         />
-      </label>
+        <label className="text-xs font-medium text-zinc-500">
+          Radius
+          <Input
+            className="mt-1"
+            type="number"
+            value={readNumber(selectedNode.props.radius, 6)}
+            onChange={(event) =>
+              updateNodeProps(selectedNode.id, {
+                radius: Number(event.target.value),
+              })
+            }
+          />
+        </label>
+        <ButtonImageDesign
+          selectedNode={selectedNode}
+          uploading={uploading}
+          onImageUpload={onImageUpload}
+          updateNodeProps={updateNodeProps}
+        />
+        <ButtonSvgIcon
+          selectedNode={selectedNode}
+          updateNodeProps={updateNodeProps}
+        />
+      </PanelSection>
+    );
+  }
 
-      <ButtonImageDesign
-        selectedNode={selectedNode}
-        uploading={uploading}
-        onImageUpload={onImageUpload}
-        updateNodeProps={updateNodeProps}
-      />
-      <ButtonSemanticRole
-        selectedNode={selectedNode}
-        updateNodeProps={updateNodeProps}
-      />
-      <ButtonSvgIcon
-        selectedNode={selectedNode}
-        updateNodeProps={updateNodeProps}
-      />
-    </PanelSection>
-  );
+  // advanced: nothing button-specific — node info shown by parent panel
+  return null;
 }
 
 function ButtonImageDesign({

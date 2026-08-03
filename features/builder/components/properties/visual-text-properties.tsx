@@ -34,11 +34,13 @@ export function VisualTextProperties({
   selectedNode,
   updateCanvas,
   updateNodeProps,
+  section,
 }: {
   canvas: BuilderCanvas;
   selectedNode: BuilderNode;
   updateCanvas: (patch: Partial<BuilderCanvas>) => void;
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
+  section?: "content" | "style" | "advanced";
 }) {
   const [fontName, setFontName] = useState("");
   const [fontUrl, setFontUrl] = useState("");
@@ -69,17 +71,14 @@ export function VisualTextProperties({
     setFontUrl("");
   };
 
-  return (
-    <PanelSection
-      title="Text"
-      icon={<Type className="size-3.5 text-zinc-500" />}
-    >
-      {isLiveTextNode ? (
-        <div className="rounded-md border border-blue-100 bg-blue-50 px-2 py-1.5 text-[10px] leading-4 text-blue-700">
-          Teks otomatis dari kamera (countdown / jumlah foto). Hanya warna, font,
-          dan ukuran yang bisa diatur.
-        </div>
-      ) : (
+  // content: editable text value
+  if (section === "content") {
+    if (isLiveTextNode) return null;
+    return (
+      <PanelSection
+        title="Text"
+        icon={<Type className="size-3.5 text-zinc-500" />}
+      >
         <label className="block text-xs font-medium text-zinc-500">
           Content
           <Input
@@ -98,119 +97,174 @@ export function VisualTextProperties({
             }
           />
         </label>
-      )}
+      </PanelSection>
+    );
+  }
 
-      <label className="block text-xs font-medium text-zinc-500">
-        Font family
-        <Select
-          className="mt-1"
-          value={readString(selectedNode.props.fontFamily, "")}
-          onChange={(event) =>
-            updateNodeProps(selectedNode.id, {
-              fontFamily: event.target.value || "inherit",
-            })
-          }
-        >
-          <option value="">System default</option>
-          <optgroup label="Google Fonts">
-            {GOOGLE_FONT_OPTIONS.map((font) => (
-              <option key={font.value} value={font.value}>
-                {font.label}
-              </option>
-            ))}
-          </optgroup>
-          {customFonts.length > 0 && (
-            <optgroup label="Custom fonts">
-              {customFonts.map((font) => (
-                <option key={font.name} value={`'${font.name}', sans-serif`}>
-                  {font.name}
+  // style: font, size, weight, color, alignment, style controls
+  if (section === "style") {
+    return (
+      <PanelSection
+        title="Text"
+        icon={<Type className="size-3.5 text-zinc-500" />}
+      >
+        {isLiveTextNode && selectedNode.type !== "camera-timer" && (
+          <div className="rounded-md border border-blue-100 bg-blue-50 px-2 py-1.5 text-[10px] leading-4 text-blue-700">
+            Teks ini diisi otomatis oleh kamera saat sesi berjalan. Hanya warna, font, dan ukuran yang bisa diatur.
+          </div>
+        )}
+        <label className="block text-xs font-medium text-zinc-500">
+          Font family
+          <Select
+            className="mt-1"
+            value={readString(selectedNode.props.fontFamily, "")}
+            onChange={(event) =>
+              updateNodeProps(selectedNode.id, {
+                fontFamily: event.target.value || "inherit",
+              })
+            }
+          >
+            <option value="">System default</option>
+            <optgroup label="Google Fonts">
+              {GOOGLE_FONT_OPTIONS.map((font) => (
+                <option key={font.value} value={font.value}>
+                  {font.label}
                 </option>
               ))}
             </optgroup>
-          )}
-        </Select>
-      </label>
+            {customFonts.length > 0 && (
+              <optgroup label="Custom fonts">
+                {customFonts.map((font) => (
+                  <option key={font.name} value={`'${font.name}', sans-serif`}>
+                    {font.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </Select>
+        </label>
+        <ColorField
+          label="Text color"
+          value={readString(selectedNode.props.color, "#18181b")}
+          onChange={(value) => updateNodeProps(selectedNode.id, { color: value })}
+        />
+        <TextAlignmentControls
+          selectedNode={selectedNode}
+          updateNodeProps={updateNodeProps}
+        />
+        <TextStyleControls
+          selectedNode={selectedNode}
+          updateNodeProps={updateNodeProps}
+        />
+        <TextMetricsControls
+          selectedNode={selectedNode}
+          updateNodeProps={updateNodeProps}
+        />
+      </PanelSection>
+    );
+  }
 
-      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-2 text-xs">
-        <div className="mb-1.5 font-semibold text-zinc-600">
-          Import custom font
-        </div>
-        <label className="block text-zinc-500">
-          Font name
-          <Input
-            className="mt-0.5"
-            placeholder="e.g. MyBrand"
-            value={fontName}
-            onChange={(event) => setFontName(event.target.value)}
-          />
-        </label>
-        <label className="mt-1 block text-zinc-500">
-          CSS URL (Google Fonts / CDN)
-          <Input
-            className="mt-0.5"
-            placeholder="https://fonts.googleapis.com/css2?family=..."
-            value={fontUrl}
-            onChange={(event) => setFontUrl(event.target.value)}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={loadCustomFont}
-          className="mt-1.5 w-full rounded bg-zinc-800 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-zinc-700"
-        >
-          Load font
-        </button>
-        {customFonts.length > 0 && (
-          <div className="mt-2 space-y-0.5">
-            {customFonts.map((font) => (
-              <div
-                key={font.name}
-                className="flex items-center justify-between rounded bg-white px-1.5 py-0.5 text-[10px] text-zinc-600"
-              >
-                <span style={{ fontFamily: `'${font.name}', sans-serif` }}>
-                  {font.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateCanvas({
-                      customFonts: customFonts.filter(
-                        (item) => item.name !== font.name,
-                      ),
-                    })
-                  }
-                  className="text-zinc-400 hover:text-red-500"
-                >
-                  x
-                </button>
-              </div>
-            ))}
+  // advanced: custom font import + semantic role (Flutter binding)
+  if (section === "advanced") {
+    return (
+      <PanelSection
+        title="Text"
+        icon={<Type className="size-3.5 text-zinc-500" />}
+      >
+        <div className="rounded-md border border-zinc-200 bg-zinc-50 p-2 text-xs">
+          <div className="mb-1.5 font-semibold text-zinc-600">
+            Import custom font
           </div>
+          <label className="block text-zinc-500">
+            Font name
+            <Input
+              className="mt-0.5"
+              placeholder="e.g. MyBrand"
+              value={fontName}
+              onChange={(event) => setFontName(event.target.value)}
+            />
+          </label>
+          <label className="mt-1 block text-zinc-500">
+            CSS URL (Google Fonts / CDN)
+            <Input
+              className="mt-0.5"
+              placeholder="https://fonts.googleapis.com/css2?family=..."
+              value={fontUrl}
+              onChange={(event) => setFontUrl(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={loadCustomFont}
+            className="mt-1.5 w-full rounded bg-zinc-800 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-zinc-700"
+          >
+            Load font
+          </button>
+          {customFonts.length > 0 && (
+            <div className="mt-2 space-y-0.5">
+              {customFonts.map((font) => (
+                <div
+                  key={font.name}
+                  className="flex items-center justify-between rounded bg-white px-1.5 py-0.5 text-[10px] text-zinc-600"
+                >
+                  <span style={{ fontFamily: `'${font.name}', sans-serif` }}>
+                    {font.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateCanvas({
+                        customFonts: customFonts.filter(
+                          (item) => item.name !== font.name,
+                        ),
+                      })
+                    }
+                    className="text-zinc-400 hover:text-red-500"
+                  >
+                    x
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {selectedNode.page === "camera" &&
+          !isLiveTextNode &&
+          selectedNode.type !== "button" && (
+          <label className="block text-xs font-medium text-zinc-500">
+            <div className="mb-1 flex items-center gap-1.5">
+              Semantic Role
+              <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+                Flutter binding
+              </span>
+            </div>
+            <Select
+              className="mt-0 font-mono text-xs"
+              value={readString(selectedNode.props.semanticRole ?? "", "")}
+              onChange={(event) =>
+                updateNodeProps(selectedNode.id, {
+                  semanticRole: event.target.value || null,
+                })
+              }
+            >
+              <option value="">unassigned</option>
+              <optgroup label="camera">
+                {SEMANTIC_ROLES.filter((role) =>
+                  PAGE_ROLES.camera.includes(role.value),
+                ).map((role) => (
+                  <option key={role.value} value={role.value}>
+                    {role.label}
+                  </option>
+                ))}
+              </optgroup>
+            </Select>
+          </label>
         )}
-      </div>
+      </PanelSection>
+    );
+  }
 
-      <TextAlignmentControls
-        selectedNode={selectedNode}
-        updateNodeProps={updateNodeProps}
-      />
-      <TextStyleControls
-        selectedNode={selectedNode}
-        updateNodeProps={updateNodeProps}
-      />
-      <TextMetricsControls
-        selectedNode={selectedNode}
-        updateNodeProps={updateNodeProps}
-      />
-      <ColorField
-        label={selectedNode.type === "button" ? "Text color" : "Color"}
-        value={readString(
-          selectedNode.props.color,
-          selectedNode.type === "button" ? "#ffffff" : "#18181b",
-        )}
-        onChange={(value) => updateNodeProps(selectedNode.id, { color: value })}
-      />
-    </PanelSection>
-  );
+  return null;
 }
 
 function TextAlignmentControls({
