@@ -118,6 +118,16 @@ function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width:
   ctx.closePath();
 }
 
+function toProxiedUrl(src: string): string {
+  // blob: and data: URLs are local — no proxy needed
+  if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+  try {
+    return `/api/admin/builder/image-proxy?url=${encodeURIComponent(src)}`;
+  } catch {
+    return src;
+  }
+}
+
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -287,7 +297,7 @@ async function renderFrameToCanvas(
       if (src) {
         let image = imageCache.get(src);
         if (!image) {
-          image = await loadImage(src);
+          image = await loadImage(toProxiedUrl(src));
           imageCache.set(src, image);
         }
         const radius = readNumber(node.props.radius, node.type === "background" ? 0 : 8);

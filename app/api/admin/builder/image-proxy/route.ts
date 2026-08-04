@@ -44,7 +44,7 @@ function parseAllowedBuilderImageUrl(rawUrl: string, organizationId: string) {
   if (sourceUrl.origin !== baseUrl.origin) return null;
 
   const key = decodeURIComponent(sourceUrl.pathname).replace(/^\/+/, "");
-  const allowedPrefix = `organizations/${organizationId}/builder/images/`;
+  const allowedPrefix = `organizations/${organizationId}/`;
   if (!key.startsWith(allowedPrefix)) return null;
 
   return sourceUrl.toString();
