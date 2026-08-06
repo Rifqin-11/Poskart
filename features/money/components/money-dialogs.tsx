@@ -12,6 +12,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -199,11 +200,10 @@ export function MoneyEntryDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-1.5 text-sm font-medium">
                 Transfer amount
-                <Input
-                  type="number"
+                <CurrencyInput
                   min={1}
-                  value={amount || ""}
-                  onChange={(event) => setAmount(Number(event.target.value))}
+                  value={amount || null}
+                  onValueChange={(value) => setAmount(value ?? 0)}
                   placeholder="0"
                   required
                 />
@@ -245,11 +245,10 @@ export function MoneyEntryDialog({
               </label>
               <label className="space-y-1.5 text-sm font-medium">
                 Transaction amount
-                <Input
-                  type="number"
+                <CurrencyInput
                   min={1}
-                  value={amount || ""}
-                  onChange={(event) => setAmount(Number(event.target.value))}
+                  value={amount || null}
+                  onValueChange={(value) => setAmount(value ?? 0)}
                   placeholder="0"
                   required
                 />
@@ -594,7 +593,7 @@ export function CategoryManagerDialog({
     >
       <div className="space-y-5">
         <p className="text-sm text-zinc-500">
-          Create custom categories for your organization's operational needs.
+          Create custom categories for your organization&apos;s operational needs.
           Default categories remain available to maintain report consistency.
         </p>
         <form

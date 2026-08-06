@@ -17,7 +17,7 @@ export const businessProfile = {
   taxNote:
     "Harga belum termasuk pajak yang berlaku, kecuali dinyatakan lain pada invoice atau kontrak.",
   billingNote:
-    "Subscription POSKART tersedia dalam paket Starter, Growth, dan Business dengan pilihan 1 bulan, 3 bulan, 6 bulan, dan 12 bulan. Device tambahan ditagihkan Rp 50K per device per bulan.",
+    "Subscription POSKART tersedia dalam paket Starter, Growth, dan Business dengan pilihan 1 bulan, 3 bulan, 6 bulan, dan 12 bulan. Device tambahan ditagihkan Rp 50.000 per device per bulan.",
   purchaseFlow:
     "Untuk berlangganan, pelanggan dapat memilih paket, lanjut ke halaman checkout, lalu menyelesaikan pembayaran melalui payment gateway yang tersedia.",
 };
@@ -154,7 +154,7 @@ export const pricingPlans: PricingPlan[] = PRICING_TIERS.flatMap((tier) =>
         "Theme and template CMS",
         "QRIS transaction monitoring",
         `${deviceLabel} included`,
-        "Additional device Rp 50K/device/month",
+        "Additional device Rp 50.000/device/month",
       ],
       limits: [duration.duration, `${deviceLabel} included`, tier.audience],
     } satisfies PricingPlan;

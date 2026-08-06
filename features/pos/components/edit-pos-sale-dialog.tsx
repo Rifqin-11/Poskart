@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -94,11 +95,10 @@ export function EditPosSaleDialog({
           </label>
           <label className="space-y-1.5 text-sm font-medium">
             Nominal
-            <Input
-              type="number"
+            <CurrencyInput
               min={0}
               value={amount}
-              onChange={(event) => setAmount(Number(event.target.value))}
+              onValueChange={(value) => setAmount(value ?? 0)}
               required
             />
           </label>

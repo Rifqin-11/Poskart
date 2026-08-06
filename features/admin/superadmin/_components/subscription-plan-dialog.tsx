@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Dialog } from "@/components/ui/dialog";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { DialogActions } from "@/features/admin/_components/dialog-actions";
@@ -80,14 +81,13 @@ export function SubscriptionPlanDialog({
           />
         </label>
         <label className="block text-xs font-medium text-zinc-600">
-          Base price (IDR)
-          <Input
+          Base price
+          <CurrencyInput
             className="mt-1"
-            type="number"
             min={0}
             value={form.basePrice}
-            onChange={(e) =>
-              setForm({ ...form, basePrice: Number(e.target.value) || 0 })
+            onValueChange={(basePrice) =>
+              setForm({ ...form, basePrice: basePrice ?? 0 })
             }
           />
         </label>
@@ -105,15 +105,15 @@ export function SubscriptionPlanDialog({
         </label>
         <label className="block text-xs font-medium text-zinc-600">
           Additional device price (monthly)
-          <Input
+          <CurrencyInput
             className="mt-1"
-            type="number"
             min={0}
             value={form.additionalDevicePriceMonthly}
-            onChange={(e) =>
+            onValueChange={(additionalDevicePriceMonthly) =>
               setForm({
                 ...form,
-                additionalDevicePriceMonthly: Number(e.target.value) || 0,
+                additionalDevicePriceMonthly:
+                  additionalDevicePriceMonthly ?? 0,
               })
             }
           />

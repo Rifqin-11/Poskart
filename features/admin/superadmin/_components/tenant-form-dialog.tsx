@@ -234,7 +234,7 @@ export function TenantFormDialog({
           {selectedSubscriptionPlan
             ? `${selectedSubscriptionPlan.name} includes ${includedDeviceCount} device${includedDeviceCount > 1 ? "s" : ""}. `
             : "Free Account includes 1 device. "}
-          Additional devices are billed at Rp 50K/device/month and should be
+          Additional devices are billed at Rp 50.000/device/month and should be
           reflected in this paid device limit.
         </div>
 

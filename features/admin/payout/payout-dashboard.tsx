@@ -20,7 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -469,17 +469,16 @@ export function PayoutDashboard({
                 Max
               </Button>
             </div>
-            <Input
+            <CurrencyInput
               id="payout-request-amount"
               className="h-11"
-              type="number"
               min={1}
               max={summary.availableGrossAmount}
               value={requestForm.amount}
-              onChange={(event) =>
+              onValueChange={(amount) =>
                 setRequestForm((current) => ({
                   ...current,
-                  amount: Number(event.target.value) || 0,
+                  amount: amount ?? 0,
                 }))
               }
             />

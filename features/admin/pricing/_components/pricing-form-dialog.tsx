@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Dialog } from "@/components/ui/dialog";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -72,15 +73,14 @@ export function PricingFormDialog({
           </span>
         </label>
         <label className="block text-xs font-medium text-zinc-600">
-          Price (IDR)
-          <Input
+          Price
+          <CurrencyInput
             className="mt-1"
-            type="number"
             min={0}
             value={form.accessMode === "event" ? 0 : form.price}
             disabled={form.accessMode === "event"}
-            onChange={(e) =>
-              setForm({ ...form, price: Number(e.target.value) })
+            onValueChange={(price) =>
+              setForm({ ...form, price: price ?? 0 })
             }
           />
         </label>
@@ -116,17 +116,15 @@ export function PricingFormDialog({
           </>
         ) : null}
         <label className="block text-xs font-medium text-zinc-600">
-          Promo price (IDR, optional)
-          <Input
+          Promo price (optional)
+          <CurrencyInput
             className="mt-1"
-            type="number"
             min={0}
-            value={form.promoPrice ?? ""}
-            onChange={(e) =>
+            value={form.promoPrice}
+            onValueChange={(promoPrice) =>
               setForm({
                 ...form,
-                promoPrice:
-                  e.target.value === "" ? undefined : Number(e.target.value),
+                promoPrice: promoPrice ?? undefined,
               })
             }
           />

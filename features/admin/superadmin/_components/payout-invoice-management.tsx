@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { TablePagination } from "@/components/ui/table-pagination";
@@ -613,15 +614,14 @@ function PayoutGlobalSettingsFields({
         />
         <label className="block min-w-0 text-xs font-medium text-zinc-600">
           Minimum request
-          <Input
+          <CurrencyInput
             className="mt-1.5 min-w-0 bg-white"
-            type="number"
             min={0}
             value={draft.minimumPayoutAmount}
-            onChange={(event) =>
+            onValueChange={(minimumPayoutAmount) =>
               setDraft((current) => ({
                 ...current,
-                minimumPayoutAmount: Number(event.target.value) || 0,
+                minimumPayoutAmount: minimumPayoutAmount ?? 0,
               }))
             }
           />
@@ -668,19 +668,27 @@ function FeeSettingField({
           <option value="percentage">%</option>
           <option value="fixed">Rp</option>
         </Select>
-        <Input
+        {isFixed ? (
+          <CurrencyInput
+            className="min-w-0 bg-white"
+            min={0}
+            value={fixedAmount}
+            onValueChange={(value) => onFixedAmountChange(value ?? 0)}
+          />
+        ) : (
+          <Input
           className="min-w-0 bg-white"
           type="number"
           min={0}
-          max={isFixed ? undefined : 100}
-          step={isFixed ? 1 : 0.01}
-          value={isFixed ? fixedAmount : percentage}
+          max={100}
+          step={0.01}
+          value={percentage}
           onChange={(event) => {
             const value = Number(event.target.value) || 0;
-            if (isFixed) onFixedAmountChange(value);
-            else onPercentageChange(value);
+            onPercentageChange(value);
           }}
-        />
+          />
+        )}
       </div>
     </div>
   );
