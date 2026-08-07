@@ -29,6 +29,22 @@ export async function POST(request: Request) {
       );
     }
 
+    if (refreshToken.startsWith("pkd_")) {
+      const context = await resolveKioskContext(refreshToken);
+      const bootstrap = await buildKioskBootstrap(
+        context,
+        body.deviceId,
+        body.hardwareId,
+      );
+      return jsonOk({
+        accessToken: refreshToken,
+        refreshToken,
+        expiresAt: null,
+        pairingRequired: false,
+        ...bootstrap,
+      });
+    }
+
     const authClient = createKioskAuthClient();
     const { data, error } = await authClient.auth.refreshSession({
       refresh_token: refreshToken,

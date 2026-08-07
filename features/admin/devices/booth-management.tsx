@@ -728,7 +728,7 @@ export function BoothManagement({
               <p className="font-medium text-zinc-950">Kode berasal dari tablet, bukan dari sini.</p>
               <ol className="mt-2 space-y-1 text-xs leading-5">
                 <li>1. Buka aplikasi POSKART Kiosk di tablet</li>
-                <li>2. Login dengan akun organisasi ini</li>
+                <li>2. Pilih Login dengan code</li>
                 <li>3. Kode 8 karakter muncul otomatis di layar tablet</li>
                 <li>4. Ketik kode tersebut di bawah — berlaku 10 menit</li>
               </ol>

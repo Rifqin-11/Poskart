@@ -5,6 +5,7 @@ import {
   type SupabaseClient,
   type User,
 } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 
 import { builderPages, sanitizeLayoutSchema } from "@/lib/builder/schema";
 import {
@@ -81,8 +82,10 @@ export type KioskRequestContext = {
   accessToken: string;
   user: User;
   organizationId: string;
-  organizationRole: OrganizationMembershipRow["role"];
+  organizationRole: OrganizationMembershipRow["role"] | "kiosk";
   client: SupabaseClient;
+  /** Present only for a credential created by the device pairing flow. */
+  deviceTokenDeviceId?: string;
 };
 
 export class KioskApiError extends Error {
@@ -203,6 +206,9 @@ export async function requireKioskContext(
 export async function resolveKioskContext(
   accessToken: string,
 ): Promise<KioskRequestContext> {
+  if (accessToken.startsWith("pkd_")) {
+    return resolveDeviceTokenContext(accessToken);
+  }
   const authClient = createKioskAuthClient();
   const {
     data: { user },
@@ -252,6 +258,62 @@ export async function resolveKioskContext(
   };
 }
 
+async function resolveDeviceTokenContext(
+  accessToken: string,
+): Promise<KioskRequestContext> {
+  const match = /^pkd_([0-9a-f-]{36})\.([A-Za-z0-9_-]{32,})$/i.exec(
+    accessToken,
+  );
+  if (!match) {
+    throw new KioskApiError(
+      "Your device credential is invalid.",
+      401,
+      "KIOSK_DEVICE_TOKEN_INVALID",
+    );
+  }
+
+  const [, pairingId, secret] = match;
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from("device_pairings")
+    .select(
+      "organization_id,device_id,claimed_by_profile_id,status,device_token_revoked_at",
+    )
+    .eq("id", pairingId)
+    .eq("device_token_hash", createHash("sha256").update(secret).digest("hex"))
+    .eq("status", "configured")
+    .is("device_token_revoked_at", null)
+    .maybeSingle();
+  if (error) {
+    throw new KioskApiError(
+      `Unable to validate device credential: ${error.message}`,
+      500,
+      "KIOSK_DEVICE_TOKEN_LOOKUP_FAILED",
+    );
+  }
+  if (!data?.organization_id || !data.device_id) {
+    throw new KioskApiError(
+      "Your device credential is invalid or has been revoked.",
+      401,
+      "KIOSK_DEVICE_TOKEN_INVALID",
+    );
+  }
+
+  return {
+    accessToken,
+    // A device identity cannot sign in to the dashboard. This fallback profile
+    // ID is only used by legacy kiosk audit columns that require a user ID.
+    user: {
+      id: data.claimed_by_profile_id ?? data.device_id,
+      email: "kiosk@poskart.my.id",
+    } as User,
+    organizationId: data.organization_id,
+    organizationRole: "kiosk",
+    client: admin,
+    deviceTokenDeviceId: data.device_id,
+  };
+}
+
 export async function requireOrganizationDevice(
   context: KioskRequestContext,
   deviceId: string,
@@ -262,6 +324,16 @@ export async function requireOrganizationDevice(
       "Device ID is required.",
       400,
       "KIOSK_DEVICE_REQUIRED",
+    );
+  }
+  if (
+    context.deviceTokenDeviceId &&
+    context.deviceTokenDeviceId !== normalizedId
+  ) {
+    throw new KioskApiError(
+      "This credential is restricted to another device.",
+      403,
+      "KIOSK_DEVICE_TOKEN_SCOPE_DENIED",
     );
   }
 
@@ -294,13 +366,16 @@ export async function requireOrganizationDevice(
 }
 
 export async function listOrganizationDevices(context: KioskRequestContext) {
-  const { data, error } = await context.client
+  let query = context.client
     .from("devices")
     .select(
       "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
-    .eq("organization_id", context.organizationId)
-    .order("name", { ascending: true });
+    .eq("organization_id", context.organizationId);
+  if (context.deviceTokenDeviceId) {
+    query = query.eq("id", context.deviceTokenDeviceId);
+  }
+  const { data, error } = await query.order("name", { ascending: true });
 
   if (error) {
     throw new KioskApiError(
@@ -370,6 +445,16 @@ export async function requirePairedDeviceByHardwareId(
       "KIOSK_DEVICE_REGISTERED_TO_OTHER_ORGANIZATION",
     );
   }
+  if (
+    context.deviceTokenDeviceId &&
+    existing.id !== context.deviceTokenDeviceId
+  ) {
+    throw new KioskApiError(
+      "This credential is restricted to another device.",
+      403,
+      "KIOSK_DEVICE_TOKEN_SCOPE_DENIED",
+    );
+  }
 
   return existing as KioskDeviceRow;
 }
@@ -417,6 +502,11 @@ export async function buildKioskBootstrap(
     device = await requirePairedDeviceByHardwareId(context, hardwareId);
   } else if (deviceId) {
     device = await requireOrganizationDevice(context, deviceId);
+  } else if (context.deviceTokenDeviceId) {
+    device = await requireOrganizationDevice(
+      context,
+      context.deviceTokenDeviceId,
+    );
   }
 
   const [

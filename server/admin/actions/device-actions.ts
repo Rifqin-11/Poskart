@@ -268,8 +268,8 @@ export type DevicePairingClaim = {
 export async function validateDevicePairingCode(
   code: string,
 ): Promise<DevicePairingClaim> {
-  const { organizationId } = await verifyRole(["owner", "admin"]);
-  const pairing = await getPairingForAdminCode(organizationId, code);
+  const { organizationId, user } = await verifyRole(["owner", "admin"]);
+  const pairing = await getPairingForAdminCode(organizationId, user.id, code);
 
   const id = `BTH-${Date.now()}`;
   const { error } = await createSupabaseAdminClient().rpc(
@@ -754,6 +754,15 @@ async function assertPricingAssignmentModes(
 export async function deleteDevice(id: string): Promise<void> {
   const { organizationId, supabase } = await verifyRole(["owner", "admin"]);
   const admin = createSupabaseAdminClient();
+  const { error: revokeTokenError } = await admin
+    .from("device_pairings")
+    .update({ device_token_revoked_at: new Date().toISOString() })
+    .eq("device_id", id)
+    .eq("organization_id", organizationId)
+    .is("device_token_revoked_at", null);
+  if (revokeTokenError) {
+    throw new Error(`Unable to revoke device credential: ${revokeTokenError.message}`);
+  }
   const { error } = await admin.rpc("revoke_device_with_event", {
     p_device_id: id,
     p_organization_id: organizationId,

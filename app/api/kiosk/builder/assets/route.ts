@@ -1,4 +1,9 @@
-import { jsonError, jsonOk, requireKioskContext } from "@/lib/kiosk/server";
+import {
+  jsonError,
+  jsonOk,
+  KioskApiError,
+  requireKioskContext,
+} from "@/lib/kiosk/server";
 import { createR2SignedUploadUrl, uploadR2Object } from "@/lib/r2/server";
 import { recordKioskAssetManifest } from "@/lib/assets/asset-manifest";
 
@@ -85,6 +90,13 @@ function buildBuilderMediaPath(
 export async function POST(request: Request) {
   try {
     const context = await requireKioskContext(request);
+    if (context.deviceTokenDeviceId) {
+      throw new KioskApiError(
+        "Device credentials cannot manage builder assets.",
+        403,
+        "KIOSK_DEVICE_TOKEN_SCOPE_DENIED",
+      );
+    }
     const contentType = request.headers.get("content-type") ?? "";
 
     if (contentType.includes("application/json")) {
