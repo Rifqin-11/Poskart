@@ -6,6 +6,7 @@ import {
   normalizeProvider,
   saveGalleryStorageSettings,
 } from "@/lib/gallery/storage-provider";
+import { safeApiError } from "@/lib/http/safe-api-error";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -15,10 +16,10 @@ export async function GET() {
   try {
     return NextResponse.json(await getGalleryStorageSummary());
   } catch (error) {
-    return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Unable to load storage" },
-      { status: 500 },
-    );
+    return safeApiError(error, {
+      context: "api/admin/gallery-storage GET",
+      message: "Pengaturan penyimpanan galeri belum dapat dimuat.",
+    });
   }
 }
 
@@ -37,10 +38,10 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(await getGalleryStorageSummary());
   } catch (error) {
-    return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Unable to save storage" },
-      { status: 400 },
-    );
+    return safeApiError(error, {
+      context: "api/admin/gallery-storage PATCH",
+      message: "Pengaturan penyimpanan galeri belum dapat disimpan.",
+    });
   }
 }
 

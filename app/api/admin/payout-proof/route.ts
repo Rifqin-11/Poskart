@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import sharp from "sharp";
 
 import { isSuperAdminProfile } from "@/lib/auth/admin";
+import { safeApiError } from "@/lib/http/safe-api-error";
 import { uploadR2Object } from "@/lib/r2/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -67,10 +68,10 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (invoiceError) {
-      return NextResponse.json(
-        { message: invoiceError.message },
-        { status: 500 },
-      );
+      return safeApiError(invoiceError, {
+        context: "api/admin/payout-proof invoice lookup",
+        message: "Status payout belum dapat diperiksa.",
+      });
     }
     if (!invoice) {
       return NextResponse.json(
@@ -111,14 +112,9 @@ export async function POST(request: NextRequest) {
       size: output.length,
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to upload transfer proof.",
-      },
-      { status: 500 },
-    );
+    return safeApiError(error, {
+      context: "api/admin/payout-proof POST",
+      message: "Bukti transfer belum dapat diunggah. Coba lagi.",
+    });
   }
 }

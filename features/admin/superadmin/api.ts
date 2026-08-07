@@ -5,6 +5,10 @@ import {
   setSuperAdminDeviceErrorResolved,
 } from "@/server/admin/actions/superadmin-device-error-actions";
 import {
+  getSuperAdminSystemErrors,
+  setSuperAdminSystemErrorResolved,
+} from "@/server/admin/actions/superadmin-system-error-actions";
+import {
   broadcastAdminNotification,
   getSuperAdminNotifications,
   deleteSuperAdminNotification,
@@ -29,6 +33,8 @@ export const superadminApi = {
   deleteProfile: profileService.deleteProfile,
   getDeviceErrors: getSuperAdminDeviceErrors,
   setDeviceErrorResolved: setSuperAdminDeviceErrorResolved,
+  getSystemErrors: getSuperAdminSystemErrors,
+  setSystemErrorResolved: setSuperAdminSystemErrorResolved,
   broadcastAdminNotification,
   getSuperAdminNotifications,
   deleteSuperAdminNotification,

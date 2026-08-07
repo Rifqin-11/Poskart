@@ -52,6 +52,7 @@ import {
   useUpdateFrameCategory,
 } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
+import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { FrameCategory, Template } from "@/types/template";
@@ -131,7 +132,7 @@ export function TemplateManagement() {
         deleteTemplate.mutate(t.id, {
           onSuccess: () => toast.success("Frame deleted"),
           onError: (err) =>
-            toast.error(err instanceof Error ? err.message : "Delete failed"),
+            toast.error(getUserFacingErrorMessage(err, "Frame tidak dapat dihapus.")),
         });
       },
     });
@@ -148,7 +149,7 @@ export function TemplateManagement() {
           onSuccess: () => toast.success("Frame category deleted"),
           onError: (error) =>
             toast.error(
-              error instanceof Error ? error.message : "Delete failed",
+              getUserFacingErrorMessage(error, "Kategori frame tidak dapat dihapus."),
             ),
         });
       },
@@ -305,9 +306,10 @@ export function TemplateManagement() {
           onError: (error) => {
             setTemplateOrder(activeDrag.initialTemplates);
             toast.error(
-              error instanceof Error
-                ? error.message
-                : "Gagal menyimpan kategori frame",
+              getUserFacingErrorMessage(
+                error,
+                "Gagal menyimpan kategori frame. Coba lagi.",
+              ),
             );
           },
         },
@@ -381,9 +383,10 @@ export function TemplateManagement() {
     const rollback = (error: unknown) => {
       setTemplateOrder(activeDrag?.initialTemplates ?? data);
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Gagal menyimpan urutan frame",
+        getUserFacingErrorMessage(
+          error,
+          "Gagal menyimpan urutan frame. Coba lagi.",
+        ),
       );
     };
 
@@ -469,9 +472,10 @@ export function TemplateManagement() {
             onSuccess: () => toast.success("Frame category created"),
             onError: (error) =>
               toast.error(
-                error instanceof Error
-                  ? error.message
-                  : "Unable to create category",
+                getUserFacingErrorMessage(
+                  error,
+                  "Kategori frame tidak dapat dibuat.",
+                ),
               ),
           })
         }
@@ -482,9 +486,10 @@ export function TemplateManagement() {
               onSuccess: () => toast.success("Frame category updated"),
               onError: (error) =>
                 toast.error(
-                  error instanceof Error
-                    ? error.message
-                    : "Unable to update category",
+                  getUserFacingErrorMessage(
+                    error,
+                    "Kategori frame tidak dapat diperbarui.",
+                  ),
                 ),
             },
           )
@@ -496,9 +501,10 @@ export function TemplateManagement() {
             toast.success("Urutan kategori disimpan");
           } catch (error) {
             toast.error(
-              error instanceof Error
-                ? error.message
-                : "Gagal menyimpan urutan kategori",
+              getUserFacingErrorMessage(
+                error,
+                "Gagal menyimpan urutan kategori. Coba lagi.",
+              ),
             );
             throw error;
           }

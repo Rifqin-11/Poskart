@@ -5,6 +5,7 @@ import {
   isActiveLivePhotoJob,
   shouldShowGallerySession,
 } from "@/lib/gallery/session-visibility";
+import { safeApiError } from "@/lib/http/safe-api-error";
 
 const DEFAULT_LIMIT = 40;
 const MAX_LIMIT = 60;
@@ -93,7 +94,11 @@ export async function GET(request: NextRequest) {
 
   const { data: sessions, error: sessionsError } = await query;
   if (sessionsError) {
-    return NextResponse.json({ error: sessionsError.message }, { status: 500 });
+    return safeApiError(sessionsError, {
+      context: "api/admin/gallery GET",
+      message: "Gallery belum dapat dimuat.",
+      field: "error",
+    });
   }
 
   const rows = (sessions ?? []) as GallerySessionRow[];

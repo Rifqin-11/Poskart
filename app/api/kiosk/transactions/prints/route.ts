@@ -21,6 +21,7 @@ export async function POST(request: Request) {
     const device = await requireOrganizationDevice(
       context,
       body.deviceId ?? "",
+      { allowPaidSessionId: body.transactionId },
     );
     const transactionId = body.transactionId?.trim() ?? "";
     const eventId = body.eventId?.trim() ?? "";

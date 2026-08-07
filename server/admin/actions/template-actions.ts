@@ -18,6 +18,15 @@ function normalizeFrameCategoryId(value: string | undefined) {
   return normalized || null;
 }
 
+function assertFrameHasPhotoSlot(
+  category: string | undefined,
+  frameLayout: TemplateFormValues["frameLayout"] | undefined,
+) {
+  if (category !== "frame") return;
+  if (countPhotoSlotsFromLayout(frameLayout) > 0) return;
+  throw new Error("Frame requires at least one Photo Slot.");
+}
+
 async function assertFrameCategoryAccess(
   supabase: Awaited<ReturnType<typeof verifyRole>>["supabase"],
   frameCategoryId: string | null,
@@ -54,6 +63,7 @@ export async function createTemplate(
   values: TemplateFormValues,
 ): Promise<void> {
   const { supabase } = await verifyRole(["owner", "admin", "designer"]);
+  assertFrameHasPhotoSlot(values.category, values.frameLayout);
   const now = new Date().toISOString();
   const id = `TPL-${Date.now()}`;
   const photoCount = countPhotoSlotsFromLayout(values.frameLayout);
@@ -115,6 +125,19 @@ export async function updateTemplate(
   if (values.frameImageUrl !== undefined)
     patch.frame_image_url = values.frameImageUrl || null;
   if (values.frameLayout !== undefined) {
+    let category = values.category;
+    if (category === undefined) {
+      const existing = await supabase
+        .from("templates")
+        .select("category")
+        .eq("id", id)
+        .maybeSingle();
+      if (existing.error) {
+        throw new Error(`Unable to validate template: ${existing.error.message}`);
+      }
+      category = existing.data?.category;
+    }
+    assertFrameHasPhotoSlot(category, values.frameLayout);
     patch.frame_layout = values.frameLayout ?? null;
     patch.photo_count = countPhotoSlotsFromLayout(values.frameLayout);
   } else if (values.photoCount !== undefined) {

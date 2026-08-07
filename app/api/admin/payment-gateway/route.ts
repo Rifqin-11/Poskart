@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 
 import { isSuperAdminProfile } from "@/lib/auth/admin";
+import { safeApiError } from "@/lib/http/safe-api-error";
 import { createClient } from "@/lib/supabase/server";
 
 const CONFIG_ID = "default";
@@ -28,7 +29,10 @@ export async function GET() {
     .maybeSingle();
 
   if (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return safeApiError(error, {
+      context: "api/admin/payment-gateway GET",
+      message: "Pengaturan gateway pembayaran belum dapat dimuat.",
+    });
   }
 
   return NextResponse.json({
@@ -108,7 +112,10 @@ export async function PATCH(request: NextRequest) {
   const { error } = await supabase.from("app_configs").upsert(payload);
 
   if (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return safeApiError(error, {
+      context: "api/admin/payment-gateway PATCH",
+      message: "Pengaturan gateway pembayaran belum dapat disimpan.",
+    });
   }
 
   revalidatePath("/superadmin");

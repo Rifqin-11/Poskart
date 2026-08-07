@@ -28,6 +28,7 @@ import {
   useUpdateQrisPaymentMethod,
 } from "@/features/admin/organization/use-organization";
 import { cn } from "@/lib/utils";
+import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { createClient } from "@/lib/supabase/client";
 import type { AppConfigRow } from "@/types/app-config";
 import { PageHeader } from "@/features/admin/_components/page-header";
@@ -333,7 +334,10 @@ export function SettingsPanel({
       return true;
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to save settings",
+        getUserFacingErrorMessage(
+          err,
+          "Pengaturan belum dapat disimpan. Coba lagi.",
+        ),
       );
       return false;
     }
@@ -366,7 +370,10 @@ export function SettingsPanel({
       setEditProfileOpen(false);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to update profile",
+        getUserFacingErrorMessage(
+          err,
+          "Profil belum dapat diperbarui. Coba lagi.",
+        ),
       );
     } finally {
       setProfileSaving(false);

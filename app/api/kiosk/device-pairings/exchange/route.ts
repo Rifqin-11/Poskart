@@ -1,10 +1,5 @@
 import { exchangePublicDevicePairing } from "@/lib/kiosk/device-pairings";
-import {
-  buildKioskBootstrap,
-  jsonError,
-  jsonOk,
-  resolveKioskContext,
-} from "@/lib/kiosk/server";
+import { jsonError, jsonOk } from "@/lib/kiosk/server";
 
 type ExchangeBody = {
   pairingId?: string;
@@ -18,8 +13,10 @@ export async function POST(request: Request) {
       body.pairingId ?? "",
       body.pollingSecret ?? "",
     );
-    const context = await resolveKioskContext(credential.accessToken);
-    const bootstrap = await buildKioskBootstrap(context, credential.deviceId);
+
+    // Keep the exchange request fast. The kiosk loads its bootstrap through
+    // the normal authenticated sync so the user can see the initialization
+    // splash while configuration and assets are downloaded.
     return jsonOk({
       accessToken: credential.accessToken,
       // Device credentials are long-lived and revoked from the dashboard.
@@ -27,7 +24,7 @@ export async function POST(request: Request) {
       refreshToken: credential.accessToken,
       expiresAt: null,
       pairingRequired: false,
-      ...bootstrap,
+      registeredDeviceId: credential.deviceId,
     });
   } catch (error) {
     return jsonError(error);

@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     const device = await requireOrganizationDevice(
       context,
       body.deviceId ?? "",
+      { allowPaidSessionId: body.sessionId },
     );
     const sessionId = body.sessionId?.trim() ?? "";
     const template = body.template ?? {};

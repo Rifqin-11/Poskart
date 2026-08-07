@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { safeApiError } from "@/lib/http/safe-api-error";
 
 type CancelPrintJobBody = {
   jobId?: string;
@@ -53,7 +54,11 @@ export async function GET() {
     .limit(25);
 
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return safeApiError(error, {
+      context: "api/admin/print-jobs GET",
+      message: "Antrean print belum dapat dimuat.",
+      field: "error",
+    });
   }
 
   const deviceIds = [...new Set((jobs ?? []).map((job) => job.device_id))];
@@ -138,7 +143,11 @@ export async function PATCH(request: Request) {
     .maybeSingle();
 
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return safeApiError(error, {
+      context: "api/admin/print-jobs PATCH",
+      message: "Print job belum dapat dibatalkan.",
+      field: "error",
+    });
   }
   if (!data) {
     return Response.json(

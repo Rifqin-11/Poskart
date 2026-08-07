@@ -112,6 +112,28 @@ export function useSetSuperAdminDeviceErrorResolved() {
   });
 }
 
+export function useSuperAdminSystemErrors() {
+  return useQuery({
+    queryKey: adminQueryKeys.superAdminSystemErrors,
+    queryFn: superadminApi.getSystemErrors,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useSetSuperAdminSystemErrorResolved() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ errorId, resolved }: { errorId: string; resolved: boolean }) =>
+      superadminApi.setSystemErrorResolved(errorId, resolved),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.superAdminSystemErrors,
+      });
+    },
+  });
+}
+
 export function useBroadcastAdminNotification() {
   return useMutation({
     mutationFn: superadminApi.broadcastAdminNotification,

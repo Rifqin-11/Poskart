@@ -18,7 +18,9 @@ import {
   normalizeAssetUrl,
 } from "@/lib/assets/asset-url";
 import { getPublicGalleryBaseUrl } from "@/lib/gallery/urls";
+import { isSubscriptionActive } from "@/lib/subscription-policy";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { recordServerError } from "@/server/observability/system-error-service";
 import type { LayoutSchema } from "@/types/builder";
 
 type OrganizationMembershipRow = {
@@ -86,6 +88,13 @@ export type KioskRequestContext = {
   client: SupabaseClient;
   /** Present only for a credential created by the device pairing flow. */
   deviceTokenDeviceId?: string;
+};
+
+type DeviceAccessOptions = {
+  /** Allows only an already-paid, recently started customer session to finish. */
+  allowPaidSessionId?: string;
+  /** Allows polling an already-created QRIS payment until it settles. */
+  allowPendingPaymentSessionId?: string;
 };
 
 export class KioskApiError extends Error {
@@ -317,6 +326,7 @@ async function resolveDeviceTokenContext(
 export async function requireOrganizationDevice(
   context: KioskRequestContext,
   deviceId: string,
+  options: DeviceAccessOptions = {},
 ) {
   const normalizedId = deviceId.trim();
   if (!normalizedId) {
@@ -362,7 +372,125 @@ export async function requireOrganizationDevice(
     );
   }
 
-  return data as KioskDeviceRow;
+  const device = data as KioskDeviceRow;
+  await requireActiveKioskSubscription(context, {
+    allowPaidSessionId: options.allowPaidSessionId,
+    allowPendingPaymentSessionId: options.allowPendingPaymentSessionId,
+    device,
+  });
+  return device;
+}
+
+/**
+ * Enforces billing access at the server boundary for every device-scoped
+ * kiosk operation. The Flutter lock screen is only a user experience layer;
+ * uploads, payments, transactions, and printing must be rejected here too.
+ */
+export async function requireActiveKioskSubscription(
+  context: KioskRequestContext,
+  options: {
+    allowPaidSessionId?: string;
+    allowPendingPaymentSessionId?: string;
+    device?: KioskDeviceRow;
+  } = {},
+) {
+  const { data: subscription, error } = await context.client
+    .from("subscriptions")
+    .select("status,current_period_end")
+    .eq("organization_id", context.organizationId)
+    .maybeSingle();
+
+  if (error) {
+    throw new KioskApiError(
+      "Unable to verify the organization subscription.",
+      500,
+      "KIOSK_SUBSCRIPTION_CHECK_FAILED",
+    );
+  }
+
+  if (isSubscriptionActive(subscription)) return;
+
+  const sessionId = options.allowPaidSessionId?.trim() ?? "";
+  const device = options.device;
+  if (sessionId && device && (await isRecentPaidDeviceSession(context, device, sessionId))) {
+    return;
+  }
+
+  const pendingPaymentSessionId = options.allowPendingPaymentSessionId?.trim() ?? "";
+  if (
+    pendingPaymentSessionId &&
+    device &&
+    (await isRecentDuitkuPayment(context, device, pendingPaymentSessionId))
+  ) {
+    return;
+  }
+
+  throw new KioskApiError(
+    "The organization subscription is not active.",
+    403,
+    "KIOSK_SUBSCRIPTION_INACTIVE",
+  );
+}
+
+async function isRecentPaidDeviceSession(
+  context: KioskRequestContext,
+  device: KioskDeviceRow,
+  sessionId: string,
+) {
+  const { data, error } = await context.client
+    .from("transactions")
+    .select("status,paid_at,created_at")
+    .eq("organization_id", context.organizationId)
+    .eq("id", sessionId)
+    .eq("booth", device.name)
+    .maybeSingle();
+
+  if (error) {
+    throw new KioskApiError(
+      "Unable to verify the paid customer session.",
+      500,
+      "KIOSK_SESSION_CHECK_FAILED",
+    );
+  }
+
+  if (!data || (data.status !== "paid" && !data.paid_at)) return false;
+  const completedAt = Date.parse(data.paid_at ?? data.created_at);
+  const maximumSessionAgeMs = 2 * 60 * 60 * 1000;
+  return Number.isFinite(completedAt) && Date.now() - completedAt <= maximumSessionAgeMs;
+}
+
+async function isRecentDuitkuPayment(
+  context: KioskRequestContext,
+  device: KioskDeviceRow,
+  sessionId: string,
+) {
+  const { data, error } = await context.client
+    .from("transactions")
+    .select("status,provider,payment_gateway,created_at")
+    .eq("organization_id", context.organizationId)
+    .eq("id", sessionId)
+    .eq("booth", device.name)
+    .maybeSingle();
+
+  if (error) {
+    throw new KioskApiError(
+      "Unable to verify the QRIS payment session.",
+      500,
+      "KIOSK_PAYMENT_SESSION_CHECK_FAILED",
+    );
+  }
+
+  if (
+    !data ||
+    data.provider !== "QRIS" ||
+    data.payment_gateway !== "duitku" ||
+    !["pending", "paid"].includes(data.status)
+  ) {
+    return false;
+  }
+  const createdAt = Date.parse(data.created_at);
+  const maximumPaymentAgeMs = 15 * 60 * 1000;
+  return Number.isFinite(createdAt) && Date.now() - createdAt <= maximumPaymentAgeMs;
 }
 
 export async function listOrganizationDevices(context: KioskRequestContext) {
@@ -904,9 +1032,21 @@ export function jsonError(error: unknown) {
           "KIOSK_INTERNAL_ERROR",
         );
 
+  const isInternal = apiError.code === "KIOSK_INTERNAL_ERROR";
+  if (isInternal) {
+    void recordServerError({
+      error,
+      source: "route",
+      route: "kiosk-api",
+      context: { code: apiError.code },
+    });
+  }
+
   return Response.json(
     {
-      error: apiError.message,
+      error: isInternal
+        ? "Server POSKART sedang bermasalah. Coba lagi sebentar."
+        : apiError.message,
       code: apiError.code,
     },
     {

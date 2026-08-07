@@ -30,6 +30,7 @@ import {
   useUpdatePricing,
 } from "@/features/admin/pricing/use-pricing";
 import { formatCurrency } from "@/lib/utils";
+import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import {
   FeatureGuidedTour,
@@ -117,7 +118,9 @@ export function PricingManagement() {
       {
         onSuccess: () => toast.success(t("pricing.updated")),
         onError: (err) =>
-          toast.error(err instanceof Error ? err.message : t("pricing.updateFailed")),
+          toast.error(
+            getUserFacingErrorMessage(err, t("pricing.updateFailed")),
+          ),
       },
     );
   };
@@ -132,7 +135,9 @@ export function PricingManagement() {
         deletePricing.mutate(product.id, {
           onSuccess: () => toast.success(t("pricing.deleteSuccess")),
           onError: (err) =>
-            toast.error(err instanceof Error ? err.message : t("pricing.deleteFailed")),
+            toast.error(
+              getUserFacingErrorMessage(err, t("pricing.deleteFailed")),
+            ),
         });
       },
     });
@@ -201,7 +206,7 @@ export function PricingManagement() {
               },
               onError: (err) =>
                 toast.error(
-                  err instanceof Error ? err.message : t("pricing.createFailed"),
+                  getUserFacingErrorMessage(err, t("pricing.createFailed")),
                 ),
             });
           }}
@@ -223,7 +228,7 @@ export function PricingManagement() {
                 },
                 onError: (err) =>
                   toast.error(
-                    err instanceof Error ? err.message : t("pricing.updateFailed"),
+                    getUserFacingErrorMessage(err, t("pricing.updateFailed")),
                   ),
               },
             );

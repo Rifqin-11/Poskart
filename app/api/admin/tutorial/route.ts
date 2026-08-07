@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeApiError } from "@/lib/http/safe-api-error";
 import { getAdminContext, getAdminMembership } from "@/server/admin/context";
 
 type TutorialScope =
@@ -48,7 +49,10 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ message: error.message }, { status: 500 });
+      return safeApiError(error, {
+        context: "api/admin/tutorial GET",
+        message: "Status tutorial belum dapat dimuat.",
+      });
     }
 
     return NextResponse.json({
@@ -57,10 +61,11 @@ export async function GET(request: Request) {
       ),
     });
   } catch (error) {
-    return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Unable to load tutorial progress." },
-      { status: 401 },
-    );
+    return safeApiError(error, {
+      context: "api/admin/tutorial GET context",
+      message: "Sesi atau akses organisasi Anda tidak tersedia.",
+      status: 401,
+    });
   }
 }
 
@@ -88,14 +93,18 @@ export async function PUT(request: Request) {
       );
 
     if (error) {
-      return NextResponse.json({ message: error.message }, { status: 500 });
+      return safeApiError(error, {
+        context: "api/admin/tutorial PUT",
+        message: "Status tutorial belum dapat disimpan.",
+      });
     }
 
     return NextResponse.json({ completed: true });
   } catch (error) {
-    return NextResponse.json(
-      { message: error instanceof Error ? error.message : "Unable to save tutorial progress." },
-      { status: 401 },
-    );
+    return safeApiError(error, {
+      context: "api/admin/tutorial PUT context",
+      message: "Sesi atau akses organisasi Anda tidak tersedia.",
+      status: 401,
+    });
   }
 }

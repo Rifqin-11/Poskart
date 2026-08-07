@@ -43,6 +43,7 @@ import { usePricing } from "@/features/admin/pricing/use-pricing";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
 import { useTemplates } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
+import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { type DictionaryKey } from "@/lib/i18n/dictionaries";
@@ -289,7 +290,9 @@ export function BoothManagement({
         deleteBooth.mutate(device.id, {
           onSuccess: () => toast.success(t("devices.deleteSuccess")),
           onError: (err) =>
-            toast.error(err instanceof Error ? err.message : t("devices.deleteFailed")),
+            toast.error(
+              getUserFacingErrorMessage(err, t("devices.deleteFailed")),
+            ),
         });
       },
     });
@@ -310,7 +313,9 @@ export function BoothManagement({
         setCreating(true);
       },
       onError: (error) =>
-        toast.error(error instanceof Error ? error.message : t("devices.pairingFailed")),
+        toast.error(
+          getUserFacingErrorMessage(error, t("devices.pairingFailed")),
+        ),
     });
   };
 
@@ -793,7 +798,10 @@ export function BoothManagement({
                 },
                 onError: (err) =>
                   toast.error(
-                    err instanceof Error ? err.message : "Configuration failed",
+                    getUserFacingErrorMessage(
+                      err,
+                      "Konfigurasi device gagal. Coba lagi.",
+                    ),
                   ),
               },
             );
@@ -835,7 +843,10 @@ export function BoothManagement({
                 },
                 onError: (err) =>
                   toast.error(
-                    err instanceof Error ? err.message : "Update failed",
+                    getUserFacingErrorMessage(
+                      err,
+                      "Device tidak dapat diperbarui. Coba lagi.",
+                    ),
                   ),
               },
             );

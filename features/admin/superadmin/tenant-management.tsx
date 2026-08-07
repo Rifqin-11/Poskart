@@ -62,6 +62,7 @@ import { TrialRequestManagement } from "./_components/trial-request-management";
 import { TransactionActionRequestManagement } from "./_components/transaction-action-request-management";
 import { GalleryStorageManagement } from "./_components/gallery-storage-management";
 import { DeviceErrorLogManagement } from "./_components/device-error-log-management";
+import { SystemErrorLogManagement } from "./_components/system-error-log-management";
 import { NotificationManagement } from "./_components/notification-management";
 import { DEFAULT_ORGANIZATION_FEATURES } from "@/lib/organization-features";
 
@@ -76,7 +77,11 @@ type AdminUserProfile = {
 };
 
 type SuperAdminSection =
-  "overview" | "organizations" | "SaaS" | "requests" | "device-errors";
+  | "overview"
+  | "organizations"
+  | "SaaS"
+  | "requests"
+  | "error-logs";
 
 const EMPTY_TENANT: TenantInput = {
   name: "",
@@ -244,9 +249,9 @@ export function TenantManagement() {
             />
             <SuperAdminSectionButton
               icon={AlertTriangle}
-              title="Device errors"
-              description="Monitor error reports from every booth and organization."
-              onClick={() => setActiveSection("device-errors")}
+              title="Error logs"
+              description="Monitor device errors and inspect Supabase, Next.js, API, and Server Action failures."
+              onClick={() => setActiveSection("error-logs")}
             />
           </div>
 
@@ -665,23 +670,33 @@ export function TenantManagement() {
           </Tabs>
         </div>
       ) : null}
-      {activeSection === "device-errors" ? (
+      {activeSection === "error-logs" ? (
         <div className="space-y-4">
           <SuperAdminBackHeader
-            title="Device errors"
-            description="Review kiosk errors across all organizations and trace each report to its source device."
+            title="Error logs"
+            description="Review device and server errors in one place. Technical details are restricted to Superadmin."
             onBack={() => setActiveSection("overview")}
           />
           <Card>
             <CardHeader>
-              <CardTitle>Device error log</CardTitle>
+              <CardTitle>System diagnostics</CardTitle>
               <CardDescription>
-                Includes severity, occurrence count, source device,
-                organization, and diagnostic details from the Flutter kiosk.
+                Choose a source to inspect kiosk reports or backend failures.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DeviceErrorLogManagement />
+              <Tabs defaultValue="devices">
+                <TabsList>
+                  <TabsTrigger value="devices">Devices</TabsTrigger>
+                  <TabsTrigger value="system">System</TabsTrigger>
+                </TabsList>
+                <TabsContent value="devices">
+                  <DeviceErrorLogManagement />
+                </TabsContent>
+                <TabsContent value="system">
+                  <SystemErrorLogManagement />
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>

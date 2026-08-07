@@ -22,6 +22,7 @@ import {
   getBuilderImageValidationError,
   uploadBuilderImage,
 } from "@/lib/services/storage-service";
+import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { FrameLayout } from "@/types/frame-template";
@@ -97,7 +98,12 @@ export function TemplateBuilderWorkspace({
 }) {
   const router = useRouter();
   const isNew = templateId === "new";
-  const { data: templates = [], isLoading } = useTemplates();
+  const {
+    data: templates = [],
+    isLoading,
+    error: templatesError,
+    refetch: refetchTemplates,
+  } = useTemplates();
   const { data: frameCategories = [] } = useFrameCategories();
   const createTemplate = useCreateTemplate();
   const updateTemplate = useUpdateTemplate();
@@ -149,6 +155,28 @@ export function TemplateBuilderWorkspace({
 
   if (!isNew && isLoading) {
     return <Skeleton className="h-[760px]" />;
+  }
+
+  if (!isNew && templatesError) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="text-sm font-medium text-zinc-700">
+            Data frame belum dapat dimuat.
+          </div>
+          <p className="mt-2 text-sm text-zinc-500">
+            Periksa koneksi Anda lalu coba lagi.
+          </p>
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={() => void refetchTemplates()}
+          >
+            Coba lagi
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (!isNew && !template) {
@@ -206,11 +234,19 @@ export function TemplateBuilderWorkspace({
   };
 
   const handleSave = async (layout: FrameLayout) => {
+    const photoSlotCount = countPhotoSlots(layout);
+    if (photoSlotCount === 0) {
+      toast.error(
+        "Tambahkan minimal satu Photo Slot sebelum menyimpan frame.",
+      );
+      // Keep the builder dirty: a return would make it treat the layout as saved.
+      throw new Error("Frame requires at least one Photo Slot.");
+    }
     const bakedLayout = await bakeFrameLayoutColorKeyAssets(layout);
     const payload = {
       ...form,
       status: "published" as const, // Always publish when saving from builder
-      photoCount: countPhotoSlots(bakedLayout),
+      photoCount: photoSlotCount,
       frameImageUrl: getFrameBackgroundImageUrl(bakedLayout) ?? form.frameImageUrl,
       frameLayout: bakedLayout,
     };
@@ -230,7 +266,13 @@ export function TemplateBuilderWorkspace({
       }
       router.push("/templates");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Save failed");
+      const message = getUserFacingErrorMessage(
+        error,
+        "Frame tidak dapat disimpan saat ini. Coba lagi.",
+      );
+      if (message !== "Tambahkan minimal satu Photo Slot sebelum menyimpan frame.") {
+        toast.error(message);
+      }
       throw error;
     }
   };

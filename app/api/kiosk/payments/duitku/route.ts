@@ -206,7 +206,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const deviceId = searchParams.get("deviceId") ?? "";
     const sessionId = searchParams.get("sessionId") ?? "";
-    await requireOrganizationDevice(context, deviceId);
+    await requireOrganizationDevice(context, deviceId, {
+      allowPendingPaymentSessionId: sessionId,
+    });
 
     if (!sessionId.trim()) {
       return jsonOk(

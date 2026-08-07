@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeApiError } from "@/lib/http/safe-api-error";
 import { createClient } from "@/lib/supabase/server";
 
 type RouteContext = {
@@ -72,15 +73,10 @@ export async function GET(_request: Request, context: RouteContext) {
   ]);
 
   if (photosError || jobsError) {
-    return NextResponse.json(
-      {
-        message:
-          photosError?.message ??
-          jobsError?.message ??
-          "Unable to load gallery details",
-      },
-      { status: 500 },
-    );
+    return safeApiError(photosError ?? jobsError, {
+      context: "api/admin/gallery/session GET",
+      message: "Detail gallery belum dapat dimuat.",
+    });
   }
 
   return NextResponse.json({

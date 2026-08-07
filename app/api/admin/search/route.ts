@@ -7,6 +7,7 @@ import type {
   GlobalSearchResult,
   GlobalSearchResponse,
 } from "@/features/admin/search/types";
+import { safeApiError } from "@/lib/http/safe-api-error";
 
 const MIN_QUERY_LENGTH = 2;
 const MAX_QUERY_LENGTH = 80;
@@ -317,9 +318,15 @@ export async function GET(request: NextRequest) {
       },
     );
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unable to search workspace.";
-    const status = message === "Not authenticated" ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    const isUnauthenticated =
+      error instanceof Error && error.message === "Not authenticated";
+    return safeApiError(error, {
+      context: "api/admin/search GET",
+      message: isUnauthenticated
+        ? "Sesi Anda telah berakhir. Silakan masuk kembali."
+        : "Pencarian workspace belum dapat dilakukan.",
+      status: isUnauthenticated ? 401 : 500,
+      field: "error",
+    });
   }
 }

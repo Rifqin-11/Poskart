@@ -149,7 +149,9 @@ export async function POST(request: Request) {
   try {
     const context = await requireKioskContext(request);
     const body = await readDeliverBody(request);
-    await requireOrganizationDevice(context, body.deviceId ?? "");
+    await requireOrganizationDevice(context, body.deviceId ?? "", {
+      allowPaidSessionId: body.sessionId,
+    });
 
     const sessionId = body.sessionId?.trim() ?? "";
     const email = body.email?.trim().toLowerCase() ?? "";
