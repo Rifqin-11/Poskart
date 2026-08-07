@@ -297,6 +297,7 @@ export type PricingProductRow = Omit<
   | "livePhotoEnabled"
   | "gifEnabled"
   | "accessMode"
+  | "requiresReprintPassword"
   | "eventName"
   | "eventExpiresAt"
 > & {
@@ -306,6 +307,7 @@ export type PricingProductRow = Omit<
   live_photo_enabled: boolean | null;
   gif_enabled: boolean;
   access_mode: PricingProduct["accessMode"];
+  requires_reprint_password: boolean | null;
   event_name: string | null;
   event_expires_at: string | null;
 };
@@ -655,6 +657,7 @@ export const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({
   gifEnabled: row.live_photo_enabled == null ? false : row.gif_enabled,
   active: row.active,
   accessMode: row.access_mode === "event" ? "event" : "paid",
+  requiresReprintPassword: row.requires_reprint_password ?? true,
   eventName: row.event_name ?? undefined,
   eventExpiresAt: row.event_expires_at ?? undefined,
 });

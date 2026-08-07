@@ -9,6 +9,7 @@ export type PricingProduct = {
   gifEnabled: boolean;
   active: boolean;
   accessMode: "paid" | "event";
+  requiresReprintPassword: boolean;
   eventName?: string;
   eventExpiresAt?: string;
 };

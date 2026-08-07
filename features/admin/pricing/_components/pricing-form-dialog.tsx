@@ -113,6 +113,20 @@ export function PricingFormDialog({
                 }
               />
             </label>
+            <label className="flex items-start gap-2 rounded-xl border border-zinc-200 p-3 text-sm text-zinc-700 md:col-span-2">
+              <Switch
+                checked={form.requiresReprintPassword}
+                onCheckedChange={(requiresReprintPassword) =>
+                  setForm({ ...form, requiresReprintPassword })
+                }
+              />
+              <span>
+                <span className="block font-medium">PIN cetak ulang</span>
+                <span className="mt-0.5 block text-xs text-zinc-500">
+                  Saat aktif, cetak ulang foto event ini meminta PIN Settings kiosk.
+                </span>
+              </span>
+            </label>
           </>
         ) : null}
         <label className="block text-xs font-medium text-zinc-600">

@@ -499,7 +499,7 @@ export async function buildKioskBootstrap(
     context.client
       .from("pricing_products")
       .select(
-        "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,event_name,event_expires_at",
+        "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,requires_reprint_password,event_name,event_expires_at",
       )
       .eq("organization_id", context.organizationId)
       .eq("active", true)

@@ -14,6 +14,7 @@ type PricingProductRow = {
   print_limit: number | null;
   active: boolean;
   access_mode: "paid" | "event" | null;
+  requires_reprint_password: boolean | null;
   event_name: string | null;
   event_expires_at: string | null;
 };
@@ -24,6 +25,7 @@ export type ResolvedKioskPricingProduct = {
   amount: number;
   printCount: number;
   accessMode: "paid" | "event";
+  requiresReprintPassword: boolean;
   eventName: string | null;
   eventExpiresAt: string | null;
 };
@@ -121,6 +123,7 @@ export async function resolveKioskPricingProduct(
     amount,
     printCount: Math.max(1, Math.round(product.print_limit ?? 1)),
     accessMode,
+    requiresReprintPassword: product.requires_reprint_password ?? true,
     eventName: product.event_name,
     eventExpiresAt: product.event_expires_at,
   };
@@ -133,7 +136,7 @@ async function findPricingProduct(
   const { data: byId, error: idError } = await context.client
     .from("pricing_products")
     .select(
-      "id,name,price,promo_price,print_limit,active,access_mode,event_name,event_expires_at",
+      "id,name,price,promo_price,print_limit,active,access_mode,requires_reprint_password,event_name,event_expires_at",
     )
     .eq("id", packageCode)
     .eq("organization_id", context.organizationId)
@@ -144,7 +147,7 @@ async function findPricingProduct(
   const { data: byName, error: nameError } = await context.client
     .from("pricing_products")
     .select(
-      "id,name,price,promo_price,print_limit,active,access_mode,event_name,event_expires_at",
+      "id,name,price,promo_price,print_limit,active,access_mode,requires_reprint_password,event_name,event_expires_at",
     )
     .eq("name", packageCode)
     .eq("organization_id", context.organizationId)

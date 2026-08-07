@@ -28,7 +28,7 @@ export async function getPricingProducts(): Promise<PricingProduct[]> {
   const { data, error } = await supabase
     .from("pricing_products")
     .select(
-      "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,event_name,event_expires_at",
+      "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,requires_reprint_password,event_name,event_expires_at",
     )
     .eq("organization_id", organizationId)
     .order("price", { ascending: true });
@@ -64,6 +64,8 @@ export async function createPricingProduct(
     gif_enabled: values.gifEnabled,
     active: values.active,
     access_mode: accessMode,
+    requires_reprint_password:
+      accessMode === "event" ? values.requiresReprintPassword : true,
     event_name: accessMode === "event" ? eventName : null,
     event_expires_at: accessMode === "event" ? eventExpiresAt : null,
     updated_at: new Date().toISOString(),
@@ -113,17 +115,24 @@ export async function updatePricingProduct(
   }
   if (patch.gifEnabled !== undefined) dbPatch.gif_enabled = patch.gifEnabled;
   if (patch.active !== undefined) dbPatch.active = patch.active;
+  if (patch.requiresReprintPassword !== undefined) {
+    dbPatch.requires_reprint_password =
+      accessMode === "event" ? patch.requiresReprintPassword : true;
+  }
   if (patch.accessMode !== undefined) {
     dbPatch.access_mode = accessMode;
     if (accessMode === "event") {
       dbPatch.price = 0;
       dbPatch.promo_price = null;
       dbPatch.qris_download = false;
+      dbPatch.requires_reprint_password =
+        patch.requiresReprintPassword ?? true;
       dbPatch.event_name = patch.eventName?.trim() || null;
       dbPatch.event_expires_at = normalizeEventExpiry(patch.eventExpiresAt);
     } else {
       dbPatch.event_name = null;
       dbPatch.event_expires_at = null;
+      dbPatch.requires_reprint_password = true;
     }
   } else if (accessMode === "event") {
     if (patch.qrisDownload !== undefined) dbPatch.qris_download = false;

@@ -53,6 +53,7 @@ const EMPTY_PRICING: PricingProductInput = {
   gifEnabled: false,
   active: true,
   accessMode: "paid",
+  requiresReprintPassword: true,
   eventName: undefined,
   eventExpiresAt: undefined,
 };
@@ -103,7 +104,12 @@ export function PricingManagement() {
 
   const handleToggle = (
     product: PricingProduct,
-    field: "qrisDownload" | "livePhotoEnabled" | "gifEnabled" | "active",
+    field:
+      | "qrisDownload"
+      | "livePhotoEnabled"
+      | "gifEnabled"
+      | "active"
+      | "requiresReprintPassword",
     value: boolean,
   ) => {
     updatePricing.mutate(
@@ -250,7 +256,12 @@ type PricingTableCardProps = {
   onDelete: (product: PricingProduct) => void;
   onToggle: (
     product: PricingProduct,
-    field: "qrisDownload" | "livePhotoEnabled" | "gifEnabled" | "active",
+    field:
+      | "qrisDownload"
+      | "livePhotoEnabled"
+      | "gifEnabled"
+      | "active"
+      | "requiresReprintPassword",
     value: boolean,
   ) => void;
 };
@@ -312,6 +323,7 @@ function PricingTableCard({
                   </>
                 )}
                 <TableHead>{t("pricing.colPrintLimit")}</TableHead>
+                {eventMode ? <TableHead>PIN cetak ulang</TableHead> : null}
                 {!eventMode ? <TableHead>{t("pricing.colQrDownload")}</TableHead> : null}
                 <TableHead>{t("pricing.colLivePhoto")}</TableHead>
                 <TableHead>{t("pricing.colGif")}</TableHead>
@@ -345,6 +357,17 @@ function PricingTableCard({
                     </>
                   )}
                   <TableCell>{product.printLimit}</TableCell>
+                  {eventMode ? (
+                    <TableCell>
+                      <Switch
+                        checked={product.requiresReprintPassword}
+                        disabled={readOnly}
+                        onCheckedChange={(value) =>
+                          onToggle(product, "requiresReprintPassword", value)
+                        }
+                      />
+                    </TableCell>
+                  ) : null}
                   {!eventMode ? (
                     <TableCell>
                       <Switch
@@ -411,7 +434,7 @@ function PricingTableCard({
               {products.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={eventMode ? 7 : 8}
+                    colSpan={eventMode ? 8 : 8}
                     className="py-8 text-center text-sm text-zinc-400"
                   >
                     {eventMode
