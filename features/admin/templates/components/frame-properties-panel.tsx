@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Copy, Lock, Trash2, Unlock } from "lucide-react";
+import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  Copy,
+  Lock,
+  Trash2,
+  Unlock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -306,6 +315,12 @@ export function FramePropertiesPanel({
                       }
                     />
                   ) : null}
+                  {selectedNode.type === "timestamp" ? (
+                    <FrameTimestampTypographyControls
+                      node={selectedNode}
+                      onUpdateNodeProps={onUpdateNodeProps}
+                    />
+                  ) : null}
                   <div className="grid grid-cols-2 gap-2">
                     <label className="text-xs font-medium text-zinc-500">
                       Font size
@@ -473,5 +488,109 @@ export function FramePropertiesPanel({
         </div>
       </ScrollArea>
     </aside>
+  );
+}
+
+function FrameTimestampTypographyControls({
+  node,
+  onUpdateNodeProps,
+}: {
+  node: FrameNode;
+  onUpdateNodeProps: (id: string, props: Record<string, unknown>) => void;
+}) {
+  const align = readString(node.props.textAlign, "center");
+  const isBold = readNumber(node.props.fontWeight, 600) >= 700;
+  const isItalic =
+    node.props.fontItalic === true || node.props.fontStyle === "italic";
+  const isUnderline =
+    node.props.fontUnderline === true ||
+    node.props.textDecoration === "underline";
+  const alignments = [
+    { value: "left", label: "Rata kiri", icon: <AlignLeft className="size-3.5" /> },
+    { value: "center", label: "Rata tengah", icon: <AlignCenter className="size-3.5" /> },
+    { value: "right", label: "Rata kanan", icon: <AlignRight className="size-3.5" /> },
+    { value: "justify", label: "Justify", icon: <AlignJustify className="size-3.5" /> },
+  ] as const;
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-medium text-zinc-500">
+        Alignment
+        <div className="mt-1 flex gap-0.5 rounded-md border border-zinc-200 p-0.5">
+          {alignments.map(({ value, label, icon }) => (
+            <button
+              key={value}
+              type="button"
+              title={label}
+              onClick={() => onUpdateNodeProps(node.id, { textAlign: value })}
+              className={cn(
+                "flex flex-1 items-center justify-center rounded py-1 transition-colors",
+                align === value
+                  ? "bg-zinc-950 text-white"
+                  : "text-zinc-500 hover:bg-zinc-100",
+              )}
+            >
+              {icon}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="text-xs font-medium text-zinc-500">
+        Text style
+        <div className="mt-1 flex gap-0.5 rounded-md border border-zinc-200 p-0.5">
+          <button
+            type="button"
+            title="Bold"
+            onClick={() =>
+              onUpdateNodeProps(node.id, { fontWeight: isBold ? 400 : 700 })
+            }
+            className={cn(
+              "flex flex-1 items-center justify-center rounded py-1 text-xs font-bold transition-colors",
+              isBold
+                ? "bg-zinc-950 text-white"
+                : "text-zinc-500 hover:bg-zinc-100",
+            )}
+          >
+            B
+          </button>
+          <button
+            type="button"
+            title="Italic"
+            onClick={() =>
+              onUpdateNodeProps(node.id, {
+                fontItalic: !isItalic,
+                fontStyle: !isItalic ? "italic" : "normal",
+              })
+            }
+            className={cn(
+              "flex flex-1 items-center justify-center rounded py-1 text-xs italic transition-colors",
+              isItalic
+                ? "bg-zinc-950 text-white"
+                : "text-zinc-500 hover:bg-zinc-100",
+            )}
+          >
+            I
+          </button>
+          <button
+            type="button"
+            title="Underline"
+            onClick={() =>
+              onUpdateNodeProps(node.id, {
+                fontUnderline: !isUnderline,
+                textDecoration: !isUnderline ? "underline" : "none",
+              })
+            }
+            className={cn(
+              "flex flex-1 items-center justify-center rounded py-1 text-xs underline transition-colors",
+              isUnderline
+                ? "bg-zinc-950 text-white"
+                : "text-zinc-500 hover:bg-zinc-100",
+            )}
+          >
+            U
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { ColorKeyImage } from "@/features/builder/components/color-key-image";
 import { previewTimestamp, readNumber, readString } from "@/features/admin/templates/frame-builder.utils";
 import type { FrameNode, TimestampPart } from "@/types/frame-template";
@@ -65,14 +66,38 @@ export function FrameNodeRenderer({ node }: { node: FrameNode }) {
       : ["date", "month", "year"];
     const separator = readString(node.props.separator, ".");
     const text = previewTimestamp(parts, separator);
+    const textAlign = readString(node.props.textAlign, "center");
+    const isItalic =
+      node.props.fontItalic === true || node.props.fontStyle === "italic";
+    const isUnderline =
+      node.props.fontUnderline === true ||
+      node.props.textDecoration === "underline";
+    const cssTextAlign: CSSProperties["textAlign"] =
+      textAlign === "left" ||
+      textAlign === "right" ||
+      textAlign === "justify"
+        ? textAlign
+        : "center";
+    const justifyContent =
+      textAlign === "left" || textAlign === "justify"
+        ? "flex-start"
+        : textAlign === "right"
+          ? "flex-end"
+          : "center";
 
     return (
       <div
-        className="flex h-full w-full items-center whitespace-nowrap tabular-nums"
+        className="flex h-full w-full items-center tabular-nums"
         style={{
           color: readString(node.props.color, "#18181b"),
           fontSize: readNumber(node.props.fontSize, 18),
           fontWeight: readNumber(node.props.fontWeight, 600),
+          fontStyle: isItalic ? "italic" : "normal",
+          textDecoration: isUnderline ? "underline" : "none",
+          textAlign: cssTextAlign,
+          justifyContent,
+          letterSpacing: readNumber(node.props.letterSpacing, 0),
+          lineHeight: readNumber(node.props.lineHeight, 1.2),
         }}
       >
         {text}

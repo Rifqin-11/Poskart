@@ -220,6 +220,9 @@ export function createNode(type: FrameNodeType, layout: FrameLayout): FrameNode 
         color: "#18181b",
         fontSize: 18,
         fontWeight: 600,
+        textAlign: "center",
+        fontItalic: false,
+        fontUnderline: false,
       },
     };
   }
