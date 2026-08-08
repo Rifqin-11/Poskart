@@ -50,7 +50,7 @@ export const TRANSACTION_COLUMNS =
   "id,organization_id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_count,print_status,print_attempts,print_last_error,paid_at,duitku_status_code,gateway_response,merchant_order_id,archived_at,archive_reason,payout_status";
 
 export const BOOTH_COLUMNS =
-  "id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,voucher_requested_at,voucher_command,voucher_command_updated_at";
+  "id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,paper_roll_type,paper_initial_length_mm,paper_used_length_mm,paper_installed_at,paper_updated_at,paper_outer_diameter_mm,paper_core_diameter_mm,voucher_requested_at,voucher_command,voucher_command_updated_at";
 
 export type TransactionRow = Omit<
   Transaction,
@@ -263,6 +263,13 @@ export type BoothRow = Omit<
   printer_brightness: number | null;
   printer_contrast: number | null;
   printer_dot_density: number | null;
+  paper_roll_type: string | null;
+  paper_initial_length_mm: number | null;
+  paper_used_length_mm: number | null;
+  paper_installed_at: string | null;
+  paper_updated_at: string | null;
+  paper_outer_diameter_mm: number | null;
+  paper_core_diameter_mm: number | null;
   voucher_requested_at: string | null;
   voucher_command: string | null;
   voucher_command_updated_at: string | null;
@@ -286,6 +293,7 @@ export type TemplateRow = Omit<
   frame_image_url: unknown;
   frame_layout: unknown;
   is_default: boolean;
+  print_length_mm: number;
   frame_category_id: string | null;
 };
 
@@ -622,6 +630,21 @@ export const mapBooth = (row: BoothRow): Device => ({
     PRINTER_TUNING_LIMITS.dotDensity.min,
     PRINTER_TUNING_LIMITS.dotDensity.max,
   ),
+  paperRollType: row.paper_roll_type ?? null,
+  paperInitialLengthMm:
+    row.paper_initial_length_mm == null
+      ? null
+      : Number(row.paper_initial_length_mm),
+  paperUsedLengthMm:
+    row.paper_used_length_mm == null ? null : Number(row.paper_used_length_mm),
+  paperInstalledAt: row.paper_installed_at ?? null,
+  paperUpdatedAt: row.paper_updated_at ?? null,
+  paperOuterDiameterMm:
+    row.paper_outer_diameter_mm == null
+      ? null
+      : Number(row.paper_outer_diameter_mm),
+  paperCoreDiameterMm:
+    row.paper_core_diameter_mm == null ? null : Number(row.paper_core_diameter_mm),
   voucherRequestedAt: row.voucher_requested_at ?? null,
   voucherCommand: row.voucher_command ?? null,
   voucherCommandUpdatedAt: row.voucher_command_updated_at ?? null,
@@ -644,6 +667,7 @@ export const mapTemplate = (row: TemplateRow): Template => ({
   frameLayout: normalizeAssetReferences(row.frame_layout) as
     Template["frameLayout"] | null,
   isDefault: row.is_default ?? false,
+  printLengthMm: Number(row.print_length_mm ?? 150),
 });
 
 export const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({

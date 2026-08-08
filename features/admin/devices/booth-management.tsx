@@ -176,6 +176,7 @@ type DeviceFormOptions = {
     frameImageUrl?: string;
     accentColor?: string;
     photoCount?: number;
+    printLengthMm?: number;
   }>;
   pricingProducts: PricingProduct[];
 };
@@ -274,6 +275,7 @@ export function BoothManagement({
           frameImageUrl: template.frameImageUrl,
           accentColor: template.accentColor,
           photoCount: template.photoCount,
+          printLengthMm: template.printLengthMm,
         })),
       pricingProducts,
     }),
@@ -417,7 +419,24 @@ export function BoothManagement({
         data-devices-tour="device-list"
         className="grid gap-4 xl:grid-cols-2"
       >
-        {data.map((device: Device) => (
+        {data.map((device: Device) => {
+          const paperInitialLengthMm = device.paperInitialLengthMm ?? 0;
+          const paperRemainingLengthMm = Math.max(
+            0,
+            paperInitialLengthMm - (device.paperUsedLengthMm ?? 0),
+          );
+          const paperRemainingPercent = paperInitialLengthMm > 0
+            ? (paperRemainingLengthMm / paperInitialLengthMm) * 100
+            : 0;
+          const activeFrame = templates.find(
+            (template) => template.id === device.template,
+          );
+          const paperPrintsRemaining = Math.floor(
+            paperRemainingLengthMm /
+              ((activeFrame?.printLengthMm ?? 150) +
+                device.printerBottomSafeZoneMm),
+          );
+          return (
           <Card
             key={device.id}
             className="group overflow-hidden rounded-2xl border border-zinc-200/80 bg-white transition-shadow duration-200 hover:shadow-md"
@@ -439,6 +458,7 @@ export function BoothManagement({
                   </p>
                 </div>
               </div>
+
               <Badge
                 variant={
                   device.status === "online"
@@ -464,8 +484,8 @@ export function BoothManagement({
             </div>
 
             <CardContent className="space-y-3 p-4">
-              {/* Battery + Printer row */}
-              <div className="grid grid-cols-2 gap-2">
+              {/* Battery, paper estimate, and printer row */}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {/* Battery */}
                 <div className="rounded-xl border border-zinc-100 bg-zinc-50/60 p-3">
                   <div className="flex items-center justify-between gap-2">
@@ -493,6 +513,46 @@ export function BoothManagement({
                     {device.lastSync}
                   </p>
                 </div>
+
+                {/* Estimated paper */}
+                {paperInitialLengthMm > 0 ? (
+                  <div className="rounded-xl border border-zinc-100 bg-zinc-50/60 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-zinc-400">
+                        Estimated paper
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs font-semibold tabular-nums",
+                          paperRemainingPercent < 5
+                            ? "text-red-600"
+                            : paperRemainingPercent < 20
+                              ? "text-amber-600"
+                              : "text-zinc-800",
+                        )}
+                      >
+                        {paperRemainingPercent.toFixed(0)}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={paperRemainingPercent}
+                      className={cn(
+                        "mt-2 h-1 bg-zinc-200 [&>div]:rounded-full [&>div]:bg-emerald-500",
+                        paperRemainingPercent < 20 &&
+                          "[&>div]:bg-amber-500",
+                        paperRemainingPercent < 5 && "[&>div]:bg-red-500",
+                      )}
+                    />
+                    <p className="mt-1.5 truncate text-[10px] text-zinc-400">
+                      ~{(paperRemainingLengthMm / 1000).toFixed(1)} m · ~
+                      {paperPrintsRemaining} prints
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-zinc-200 px-3 py-2.5 text-[11px] text-zinc-400">
+                    Paper roll belum dikonfigurasi.
+                  </div>
+                )}
 
                 {/* Printer */}
                 <div
@@ -657,8 +717,8 @@ export function BoothManagement({
               </div>
             </CardContent>
           </Card>
-
-        ))}
+          );
+        })}
         {data.length === 0 ? (
           <Card className="xl:col-span-2">
             <CardContent className="py-10">

@@ -16,6 +16,8 @@ export type Template = {
   frameCategoryId?: string;
   frameImageUrl?: string;
   isDefault: boolean;
+  /** Physical paper length consumed by one copy, excluding printer feed. */
+  printLengthMm: number;
   /** Full visual frame layout — designed in the Frame Builder */
   frameLayout?: FrameLayout | null;
 };
@@ -36,5 +38,6 @@ export type TemplateFormValues = {
   frameCategoryId: string;
   frameImageUrl: string;
   isDefault: boolean;
+  printLengthMm: number;
   frameLayout?: FrameLayout | null;
 };

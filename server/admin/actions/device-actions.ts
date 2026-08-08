@@ -556,6 +556,42 @@ export async function updateDevice(
       PRINTER_TUNING_LIMITS.dotDensity.max,
     );
   }
+  if (
+    patch.paperRollType != null ||
+    patch.paperInitialLengthMm != null ||
+    patch.paperUsedLengthMm != null
+  ) {
+    const rollType = patch.paperRollType?.trim();
+    const initial = Number(patch.paperInitialLengthMm);
+    const used = Number(patch.paperUsedLengthMm);
+    if (!rollType || !Number.isFinite(initial) || initial < 1000 || initial > 500000) {
+      throw new Error("Select a roll type and enter an estimated length between 1 and 500 meters.");
+    }
+    if (!Number.isFinite(used) || used < 0 || used > initial) {
+      throw new Error("Paper used length must be between zero and the installed roll length.");
+    }
+    const now = new Date().toISOString();
+    dbPatch.paper_roll_type = rollType;
+    dbPatch.paper_initial_length_mm = initial;
+    dbPatch.paper_used_length_mm = used;
+    dbPatch.paper_installed_at = patch.paperInstalledAt ?? now;
+    dbPatch.paper_updated_at = now;
+  }
+  if (
+    patch.paperOuterDiameterMm != null ||
+    patch.paperCoreDiameterMm != null
+  ) {
+    const outer = Number(patch.paperOuterDiameterMm);
+    const core = Number(patch.paperCoreDiameterMm);
+    if (!Number.isFinite(outer) || outer < 10 || outer > 200) {
+      throw new Error("Outer roll diameter must be between 10 and 200 mm.");
+    }
+    if (!Number.isFinite(core) || core < 1 || core >= outer) {
+      throw new Error("Inner core diameter must be smaller than the outer diameter.");
+    }
+    dbPatch.paper_outer_diameter_mm = outer;
+    dbPatch.paper_core_diameter_mm = core;
+  }
 
   const { error } = await supabase.from("devices").update(dbPatch).eq("id", id);
   if (error) throw new Error(`Unable to update device: ${error.message}`);

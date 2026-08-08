@@ -52,6 +52,7 @@ const DEFAULT_FORM: TemplateFormValues = {
   frameCategoryId: "",
   frameImageUrl: "",
   isDefault: false,
+  printLengthMm: 150,
   frameLayout: null,
 };
 
@@ -143,6 +144,7 @@ export function TemplateBuilderWorkspace({
         frameCategoryId: template.frameCategoryId ?? "",
         frameImageUrl: template.frameImageUrl ?? "",
         isDefault: template.isDefault,
+        printLengthMm: template.printLengthMm,
         frameLayout: template.frameLayout ?? null,
       });
       setUploadedImageDimensions(null);
@@ -355,6 +357,22 @@ export function TemplateBuilderWorkspace({
         </div>
       </div>
 
+      <label className="block text-xs font-medium text-zinc-600">
+        Print length (mm)
+        <Input
+          className="mt-1"
+          type="number"
+          min={20}
+          max={1000}
+          value={form.printLengthMm}
+          onChange={(event) =>
+            patch("printLengthMm", Number(event.target.value) || 150)
+          }
+        />
+        <span className="mt-1 block text-[10px] font-normal text-zinc-400">
+          Kertas yang dipakai satu cetak, tanpa feed printer.
+        </span>
+      </label>
       <label className="block text-xs font-medium text-zinc-600">
         Frame image URL
         <Input

@@ -55,10 +55,24 @@ type FrameTemplateOption = {
   frameImageUrl?: string;
   accentColor?: string;
   photoCount?: number;
+  printLengthMm?: number;
 };
 
 type SessionAccessMode = "" | "paid" | "event";
 type DeviceConfigurationTab = "general" | "frame" | "system";
+
+const CUSTOM_PAPER_THICKNESS_MM = 0.065;
+
+function estimatedLengthFromRollDiametersMm(
+  outerDiameterMm: number,
+  coreDiameterMm: number,
+) {
+  if (outerDiameterMm <= coreDiameterMm || coreDiameterMm <= 0) return 0;
+  return Math.round(
+    (Math.PI * (outerDiameterMm ** 2 - coreDiameterMm ** 2)) /
+      (4 * CUSTOM_PAPER_THICKNESS_MM),
+  );
+}
 
 type BoothFormDialogProps = {
   title: string;
@@ -176,6 +190,21 @@ export function BoothFormDialog({
         .toLocaleLowerCase()
         .includes(frameSearch.trim().toLocaleLowerCase()),
   );
+  const paperInitialLengthMm = form.paperInitialLengthMm ?? 0;
+  const paperUsedLengthMm = form.paperUsedLengthMm ?? 0;
+  const paperRemainingLengthMm = Math.max(0, paperInitialLengthMm - paperUsedLengthMm);
+  const paperRemainingPercent = paperInitialLengthMm > 0
+    ? Math.min(100, (paperRemainingLengthMm / paperInitialLengthMm) * 100)
+    : 0;
+  const activePaperTemplate = frameTemplateSelectionOptions.find(
+    (template) => template.id === form.template,
+  ) ?? frameTemplateSelectionOptions[0];
+  const paperPerPrintMm = (activePaperTemplate?.printLengthMm ?? 150) +
+    (form.printerBottomSafeZoneMm ?? 0);
+  const paperPrintsRemaining = paperPerPrintMm > 0
+    ? Math.floor(paperRemainingLengthMm / paperPerPrintMm)
+    : 0;
+  const isCustomPaperRoll = form.paperRollType === "custom";
 
   const selectSessionMode = (mode: SessionAccessMode) => {
     setSessionMode(mode);
@@ -815,6 +844,183 @@ export function BoothFormDialog({
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50/60 p-4 sm:p-5">
+              <div className="mb-4 flex items-start gap-3">
+                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[#00357B] shadow-sm ring-1 ring-zinc-200">
+                  <Printer className="size-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-950">Estimated paper remaining</h3>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">
+                    Replace or calibrate the physical roll here. The tablet receives this state on its next sync.
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <label className="block text-xs font-medium text-zinc-600">
+                  Roll type
+                  <Select
+                    className="mt-1.5 h-10 rounded-xl bg-white"
+                    value={form.paperRollType ?? ""}
+                    disabled={readOnly}
+                    onChange={(event) => {
+                      const isCustom = event.target.value === "custom";
+                      const outerDiameterMm = form.paperOuterDiameterMm ?? 80;
+                      const coreDiameterMm = form.paperCoreDiameterMm ?? 12;
+                      const initialLengthMm = isCustom
+                        ? estimatedLengthFromRollDiametersMm(
+                            outerDiameterMm,
+                            coreDiameterMm,
+                          )
+                        : event.target.value === "80x80"
+                          ? 80000
+                          : 20000;
+                      setForm({
+                        ...form,
+                        paperRollType: event.target.value,
+                        paperInitialLengthMm: initialLengthMm,
+                        paperUsedLengthMm: 0,
+                        paperInstalledAt: new Date().toISOString(),
+                        ...(isCustom
+                          ? { paperOuterDiameterMm: outerDiameterMm, paperCoreDiameterMm: coreDiameterMm }
+                          : {}),
+                      });
+                    }}
+                  >
+                    <option value="">Select roll</option>
+                    <option value="80x40">80 x 40 mm</option>
+                    <option value="80x80">80 x 80 mm</option>
+                    <option value="custom">Custom</option>
+                  </Select>
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Estimated initial length (m)
+                  <Input
+                    className="mt-1.5 h-10 rounded-xl bg-white"
+                    type="number"
+                    min={1}
+                    max={500}
+                    step={0.1}
+                    value={paperInitialLengthMm ? paperInitialLengthMm / 1000 : ""}
+                    disabled={readOnly}
+                    onChange={(event) => setForm({
+                      ...form,
+                      paperInitialLengthMm: Number(event.target.value) * 1000,
+                    })}
+                  />
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Remaining paper (m)
+                  <Input
+                    className="mt-1.5 h-10 rounded-xl bg-white"
+                    type="number"
+                    min={0}
+                    max={paperInitialLengthMm / 1000 || 500}
+                    step={0.1}
+                    value={paperInitialLengthMm ? paperRemainingLengthMm / 1000 : ""}
+                    disabled={readOnly || !paperInitialLengthMm}
+                    onChange={(event) => setForm({
+                      ...form,
+                      paperUsedLengthMm: Math.max(
+                        0,
+                        paperInitialLengthMm - Number(event.target.value) * 1000,
+                      ),
+                    })}
+                  />
+                </label>
+              </div>
+              {isCustomPaperRoll ? (
+                <div className="mt-3 grid gap-3 rounded-2xl border border-dashed border-zinc-200 bg-white/70 p-3 sm:grid-cols-2">
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Outer roll diameter (mm)
+                    <Input
+                      className="mt-1.5 h-10 rounded-xl bg-white"
+                      type="number"
+                      min={10}
+                      max={200}
+                      step={0.1}
+                      value={form.paperOuterDiameterMm ?? 80}
+                      disabled={readOnly}
+                      onChange={(event) => {
+                        const outerDiameterMm = Number(event.target.value);
+                        const coreDiameterMm = form.paperCoreDiameterMm ?? 12;
+                        setForm({
+                          ...form,
+                          paperOuterDiameterMm: outerDiameterMm,
+                          paperInitialLengthMm: estimatedLengthFromRollDiametersMm(
+                            outerDiameterMm,
+                            coreDiameterMm,
+                          ),
+                        });
+                      }}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-zinc-600">
+                    Inner core diameter (mm)
+                    <Input
+                      className="mt-1.5 h-10 rounded-xl bg-white"
+                      type="number"
+                      min={1}
+                      max={199}
+                      step={0.1}
+                      value={form.paperCoreDiameterMm ?? 12}
+                      disabled={readOnly}
+                      onChange={(event) => {
+                        const outerDiameterMm = form.paperOuterDiameterMm ?? 80;
+                        const coreDiameterMm = Number(event.target.value);
+                        setForm({
+                          ...form,
+                          paperCoreDiameterMm: coreDiameterMm,
+                          paperInitialLengthMm: estimatedLengthFromRollDiametersMm(
+                            outerDiameterMm,
+                            coreDiameterMm,
+                          ),
+                        });
+                      }}
+                    />
+                  </label>
+                  <p className="sm:col-span-2 text-[10px] leading-4 text-zinc-400">
+                    Length is estimated using 0.065 mm thermal paper thickness. You can still calibrate the initial length manually above.
+                  </p>
+                </div>
+              ) : null}
+              <div className="mt-3 flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={readOnly || !form.paperRollType || !paperInitialLengthMm}
+                  onClick={() => setForm({
+                    ...form,
+                    paperUsedLengthMm: 0,
+                    paperInstalledAt: new Date().toISOString(),
+                  })}
+                >
+                  Replace roll
+                </Button>
+              </div>
+              {paperInitialLengthMm > 0 ? (
+                <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="font-semibold text-zinc-800">{paperRemainingPercent.toFixed(0)}% remaining</span>
+                    <span className="text-zinc-500">~{(paperRemainingLengthMm / 1000).toFixed(1)} m · ~{paperPrintsRemaining} prints</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100">
+                    <div
+                      className={cn(
+                        "h-full rounded-full",
+                        paperRemainingPercent < 5 ? "bg-red-500" : paperRemainingPercent < 20 ? "bg-amber-500" : "bg-emerald-500",
+                      )}
+                      style={{ width: `${paperRemainingPercent}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-[10px] leading-4 text-zinc-400">
+                    Print estimate uses {activePaperTemplate?.name ?? "the default frame"} and its configured print length. Manual feed, failed output, and removed paper are not detectable.
+                  </p>
+                </div>
+              ) : null}
             </div>
 
             <div className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50/60 p-4 sm:p-5">

@@ -60,6 +60,11 @@ export const SEMANTIC_ROLES: {
     screen: "camera",
   },
   { value: "preview.print", label: "Print", screen: "preview" },
+  {
+    value: "preview.change_roll",
+    label: "Change Roll (paper estimate)",
+    screen: "preview",
+  },
   { value: "preview.finish", label: "Finish / Done", screen: "preview" },
   {
     value: "preview.share",
@@ -190,6 +195,7 @@ export const PAGE_ROLES: Record<BuilderPage | "generic", string[]> = {
   ],
   preview: [
     "preview.print",
+    "preview.change_roll",
     "preview.finish",
     "preview.share",
     "preview.qr_download",

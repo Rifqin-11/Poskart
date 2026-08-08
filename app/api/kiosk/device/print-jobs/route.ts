@@ -91,7 +91,38 @@ export async function GET(request: Request) {
       .maybeSingle();
     if (claimError) throw claimError;
 
-    return jsonOk({ job: claimed ?? null });
+    if (!claimed) return jsonOk({ job: null });
+
+    // Cloud reprints have only an image URL. Resolve the originating frame
+    // here so the kiosk can account for its real paper consumption.
+    let printLengthMm = 150;
+    if (claimed.gallery_session_id) {
+      const { data: session, error: sessionError } = await context.client
+        .from("gallery_sessions")
+        .select("template_name")
+        .eq("id", claimed.gallery_session_id)
+        .eq("organization_id", context.organizationId)
+        .maybeSingle();
+      if (sessionError) throw sessionError;
+
+      if (session?.template_name) {
+        const { data: template, error: templateError } = await context.client
+          .from("templates")
+          .select("print_length_mm")
+          .eq("organization_id", context.organizationId)
+          .eq("name", session.template_name)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (templateError) throw templateError;
+        const configuredLength = Number(template?.print_length_mm);
+        if (Number.isFinite(configuredLength)) {
+          printLengthMm = Math.min(1000, Math.max(20, configuredLength));
+        }
+      }
+    }
+
+    return jsonOk({ job: { ...claimed, print_length_mm: printLengthMm } });
   } catch (error) {
     return jsonError(error);
   }

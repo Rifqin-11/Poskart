@@ -47,7 +47,7 @@ export async function getTemplates(): Promise<Template[]> {
   const { data, error } = await supabase
     .from("templates")
     .select(
-      "id,name,category,status,assigned_booths,updated_at_label,display_order,usage_count,tagline,photo_count,accent_color,frame_category_id,frame_image_url,frame_layout,is_default",
+      "id,name,category,status,assigned_booths,updated_at_label,display_order,usage_count,tagline,photo_count,accent_color,frame_category_id,frame_image_url,frame_layout,is_default,print_length_mm",
     )
     .order("display_order", { ascending: true })
     .order("updated_at", { ascending: false });
@@ -95,6 +95,7 @@ export async function createTemplate(
     frame_image_url: values.frameImageUrl || null,
     frame_layout: values.frameLayout ?? null,
     is_default: values.isDefault,
+    print_length_mm: normalizePrintLengthMm(values.printLengthMm),
     display_order: (lastTemplate?.display_order ?? -1) + 1,
     updated_at: now,
   });
@@ -144,9 +145,18 @@ export async function updateTemplate(
     patch.photo_count = values.photoCount;
   }
   if (values.isDefault !== undefined) patch.is_default = values.isDefault;
+  if (values.printLengthMm !== undefined) {
+    patch.print_length_mm = normalizePrintLengthMm(values.printLengthMm);
+  }
 
   const { error } = await supabase.from("templates").update(patch).eq("id", id);
   if (error) throw new Error(`Unable to update template: ${error.message}`);
+}
+
+function normalizePrintLengthMm(value: number | undefined) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 150;
+  return Math.min(1000, Math.max(20, parsed));
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
