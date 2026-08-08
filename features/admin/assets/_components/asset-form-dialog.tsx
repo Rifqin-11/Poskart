@@ -3,9 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { uploadLibraryAsset } from "@/lib/services/storage-service";
+import {
+  getBuilderImageValidationError,
+  uploadLibraryAsset,
+  BUILDER_IMAGE_ACCEPT,
+} from "@/lib/services/storage-service";
 import type {
   AssetInput,
   AssetItem,
@@ -93,14 +98,15 @@ export function AssetUploadDialog({
               <div className="text-xs text-zinc-400">No file selected</div>
             )}
           </div>
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
-            className="mt-2 block w-full text-xs"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleFile(f);
-            }}
+          <ImageUploadDropzone
+            className="mt-2"
+            compact
+            accept={BUILDER_IMAGE_ACCEPT}
+            label="Drop asset image"
+            helperText="Select an image before saving the asset"
+            successLabel="Image ready to save"
+            validate={getBuilderImageValidationError}
+            onUpload={async (selectedFile) => handleFile(selectedFile)}
           />
         </div>
         <label className="block text-xs font-medium text-zinc-600">
@@ -250,15 +256,20 @@ export function AssetEditDialog({
             onChange={(e) => setForm({ ...form, version: e.target.value })}
           />
         </label>
-        <label className="md:col-span-2 block text-xs font-medium text-zinc-600">
-          Replace file (optional)
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
-            className="mt-1 block w-full text-xs"
-            onChange={(e) => setReplaceFile(e.target.files?.[0] ?? null)}
+        <div className="md:col-span-2">
+          <p className="mb-1 text-xs font-medium text-zinc-600">
+            Replace file (optional)
+          </p>
+          <ImageUploadDropzone
+            compact
+            accept={BUILDER_IMAGE_ACCEPT}
+            label="Drop replacement image"
+            helperText="Select an image before saving the asset"
+            successLabel="Replacement ready to save"
+            validate={getBuilderImageValidationError}
+            onUpload={async (selectedFile) => setReplaceFile(selectedFile)}
           />
-        </label>
+        </div>
         <div className="md:col-span-2 flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel

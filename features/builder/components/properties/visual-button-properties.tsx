@@ -1,6 +1,7 @@
 "use client";
 
 import { PaintBucket, Upload } from "lucide-react";
+import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
@@ -23,7 +24,7 @@ export function VisualButtonProperties({
 }: {
   selectedNode: BuilderNode;
   uploading: boolean;
-  onImageUpload: (file?: File) => void;
+  onImageUpload: (file: File) => Promise<void>;
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
   section?: "content" | "style" | "advanced";
 }) {
@@ -95,7 +96,7 @@ function ButtonImageDesign({
 }: {
   selectedNode: BuilderNode;
   uploading: boolean;
-  onImageUpload: (file?: File) => void;
+  onImageUpload: (file: File) => Promise<void>;
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
 }) {
   const src = readString(selectedNode.props.src, "");
@@ -136,19 +137,15 @@ function ButtonImageDesign({
           }
         />
       </label>
-      <label className="mt-1.5 block text-zinc-500">
-        Upload image
-        <Input
-          className="mt-0.5 bg-white"
-          type="file"
-          accept={BUILDER_IMAGE_ACCEPT}
-          disabled={uploading}
-          onChange={(event) => {
-            onImageUpload(event.target.files?.[0]);
-            event.target.value = "";
-          }}
-        />
-      </label>
+      <ImageUploadDropzone
+        compact
+        className="mt-2"
+        accept={BUILDER_IMAGE_ACCEPT}
+        label="Drop button image"
+        helperText="Drag and drop, or click to browse"
+        disabled={uploading}
+        onUpload={onImageUpload}
+      />
     </div>
   );
 }

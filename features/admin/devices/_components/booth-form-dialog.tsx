@@ -62,6 +62,10 @@ type SessionAccessMode = "" | "paid" | "event";
 type DeviceConfigurationTab = "general" | "frame" | "system";
 
 const CUSTOM_PAPER_THICKNESS_MM = 0.065;
+const BLUEPRINT_OIL_RESISTANT_ROLL_LENGTHS_MM = {
+  "80x40": 16010,
+  "80x80": 60190,
+} as const;
 
 function estimatedLengthFromRollDiametersMm(
   outerDiameterMm: number,
@@ -869,14 +873,19 @@ export function BoothFormDialog({
                       const isCustom = event.target.value === "custom";
                       const outerDiameterMm = form.paperOuterDiameterMm ?? 80;
                       const coreDiameterMm = form.paperCoreDiameterMm ?? 12;
+                      const standardLengthMm =
+                        event.target.value === "80x40" ||
+                        event.target.value === "80x80"
+                          ? BLUEPRINT_OIL_RESISTANT_ROLL_LENGTHS_MM[
+                              event.target.value
+                            ]
+                          : 0;
                       const initialLengthMm = isCustom
                         ? estimatedLengthFromRollDiametersMm(
                             outerDiameterMm,
                             coreDiameterMm,
                           )
-                        : event.target.value === "80x80"
-                          ? 80000
-                          : 20000;
+                        : standardLengthMm;
                       setForm({
                         ...form,
                         paperRollType: event.target.value,
@@ -890,13 +899,17 @@ export function BoothFormDialog({
                     }}
                   >
                     <option value="">Select roll</option>
-                    <option value="80x40">80 x 40 mm</option>
-                    <option value="80x80">80 x 80 mm</option>
-                    <option value="custom">Custom</option>
+                    <option value="80x40">80 x 40 mm · Blueprint Oil Resistant</option>
+                    <option value="80x80">80 x 80 mm · Blueprint Oil Resistant</option>
+                    <option value="custom">Custom (set your estimate)</option>
                   </Select>
+                  <span className="mt-1 block text-[10px] font-normal text-zinc-400">
+                    Blueprint Oil Resistant presets: 16.01 m for 80 x 40 and
+                    60.19 m for 80 x 80. You can calibrate the length below.
+                  </span>
                 </label>
                 <label className="block text-xs font-medium text-zinc-600">
-                  Estimated initial length (m)
+                  Estimated initial length (meters)
                   <Input
                     className="mt-1.5 h-10 rounded-xl bg-white"
                     type="number"
@@ -910,9 +923,13 @@ export function BoothFormDialog({
                       paperInitialLengthMm: Number(event.target.value) * 1000,
                     })}
                   />
+                  <span className="mt-1 block text-[10px] font-normal text-zinc-400">
+                    Defaults use Blueprint Oil Resistant. Edit this value when
+                    your supplier or roll batch differs.
+                  </span>
                 </label>
                 <label className="block text-xs font-medium text-zinc-600">
-                  Remaining paper (m)
+                  Remaining paper (meters)
                   <Input
                     className="mt-1.5 h-10 rounded-xl bg-white"
                     type="number"

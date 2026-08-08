@@ -810,21 +810,16 @@ export function FrameTemplateBuilder({
     setIsPanning(false);
   };
 
-  const uploadToNode = async (file?: File) => {
-    if (!selectedNode || !file) return;
+  const uploadToNode = async (file: File) => {
+    if (!selectedNode) return;
     const validationError = getBuilderImageValidationError(file);
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
+    if (validationError) throw new Error(validationError);
 
     setUploading(true);
     try {
       const image = await uploadBuilderImage(file);
       updateNodeProps(selectedNode.id, { src: image.url, alt: file.name });
       toast.success("Image uploaded");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed");
     } finally {
       setUploading(false);
     }

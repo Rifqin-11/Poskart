@@ -1,13 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   Film,
   Image as ImageIcon,
-  Upload,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -42,8 +42,6 @@ export function CanvasControls({ activeTab }: { activeTab?: "device" | "backgrou
   const updateCanvas = useBuilderStore((state) => state.updateCanvas);
   const setPageBackground = useBuilderStore((state) => state.setPageBackground);
   const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const pageBg = canvas.pageBackgrounds?.[activePage];
   const bgImage = normalizeAssetUrl(pageBg?.image);
@@ -85,10 +83,9 @@ export function CanvasControls({ activeTab }: { activeTab?: "device" | "backgrou
     }
   };
 
-  const handleFile = async (file: File | undefined) => {
-    if (!file) return;
+  const handleFile = async (file: File) => {
     const validationError = getBuilderMediaValidationError(file);
-    if (validationError) { toast.error(validationError); return; }
+    if (validationError) throw new Error(validationError);
     setUploading(true);
     try {
       const result = await uploadBuilderMedia(file);
@@ -98,8 +95,6 @@ export function CanvasControls({ activeTab }: { activeTab?: "device" | "backgrou
         setPageBackground(activePage, { image: result.url, video: undefined });
       }
       toast.success(`${result.type === "video" ? "Video" : "Image"} background set for ${activePage}`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setUploading(false);
     }
@@ -187,30 +182,14 @@ export function CanvasControls({ activeTab }: { activeTab?: "device" | "backgrou
           </div>
         ) : null}
 
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => { e.preventDefault(); setDragOver(false); void handleFile(e.dataTransfer.files[0]); }}
-          onClick={() => fileInputRef.current?.click()}
-          className={cn(
-            "relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed py-3 text-center transition-colors",
-            dragOver ? "border-blue-400 bg-blue-50" : "border-zinc-200 bg-zinc-50 hover:border-zinc-300",
-          )}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept={BUILDER_MEDIA_ACCEPT}
-            disabled={uploading}
-            onChange={(e) => { void handleFile(e.target.files?.[0]); e.target.value = ""; }}
-          />
-          <Upload className="size-3.5 text-zinc-400" />
-          <div className="text-[10px] font-medium text-zinc-600">
-            {uploading ? "Uploading…" : hasBg ? "Replace" : "Upload design"}
-          </div>
-          <div className="text-[9px] text-zinc-400">{BUILDER_MEDIA_HELP_TEXT}</div>
-        </div>
+        <ImageUploadDropzone
+          accept={BUILDER_MEDIA_ACCEPT}
+          label={hasBg ? "Drop to replace background" : "Drop background media"}
+          helperText={BUILDER_MEDIA_HELP_TEXT}
+          disabled={uploading}
+          validate={getBuilderMediaValidationError}
+          onUpload={handleFile}
+        />
 
         <label className="block text-xs font-medium text-zinc-500">
           Or paste URL

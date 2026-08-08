@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CloudUpload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -115,7 +115,6 @@ export function TemplateBuilderWorkspace({
   const [hydratedTemplateId, setHydratedTemplateId] = useState(
     isNew ? "new" : "",
   );
-  const [uploading, setUploading] = useState(false);
   const [uploadedImageDimensions, setUploadedImageDimensions] =
     useState<ImageDimensions | null>(null);
   const builderFullView = useBuilderStore((s) => s.builderFullView);
@@ -211,28 +210,16 @@ export function TemplateBuilderWorkspace({
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const handleUpload = async (file?: File) => {
-    if (!file) return;
+  const handleUpload = async (file: File) => {
     const validationError = getBuilderImageValidationError(file);
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const dimensions = await readImageDimensions(file);
-      const image = await uploadBuilderImage(file);
-      patch("frameImageUrl", image.url);
-      setUploadedImageDimensions(dimensions);
-      toast.success(
-        `Frame image uploaded. Canvas adjusted to ${dimensions.width} × ${dimensions.height}px.`,
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed");
-    } finally {
-      setUploading(false);
-    }
+    if (validationError) throw new Error(validationError);
+    const dimensions = await readImageDimensions(file);
+    const image = await uploadBuilderImage(file);
+    patch("frameImageUrl", image.url);
+    setUploadedImageDimensions(dimensions);
+    toast.success(
+      `Frame image uploaded. Canvas adjusted to ${dimensions.width} × ${dimensions.height}px.`,
+    );
   };
 
   const handleSave = async (layout: FrameLayout) => {
@@ -385,20 +372,13 @@ export function TemplateBuilderWorkspace({
           }}
         />
       </label>
-      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-200 p-3 text-sm font-medium text-zinc-600 hover:border-zinc-400">
-        <CloudUpload className="size-4 text-zinc-400" />
-        {uploading ? "Uploading..." : "Upload frame image"}
-        <input
-          className="sr-only"
-          type="file"
-          accept={BUILDER_IMAGE_ACCEPT}
-          disabled={uploading}
-          onChange={(event) => {
-            void handleUpload(event.target.files?.[0]);
-            event.target.value = "";
-          }}
-        />
-      </label>
+      <ImageUploadDropzone
+        accept={BUILDER_IMAGE_ACCEPT}
+        label="Drop frame image here"
+        helperText="JPG, PNG, WebP, GIF, or SVG · max 8 MB"
+        validate={getBuilderImageValidationError}
+        onUpload={handleUpload}
+      />
     </section>
   );
 

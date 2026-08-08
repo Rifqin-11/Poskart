@@ -12,6 +12,7 @@ import {
   Unlock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select } from "@/components/ui/select";
@@ -53,7 +54,7 @@ export function FramePropertiesPanel({
   onAssignPhotoSlotOrder: (id: string, order: number) => void;
   onDuplicateNode: (node: FrameNode) => void;
   onDeleteNode: (node: FrameNode) => void;
-  onUploadToNode: (file?: File) => void;
+  onUploadToNode: (file: File) => Promise<void>;
   embedded?: boolean;
 }) {
   const frameBackgroundNode = layout.nodes.find(
@@ -391,19 +392,14 @@ export function FramePropertiesPanel({
                       }
                     />
                   </label>
-                  <label className="block text-xs font-medium text-zinc-500">
-                    Upload image
-                    <Input
-                      className="mt-1"
-                      type="file"
-                      accept={BUILDER_IMAGE_ACCEPT}
-                      disabled={uploading}
-                      onChange={(event) => {
-                        onUploadToNode(event.target.files?.[0]);
-                        event.target.value = "";
-                      }}
-                    />
-                  </label>
+                  <ImageUploadDropzone
+                    compact
+                    accept={BUILDER_IMAGE_ACCEPT}
+                    label="Drop frame image"
+                    helperText="Drag and drop, or click to browse"
+                    disabled={uploading}
+                    onUpload={onUploadToNode}
+                  />
                   <label className="block text-xs font-medium text-zinc-500">
                     Fit
                     <Select

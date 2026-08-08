@@ -15,10 +15,10 @@ import {
   Search,
   Tag,
   Trash2,
-  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -39,6 +39,7 @@ import { ThemeThumbnail } from "@/features/admin/themes/theme-thumbnail";
 import { FrameShowcasePreview } from "@/features/public/showcase/frame-showcase-preview";
 import {
   BUILDER_IMAGE_ACCEPT,
+  getBuilderImageValidationError,
   uploadShowcaseImage,
 } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
@@ -444,11 +445,12 @@ function ShowcaseEditorDialog({
         storagePath: uploaded.path,
       });
     } catch (uploadError) {
-      setError(
+      const message =
         uploadError instanceof Error
           ? uploadError.message
-          : "Unable to upload showcase image.",
-      );
+          : "Unable to upload showcase image.";
+      setError(message);
+      throw new Error(message);
     } finally {
       setUploadingItemKeys((current) =>
         current.filter((itemKey) => itemKey !== key),
@@ -642,34 +644,16 @@ function ShowcaseEditorDialog({
                             </p>
                           </div>
                         )}
-                        <label
-                          className={cn(
-                            "absolute bottom-3 left-3 inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white/95 px-3 text-xs font-semibold text-zinc-700 shadow-sm backdrop-blur transition-colors hover:border-blue-200 hover:text-[#00357B]",
-                            uploading && "cursor-wait opacity-70",
-                          )}
-                        >
-                          {uploading ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : (
-                            <Upload className="size-3.5" />
-                          )}
-                          {uploading
-                            ? "Uploading..."
-                            : item.imageUrl
-                              ? "Replace image"
-                              : "Upload image"}
-                          <input
-                            type="file"
-                            accept={BUILDER_IMAGE_ACCEPT}
-                            className="sr-only"
-                            disabled={uploading}
-                            onChange={(event) => {
-                              const file = event.target.files?.[0];
-                              event.target.value = "";
-                              if (file) void uploadCustomItemImage(item.key, file);
-                            }}
-                          />
-                        </label>
+                        <ImageUploadDropzone
+                          compact
+                          className="absolute bottom-3 left-3 right-3 bg-white/95 shadow-sm backdrop-blur"
+                          accept={BUILDER_IMAGE_ACCEPT}
+                          label={item.imageUrl ? "Drop to replace image" : "Drop preview image"}
+                          helperText="JPG, PNG, WebP, GIF, or SVG · max 8 MB"
+                          disabled={uploading}
+                          validate={getBuilderImageValidationError}
+                          onUpload={(file) => uploadCustomItemImage(item.key, file)}
+                        />
                       </div>
 
                       <div className="p-4 sm:p-5">

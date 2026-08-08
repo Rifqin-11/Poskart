@@ -2,6 +2,7 @@
 
 import { Film } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Select } from "@/components/ui/select";
 import { ColorKeyControls } from "@/features/builder/components/color-key-controls";
 import { PanelSection } from "@/features/builder/components/visual-properties-primitives";
@@ -21,7 +22,7 @@ export function VisualMediaProperties({
 }: {
   selectedNode: BuilderNode;
   uploading: boolean;
-  onMediaUpload: (file?: File) => void;
+  onMediaUpload: (file: File) => Promise<void>;
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
   section?: "content" | "style" | "advanced";
 }) {
@@ -58,25 +59,14 @@ export function VisualMediaProperties({
             YouTube or embed links are not supported here.
           </div>
         ) : null}
-        <label className="block text-xs font-medium text-zinc-500">
-          Upload media
-          <Input
-            className="mt-1"
-            type="file"
-            accept={BUILDER_MEDIA_ACCEPT}
-            disabled={uploading}
-            onChange={(event) => {
-              onMediaUpload(event.target.files?.[0]);
-              event.target.value = "";
-            }}
-          />
-          <span className="mt-1 block text-[10px] font-normal text-zinc-400">
-            {BUILDER_MEDIA_HELP_TEXT}
-          </span>
-        </label>
-        {uploading && (
-          <div className="text-xs text-zinc-500">Uploading media...</div>
-        )}
+        <ImageUploadDropzone
+          compact
+          accept={BUILDER_MEDIA_ACCEPT}
+          label="Drop media here"
+          helperText={BUILDER_MEDIA_HELP_TEXT}
+          disabled={uploading}
+          onUpload={onMediaUpload}
+        />
       </PanelSection>
     );
   }

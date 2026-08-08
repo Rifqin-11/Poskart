@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Grid2X2, Image, List, Plus, Type, Upload, X } from "lucide-react";
+import { Grid2X2, Image, List, Plus, Type, X } from "lucide-react";
+import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -162,25 +163,16 @@ function ImagesSection({
   updateCanvas: (patch: Partial<BuilderCanvas>) => void;
   onInsertImage: (url: string) => void;
 }) {
-  const [uploading, setUploading] = useState(false);
   const [view, setView] = useState<AssetView>("grid");
   const images = canvas.canvasImages ?? [];
 
-  const handleUpload = async (file?: File) => {
-    if (!file) return;
+  const handleUpload = async (file: File) => {
     const err = getBuilderImageValidationError(file);
-    if (err) { toast.error(err); return; }
-    setUploading(true);
-    try {
-      const result = await uploadBuilderImage(file);
-      updateCanvas({
-        canvasImages: [...images, { url: result.url, name: file.name }],
-      });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload failed");
-    } finally {
-      setUploading(false);
-    }
+    if (err) throw new Error(err);
+    const result = await uploadBuilderImage(file);
+    updateCanvas({
+      canvasImages: [...images, { url: result.url, name: file.name }],
+    });
   };
 
   const remove = (url: string) => {
@@ -228,20 +220,14 @@ function ImagesSection({
       </div>
 
       {/* Upload */}
-      <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-dashed border-zinc-300 bg-zinc-50 py-2.5 text-[10px] font-medium text-zinc-500 transition-colors hover:border-zinc-400 hover:bg-zinc-100">
-        <Upload className="size-3.5" />
-        {uploading ? "Uploading..." : "Upload image"}
-        <input
-          type="file"
-          accept={BUILDER_IMAGE_ACCEPT}
-          disabled={uploading}
-          className="sr-only"
-          onChange={(e) => {
-            handleUpload(e.target.files?.[0]);
-            e.target.value = "";
-          }}
-        />
-      </label>
+      <ImageUploadDropzone
+        compact
+        accept={BUILDER_IMAGE_ACCEPT}
+        label="Drop image or click to browse"
+        helperText="JPG, PNG, WebP, GIF, or SVG · max 8 MB"
+        validate={getBuilderImageValidationError}
+        onUpload={handleUpload}
+      />
 
       {/* Asset list/grid */}
       {images.length === 0 ? (

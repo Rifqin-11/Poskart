@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 import { VisualAppearanceProperties } from "@/features/builder/components/properties/visual-appearance-properties";
 import { VisualButtonProperties } from "@/features/builder/components/properties/visual-button-properties";
 import { VisualCountdownProperties } from "@/features/builder/components/properties/visual-countdown-properties";
@@ -64,33 +63,23 @@ export function PropertiesPanel({
   const canvas = useBuilderStore((state) => state.canvas);
   const [uploading, setUploading] = useState(false);
 
-  const handleImageUpload = async (file?: File) => {
-    if (!selectedNode || !file) return;
+  const handleImageUpload = async (file: File) => {
+    if (!selectedNode) return;
     const validationError = getBuilderImageValidationError(file);
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
+    if (validationError) throw new Error(validationError);
     setUploading(true);
     try {
       const image = await uploadBuilderImage(file);
       updateNodeProps(selectedNode.id, { src: image.url });
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to upload image",
-      );
     } finally {
       setUploading(false);
     }
   };
 
-  const handleMediaUpload = async (file?: File) => {
-    if (!selectedNode || !file) return;
+  const handleMediaUpload = async (file: File) => {
+    if (!selectedNode) return;
     const validationError = getBuilderMediaValidationError(file);
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
+    if (validationError) throw new Error(validationError);
     setUploading(true);
     try {
       const result = await uploadBuilderMedia(file);
@@ -98,10 +87,6 @@ export function PropertiesPanel({
         src: result.url,
         mediaType: result.type,
       });
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to upload media",
-      );
     } finally {
       setUploading(false);
     }
