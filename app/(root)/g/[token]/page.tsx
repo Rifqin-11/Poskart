@@ -213,7 +213,7 @@ export default async function PublicSharedGalleryPage({
                   href={`/s/${encodeURIComponent(session.id)}`}
                   className="group overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_4px_14px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_30px_rgba(15,23,42,0.12)]"
                 >
-                  <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100/80 p-2 sm:p-2.5">
                     {thumbnail ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -221,7 +221,7 @@ export default async function PublicSharedGalleryPage({
                         alt={session.template_name || "POSKART photo"}
                         loading="lazy"
                         decoding="async"
-                        className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                        className="size-full object-contain transition-transform duration-300 group-hover:scale-[1.015]"
                       />
                     ) : (
                       <div className="grid size-full place-items-center text-zinc-400">
