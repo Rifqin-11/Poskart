@@ -60,13 +60,12 @@ type PublicThemeRow = {
   schema: unknown;
 };
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PUBLIC_TOKEN_PATTERN = /^[a-z0-9-]{8,100}$/i;
 
 export const getPublicTemplateShowcase = cache(
   async (token: string): Promise<PublicTemplateShowcase | null> => {
     const normalizedToken = token.trim();
-    if (!UUID_PATTERN.test(normalizedToken)) return null;
+    if (!PUBLIC_TOKEN_PATTERN.test(normalizedToken)) return null;
 
     const supabase = createSupabaseAdminClient();
     const { data: showcase, error: showcaseError } = await supabase

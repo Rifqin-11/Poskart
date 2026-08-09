@@ -4,8 +4,21 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { deleteGalleryAssets } from "@/lib/gallery/storage-provider";
 import { getSiteUrl } from "@/lib/auth/site-url";
+import { randomBytes } from "node:crypto";
 
 const MAX_SHARED_GALLERY_SESSIONS = 250;
+
+function createSharedGalleryToken(name: string) {
+  const slug = name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 36) || "gallery";
+  const suffix = randomBytes(5).toString("base64url").replace(/[-_]/g, "").slice(0, 7);
+  return `${slug}-${suffix}`;
+}
 
 async function getGalleryActionContext() {
   const supabase = await createClient();
@@ -78,8 +91,9 @@ export async function createSharedGallery(input: {
   const { data: sharedGallery, error: galleryError } = await supabase
     .from("shared_galleries")
     .insert({
-      organization_id: organizationId,
-      name,
+    organization_id: organizationId,
+    name,
+      public_token: createSharedGalleryToken(name),
       created_by: user.id,
     })
     .select("id,name,public_token,created_at")

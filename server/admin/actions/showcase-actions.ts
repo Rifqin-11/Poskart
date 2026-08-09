@@ -1,6 +1,7 @@
 "use server";
 
 import { getAdminContext, getAdminMembership, verifyRole } from "@/server/admin/context";
+import { randomBytes } from "node:crypto";
 import type {
   Showcase,
   ShowcaseCustomItemInput,
@@ -32,6 +33,18 @@ type ShowcaseRow = {
     display_order: number;
   }> | null;
 };
+
+function createShowcaseToken(name: string) {
+  const slug = name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 36) || "showcase";
+  const suffix = randomBytes(5).toString("base64url").replace(/[-_]/g, "").slice(0, 7);
+  return `${slug}-${suffix}`;
+}
 
 function validateCustomItem(
   item: ShowcaseCustomItemInput,
@@ -152,6 +165,11 @@ export async function createShowcase(input: ShowcaseInput): Promise<string> {
 
   if (error) throw new Error(`Unable to create showcase: ${error.message}`);
   if (typeof data !== "string") throw new Error("Showcase could not be created.");
+  const { error: tokenError } = await supabase
+    .from("showcases")
+    .update({ public_token: createShowcaseToken(values.name) })
+    .eq("id", data);
+  if (tokenError) throw new Error(`Unable to create showcase link: ${tokenError.message}`);
   return data;
 }
 
