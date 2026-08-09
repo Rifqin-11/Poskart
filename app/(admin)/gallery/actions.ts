@@ -119,6 +119,7 @@ export async function createSharedGallery(input: {
     publicToken: sharedGallery.public_token,
     publicUrl,
     sessionCount: sessionIds.length,
+    sessionIds,
     createdAt: sharedGallery.created_at,
   };
 }
@@ -140,6 +141,70 @@ export async function deleteSharedGallery(sharedGalleryId: string) {
 
   revalidatePath("/gallery");
   return { success: true };
+}
+
+export async function updateSharedGallery(input: {
+  id: string;
+  name: string;
+  sessionIds: string[];
+}) {
+  const { supabase, organizationId } = await getGalleryActionContext();
+  const name = input.name.trim();
+  const sessionIds = [...new Set(input.sessionIds.map((id) => id.trim()))].filter(Boolean);
+  if (!input.id.trim()) throw new Error("Shared gallery is required.");
+  if (!name) throw new Error("Gallery name is required.");
+  if (name.length > 100) throw new Error("Gallery name cannot exceed 100 characters.");
+  if (sessionIds.length === 0) throw new Error("Select at least one gallery session.");
+  if (sessionIds.length > MAX_SHARED_GALLERY_SESSIONS) {
+    throw new Error(`A shared gallery can contain up to ${MAX_SHARED_GALLERY_SESSIONS} sessions.`);
+  }
+
+  const { data: ownedSessions, error: sessionsError } = await supabase
+    .from("gallery_sessions")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .in("id", sessionIds);
+  if (sessionsError) throw new Error(sessionsError.message);
+  const ownedIds = new Set((ownedSessions ?? []).map((session) => session.id));
+  if (ownedIds.size !== sessionIds.length || sessionIds.some((id) => !ownedIds.has(id))) {
+    throw new Error("One or more selected sessions are no longer available.");
+  }
+
+  const { data: gallery, error: galleryError } = await supabase
+    .from("shared_galleries")
+    .update({ name })
+    .eq("id", input.id)
+    .eq("organization_id", organizationId)
+    .select("id,name,public_token,created_at")
+    .maybeSingle();
+  if (galleryError) throw new Error(galleryError.message);
+  if (!gallery) throw new Error("Shared gallery not found or access denied.");
+
+  const { error: deleteError } = await supabase
+    .from("shared_gallery_sessions")
+    .delete()
+    .eq("shared_gallery_id", gallery.id);
+  if (deleteError) throw new Error(deleteError.message);
+  const { error: insertError } = await supabase
+    .from("shared_gallery_sessions")
+    .insert(sessionIds.map((gallerySessionId, position) => ({
+      shared_gallery_id: gallery.id,
+      gallery_session_id: gallerySessionId,
+      position,
+    })));
+  if (insertError) throw new Error(insertError.message);
+
+  revalidatePath("/gallery");
+  revalidatePath(`/g/${gallery.public_token}`);
+  return {
+    id: gallery.id,
+    name: gallery.name,
+    publicToken: gallery.public_token,
+    publicUrl: `${await getSiteUrl()}/g/${gallery.public_token}`,
+    sessionCount: sessionIds.length,
+    sessionIds,
+    createdAt: gallery.created_at,
+  };
 }
 
 export async function deleteGallerySession(sessionId: string) {

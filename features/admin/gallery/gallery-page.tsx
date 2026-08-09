@@ -61,6 +61,7 @@ type SharedGalleryRow = {
 
 type SharedGallerySessionRow = {
   shared_gallery_id: string;
+  gallery_session_id: string;
 };
 
 const INITIAL_GALLERY_PAGE_SIZE = 50;
@@ -108,7 +109,7 @@ export async function GalleryPage() {
     sharedGalleryIds.length
       ? supabase
           .from("shared_gallery_sessions")
-          .select("shared_gallery_id")
+          .select("shared_gallery_id,gallery_session_id")
           .in("shared_gallery_id", sharedGalleryIds)
       : Promise.resolve({ data: [] }),
     getSiteUrl(),
@@ -152,6 +153,9 @@ export async function GalleryPage() {
     publicToken: gallery.public_token,
     publicUrl: `${siteUrl}/g/${gallery.public_token}`,
     sessionCount: sessionCountBySharedGallery.get(gallery.id) ?? 0,
+    sessionIds: (sharedGallerySessionRows as SharedGallerySessionRow[] ?? [])
+      .filter((row) => row.shared_gallery_id === gallery.id)
+      .map((row) => row.gallery_session_id),
     createdAt: gallery.created_at,
   }));
   const transactionRows = (transactions ?? []) as TransactionRow[];

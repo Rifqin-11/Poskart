@@ -4,5 +4,6 @@ export type SharedGallerySummary = {
   publicToken: string;
   publicUrl: string;
   sessionCount: number;
+  sessionIds: string[];
   createdAt: string;
 };

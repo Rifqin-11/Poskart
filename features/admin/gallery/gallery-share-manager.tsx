@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Images,
   Loader2,
+  Pencil,
   Share2,
   Trash2,
   X,
@@ -26,6 +27,7 @@ import { toast } from "sonner";
 import {
   createSharedGallery,
   deleteSharedGallery,
+  updateSharedGallery,
 } from "@/app/(admin)/gallery/actions";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -48,6 +50,7 @@ type GalleryShareContextValue = {
   cancelSelection: () => void;
   openCreateDialog: () => void;
   openLibraryDialog: () => void;
+  openEditGallery: (gallery: SharedGallerySummary) => void;
   showTutorial: () => void;
 };
 
@@ -88,6 +91,7 @@ export function GalleryShareProvider({
   const [dialogMode, setDialogMode] = useState<"create" | "library" | null>(
     null,
   );
+  const [editingGallery, setEditingGallery] = useState<SharedGallerySummary | null>(null);
   const [createdGallery, setCreatedGallery] =
     useState<SharedGallerySummary | null>(null);
   const galleryTutorial = useFeatureTutorial("gallery");
@@ -108,9 +112,16 @@ export function GalleryShareProvider({
   }, []);
   const openCreateDialog = useCallback(() => {
     setCreatedGallery(null);
+    setEditingGallery(null);
     setDialogMode("create");
   }, []);
   const openLibraryDialog = useCallback(() => setDialogMode("library"), []);
+  const openEditGallery = useCallback((gallery: SharedGallerySummary) => {
+    setEditingGallery(gallery);
+    setSelectedIds(new Set(gallery.sessionIds));
+    setIsSelectionMode(true);
+    setDialogMode(null);
+  }, []);
   const startSelection = useCallback(() => {
     setSelectedIds(new Set());
     setCreatedGallery(null);
@@ -128,6 +139,7 @@ export function GalleryShareProvider({
       cancelSelection,
       openCreateDialog,
       openLibraryDialog,
+      openEditGallery,
       showTutorial: galleryTutorial.show,
     }),
     [
@@ -136,6 +148,7 @@ export function GalleryShareProvider({
       isSelectionMode,
       openCreateDialog,
       openLibraryDialog,
+      openEditGallery,
       selectedIds,
       toggleSelection,
       galleryTutorial.show,
@@ -147,15 +160,24 @@ export function GalleryShareProvider({
       {children}
       <SelectionToolbar />
       <CreateSharedGalleryDialog
+        key={editingGallery?.id ?? "create"}
         open={dialogMode === "create"}
         onOpenChange={(open) => setDialogMode(open ? "create" : null)}
         selectedIds={[...selectedIds]}
         createdGallery={createdGallery}
+        editingGallery={editingGallery}
         onCreated={(gallery) => {
           setCreatedGallery(gallery);
           setSharedGalleries((current) => [gallery, ...current]);
           setIsSelectionMode(false);
           clearSelection();
+        }}
+        onUpdated={(gallery) => {
+          setSharedGalleries((current) => current.map((item) => item.id === gallery.id ? gallery : item));
+          setEditingGallery(null);
+          setIsSelectionMode(false);
+          clearSelection();
+          toast.success("Shared gallery updated.");
         }}
       />
       <SharedGalleryLibraryDialog
@@ -163,6 +185,7 @@ export function GalleryShareProvider({
         onOpenChange={(open) => setDialogMode(open ? "library" : null)}
         galleries={sharedGalleries}
         onCreate={startSelection}
+        onEdit={openEditGallery}
         onDeleted={(galleryId) =>
           setSharedGalleries((current) =>
             current.filter((gallery) => gallery.id !== galleryId),
@@ -272,15 +295,19 @@ function CreateSharedGalleryDialog({
   onOpenChange,
   selectedIds,
   createdGallery,
+  editingGallery,
   onCreated,
+  onUpdated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedIds: string[];
   createdGallery: SharedGallerySummary | null;
+  editingGallery: SharedGallerySummary | null;
   onCreated: (gallery: SharedGallerySummary) => void;
+  onUpdated: (gallery: SharedGallerySummary) => void;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(editingGallery?.name ?? "");
   const [isPending, startTransition] = useTransition();
 
   const submit = () => {
@@ -291,13 +318,13 @@ function CreateSharedGalleryDialog({
 
     startTransition(async () => {
       try {
-        const gallery = await createSharedGallery({
-          name,
-          sessionIds: selectedIds,
-        });
-        onCreated(gallery);
+        const gallery = editingGallery
+          ? await updateSharedGallery({ id: editingGallery.id, name, sessionIds: selectedIds })
+          : await createSharedGallery({ name, sessionIds: selectedIds });
+        if (editingGallery) onUpdated(gallery);
+        else onCreated(gallery);
         setName("");
-        toast.success("Shared gallery created.");
+        if (!editingGallery) toast.success("Shared gallery created.");
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -313,7 +340,7 @@ function CreateSharedGalleryDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={
-        createdGallery ? "Gallery ready to share" : "Create shared gallery"
+        createdGallery ? "Gallery ready to share" : editingGallery ? "Edit shared gallery" : "Create shared gallery"
       }
       className="max-w-lg"
     >
@@ -387,7 +414,7 @@ function CreateSharedGalleryDialog({
               ) : (
                 <Share2 className="size-4" />
               )}
-              Create gallery
+              {editingGallery ? "Save changes" : "Create gallery"}
             </Button>
           </div>
         </div>
@@ -401,12 +428,14 @@ function SharedGalleryLibraryDialog({
   onOpenChange,
   galleries,
   onCreate,
+  onEdit,
   onDeleted,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   galleries: SharedGallerySummary[];
   onCreate: () => void;
+  onEdit: (gallery: SharedGallerySummary) => void;
   onDeleted: (galleryId: string) => void;
 }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -489,6 +518,14 @@ function SharedGalleryLibraryDialog({
                   </p>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEdit(gallery)}
+                  >
+                    <Pencil className="size-3.5" />
+                    Edit
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight, Images } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Images } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { businessProfile } from "@/lib/constants/business";
@@ -9,6 +9,7 @@ import {
   isGalleryLinkExpired,
 } from "@/lib/gallery/retention";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { PublicFooter } from "@/features/root/shell/public-site-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ type SharedGalleryReferenceRow = {
 type GallerySessionRow = {
   id: string;
   template_name: string;
+  social_media_consent: boolean;
   created_at: string;
 };
 
@@ -92,7 +94,7 @@ export default async function PublicSharedGalleryPage({
       sessionIds.length
         ? supabase
             .from("gallery_sessions")
-            .select("id,template_name,created_at")
+            .select("id,template_name,social_media_consent,created_at")
             .eq("organization_id", gallery.organization_id)
             .in("id", sessionIds)
         : Promise.resolve({ data: [] }),
@@ -131,8 +133,8 @@ export default async function PublicSharedGalleryPage({
   });
 
   return (
-    <main className="min-h-screen bg-zinc-50 text-zinc-950">
-      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 md:py-8 lg:px-8">
+    <main className="min-h-[100dvh] overflow-clip bg-white text-zinc-950">
+      <div className="mx-auto max-w-[90rem] px-5 pb-20 pt-5 sm:px-8 lg:px-12">
         <header className="flex items-center justify-between border-b border-zinc-200 pb-5">
           <Link href="/" className="flex items-center gap-3">
             <span className="grid size-10 place-items-center overflow-hidden rounded-xl border border-zinc-200 bg-white">
@@ -147,8 +149,8 @@ export default async function PublicSharedGalleryPage({
               <span className="block text-sm font-semibold">
                 {businessProfile.brandName}
               </span>
-              <span className="block text-xs text-zinc-500">
-                Shared gallery
+              <span className="block text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                Shared showcase
               </span>
             </span>
           </Link>
@@ -157,27 +159,39 @@ export default async function PublicSharedGalleryPage({
           </span>
         </header>
 
-        <section className="py-10 sm:py-14">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-            POSKART Gallery
-          </p>
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl">
+        <section className="grid gap-10 border-b border-zinc-200 py-16 sm:py-24 lg:grid-cols-[1.3fr_0.7fr] lg:items-end">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#00357B]">
+              A POSKART collection
+            </p>
+            <h1 className="mt-5 max-w-4xl text-5xl font-semibold leading-[0.94] tracking-[-0.06em] sm:text-7xl lg:text-8xl">
                 {gallery.name}
-              </h1>
-              <p className="mt-3 text-sm text-zinc-500">
+            </h1>
+            <p className="mt-6 max-w-lg text-base leading-7 text-zinc-600">
                 {sessions.length} momen dipilih untuk dibagikan
-              </p>
-            </div>
-            <p className="text-xs text-zinc-400">
+            </p>
+          </div>
+          <div className="flex flex-col items-start gap-4 lg:items-end">
+            <p className="text-sm text-zinc-500">
               Dibuat {formatDate(gallery.created_at)}
+            </p>
+            <div className="h-px w-32 bg-zinc-300 lg:w-48" />
+            <p className="max-w-xs text-left text-sm leading-6 text-zinc-500 lg:text-right">
+              Kumpulan momen yang dirangkum untuk dinikmati, disimpan, dan dibagikan.
             </p>
           </div>
         </section>
 
+        <section className="pt-14 sm:pt-20">
+          <div className="mb-8 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">The moments</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Koleksi foto</h2>
+            </div>
+            <span className="text-xs tabular-nums text-zinc-400">{String(sessions.length).padStart(2, "0")} frames</span>
+          </div>
         {sessions.length === 0 ? (
-          <section className="grid min-h-80 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-white p-8 text-center">
+          <section className="grid min-h-80 place-items-center border border-dashed border-zinc-300 bg-white p-8 text-center">
             <div>
               <Images className="mx-auto size-9 text-zinc-400" />
               <h2 className="mt-4 text-base font-semibold">
@@ -190,14 +204,14 @@ export default async function PublicSharedGalleryPage({
             </div>
           </section>
         ) : (
-          <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <section className="grid grid-cols-2 gap-x-3 gap-y-10 sm:gap-x-6 sm:gap-y-14 md:grid-cols-3 lg:grid-cols-4">
             {sessions.map((session) => {
               const thumbnail = photosBySessionId.get(session.id);
               return (
                 <Link
                   key={session.id}
                   href={`/s/${encodeURIComponent(session.id)}`}
-                  className="group overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  className="group overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_4px_14px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_30px_rgba(15,23,42,0.12)]"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100">
                     {thumbnail ? (
@@ -218,30 +232,29 @@ export default async function PublicSharedGalleryPage({
                       <ArrowUpRight className="size-4" />
                     </span>
                   </div>
-                  <div className="p-3 sm:p-4">
+                  <div className="p-4 sm:p-5">
                     <h2 className="truncate text-sm font-semibold">
                       {session.template_name || "Photobooth session"}
                     </h2>
                     <p className="mt-1 text-xs text-zinc-500">
                       {formatDate(session.created_at)}
                     </p>
+                    {session.social_media_consent && (
+                      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                        <CheckCircle2 className="size-3" />
+                        Setuju sosial media
+                      </span>
+                    )}
                   </div>
                 </Link>
               );
             })}
           </section>
         )}
+        </section>
 
-        <footer className="mt-16 flex flex-col gap-2 border-t border-zinc-200 py-6 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
-          <span>© 2026 POSKART Indonesia. All rights reserved.</span>
-          <Link
-            href="/contact"
-            className="font-medium text-zinc-800 hover:underline"
-          >
-            Contact Support
-          </Link>
-        </footer>
       </div>
+      <PublicFooter className="border-t border-zinc-200" />
     </main>
   );
 }
