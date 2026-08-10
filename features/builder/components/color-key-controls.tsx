@@ -53,7 +53,9 @@ export function ColorKeyControls({
           Remove background
         </div>
         <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
-          baked on save
+          {settings.regions?.length
+            ? `${settings.regions.length} area`
+            : "baked on save"}
         </span>
       </div>
 

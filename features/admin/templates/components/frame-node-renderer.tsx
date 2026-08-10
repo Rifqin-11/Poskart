@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { ColorKeyImage } from "@/features/builder/components/color-key-image";
+import { FramePhotoSlotPlaceholder } from "@/features/builder/shared/frame-photo-slot-placeholder";
 import { previewTimestamp, readNumber, readString } from "@/features/admin/templates/frame-builder.utils";
 import type { FrameNode, TimestampPart } from "@/types/frame-template";
 
@@ -9,19 +10,16 @@ export function FrameNodeRenderer({ node }: { node: FrameNode }) {
   if (node.type === "photo-slot") {
     const photoOrder = readNumber(node.props.photoOrder, 0);
     return (
-      <div
-        className="grid h-full w-full place-items-center border-2 border-dashed text-center text-xs font-medium text-zinc-500"
-        style={{
-          background: readString(node.props.background, "#f4f4f5"),
-          borderColor: readString(node.props.borderColor, "#d4d4d8"),
-          borderRadius: readNumber(node.props.radius, 10),
-        }}
-      >
-        {readString(
+      <FramePhotoSlotPlaceholder
+        slotIndex={Math.max(0, photoOrder - 1)}
+        label={readString(
           node.props.label,
           photoOrder > 0 ? `Photo ${photoOrder}` : "Photo",
         )}
-      </div>
+        borderColor={readString(node.props.borderColor, "#d4d4d8")}
+        borderWidth={Math.max(1, readNumber(node.props.borderWidth, 1))}
+        radius={readNumber(node.props.radius, 10)}
+      />
     );
   }
 

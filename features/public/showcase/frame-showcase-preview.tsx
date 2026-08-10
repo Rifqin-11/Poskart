@@ -1,4 +1,5 @@
 import { ImageIcon } from "lucide-react";
+import { FramePhotoSlotPlaceholder } from "@/features/builder/shared/frame-photo-slot-placeholder";
 import { cn } from "@/lib/utils";
 import type { FrameLayout, FrameNode } from "@/types/frame-template";
 
@@ -9,13 +10,6 @@ type FrameShowcasePreviewProps = {
   frameLayout: FrameLayout | null;
   className?: string;
 };
-
-const PHOTO_BACKGROUNDS = [
-  "linear-gradient(145deg,#dbeafe 0%,#f0f9ff 48%,#bbf7d0 49%,#86efac 100%)",
-  "linear-gradient(145deg,#fee2e2 0%,#fef3c7 48%,#fed7aa 49%,#fb923c 100%)",
-  "linear-gradient(145deg,#e9d5ff 0%,#f5f3ff 48%,#c4b5fd 49%,#818cf8 100%)",
-  "linear-gradient(145deg,#cffafe 0%,#ecfeff 48%,#a7f3d0 49%,#34d399 100%)",
-];
 
 function readString(value: unknown, fallback = "") {
   return typeof value === "string" ? value : fallback;
@@ -60,19 +54,14 @@ function PreviewNode({
 
   if (node.type === "photo-slot") {
     return (
-      <div
-        aria-hidden="true"
-        className="absolute overflow-hidden"
+      <FramePhotoSlotPlaceholder
+        slotIndex={photoIndex}
+        radius={radius}
+        className="absolute"
         style={{
           ...position,
-          borderRadius: radius,
-          background:
-            PHOTO_BACKGROUNDS[photoIndex % PHOTO_BACKGROUNDS.length],
         }}
-      >
-        <div className="absolute left-[14%] top-[14%] h-[17%] w-[42%] rounded-full bg-white/75" />
-        <div className="absolute bottom-[12%] right-[12%] size-[30%] rounded-full bg-white/25" />
-      </div>
+      />
     );
   }
 

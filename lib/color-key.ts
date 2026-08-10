@@ -1,4 +1,4 @@
-import type { ColorKeySettings } from "@/types/color-key";
+import type { ColorKeyRegion, ColorKeySettings } from "@/types/color-key";
 
 export const DEFAULT_COLOR_KEY: ColorKeySettings = {
   enabled: false,
@@ -34,6 +34,8 @@ export function normalizeColorKey(value: unknown): ColorKeySettings {
       ? (value as Partial<ColorKeySettings>)
       : {};
 
+  const regions = normalizeColorKeyRegions(source.regions);
+
   return {
     enabled: Boolean(source.enabled),
     color: normalizeHexColor(source.color),
@@ -55,7 +57,37 @@ export function normalizeColorKey(value: unknown): ColorKeySettings {
       20,
       DEFAULT_COLOR_KEY.smoothness ?? 2,
     ),
+    ...(regions.length > 0 ? { regions } : {}),
   };
+}
+
+function normalizeColorKeyRegions(value: unknown): ColorKeyRegion[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const source = item as Partial<ColorKeyRegion>;
+    const x = Number(source.x);
+    const y = Number(source.y);
+    const width = Number(source.width);
+    const height = Number(source.height);
+    if (![x, y, width, height].every(Number.isFinite)) return [];
+
+    const left = Math.min(1, Math.max(0, x));
+    const top = Math.min(1, Math.max(0, y));
+    const right = Math.min(1, Math.max(left, x + width));
+    const bottom = Math.min(1, Math.max(top, y + height));
+    if (right - left <= 0 || bottom - top <= 0) return [];
+
+    return [
+      {
+        x: left,
+        y: top,
+        width: right - left,
+        height: bottom - top,
+      },
+    ];
+  });
 }
 
 export function isColorKeyEnabled(value: unknown) {
@@ -91,8 +123,18 @@ export function applyColorKeyToImageData(
   const keyHsv = rgbToHsv(key.r, key.g, key.b);
   const featherStart = Math.max(0, effectiveTolerance - softness);
   const featherRange = Math.max(1, effectiveTolerance - featherStart);
+  const regions = settings.regions;
 
   for (let index = 0; index < data.length; index += 4) {
+    if (regions?.length) {
+      const pixelIndex = index / 4;
+      const x = pixelIndex % imageData.width;
+      const y = Math.floor(pixelIndex / imageData.width);
+      if (!isPixelInColorKeyRegions(x, y, imageData.width, imageData.height, regions)) {
+        continue;
+      }
+    }
+
     const red = data[index] ?? 0;
     const green = data[index + 1] ?? 0;
     const blue = data[index + 2] ?? 0;
@@ -123,10 +165,26 @@ export function applyColorKeyToImageData(
   }
 
   if (smoothness > 0) {
-    smoothAlphaChannel(imageData, smoothness);
+    smoothAlphaChannel(imageData, smoothness, regions);
   }
 
   return imageData;
+}
+
+function isPixelInColorKeyRegions(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  regions: ColorKeyRegion[],
+) {
+  return regions.some((region) => {
+    const left = region.x * width;
+    const top = region.y * height;
+    const right = (region.x + region.width) * width;
+    const bottom = (region.y + region.height) * height;
+    return x >= left && x < right && y >= top && y < bottom;
+  });
 }
 
 function isLikelyColorKeyPixel(
@@ -195,7 +253,11 @@ function rgbToHsv(red: number, green: number, blue: number): HsvColor {
   };
 }
 
-function smoothAlphaChannel(imageData: ImageData, radius: number) {
+function smoothAlphaChannel(
+  imageData: ImageData,
+  radius: number,
+  regions?: ColorKeyRegion[],
+) {
   const { data, width, height } = imageData;
   const sourceAlpha = new Uint8ClampedArray(width * height);
   const horizontal = new Uint8ClampedArray(width * height);
@@ -206,6 +268,13 @@ function smoothAlphaChannel(imageData: ImageData, radius: number) {
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
+      if (
+        regions?.length &&
+        !isPixelInColorKeyRegions(x, y, width, height, regions)
+      ) {
+        horizontal[y * width + x] = sourceAlpha[y * width + x] ?? 255;
+        continue;
+      }
       let sum = 0;
       let count = 0;
       for (let offset = -radius; offset <= radius; offset += 1) {
@@ -220,6 +289,12 @@ function smoothAlphaChannel(imageData: ImageData, radius: number) {
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
+      if (
+        regions?.length &&
+        !isPixelInColorKeyRegions(x, y, width, height, regions)
+      ) {
+        continue;
+      }
       let sum = 0;
       let count = 0;
       for (let offset = -radius; offset <= radius; offset += 1) {

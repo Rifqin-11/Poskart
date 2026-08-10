@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { FRAME_PHOTO_SLOT_PALETTES } from "@/features/builder/shared/frame-photo-slot-placeholder";
 import {
   applyColorKeyToImageData,
   drawImageFitted,
@@ -116,6 +117,51 @@ function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width:
   ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+function drawPhotoSlotPlaceholder(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  slotIndex: number,
+) {
+  const colors =
+    FRAME_PHOTO_SLOT_PALETTES[
+      Math.max(0, slotIndex) % FRAME_PHOTO_SLOT_PALETTES.length
+    ];
+  const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
+  gradient.addColorStop(0, colors[0]);
+  gradient.addColorStop(0.48, colors[1]);
+  gradient.addColorStop(0.49, colors[2]);
+  gradient.addColorStop(1, colors[3]);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(x, y, width, height);
+
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  roundedRect(
+    ctx,
+    x + width * 0.14,
+    y + height * 0.14,
+    width * 0.42,
+    height * 0.17,
+    height * 0.085,
+  );
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(255,255,255,0.25)";
+  ctx.beginPath();
+  ctx.ellipse(
+    x + width * 0.73,
+    y + height * 0.73,
+    width * 0.15,
+    height * 0.15,
+    0,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
 }
 
 function toProxiedUrl(src: string): string {
@@ -339,13 +385,14 @@ async function renderFrameToCanvas(
           photoPositions[node.id],
         );
       } else {
-        ctx.fillStyle = readString(node.props.background, "#f4f4f5");
-        ctx.fillRect(x, y, node.width, node.height);
-        ctx.fillStyle = "#71717a";
-        ctx.font = "600 12px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(readString(node.props.label, `Photo ${slotIndex + 1}`), 0, 0);
+        drawPhotoSlotPlaceholder(
+          ctx,
+          x,
+          y,
+          node.width,
+          node.height,
+          slotIndex,
+        );
       }
       ctx.restore();
       ctx.save();
@@ -355,7 +402,7 @@ async function renderFrameToCanvas(
       roundedRect(ctx, x, y, node.width, node.height, radius);
       ctx.strokeStyle = readString(node.props.borderColor, "#d4d4d8");
       ctx.lineWidth = Math.max(1, readNumber(node.props.borderWidth, 2));
-      ctx.setLineDash(photo ? [] : [8, 6]);
+      ctx.setLineDash([]);
       ctx.stroke();
     }
 

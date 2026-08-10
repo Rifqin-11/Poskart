@@ -28,6 +28,10 @@ import { FRAME_SNAP_THRESHOLD } from "@/features/admin/templates/frame-builder.c
 import { FrameCanvasStage } from "@/features/admin/templates/components/frame-canvas-stage";
 import { FrameContextMenu } from "@/features/admin/templates/components/frame-context-menu";
 import { FrameLayerSidebar } from "@/features/admin/templates/components/frame-layer-sidebar";
+import {
+  PhotoSlotDetectorDialog,
+  type PhotoSlotDetectionApplication,
+} from "@/features/admin/templates/components/photo-slot-detector-dialog";
 import { FramePropertiesPanel } from "@/features/admin/templates/components/frame-properties-panel";
 import {
   clampNumber,
@@ -38,6 +42,7 @@ import {
   normalizeFrameLayout,
   normalizePhotoSlotLabels,
   readNumber,
+  readString,
   resizeFrameLayout,
   upsertFrameBackground,
 } from "@/features/admin/templates/frame-builder.utils";
@@ -112,6 +117,7 @@ export function FrameTemplateBuilder({
   } | null>(null);
   const [clipboard, setClipboard] = useState<FrameNode | null>(null);
   const [isSavingLayout, setIsSavingLayout] = useState(false);
+  const [photoSlotDetectorOpen, setPhotoSlotDetectorOpen] = useState(false);
   const { isPortraitBuilder } = useBuilderResponsiveMode();
   const hydratedKeyRef = useRef<string | null>(null);
   const [committedLayoutKey, setCommittedLayoutKey] = useState(() =>
@@ -124,6 +130,10 @@ export function FrameTemplateBuilder({
   const canvasSurfaceRef = useRef<HTMLDivElement>(null);
   const longPressNodeRef = useRef<string | null>(null);
   const selectedNode = layout.nodes.find((node) => node.id === selectedId);
+  const frameBackgroundNode = layout.nodes.find(
+    (node) => node.id === "frame-background",
+  );
+  const frameBackgroundSource = readString(frameBackgroundNode?.props.src, "");
   const currentLayoutKey = JSON.stringify(normalizeFrameLayout(layout));
   const hasUnsavedChanges = committedLayoutKey !== currentLayoutKey;
   const contextNode = contextMenu?.nodeId
@@ -825,6 +835,104 @@ export function FrameTemplateBuilder({
     }
   };
 
+  const applyDetectedPhotoSlots = ({
+    candidates,
+    detection,
+    replaceExisting,
+    sensitivity,
+  }: PhotoSlotDetectionApplication) => {
+    const createdAt = Date.now();
+    const createdIds = candidates.map(
+      (_, index) => `photo-slot-detected-${createdAt}-${index + 1}`,
+    );
+
+    commitLayout((current) => {
+      const existingSlots = current.nodes.filter(
+        (node) => node.type === "photo-slot",
+      );
+      const retainedNodes = replaceExisting
+        ? current.nodes.filter((node) => node.type !== "photo-slot")
+        : current.nodes;
+      const background = retainedNodes.find(
+        (node) => node.id === "frame-background",
+      );
+      const insertionZIndex = existingSlots.length
+        ? Math.min(...existingSlots.map((node) => node.zIndex))
+        : (background?.zIndex ?? 0) + 1;
+      const nodesWithSpace = retainedNodes.map((node) =>
+        node.id !== "frame-background" && node.zIndex >= insertionZIndex
+          ? { ...node, zIndex: node.zIndex + candidates.length }
+          : node,
+      );
+      const existingPhotoCount = replaceExisting ? 0 : existingSlots.length;
+      const detectedNodes: FrameNode[] = candidates.map((candidate, index) => ({
+        id: createdIds[index],
+        type: "photo-slot",
+        x: Math.round(candidate.x * current.canvas.width),
+        y: Math.round(candidate.y * current.canvas.height),
+        width: Math.max(1, Math.round(candidate.width * current.canvas.width)),
+        height: Math.max(
+          1,
+          Math.round(candidate.height * current.canvas.height),
+        ),
+        rotation: 0,
+        opacity: 1,
+        zIndex: insertionZIndex + index,
+        locked: false,
+        props: {
+          label: `Photo ${existingPhotoCount + index + 1}`,
+          photoOrder: existingPhotoCount + index + 1,
+          background: "#f4f4f5",
+          borderColor: "transparent",
+          borderWidth: 0,
+          radius: 0,
+          autoDetected: true,
+        },
+      }));
+      const regionPadding = 0.002;
+      const regions = candidates.map((candidate) => ({
+        x: Math.max(0, candidate.x - regionPadding),
+        y: Math.max(0, candidate.y - regionPadding),
+        width: Math.min(
+          1 - Math.max(0, candidate.x - regionPadding),
+          candidate.width + regionPadding * 2,
+        ),
+        height: Math.min(
+          1 - Math.max(0, candidate.y - regionPadding),
+          candidate.height + regionPadding * 2,
+        ),
+      }));
+      const tolerance = Math.round(28 + sensitivity * 0.42);
+
+      return {
+        ...current,
+        nodes: normalizePhotoSlotLabels(
+          [...nodesWithSpace, ...detectedNodes].map((node) =>
+            node.id === "frame-background"
+              ? {
+                  ...node,
+                  props: {
+                    ...node.props,
+                    colorKey: {
+                      enabled: true,
+                      color: detection.markerColor,
+                      tolerance,
+                      softness: 8,
+                      smoothness: 1,
+                      regions,
+                    },
+                  },
+                }
+              : node,
+          ),
+        ),
+      };
+    });
+
+    setSelectedId(createdIds[0] ?? null);
+    toast.success(`${candidates.length} photo slot berhasil dibuat.`);
+  };
+
   const builder = (
     <>
       <div
@@ -896,6 +1004,7 @@ export function FrameTemplateBuilder({
               onDuplicateNode={duplicateNode}
               onDeleteNode={deleteNode}
               onUploadToNode={uploadToNode}
+              onDetectPhotoSlots={() => setPhotoSlotDetectorOpen(true)}
             />
           }
           canvas={
@@ -986,6 +1095,7 @@ export function FrameTemplateBuilder({
               onDuplicateNode={duplicateNode}
               onDeleteNode={deleteNode}
               onUploadToNode={uploadToNode}
+              onDetectPhotoSlots={() => setPhotoSlotDetectorOpen(true)}
             />
           }
         />
@@ -997,6 +1107,15 @@ export function FrameTemplateBuilder({
         onCancel={cancelUnsavedLeave}
         onDiscard={discardAndLeave}
         onSave={() => void saveAndLeave()}
+      />
+      <PhotoSlotDetectorDialog
+        open={photoSlotDetectorOpen}
+        imageSource={frameBackgroundSource}
+        existingSlotCount={
+          layout.nodes.filter((node) => node.type === "photo-slot").length
+        }
+        onOpenChange={setPhotoSlotDetectorOpen}
+        onApply={applyDetectedPhotoSlots}
       />
       {contextMenu ? (
         <FrameContextMenu

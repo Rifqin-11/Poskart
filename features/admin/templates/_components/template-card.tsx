@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
+import { FrameShowcasePreview } from "@/features/public/showcase/frame-showcase-preview";
+import { cn } from "@/lib/utils";
 import type { Template } from "@/types/template";
 
 type SortableTemplateCardProps = {
@@ -91,7 +92,15 @@ export function SortableTemplateCard({
             )}
             style={{ backgroundColor: `${template.accentColor}14` }}
           >
-            {template.frameImageUrl ? (
+            {template.frameLayout ? (
+              <FrameShowcasePreview
+                name={template.name}
+                accentColor={template.accentColor}
+                frameImageUrl={template.frameImageUrl ?? null}
+                frameLayout={template.frameLayout}
+                className="p-1.5"
+              />
+            ) : template.frameImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={template.frameImageUrl}

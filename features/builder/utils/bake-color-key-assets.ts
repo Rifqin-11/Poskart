@@ -9,7 +9,7 @@ import type { FrameLayout, FrameNode } from "@/types/frame-template";
 
 type BakeCache = Map<string, Promise<string>>;
 
-const COLOR_KEY_BAKE_VERSION = "v3";
+const COLOR_KEY_BAKE_VERSION = "v4";
 
 function colorKeySignature(src: string, colorKey: ColorKeySettings) {
   return [
@@ -19,6 +19,7 @@ function colorKeySignature(src: string, colorKey: ColorKeySettings) {
     colorKey.tolerance,
     colorKey.softness,
     colorKey.smoothness ?? 2,
+    JSON.stringify(colorKey.regions ?? null),
   ].join("|");
 }
 

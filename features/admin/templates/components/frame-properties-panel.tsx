@@ -6,8 +6,10 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
+  ChevronRight,
   Copy,
   Lock,
+  ScanSearch,
   Trash2,
   Unlock,
 } from "lucide-react";
@@ -42,6 +44,7 @@ export function FramePropertiesPanel({
   onDuplicateNode,
   onDeleteNode,
   onUploadToNode,
+  onDetectPhotoSlots,
   embedded = false,
 }: {
   detailsPanel?: ReactNode;
@@ -55,6 +58,7 @@ export function FramePropertiesPanel({
   onDuplicateNode: (node: FrameNode) => void;
   onDeleteNode: (node: FrameNode) => void;
   onUploadToNode: (file: File) => Promise<void>;
+  onDetectPhotoSlots: () => void;
   embedded?: boolean;
 }) {
   const frameBackgroundNode = layout.nodes.find(
@@ -92,7 +96,31 @@ export function FramePropertiesPanel({
       </div>
       <ScrollArea className="min-h-0 flex-1 px-4 pb-4">
         <div className="space-y-4 pt-4">
-          {activeTab === "frame" ? detailsPanel : null}
+          {activeTab === "frame" ? (
+            <>
+              {frameBackgroundNode ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-100"
+                  onClick={onDetectPhotoSlots}
+                >
+                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-100">
+                    <ScanSearch className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold text-emerald-950">
+                      Deteksi photo slot
+                    </span>
+                    <span className="block truncate text-[10px] text-emerald-700/80">
+                      Ubah area penanda menjadi slot otomatis
+                    </span>
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-emerald-600" />
+                </button>
+              ) : null}
+              {detailsPanel}
+            </>
+          ) : null}
           {activeTab === "canvas" ? (
             <>
           <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
