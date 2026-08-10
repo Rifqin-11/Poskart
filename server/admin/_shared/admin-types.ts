@@ -50,7 +50,7 @@ export const TRANSACTION_COLUMNS =
   "id,organization_id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_count,print_status,print_attempts,print_last_error,paid_at,duitku_status_code,gateway_response,merchant_order_id,archived_at,archive_reason,payout_status";
 
 export const BOOTH_COLUMNS =
-  "id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,paper_roll_type,paper_initial_length_mm,paper_used_length_mm,paper_installed_at,paper_updated_at,paper_outer_diameter_mm,paper_core_diameter_mm,voucher_requested_at,voucher_command,voucher_command_updated_at";
+  "id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,social_media_consent_enabled,email_delivery_enabled,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,paper_roll_type,paper_initial_length_mm,paper_used_length_mm,paper_installed_at,paper_updated_at,paper_outer_diameter_mm,paper_core_diameter_mm,voucher_requested_at,voucher_command,voucher_command_updated_at";
 
 export type TransactionRow = Omit<
   Transaction,
@@ -231,6 +231,8 @@ export type BoothRow = Omit<
   | "paymentCountdownSeconds"
   | "voucherEnabled"
   | "testVoucherEnabled"
+  | "socialMediaConsentEnabled"
+  | "emailDeliveryEnabled"
   | "protectSettings"
   | "printerStatus"
   | "printerName"
@@ -253,6 +255,8 @@ export type BoothRow = Omit<
   payment_countdown_seconds: number | null;
   voucher_enabled: boolean | null;
   test_voucher_enabled: boolean | null;
+  social_media_consent_enabled: boolean | null;
+  email_delivery_enabled: boolean | null;
   protect_settings: boolean | null;
   printer_status: Device["printerStatus"];
   printer_name: string | null;
@@ -530,7 +534,7 @@ export function normalizeAssignmentList(
   return fallback ? [fallback] : [];
 }
 
-export const DEVICE_ONLINE_GRACE_MS = 60_000;
+export const DEVICE_ONLINE_GRACE_MS = 5 * 60_000;
 
 export function parseRelativeSyncTime(value: string) {
   const normalized = value.trim().toLowerCase();
@@ -565,7 +569,10 @@ export function isDeviceRecentlySeen(lastSync: string) {
 export function resolveDeviceRuntimeStatus(row: BoothRow): Device["status"] {
   if (row.status === "maintenance") return "maintenance";
   if (row.status === "offline") return "offline";
-  return isDeviceRecentlySeen(row.last_sync) ? "online" : "offline";
+  if (!isDeviceRecentlySeen(row.last_sync)) return "offline";
+  if (row.status === "error") return "error";
+  if (row.status === "in_session") return "in_session";
+  return "online";
 }
 
 export function normalizeDeviceLocation(location: string) {
@@ -600,6 +607,8 @@ export const mapBooth = (row: BoothRow): Device => ({
   testVoucherEnabled: row.voucher_enabled
     ? (row.test_voucher_enabled ?? false)
     : false,
+  socialMediaConsentEnabled: row.social_media_consent_enabled ?? true,
+  emailDeliveryEnabled: row.email_delivery_enabled ?? true,
   protectSettings: row.protect_settings ?? false,
   printerStatus: row.printer_status ?? "unknown",
   printerName: row.printer_name ?? null,

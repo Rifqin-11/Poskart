@@ -16,6 +16,9 @@ export const defaultBuilderCanvas: BuilderCanvas = {
   transitionDurationMs: 300,
   transitionCurve: "easeInOut",
   overlayMode: true,
+  // Tutorial is opt-in. Keeping the original five pages explicit also makes
+  // legacy themes remain hidden until an admin enables Tutorial.
+  enabledPages: ["landing", "template", "camera", "preview", "thanks"],
 };
 
 export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {

@@ -1,8 +1,15 @@
+export type DeviceStatus =
+  | "online"
+  | "in_session"
+  | "offline"
+  | "error"
+  | "maintenance";
+
 export type Device = {
   id: string;
   name: string;
   location: string;
-  status: "online" | "offline" | "maintenance";
+  status: DeviceStatus;
   battery: number;
   appVersion: string;
   lastSync: string;
@@ -24,6 +31,10 @@ export type Device = {
   voucherEnabled: boolean;
   /** Enables the reserved TEST voucher for local-only test sessions. */
   testVoucherEnabled: boolean;
+  /** Shows the social-media consent dialog after the camera flow. */
+  socialMediaConsentEnabled: boolean;
+  /** Enables Email as a softfile-delivery channel on the kiosk. */
+  emailDeliveryEnabled: boolean;
   /** Whether opening Settings on the kiosk requires its device PIN. */
   protectSettings: boolean;
   printerStatus:

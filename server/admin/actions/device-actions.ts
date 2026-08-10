@@ -221,6 +221,8 @@ export async function createDevice(values: BoothInput): Promise<void> {
     payment_countdown_seconds: values.paymentCountdownSeconds ?? null,
     voucher_enabled: values.voucherEnabled,
     test_voucher_enabled: values.voucherEnabled && values.testVoucherEnabled,
+    social_media_consent_enabled: values.socialMediaConsentEnabled,
+    email_delivery_enabled: values.emailDeliveryEnabled,
     settings_pin: settingsPin,
     protect_settings: values.protectSettings && settingsPin.length > 0,
     printer_bottom_safe_zone_mm: clampPrinterTuningValue(
@@ -296,6 +298,8 @@ export async function validateDevicePairingCode(
         paymentCountdownSeconds: null,
         voucherEnabled: false,
         testVoucherEnabled: false,
+        socialMediaConsentEnabled: true,
+        emailDeliveryEnabled: true,
         settingsPin: "",
         protectSettings: false,
         printerBottomSafeZoneMm: 0,
@@ -377,6 +381,8 @@ export async function createPairedDevice(
         paymentCountdownSeconds: values.paymentCountdownSeconds ?? null,
         voucherEnabled: values.voucherEnabled,
         testVoucherEnabled: values.voucherEnabled && values.testVoucherEnabled,
+        socialMediaConsentEnabled: values.socialMediaConsentEnabled,
+        emailDeliveryEnabled: values.emailDeliveryEnabled,
         settingsPin: normalizeSettingsPin(values.settingsPin),
         protectSettings: values.protectSettings,
         printerBottomSafeZoneMm: clampPrinterTuningValue(
@@ -421,7 +427,12 @@ export async function updateDevice(
   };
   if (patch.name !== undefined) dbPatch.name = patch.name;
   if (patch.location !== undefined) dbPatch.location = patch.location;
-  if (patch.status !== undefined) dbPatch.status = patch.status;
+  if (patch.status !== undefined) {
+    if (patch.status !== "online" && patch.status !== "maintenance") {
+      throw new Error("Runtime device status can only be reported by the kiosk.");
+    }
+    dbPatch.status = patch.status;
+  }
   if (patch.battery !== undefined) dbPatch.battery = patch.battery;
   if (patch.appVersion !== undefined) dbPatch.app_version = patch.appVersion;
   if (patch.lastSync !== undefined) dbPatch.last_sync = patch.lastSync;
@@ -523,6 +534,12 @@ export async function updateDevice(
       dbPatch.test_voucher_enabled =
         device?.voucher_enabled === true && patch.testVoucherEnabled;
     }
+  }
+  if (patch.socialMediaConsentEnabled !== undefined) {
+    dbPatch.social_media_consent_enabled = patch.socialMediaConsentEnabled;
+  }
+  if (patch.emailDeliveryEnabled !== undefined) {
+    dbPatch.email_delivery_enabled = patch.emailDeliveryEnabled;
   }
   if (patch.printerBottomSafeZoneMm !== undefined) {
     dbPatch.printer_bottom_safe_zone_mm = clampPrinterTuningValue(

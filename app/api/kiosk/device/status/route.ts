@@ -1,13 +1,14 @@
 import {
   jsonError,
   jsonOk,
+  KioskApiError,
   requireKioskContext,
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
 
 type StatusBody = {
   deviceId?: string;
-  status?: "online" | "offline" | "maintenance";
+  status?: "online" | "in_session" | "offline" | "error";
   battery?: number;
   appVersion?: string;
   location?: string;
@@ -19,9 +20,24 @@ type StatusBody = {
 
 const VOUCHER_WAITING_LOCATION = "WAITING_VOUCHER";
 const VOUCHER_COMMAND_PREFIX = "VOUCHER:";
+const runtimeStatuses = new Set([
+  "online",
+  "in_session",
+  "offline",
+  "error",
+]);
+const printerErrorStatuses = new Set([
+  "disconnected",
+  "permission_required",
+  "paper_out",
+  "error",
+]);
 
 function isVoucherRuntimeLocation(value: string) {
-  return value === VOUCHER_WAITING_LOCATION || value.startsWith(VOUCHER_COMMAND_PREFIX);
+  return (
+    value === VOUCHER_WAITING_LOCATION ||
+    value.startsWith(VOUCHER_COMMAND_PREFIX)
+  );
 }
 
 export async function POST(request: Request) {
@@ -33,10 +49,24 @@ export async function POST(request: Request) {
       body.deviceId ?? "",
     );
     const reportedStatus = body.status ?? "online";
+    if (!runtimeStatuses.has(reportedStatus)) {
+      throw new KioskApiError(
+        "Invalid device runtime status.",
+        400,
+        "KIOSK_DEVICE_STATUS_INVALID",
+      );
+    }
+    const hasPrinterError =
+      typeof body.printerStatus === "string" &&
+      printerErrorStatuses.has(body.printerStatus);
     const status =
-      device.status === "maintenance" && reportedStatus !== "maintenance"
+      device.status === "maintenance"
         ? "maintenance"
-        : reportedStatus;
+        : reportedStatus === "offline"
+          ? "offline"
+          : hasPrinterError
+            ? "error"
+            : reportedStatus;
     const now = new Date().toISOString();
     const patch: Record<string, unknown> = {
       status,
@@ -98,7 +128,11 @@ export async function POST(request: Request) {
       .eq("organization_id", context.organizationId);
 
     if (error) throw error;
-    return jsonOk({ success: true, lastSync: now, configUpdatedAt: device.updated_at });
+    return jsonOk({
+      success: true,
+      lastSync: now,
+      configUpdatedAt: device.updated_at,
+    });
   } catch (error) {
     return jsonError(error);
   }

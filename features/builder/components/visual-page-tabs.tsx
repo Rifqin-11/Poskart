@@ -5,6 +5,13 @@ import { pageLabels } from "@/features/builder/constants";
 import { cn } from "@/lib/utils";
 import type { BuilderCanvas, BuilderPage } from "@/types/builder";
 
+const defaultEnabledPages = pageLabels.filter((page) => page !== "tutorial");
+
+function isPageEnabled(canvas: BuilderCanvas, page: BuilderPage) {
+  if (canvas.enabledPages) return canvas.enabledPages.includes(page);
+  return page !== "tutorial";
+}
+
 export function VisualPageTabs({
   activePage,
   canvas,
@@ -18,19 +25,19 @@ export function VisualPageTabs({
   onUpdateCanvas: (patch: Partial<BuilderCanvas>) => void;
   compact?: boolean;
 }) {
-  const isActivePageEnabled =
-    !canvas.enabledPages || canvas.enabledPages.includes(activePage);
+  const isActivePageEnabled = isPageEnabled(canvas, activePage);
 
   const togglePage = (page: BuilderPage) => {
-    const allPages = pageLabels;
-    const currentPages = canvas.enabledPages ?? allPages;
+    const currentPages = canvas.enabledPages ?? defaultEnabledPages;
     const isEnabled = currentPages.includes(page);
     const nextPages = isEnabled
       ? currentPages.filter((item) => item !== page)
       : [...currentPages, page];
+    const isDefaultSelection =
+      nextPages.length === defaultEnabledPages.length &&
+      defaultEnabledPages.every((item) => nextPages.includes(item));
     onUpdateCanvas({
-      enabledPages:
-        nextPages.length === allPages.length ? undefined : nextPages,
+      enabledPages: isDefaultSelection ? undefined : nextPages,
     });
   };
 
@@ -96,8 +103,7 @@ export function VisualPageTabs({
         className="flex items-center gap-1 rounded-xl border border-zinc-200/80 bg-white p-0.5 shadow-sm shadow-zinc-950/[0.03]"
     >
       {pageLabels.map((page) => {
-        const isEnabled =
-          !canvas.enabledPages || canvas.enabledPages.includes(page);
+        const isEnabled = isPageEnabled(canvas, page);
         const isActive = activePage === page;
 
         return (

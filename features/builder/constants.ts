@@ -33,6 +33,11 @@ export const SEMANTIC_ROLES: {
   },
   { value: "landing.settings", label: "Settings / Config", screen: "landing" },
   {
+    value: "tutorial.continue",
+    label: "Continue -> Package / Template",
+    screen: "tutorial",
+  },
+  {
     value: "template.select",
     label: "Select Template Tile",
     screen: "template",
@@ -96,6 +101,7 @@ export const SEMANTIC_ROLES: {
 
 export const pageLabels: BuilderPage[] = [
   "landing",
+  "tutorial",
   "template",
   "camera",
   "preview",
@@ -140,6 +146,7 @@ export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
     "social-handle",
     "background-decoration",
   ],
+  tutorial: ["text", "image", "button", "background-decoration"],
   template: [
     "text",
     "image",
@@ -186,6 +193,7 @@ export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
 /** Semantic roles shown per page in the Properties dropdown */
 export const PAGE_ROLES: Record<BuilderPage | "generic", string[]> = {
   landing: ["landing.start_session", "landing.settings"],
+  tutorial: ["tutorial.continue"],
   template: ["template.select", "template.continue", "template.back"],
   camera: [
     "camera.take_photo",

@@ -106,6 +106,32 @@ export const initialBuilderNodes: BuilderNode[] = [
       semanticRole: "landing.settings",
     },
   },
+  // ═══ TUTORIAL (HIDDEN BY DEFAULT) ═════════════════════
+  // The instructional artwork is intentionally supplied by the operator as
+  // a Canva export through Page Background or Media. Only the required action
+  // is provided by default.
+  {
+    id: "tu-continue",
+    type: "button",
+    page: "tutorial",
+    x: 500,
+    y: 704,
+    width: 280,
+    height: 64,
+    rotation: 0,
+    opacity: 1,
+    locked: false,
+    visible: true,
+    zIndex: 20,
+    props: {
+      label: "Lanjutkan",
+      background: "#C4121A",
+      color: "#ffffff",
+      radius: 32,
+      fontSize: 18,
+      semanticRole: "tutorial.continue",
+    },
+  },
   // ═══ TEMPLATE ══════════════════════════════════════════
   {
     id: "tp-heading",

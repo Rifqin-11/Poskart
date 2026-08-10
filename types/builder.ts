@@ -2,6 +2,7 @@ import type { ColorKeySettings } from "@/types/color-key";
 
 export type BuilderPage =
   | "landing"
+  | "tutorial"
   | "template"
   | "camera"
   | "preview"
@@ -71,7 +72,7 @@ export type BuilderCanvas = {
   /** If true, nodes render as colored hotspot overlays instead of real UI components */
   overlayMode?: boolean;
   /** Pages omitted from this array will be hidden on the tablet app.
-   *  Undefined means all pages enabled. */
+   *  Undefined means the legacy five pages; Tutorial remains hidden. */
   enabledPages?: BuilderPage[];
   /** Payment dialog dimensions (as fraction of canvas).
    *  Flutter: maxWidth 520, centered dialog.

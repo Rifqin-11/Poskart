@@ -8,6 +8,7 @@ import type {
 
 export const builderPages: BuilderPage[] = [
   "landing",
+  "tutorial",
   "template",
   "camera",
   "preview",

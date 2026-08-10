@@ -427,7 +427,18 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     const schema = normalizeAssetReferences(rawSchema) as LayoutSchema;
     return set({
       nodes: builderPages
-        .flatMap((page) => schema.pages[page] ?? [])
+        .flatMap((page) => {
+          const pageNodes = schema.pages[page] ?? [];
+          // Themes created before Tutorial existed have no page nodes. Seed
+          // the default Continue button in the editor while leaving the page
+          // disabled through defaultBuilderCanvas.enabledPages.
+          if (page === "tutorial" && pageNodes.length === 0) {
+            return initialBuilderNodes.filter(
+              (node) => node.page === "tutorial",
+            );
+          }
+          return pageNodes;
+        })
         .filter((node) => !isDeprecatedBuilderNode(node)),
       canvas: {
         ...defaultBuilderCanvas,

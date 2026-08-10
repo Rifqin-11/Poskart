@@ -26,6 +26,10 @@ import {
   Printer,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  DeviceStatusBadge,
+  isDeviceConnected,
+} from "@/components/ui/device-status-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -223,7 +227,9 @@ export function DashboardOverview() {
           (transaction) =>
             getDashboardMonthKey(transaction.createdAtRaw) === selectedMonth,
         );
-  const activeBooths = dashboardData.devices.filter((device: Device) => device.status === "online").length;
+  const activeBooths = dashboardData.devices.filter((device: Device) =>
+    isDeviceConnected(device.status),
+  ).length;
   const hasWeeklyChart = dashboardData.weeklyChart.length > 0;
   const hasMonthlyChart = dashboardData.monthlyChart.length > 0;
   const hasDevices = dashboardData.devices.length > 0;
@@ -467,17 +473,7 @@ export function DashboardOverview() {
                       <div className="text-sm font-medium">{device.name}</div>
                       <div className="text-xs text-zinc-500">{device.location}</div>
                     </div>
-                    <Badge
-                      variant={
-                        device.status === "online"
-                          ? "success"
-                          : device.status === "maintenance"
-                            ? "warning"
-                            : "destructive"
-                      }
-                    >
-                      {device.status}
-                    </Badge>
+                    <DeviceStatusBadge status={device.status} />
                   </div>
                   <div className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
                     <MonitorCheck className="size-3" />

@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { DeviceStatusBadge } from "@/components/ui/device-status-badge";
 import { Dialog } from "@/components/ui/dialog";
 import { DialogActions } from "@/features/admin/_components/dialog-actions";
 import { EmptyState } from "@/features/admin/_components/empty-state";
@@ -308,17 +309,7 @@ export function VoucherApproval() {
                         <MonitorSmartphone className="size-4 shrink-0 text-zinc-500" />
                         {device.name}
                       </CardTitle>
-                      <Badge
-                        variant={
-                          device.status === "online"
-                            ? "success"
-                            : device.status === "maintenance"
-                              ? "warning"
-                              : "destructive"
-                        }
-                      >
-                        {device.status}
-                      </Badge>
+                      <DeviceStatusBadge status={device.status} />
                     </div>
                     {device.location && (
                       <CardDescription className="text-xs truncate">

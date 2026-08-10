@@ -187,6 +187,25 @@ export async function POST(request: Request) {
     );
     if (error) throw error;
 
+    if (
+      device.status !== "maintenance" &&
+      errors.some(
+        (item) => item.severity === "error" || item.severity === "fatal",
+      )
+    ) {
+      const now = new Date().toISOString();
+      const { error: statusError } = await context.client
+        .from("devices")
+        .update({ status: "error", last_sync: now, updated_at: now })
+        .eq("id", device.id)
+        .eq("organization_id", context.organizationId);
+      if (statusError) {
+        console.error(
+          `[device-errors] unable to mark ${device.id} as error: ${statusError.message}`,
+        );
+      }
+    }
+
     return jsonOk({
       accepted: errors.map((item) => ({
         eventId: item.eventId,

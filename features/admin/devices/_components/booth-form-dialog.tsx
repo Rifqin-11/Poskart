@@ -9,6 +9,7 @@ import {
   ImageIcon,
   Layers3,
   Loader2,
+  Mail,
   MonitorCog,
   Printer,
   Search,
@@ -17,6 +18,7 @@ import {
   TicketCheck,
   Timer,
   Trash2,
+  Users,
   Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -639,6 +641,79 @@ export function BoothFormDialog({
                       setForm({ ...form, testVoucherEnabled })
                     }
                     aria-label="Toggle test voucher"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section
+              data-device-config-tour="visitor-experience"
+              className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50/60 p-4 sm:p-5"
+            >
+              <div className="flex items-start gap-3">
+                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[#00357B] shadow-sm ring-1 ring-zinc-200">
+                  <Users className="size-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900">
+                    Visitor experience
+                  </h3>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">
+                    Control conditional steps and delivery channels for this
+                    device. The same switches remain available in Flutter and
+                    the latest saved value is synchronized.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-[#00357B]">
+                      <Users className="size-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-zinc-900">
+                        Social media consent
+                      </p>
+                      <p className="mt-0.5 text-xs leading-5 text-zinc-500">
+                        Ask every visitor for publication consent after the
+                        Camera page.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={form.socialMediaConsentEnabled ?? true}
+                    disabled={readOnly}
+                    onCheckedChange={(socialMediaConsentEnabled) =>
+                      setForm({ ...form, socialMediaConsentEnabled })
+                    }
+                    aria-label="Toggle social media consent"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-[#00357B]">
+                      <Mail className="size-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-zinc-900">
+                        Email delivery
+                      </p>
+                      <p className="mt-0.5 text-xs leading-5 text-zinc-500">
+                        Allow Email when softfile delivery and at least one
+                        upload option are enabled on the kiosk.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={form.emailDeliveryEnabled ?? true}
+                    disabled={readOnly}
+                    onCheckedChange={(emailDeliveryEnabled) =>
+                      setForm({ ...form, emailDeliveryEnabled })
+                    }
+                    aria-label="Toggle email delivery"
                   />
                 </div>
               </div>

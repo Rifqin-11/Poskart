@@ -18,8 +18,8 @@ import {
   Store,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { DeviceStatusBadge } from "@/components/ui/device-status-badge";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -83,6 +83,8 @@ const EMPTY_BOOTH: BoothInput = {
   paymentCountdownSeconds: null,
   voucherEnabled: false,
   testVoucherEnabled: false,
+  socialMediaConsentEnabled: true,
+  emailDeliveryEnabled: true,
   protectSettings: false,
   settingsPin: "",
   printerBottomSafeZoneMm: 0,
@@ -459,28 +461,10 @@ export function BoothManagement({
                 </div>
               </div>
 
-              <Badge
-                variant={
-                  device.status === "online"
-                    ? "success"
-                    : device.status === "maintenance"
-                      ? "warning"
-                      : "destructive"
-                }
-                className="h-6 shrink-0 gap-1.5 rounded-lg px-2 text-[11px] capitalize"
-              >
-                <span
-                  className={cn(
-                    "size-1.5 rounded-full",
-                    device.status === "online"
-                      ? "bg-emerald-500"
-                      : device.status === "maintenance"
-                        ? "bg-amber-500"
-                        : "bg-red-500",
-                  )}
-                />
-                {device.status}
-              </Badge>
+              <DeviceStatusBadge
+                status={device.status}
+                className="h-6 rounded-lg px-2 text-[11px]"
+              />
             </div>
 
             <CardContent className="space-y-3 p-4">
@@ -889,13 +873,22 @@ export function BoothManagement({
               battery: _battery,
               appVersion: _appVersion,
               lastSync: _lastSync,
+              status: submittedStatus,
               ...editableValues
             } = values;
             void _battery;
             void _appVersion;
             void _lastSync;
+            const statusPatch =
+              submittedStatus === "maintenance" ||
+              editing.status === "maintenance"
+                ? { status: submittedStatus }
+                : {};
             updateBooth.mutate(
-              { id: editing.id, patch: editableValues },
+              {
+                id: editing.id,
+                patch: { ...editableValues, ...statusPatch },
+              },
               {
                 onSuccess: () => {
                   toast.success("Device updated");

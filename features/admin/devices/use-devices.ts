@@ -10,7 +10,9 @@ export function useBooths() {
   return useQuery<Device[], Error>({
     queryKey: adminQueryKeys.devices,
     queryFn: devicesApi.getDevices,
-    refetchInterval: 300_000,
+    // Re-evaluate stale heartbeats shortly after the five-minute offline
+    // threshold, even when a disconnected kiosk can no longer emit realtime.
+    refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   });
 }

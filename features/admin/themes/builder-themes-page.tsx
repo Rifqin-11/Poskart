@@ -21,6 +21,10 @@ import {
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  DeviceStatusBadge,
+  getDeviceStatusMeta,
+} from "@/components/ui/device-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ThemeThumbnail } from "@/features/admin/themes/theme-thumbnail";
@@ -36,7 +40,6 @@ import {
   useUpdateBooth,
 } from "@/features/admin/devices/use-devices";
 import type { LayoutSchemaRow } from "@/features/admin/layout/api";
-import type { Device } from "@/types/device";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useI18n } from "@/lib/i18n/i18n-provider";
@@ -72,12 +75,6 @@ function AssignDevicesModal({
     } else {
       setSelected(new Set(devices.map((d) => d.id)));
     }
-  };
-
-  const statusColor: Record<Device["status"], string> = {
-    online: "bg-emerald-400",
-    offline: "bg-zinc-300",
-    maintenance: "bg-amber-400",
   };
 
   return (
@@ -179,7 +176,7 @@ function AssignDevicesModal({
                       <span
                         className={cn(
                           "absolute -bottom-0.5 -right-0.5 size-2 rounded-full border border-white",
-                          statusColor[device.status],
+                          getDeviceStatusMeta(device.status).dotClassName,
                         )}
                       />
                     </div>
@@ -201,18 +198,10 @@ function AssignDevicesModal({
                       </p>
                     </div>
                     {/* Status badge */}
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize",
-                        device.status === "online"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : device.status === "offline"
-                            ? "bg-zinc-100 text-zinc-500"
-                            : "bg-amber-100 text-amber-700",
-                      )}
-                    >
-                      {device.status}
-                    </span>
+                    <DeviceStatusBadge
+                      status={device.status}
+                      className="rounded-full px-2 py-0.5 text-[10px]"
+                    />
                   </button>
                 );
               })}
