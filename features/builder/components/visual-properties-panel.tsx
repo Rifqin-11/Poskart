@@ -19,6 +19,7 @@ import {
   getBuilderMediaValidationError,
   uploadBuilderImage,
   uploadBuilderMedia,
+  type BuilderMediaUploadStatus,
 } from "@/lib/services/storage-service";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { InspectorTab } from "@/features/builder/components/visual-properties-primitives";
@@ -62,11 +63,14 @@ export function PropertiesPanel({
   const updateCanvas = useBuilderStore((state) => state.updateCanvas);
   const canvas = useBuilderStore((state) => state.canvas);
   const [uploading, setUploading] = useState(false);
+  const [mediaUploadStatus, setMediaUploadStatus] =
+    useState<BuilderMediaUploadStatus | null>(null);
 
   const handleImageUpload = async (file: File) => {
     if (!selectedNode) return;
     const validationError = getBuilderImageValidationError(file);
     if (validationError) throw new Error(validationError);
+    setMediaUploadStatus(null);
     setUploading(true);
     try {
       const image = await uploadBuilderImage(file);
@@ -82,12 +86,15 @@ export function PropertiesPanel({
     if (validationError) throw new Error(validationError);
     setUploading(true);
     try {
-      const result = await uploadBuilderMedia(file);
+      const result = await uploadBuilderMedia(file, {
+        onStatus: setMediaUploadStatus,
+      });
       updateNodeProps(selectedNode.id, {
         src: result.url,
         mediaType: result.type,
       });
     } finally {
+      setMediaUploadStatus(null);
       setUploading(false);
     }
   };
@@ -147,6 +154,7 @@ export function PropertiesPanel({
           <VisualMediaProperties
             selectedNode={selectedNode}
             uploading={uploading}
+            uploadStatus={mediaUploadStatus}
             onMediaUpload={handleMediaUpload}
             updateNodeProps={updateNodeProps}
             section="content"
@@ -215,6 +223,7 @@ export function PropertiesPanel({
           <VisualMediaProperties
             selectedNode={selectedNode}
             uploading={uploading}
+            uploadStatus={mediaUploadStatus}
             onMediaUpload={handleMediaUpload}
             updateNodeProps={updateNodeProps}
             section="style"

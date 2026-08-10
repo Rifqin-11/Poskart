@@ -108,8 +108,30 @@ export const initialBuilderNodes: BuilderNode[] = [
   },
   // ═══ TUTORIAL (HIDDEN BY DEFAULT) ═════════════════════
   // The instructional artwork is intentionally supplied by the operator as
-  // a Canva export through Page Background or Media. Only the required action
-  // is provided by default.
+  // a Canva export through Page Background or Media. Navigation actions are
+  // provided as regular, fully editable buttons.
+  {
+    id: "tu-back",
+    type: "button",
+    page: "tutorial",
+    x: 40,
+    y: 724,
+    width: 140,
+    height: 44,
+    rotation: 0,
+    opacity: 1,
+    locked: false,
+    visible: true,
+    zIndex: 20,
+    props: {
+      label: "← Kembali",
+      background: "transparent",
+      color: "#1B1B1B",
+      radius: 8,
+      fontSize: 16,
+      semanticRole: "tutorial.back",
+    },
+  },
   {
     id: "tu-continue",
     type: "button",

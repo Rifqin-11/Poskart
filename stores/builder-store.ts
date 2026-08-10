@@ -429,13 +429,23 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       nodes: builderPages
         .flatMap((page) => {
           const pageNodes = schema.pages[page] ?? [];
-          // Themes created before Tutorial existed have no page nodes. Seed
-          // the default Continue button in the editor while leaving the page
-          // disabled through defaultBuilderCanvas.enabledPages.
-          if (page === "tutorial" && pageNodes.length === 0) {
-            return initialBuilderNodes.filter(
+          // Seed navigation actions added after an existing Tutorial theme was
+          // saved. Matching by ID or semantic role preserves customized and
+          // hidden buttons while avoiding duplicate defaults.
+          if (page === "tutorial") {
+            const tutorialDefaults = initialBuilderNodes.filter(
               (node) => node.page === "tutorial",
             );
+            const missingDefaults = tutorialDefaults.filter(
+              (defaultNode) =>
+                !pageNodes.some(
+                  (node) =>
+                    node.id === defaultNode.id ||
+                    node.props.semanticRole ===
+                      defaultNode.props.semanticRole,
+                ),
+            );
+            return [...pageNodes, ...missingDefaults];
           }
           return pageNodes;
         })

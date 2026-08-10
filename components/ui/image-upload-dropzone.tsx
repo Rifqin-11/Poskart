@@ -11,6 +11,9 @@ export function ImageUploadDropzone({
   label = "Drop an image here",
   helperText,
   successLabel = "Upload complete",
+  busyLabel = "Uploading image...",
+  busyDetail,
+  progress,
   disabled = false,
   compact = false,
   className,
@@ -21,6 +24,9 @@ export function ImageUploadDropzone({
   label?: string;
   helperText?: string;
   successLabel?: string;
+  busyLabel?: string;
+  busyDetail?: string;
+  progress?: number;
   disabled?: boolean;
   compact?: boolean;
   className?: string;
@@ -58,6 +64,7 @@ export function ImageUploadDropzone({
   return (
     <div
       role="button"
+      aria-busy={isBusy}
       tabIndex={disabled ? -1 : 0}
       onClick={() => !disabled && inputRef.current?.click()}
       onKeyDown={(event) => {
@@ -128,7 +135,7 @@ export function ImageUploadDropzone({
         <div className={cn("min-w-0", !compact && "text-center")}>
           <p className="text-xs font-semibold text-zinc-700">
             {isBusy
-              ? "Uploading image..."
+              ? busyLabel
               : isSuccess
                 ? successLabel
                 : isError
@@ -138,8 +145,22 @@ export function ImageUploadDropzone({
                     : label}
           </p>
           <p className="mt-0.5 text-[10px] leading-4 text-zinc-400">
-            {isError ? message : helperText ?? "Drag and drop, or click to browse"}
+            {isError
+              ? message
+              : isBusy && busyDetail
+                ? busyDetail
+                : helperText ?? "Drag and drop, or click to browse"}
           </p>
+          {isBusy && Number.isFinite(progress) ? (
+            <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#00357B]/10">
+              <div
+                className="h-full rounded-full bg-[#00357B] transition-[width] duration-300"
+                style={{
+                  width: `${Math.min(100, Math.max(0, progress ?? 0))}%`,
+                }}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

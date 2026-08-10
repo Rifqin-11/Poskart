@@ -1,6 +1,10 @@
 import "server-only";
 
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 type R2UploadInput = {
@@ -23,6 +27,11 @@ type R2SignedUploadInput = {
 type R2SignedUploadResult = R2UploadResult & {
   uploadUrl: string;
   expiresIn: number;
+};
+
+type R2ObjectMetadata = R2UploadResult & {
+  byteSize: number;
+  contentType: string | null;
 };
 
 type R2Config = {
@@ -138,5 +147,24 @@ export async function createR2SignedUploadUrl({
     url: getR2PublicUrl(key),
     uploadUrl: await getSignedUrl(getR2Client(), command, { expiresIn }),
     expiresIn,
+  };
+}
+
+export async function getR2ObjectMetadata(
+  key: string,
+): Promise<R2ObjectMetadata> {
+  const r2 = getR2Config();
+  const result = await getR2Client().send(
+    new HeadObjectCommand({
+      Bucket: r2.bucket,
+      Key: key,
+    }),
+  );
+
+  return {
+    key,
+    url: getR2PublicUrl(key),
+    byteSize: result.ContentLength ?? 0,
+    contentType: result.ContentType ?? null,
   };
 }

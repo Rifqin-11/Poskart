@@ -10,18 +10,22 @@ import { readNumber, readString } from "@/features/builder/utils";
 import {
   BUILDER_MEDIA_ACCEPT,
   BUILDER_MEDIA_HELP_TEXT,
+  getBuilderMediaValidationError,
+  type BuilderMediaUploadStatus,
 } from "@/lib/services/storage-service";
 import type { BuilderNode } from "@/types/builder";
 
 export function VisualMediaProperties({
   selectedNode,
   uploading,
+  uploadStatus,
   onMediaUpload,
   updateNodeProps,
   section,
 }: {
   selectedNode: BuilderNode;
   uploading: boolean;
+  uploadStatus?: BuilderMediaUploadStatus | null;
   onMediaUpload: (file: File) => Promise<void>;
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
   section?: "content" | "style" | "advanced";
@@ -64,7 +68,11 @@ export function VisualMediaProperties({
           accept={BUILDER_MEDIA_ACCEPT}
           label="Drop media here"
           helperText={BUILDER_MEDIA_HELP_TEXT}
+          busyLabel={uploadStatus?.message ?? "Uploading media..."}
+          busyDetail={uploadStatus?.detail}
+          progress={uploadStatus?.progress}
           disabled={uploading}
+          validate={getBuilderMediaValidationError}
           onUpload={onMediaUpload}
         />
       </PanelSection>

@@ -18,8 +18,8 @@ import {
   BUILDER_MEDIA_HELP_TEXT,
   getBuilderMediaValidationError,
   uploadBuilderMedia,
+  type BuilderMediaUploadStatus,
 } from "@/lib/services/storage-service";
-import { cn } from "@/lib/utils";
 import { normalizeAssetUrl } from "@/lib/assets/asset-url";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { BuilderCanvas } from "@/types/builder";
@@ -42,6 +42,8 @@ export function CanvasControls({ activeTab }: { activeTab?: "device" | "backgrou
   const updateCanvas = useBuilderStore((state) => state.updateCanvas);
   const setPageBackground = useBuilderStore((state) => state.setPageBackground);
   const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] =
+    useState<BuilderMediaUploadStatus | null>(null);
 
   const pageBg = canvas.pageBackgrounds?.[activePage];
   const bgImage = normalizeAssetUrl(pageBg?.image);
@@ -88,7 +90,9 @@ export function CanvasControls({ activeTab }: { activeTab?: "device" | "backgrou
     if (validationError) throw new Error(validationError);
     setUploading(true);
     try {
-      const result = await uploadBuilderMedia(file);
+      const result = await uploadBuilderMedia(file, {
+        onStatus: setUploadStatus,
+      });
       if (result.type === "video") {
         setPageBackground(activePage, { image: undefined, video: result.url, colorKey: undefined });
       } else {
@@ -96,6 +100,7 @@ export function CanvasControls({ activeTab }: { activeTab?: "device" | "backgrou
       }
       toast.success(`${result.type === "video" ? "Video" : "Image"} background set for ${activePage}`);
     } finally {
+      setUploadStatus(null);
       setUploading(false);
     }
   };
@@ -186,6 +191,9 @@ export function CanvasControls({ activeTab }: { activeTab?: "device" | "backgrou
           accept={BUILDER_MEDIA_ACCEPT}
           label={hasBg ? "Drop to replace background" : "Drop background media"}
           helperText={BUILDER_MEDIA_HELP_TEXT}
+          busyLabel={uploadStatus?.message ?? "Uploading media..."}
+          busyDetail={uploadStatus?.detail}
+          progress={uploadStatus?.progress}
           disabled={uploading}
           validate={getBuilderMediaValidationError}
           onUpload={handleFile}

@@ -4,7 +4,11 @@ import {
   KioskApiError,
   requireKioskContext,
 } from "@/lib/kiosk/server";
-import { createR2SignedUploadUrl, uploadR2Object } from "@/lib/r2/server";
+import {
+  createR2SignedUploadUrl,
+  getR2ObjectMetadata,
+  uploadR2Object,
+} from "@/lib/r2/server";
 import { recordKioskAssetManifest } from "@/lib/assets/asset-manifest";
 
 export const runtime = "nodejs";
@@ -47,6 +51,14 @@ function safeFileName(name: string) {
 }
 
 function validateBuilderMedia(fileType: string, fileSize: number): MediaValidationResult {
+  if (!Number.isFinite(fileSize) || fileSize <= 0) {
+    return {
+      ok: false,
+      status: 400,
+      error: "The selected file is empty or invalid.",
+      code: "BUILDER_FILE_SIZE_INVALID",
+    };
+  }
   const isImage = ALLOWED_IMAGE_TYPES.has(fileType);
   const isVideo = ALLOWED_VIDEO_TYPES.has(fileType);
 
@@ -78,6 +90,21 @@ function validateBuilderMedia(fileType: string, fileSize: number): MediaValidati
   return { ok: true, type: isVideo ? "video" : "image" };
 }
 
+function isExpectedBuilderMediaPath(
+  organizationId: string,
+  path: string,
+  type: BuilderMediaKind,
+) {
+  const folder = type === "video" ? "builder/videos" : "builder/images";
+  const prefix = `organizations/${organizationId}/${folder}/`;
+  return (
+    path.startsWith(prefix) &&
+    path.length > prefix.length &&
+    !path.includes("..") &&
+    !path.includes("\\")
+  );
+}
+
 function buildBuilderMediaPath(
   organizationId: string,
   fileName: string,
@@ -101,18 +128,19 @@ export async function POST(request: Request) {
 
     if (contentType.includes("application/json")) {
       const payload = (await request.json().catch(() => null)) as {
+        action?: "complete";
         fileName?: string;
         fileType?: string;
         fileSize?: number;
+        path?: string;
       } | null;
 
-      const fileName = payload?.fileName?.trim();
       const fileType = payload?.fileType?.trim();
       const fileSize = payload?.fileSize;
-      if (!fileName || !fileType || typeof fileSize !== "number") {
+      if (!fileType || typeof fileSize !== "number") {
         return jsonOk(
           {
-            error: "fileName, fileType, and fileSize are required.",
+            error: "fileType and fileSize are required.",
             code: "BUILDER_UPLOAD_INTENT_INVALID",
           },
           { status: 400 },
@@ -127,6 +155,79 @@ export async function POST(request: Request) {
         );
       }
 
+      if (payload?.action === "complete") {
+        const filePath = payload.path?.trim();
+        if (
+          !filePath ||
+          !isExpectedBuilderMediaPath(
+            context.organizationId,
+            filePath,
+            validation.type,
+          )
+        ) {
+          return jsonOk(
+            {
+              error: "The uploaded media path is invalid.",
+              code: "BUILDER_UPLOAD_PATH_INVALID",
+            },
+            { status: 400 },
+          );
+        }
+
+        let uploaded: Awaited<ReturnType<typeof getR2ObjectMetadata>>;
+        try {
+          uploaded = await getR2ObjectMetadata(filePath);
+        } catch {
+          return jsonOk(
+            {
+              error: "The media upload has not reached storage yet. Please retry.",
+              code: "BUILDER_UPLOAD_NOT_FOUND",
+            },
+            { status: 409 },
+          );
+        }
+
+        if (
+          uploaded.byteSize !== fileSize ||
+          (uploaded.contentType != null && uploaded.contentType !== fileType)
+        ) {
+          return jsonOk(
+            {
+              error: "The uploaded media did not pass verification. Please retry.",
+              code: "BUILDER_UPLOAD_METADATA_MISMATCH",
+            },
+            { status: 409 },
+          );
+        }
+
+        await recordKioskAssetManifest({
+          organizationId: context.organizationId,
+          sourceUrl: uploaded.url,
+          deliveryUrl: uploaded.url,
+          revision: `${uploaded.key}:${uploaded.byteSize}`,
+          byteSize: uploaded.byteSize,
+          contentType: uploaded.contentType ?? fileType,
+        });
+
+        return jsonOk({
+          url: uploaded.url,
+          path: uploaded.key,
+          type: validation.type,
+          storage: "cloudflare-r2",
+        });
+      }
+
+      const fileName = payload?.fileName?.trim();
+      if (!fileName) {
+        return jsonOk(
+          {
+            error: "fileName is required.",
+            code: "BUILDER_UPLOAD_INTENT_INVALID",
+          },
+          { status: 400 },
+        );
+      }
+
       const filePath = buildBuilderMediaPath(
         context.organizationId,
         fileName,
@@ -134,14 +235,6 @@ export async function POST(request: Request) {
       );
       const signed = await createR2SignedUploadUrl({
         key: filePath,
-        contentType: fileType,
-      });
-      await recordKioskAssetManifest({
-        organizationId: context.organizationId,
-        sourceUrl: signed.url,
-        deliveryUrl: signed.url,
-        revision: `${signed.key}:${fileSize}`,
-        byteSize: fileSize,
         contentType: fileType,
       });
 

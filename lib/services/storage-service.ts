@@ -6,7 +6,24 @@ export const BUILDER_IMAGE_ACCEPT =
 export const BUILDER_VIDEO_ACCEPT = "video/mp4,video/webm,video/quicktime";
 export const BUILDER_MEDIA_ACCEPT = `${BUILDER_IMAGE_ACCEPT},${BUILDER_VIDEO_ACCEPT}`;
 export const BUILDER_MEDIA_HELP_TEXT =
-  "Images up to 8 MB, MP4/MOV/WebM up to 200 MB";
+  "Images up to 8 MB, videos up to 200 MB · compatibility checked automatically";
+
+export type BuilderMediaUploadPhase =
+  | "checking"
+  | "preparing"
+  | "uploading"
+  | "finalizing";
+
+export type BuilderMediaUploadStatus = {
+  phase: BuilderMediaUploadPhase;
+  message: string;
+  detail?: string;
+  progress?: number;
+};
+
+export type BuilderMediaUploadOptions = {
+  onStatus?: (status: BuilderMediaUploadStatus) => void;
+};
 
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -17,13 +34,32 @@ const ALLOWED_IMAGE_TYPES = [
 ];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 
+const MIME_TYPES_BY_EXTENSION: Record<string, string> = {
+  gif: "image/gif",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  mov: "video/quicktime",
+  mp4: "video/mp4",
+  png: "image/png",
+  svg: "image/svg+xml",
+  webm: "video/webm",
+  webp: "image/webp",
+};
+
+function resolveBuilderMediaMimeType(file: File) {
+  const declaredType = file.type.trim().toLowerCase();
+  if (declaredType) return declaredType;
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return MIME_TYPES_BY_EXTENSION[extension] ?? "";
+}
+
 function formatFileSize(bytes: number) {
   const mb = bytes / (1024 * 1024);
   return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
 }
 
 export function getBuilderImageValidationError(file: File) {
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+  if (!ALLOWED_IMAGE_TYPES.includes(resolveBuilderMediaMimeType(file))) {
     return "Unsupported image format. Use JPG, PNG, WebP, GIF, or SVG.";
   }
   if (file.size > MAX_BUILDER_IMAGE_SIZE) {
@@ -33,10 +69,11 @@ export function getBuilderImageValidationError(file: File) {
 }
 
 export function getBuilderMediaValidationError(file: File) {
-  const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
+  const fileType = resolveBuilderMediaMimeType(file);
+  const isImage = ALLOWED_IMAGE_TYPES.includes(fileType);
   if (isImage) return getBuilderImageValidationError(file);
 
-  const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
+  const isVideo = ALLOWED_VIDEO_TYPES.includes(fileType);
   if (!isVideo) {
     return "Unsupported media format. Use JPG, PNG, WebP, GIF, SVG, MP4, MOV, or WebM video.";
   }
@@ -46,10 +83,13 @@ export function getBuilderMediaValidationError(file: File) {
   return null;
 }
 
-export async function uploadBuilderImage(file: File) {
+export async function uploadBuilderImage(
+  file: File,
+  options?: BuilderMediaUploadOptions,
+) {
   const validationError = getBuilderImageValidationError(file);
   if (validationError) throw new Error(validationError);
-  return uploadBuilderMedia(file);
+  return uploadBuilderMedia(file, options);
 }
 
 export async function uploadShowcaseImage(
@@ -121,6 +161,7 @@ export async function uploadShowcaseImage(
  */
 export async function uploadBuilderMedia(
   file: File,
+  options: BuilderMediaUploadOptions = {},
 ): Promise<{
   url: string;
   path: string;
@@ -131,10 +172,49 @@ export async function uploadBuilderMedia(
   if (validationError) throw new Error(validationError);
 
   const supabase = createClient();
-  const { data } = await supabase.auth.getSession();
-  const accessToken = data.session?.access_token;
-  if (!accessToken) {
+  const { data: initialAuth } = await supabase.auth.getSession();
+  if (!initialAuth.session?.access_token) {
     throw new Error("You must be signed in to upload builder media.");
+  }
+
+  const originalFileType = resolveBuilderMediaMimeType(file);
+  let uploadFile = file;
+  if (ALLOWED_VIDEO_TYPES.includes(originalFileType)) {
+    options.onStatus?.({
+      phase: "checking",
+      message: "Checking video...",
+      detail: "POSKART checks compatibility before anything is uploaded.",
+      progress: 1,
+    });
+    const { prepareBuilderVideo } = await import(
+      "@/lib/video/browser-video-optimizer"
+    );
+    const prepared = await prepareBuilderVideo(file, (status) => {
+      options.onStatus?.({
+        phase: status.message.startsWith("Checking") ? "checking" : "preparing",
+        ...status,
+      });
+    });
+    uploadFile = prepared.file;
+  }
+
+  const preparedValidationError = getBuilderMediaValidationError(uploadFile);
+  if (preparedValidationError) throw new Error(preparedValidationError);
+  const uploadFileType = resolveBuilderMediaMimeType(uploadFile);
+
+  options.onStatus?.({
+    phase: "uploading",
+    message: ALLOWED_VIDEO_TYPES.includes(uploadFileType)
+      ? "Uploading prepared video..."
+      : "Uploading media...",
+    detail: "The file is sent directly to storage.",
+  });
+
+  // Video preparation can take several minutes, so read the current token again.
+  const { data: currentAuth } = await supabase.auth.getSession();
+  const accessToken = currentAuth.session?.access_token;
+  if (!accessToken) {
+    throw new Error("Your sign-in expired. Sign in again, then retry the upload.");
   }
 
   const response = await fetch("/api/kiosk/builder/assets", {
@@ -144,9 +224,9 @@ export async function uploadBuilderMedia(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      fileName: file.name,
-      fileType: file.type,
-      fileSize: file.size,
+      fileName: uploadFile.name,
+      fileType: uploadFileType,
+      fileSize: uploadFile.size,
     }),
   });
   const payload = (await response.json().catch(() => null)) as {
@@ -179,9 +259,9 @@ export async function uploadBuilderMedia(
     uploadResponse = await fetch(payload.uploadUrl, {
       method: "PUT",
       headers: {
-        "Content-Type": file.type,
+        "Content-Type": uploadFileType,
       },
-      body: file,
+      body: uploadFile,
     });
   } catch {
     throw new Error(
@@ -197,11 +277,47 @@ export async function uploadBuilderMedia(
     throw new Error("Unable to upload builder media to Cloudflare R2.");
   }
 
+  options.onStatus?.({
+    phase: "finalizing",
+    message: "Finishing upload...",
+    detail: "Making the media available to your devices.",
+  });
+
+  const finalizeResponse = await fetch("/api/kiosk/builder/assets", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "complete",
+      path: payload.path,
+      fileType: uploadFileType,
+      fileSize: uploadFile.size,
+    }),
+  });
+  const finalized = (await finalizeResponse.json().catch(() => null)) as {
+    url?: string;
+    path?: string;
+    type?: "image" | "video";
+    storage?: string;
+    error?: string;
+  } | null;
+
+  if (
+    !finalizeResponse.ok ||
+    !finalized?.url ||
+    !finalized.path ||
+    !finalized.type
+  ) {
+    throw new Error(finalized?.error || "Unable to finish the media upload.");
+  }
+
   return {
-    url: payload.url,
-    path: payload.path,
-    type: payload.type,
-    storage: payload.storage,
+    url: finalized.url,
+    path: finalized.path,
+    type: finalized.type,
+    storage: finalized.storage,
   };
 }
 

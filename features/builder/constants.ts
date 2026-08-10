@@ -38,6 +38,11 @@ export const SEMANTIC_ROLES: {
     screen: "tutorial",
   },
   {
+    value: "tutorial.back",
+    label: "Back <- Landing",
+    screen: "tutorial",
+  },
+  {
     value: "template.select",
     label: "Select Template Tile",
     screen: "template",
@@ -193,7 +198,7 @@ export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
 /** Semantic roles shown per page in the Properties dropdown */
 export const PAGE_ROLES: Record<BuilderPage | "generic", string[]> = {
   landing: ["landing.start_session", "landing.settings"],
-  tutorial: ["tutorial.continue"],
+  tutorial: ["tutorial.continue", "tutorial.back"],
   template: ["template.select", "template.continue", "template.back"],
   camera: [
     "camera.take_photo",
