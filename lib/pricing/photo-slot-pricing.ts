@@ -86,8 +86,9 @@ export function normalizePhotoSlotPriceTiers(
     );
     const price = normalizeMoney(source.price);
     const rawPromoPrice = source.promoPrice ?? source.promo_price;
-    const promoPrice =
-      rawPromoPrice == null ? undefined : normalizeMoney(rawPromoPrice);
+    const normalizedPromoPrice =
+      rawPromoPrice == null ? 0 : normalizeMoney(rawPromoPrice);
+    const promoPrice = normalizedPromoPrice > 0 ? normalizedPromoPrice : undefined;
     if (!slotCount || price <= 0) continue;
     tiers.push({ slotCount, price, promoPrice });
   }

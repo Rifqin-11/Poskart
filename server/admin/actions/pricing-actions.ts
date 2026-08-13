@@ -233,8 +233,24 @@ function assertPricingValues(
 
   const tiers = normalizePhotoSlotPriceTiers(values.photoSlotPrices);
   const amount = values.promoPrice ?? values.price;
-  if (pricingMode === "per_photo_slot" && tiers.length === 0) {
-    throw new Error("Tambahkan minimal harga untuk 1 photo slot.");
+  if (pricingMode === "per_photo_slot") {
+    const submittedTiers = values.photoSlotPrices ?? [];
+    if (submittedTiers.length > 0) {
+      const tiersAreComplete =
+        tiers.length === submittedTiers.length &&
+        tiers.every((tier, index) => tier.slotCount === index + 1);
+      if (!tiersAreComplete) {
+        throw new Error(
+          "Isi harga lebih dari 0 secara berurutan mulai dari 1 photo slot.",
+        );
+      }
+    } else {
+      const legacyAmount =
+        values.photoSlotPromoPrice ?? values.photoSlotPrice;
+      if (!Number.isFinite(Number(legacyAmount)) || Number(legacyAmount) <= 0) {
+        throw new Error("Tambahkan minimal harga untuk 1 photo slot.");
+      }
+    }
   }
   if (
     pricingMode !== "per_photo_slot" &&
