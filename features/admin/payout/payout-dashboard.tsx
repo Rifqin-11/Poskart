@@ -6,6 +6,7 @@ import {
   BadgeDollarSign,
   Clock3,
   Download,
+  Hourglass,
   Landmark,
   Wallet,
 } from "lucide-react";
@@ -180,7 +181,7 @@ export function PayoutDashboard({
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard
           title="Available balance"
           value={formatPayoutCurrency(summary.availableNetAmount)}
@@ -194,6 +195,14 @@ export function PayoutDashboard({
           value={formatPayoutCurrency(summary.availableGrossAmount)}
           description={`Fee ${formatPayoutCurrency(summary.availableGatewayFeeAmount + summary.availablePlatformFeeAmount)}`}
           icon={BadgeDollarSign}
+          variant="spacious"
+        />
+        <StatCard
+          title="Pending settlement"
+          value={formatPayoutCurrency(summary.pendingSettlementNetAmount)}
+          description={`${summary.pendingSettlementTransactionCount} payments waiting`}
+          icon={Hourglass}
+          tone="warning"
           variant="spacious"
         />
         <StatCard
@@ -212,6 +221,30 @@ export function PayoutDashboard({
           variant="spacious"
         />
       </div>
+
+      {summary.pendingSettlementTransactionCount > 0 ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
+              <Hourglass className="size-4" />
+            </div>
+            <div>
+              <div className="font-semibold">
+                Menunggu settlement payment gateway
+              </div>
+              <p className="mt-1 leading-6 text-amber-900/80">
+                Pembayaran sudah sukses dan dana tetap tercatat. Saldo pending
+                sedang melewati masa settlement Duitku dan belum dapat ditarik.
+                Dana akan otomatis masuk ke saldo tersedia
+                {summary.nextEstimatedSettlementDate
+                  ? ` pada tanggal estimasi ${formatSettlementDate(summary.nextEstimatedSettlementDate)}`
+                  : " setelah tanggal estimasi settlement diterima dari Duitku"}
+                .
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <PayoutSettingsSummary summary={summary} />
 
@@ -533,6 +566,18 @@ export function PayoutDashboard({
       />
     </div>
   );
+}
+
+function formatSettlementDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return value;
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(Date.UTC(year, month - 1, day, 12)));
 }
 
 function PayoutSettingsSummary({ summary }: { summary: PayoutSummary }) {

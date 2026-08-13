@@ -11,6 +11,10 @@ import type {
   DuitkuCallbackPayload,
   DuitkuTransactionStatusResult,
 } from "@/server/payments/duitku";
+import {
+  getEstimatedSettlementState,
+  normalizeDuitkuSettlementDate,
+} from "@/server/payments/settlement";
 
 type SupabaseAdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
@@ -63,16 +67,30 @@ export async function recordDuitkuPaymentLedgerEntry(
     );
   }
 
+  const settlementDate = normalizeDuitkuSettlementDate(
+    callbackPayload?.settlementDate,
+  );
+  const settlementState = getEstimatedSettlementState(settlementDate);
   const { data: existing, error: existingError } = await supabase
     .from("payment_ledger_entries")
-    .select("id")
+    .select("id,gateway_settlement_date")
     .eq("merchant_order_id", transaction.merchant_order_id)
     .maybeSingle();
 
   if (existingError) {
     throw new Error(`Gagal cek ledger pembayaran: ${existingError.message}`);
   }
-  if (existing?.id) return existing;
+  if (existing?.id) {
+    if (!existing.gateway_settlement_date) {
+      await saveSettlementEstimate(
+        supabase,
+        existing.id,
+        settlementDate,
+        settlementState,
+      );
+    }
+    return existing;
+  }
 
   const settings = await loadPayoutFeeSettings(supabase);
   const gatewayFeeAmount = calculatePaymentGatewayFee(grossAmount, settings);
@@ -92,6 +110,9 @@ export async function recordDuitkuPaymentLedgerEntry(
       merchant_order_id: transaction.merchant_order_id,
       duitku_reference: verifiedStatus.reference ?? transaction.payment_reference,
       status: "paid",
+      gateway_settlement_status: settlementState.status,
+      gateway_settlement_date: settlementDate,
+      gateway_balance_available_at: settlementState.availableAt,
       gross_amount: grossAmount,
       gateway_fee_amount: gatewayFeeAmount,
       platform_fee_amount: platformFeeAmount,
@@ -111,15 +132,50 @@ export async function recordDuitkuPaymentLedgerEntry(
     if (error.code === "23505") {
       const { data: duplicate } = await supabase
         .from("payment_ledger_entries")
-        .select("id")
+        .select("id,gateway_settlement_date")
         .eq("merchant_order_id", transaction.merchant_order_id)
         .maybeSingle();
-      if (duplicate?.id) return duplicate;
+      if (duplicate?.id) {
+        if (!duplicate.gateway_settlement_date) {
+          await saveSettlementEstimate(
+            supabase,
+            duplicate.id,
+            settlementDate,
+            settlementState,
+          );
+        }
+        return duplicate;
+      }
     }
     throw new Error(`Gagal membuat ledger pembayaran: ${error.message}`);
   }
 
   return data;
+}
+
+async function saveSettlementEstimate(
+  supabase: SupabaseAdminClient,
+  ledgerEntryId: string,
+  settlementDate: string | null,
+  settlementState: ReturnType<typeof getEstimatedSettlementState>,
+) {
+  if (!settlementDate) return;
+
+  const { error } = await supabase
+    .from("payment_ledger_entries")
+    .update({
+      gateway_settlement_date: settlementDate,
+      gateway_settlement_status: settlementState.status,
+      gateway_balance_available_at: settlementState.availableAt,
+    })
+    .eq("id", ledgerEntryId)
+    .is("gateway_settlement_date", null);
+
+  if (error) {
+    throw new Error(
+      `Gagal menyimpan estimasi settlement Duitku: ${error.message}`,
+    );
+  }
 }
 
 async function loadPayoutFeeSettings(

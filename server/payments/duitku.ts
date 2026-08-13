@@ -37,6 +37,7 @@ export type DuitkuCallbackPayload = {
   resultCode?: string;
   merchantUserId?: string;
   reference?: string;
+  settlementDate?: string;
   signature?: string;
 };
 

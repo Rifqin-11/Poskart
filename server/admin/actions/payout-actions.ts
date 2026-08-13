@@ -60,6 +60,7 @@ type EligibleLedgerEntryRow = {
   package_name: string | null;
   paid_at: string | null;
   verified_at: string | null;
+  gateway_settlement_date: string | null;
   created_at: string;
   verified_response: Record<string, unknown> | null;
 };
@@ -601,13 +602,14 @@ async function loadEligibleLedgerEntries(
     const { data, error } = await supabase
       .from("payment_ledger_entries")
       .select(
-        "id,transaction_id,provider,merchant_order_id,duitku_reference,gross_amount,gateway_fee_amount,platform_fee_amount,adjustment_amount,net_amount,booth,package_name,paid_at,verified_at,created_at,verified_response",
+        "id,transaction_id,provider,merchant_order_id,duitku_reference,gross_amount,gateway_fee_amount,platform_fee_amount,adjustment_amount,net_amount,booth,package_name,paid_at,verified_at,gateway_settlement_date,created_at,verified_response",
       )
       .eq("organization_id", organizationId)
       .eq("status", "paid")
       .eq("provider", "duitku")
       .eq("payment_method", "QRIS")
       .eq("collection_mode", "platform")
+      .eq("gateway_settlement_status", "settled")
       .is("settlement_status", null)
       .is("payout_invoice_id", null)
       .order("paid_at", { ascending: true, nullsFirst: false })
@@ -641,7 +643,7 @@ async function loadEligibleLedgerEntriesPage(
   const { data, error, count } = await supabase
     .from("payment_ledger_entries")
     .select(
-      "id,transaction_id,provider,merchant_order_id,duitku_reference,gross_amount,gateway_fee_amount,platform_fee_amount,adjustment_amount,net_amount,booth,package_name,paid_at,verified_at,created_at,verified_response",
+      "id,transaction_id,provider,merchant_order_id,duitku_reference,gross_amount,gateway_fee_amount,platform_fee_amount,adjustment_amount,net_amount,booth,package_name,paid_at,verified_at,gateway_settlement_date,created_at,verified_response",
       { count: "exact" },
     )
     .eq("organization_id", organizationId)
@@ -649,6 +651,7 @@ async function loadEligibleLedgerEntriesPage(
     .eq("provider", "duitku")
     .eq("payment_method", "QRIS")
     .eq("collection_mode", "platform")
+    .eq("gateway_settlement_status", "settled")
     .is("settlement_status", null)
     .is("payout_invoice_id", null)
     .order("paid_at", { ascending: true, nullsFirst: false })
@@ -672,6 +675,62 @@ async function loadEligibleLedgerEntriesPage(
     ),
     pagination,
     totalItems: count ?? (data ?? []).length,
+  };
+}
+
+async function loadPendingSettlementLines(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  organizationId: string,
+  settings: PayoutSettings,
+) {
+  const rows: EligibleLedgerEntryRow[] = [];
+  const pageSize = 1000;
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("payment_ledger_entries")
+      .select(
+        "id,transaction_id,provider,merchant_order_id,duitku_reference,gross_amount,gateway_fee_amount,platform_fee_amount,adjustment_amount,net_amount,booth,package_name,paid_at,verified_at,gateway_settlement_date,created_at,verified_response",
+      )
+      .eq("organization_id", organizationId)
+      .eq("status", "paid")
+      .eq("provider", "duitku")
+      .eq("payment_method", "QRIS")
+      .eq("collection_mode", "platform")
+      .eq("gateway_settlement_status", "pending")
+      .is("settlement_status", null)
+      .is("payout_invoice_id", null)
+      .order("gateway_settlement_date", {
+        ascending: true,
+        nullsFirst: false,
+      })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      if (error.code === "42P01" || error.code === "42703") {
+        return {
+          lines: [] as ReturnType<typeof calculateLine>[],
+          nextEstimatedSettlementDate: null,
+        };
+      }
+      throw new Error(
+        `Failed to load pending settlement entries: ${error.message}`,
+      );
+    }
+
+    rows.push(
+      ...((data ?? []) as EligibleLedgerEntryRow[]).filter(
+        isVerifiedDuitkuLedgerEntry,
+      ),
+    );
+    if (!data || data.length < pageSize) break;
+  }
+
+  return {
+    lines: rows.map((row) => calculateLine(row, settings)),
+    nextEstimatedSettlementDate:
+      rows.find((row) => row.gateway_settlement_date)
+        ?.gateway_settlement_date ?? null,
   };
 }
 
@@ -795,17 +854,26 @@ async function loadInvoices(
 export async function getMyPayoutSummary() {
   const { supabase, organizationId } = await getOrganizationContext();
   const settingsPromise = getPayoutSettings(supabase);
-  const [settings, payoutAccount, availableLines, invoiceTotals] =
-    await Promise.all([
-      settingsPromise,
-      getDefaultPayoutAccount(supabase, organizationId),
-      settingsPromise.then((loadedSettings) =>
-        loadAvailablePayoutLines(supabase, organizationId, loadedSettings),
-      ),
-      loadPayoutSummaryTotals(supabase, organizationId),
-    ]);
+  const [
+    settings,
+    payoutAccount,
+    availableLines,
+    pendingSettlement,
+    invoiceTotals,
+  ] = await Promise.all([
+    settingsPromise,
+    getDefaultPayoutAccount(supabase, organizationId),
+    settingsPromise.then((loadedSettings) =>
+      loadAvailablePayoutLines(supabase, organizationId, loadedSettings),
+    ),
+    settingsPromise.then((loadedSettings) =>
+      loadPendingSettlementLines(supabase, organizationId, loadedSettings),
+    ),
+    loadPayoutSummaryTotals(supabase, organizationId),
+  ]);
 
   const available = sumLines(availableLines);
+  const pendingSettlementTotals = sumLines(pendingSettlement.lines);
   const pendingNetAmount = invoiceTotals
     .filter((invoice) => ["requested", "approved"].includes(invoice.status))
     .reduce((sum, invoice) => sum + Number(invoice.net_amount), 0);
@@ -818,6 +886,10 @@ export async function getMyPayoutSummary() {
     availableGatewayFeeAmount: available.gatewayFeeAmount,
     availablePlatformFeeAmount: available.platformFeeAmount,
     availableNetAmount: available.netAmount,
+    pendingSettlementGrossAmount: pendingSettlementTotals.grossAmount,
+    pendingSettlementNetAmount: pendingSettlementTotals.netAmount,
+    pendingSettlementTransactionCount: pendingSettlement.lines.length,
+    nextEstimatedSettlementDate: pendingSettlement.nextEstimatedSettlementDate,
     pendingNetAmount,
     paidNetAmount,
     eligibleTransactionCount: availableLines.length,

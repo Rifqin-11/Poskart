@@ -45,6 +45,10 @@ export type PayoutSummary = {
   availableGatewayFeeAmount: number;
   availablePlatformFeeAmount: number;
   availableNetAmount: number;
+  pendingSettlementGrossAmount: number;
+  pendingSettlementNetAmount: number;
+  pendingSettlementTransactionCount: number;
+  nextEstimatedSettlementDate: string | null;
   pendingNetAmount: number;
   paidNetAmount: number;
   eligibleTransactionCount: number;
