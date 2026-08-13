@@ -1,9 +1,11 @@
 import "server-only";
 
 import { getAdminContext, getAdminMembership } from "@/server/admin/context";
+import { normalizePhotoSlotPriceTiers } from "@/lib/pricing/photo-slot-pricing";
 import type {
   PosPackageCode,
   PosPackageOption,
+  PosFrameOption,
   PosPaymentMethod,
   PosSale,
   PosSaleFilters,
@@ -37,6 +39,10 @@ type PosPackageRow = {
   name: string;
   price: number;
   promo_price: number | null;
+  pricing_mode: "flat" | "per_photo_slot" | null;
+  photo_slot_price: number | null;
+  photo_slot_promo_price: number | null;
+  photo_slot_prices: unknown;
   print_limit: number;
   qris_download: boolean;
   live_photo_enabled: boolean | null;
@@ -47,6 +53,11 @@ type PosPackageRow = {
 const POS_SALE_COLUMNS =
   "id,package_code,package_name,print_count,amount,payment_method,notes,created_at";
 const EXPORT_PAGE_SIZE = 500;
+
+function firstPhotoSlotPrice(value: unknown) {
+  const tier = normalizePhotoSlotPriceTiers(value)[0];
+  return tier ? tier.promoPrice ?? tier.price : null;
+}
 
 function mapPosSale(row: PosSaleRow): PosSale {
   return {
@@ -62,6 +73,7 @@ function mapPosSale(row: PosSaleRow): PosSale {
 }
 
 function mapPosPackage(row: PosPackageRow): PosPackageOption {
+  const photoSlotPrices = normalizePhotoSlotPriceTiers(row.photo_slot_prices);
   return {
     code: row.id,
     name: row.name,
@@ -74,8 +86,22 @@ function mapPosPackage(row: PosPackageRow): PosPackageOption {
       .filter(Boolean)
       .join(" + "),
     printCount: row.print_limit,
-    amount: row.promo_price ?? row.price,
-    popular: Boolean(row.promo_price),
+    amount:
+      row.pricing_mode === "per_photo_slot"
+        ? firstPhotoSlotPrice(row.photo_slot_prices) ??
+          row.photo_slot_promo_price ??
+          row.photo_slot_price ??
+          0
+        : row.promo_price ?? row.price,
+    pricingMode:
+      row.pricing_mode === "per_photo_slot" ? "per_photo_slot" : "flat",
+    photoSlotPrices,
+    popular: Boolean(
+      row.pricing_mode === "per_photo_slot"
+        ? photoSlotPrices.some((tier) => tier.promoPrice != null) ||
+          row.photo_slot_promo_price
+        : row.promo_price,
+    ),
   };
 }
 
@@ -264,10 +290,11 @@ export async function getPosPackages(): Promise<PosPackageOption[]> {
   const { data, error } = await supabase
     .from("pricing_products")
     .select(
-      "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active",
+      "id,name,price,promo_price,pricing_mode,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,qris_download,live_photo_enabled,gif_enabled,active",
     )
     .eq("organization_id", membership.organizationId)
     .eq("active", true)
+    .eq("access_mode", "paid")
     .order("price", { ascending: true });
 
   if (error) {
@@ -275,4 +302,24 @@ export async function getPosPackages(): Promise<PosPackageOption[]> {
   }
 
   return ((data ?? []) as PosPackageRow[]).map(mapPosPackage);
+}
+
+export async function getPosFrames(): Promise<PosFrameOption[]> {
+  const { supabase } = await getAdminContext();
+  const membership = await getAdminMembership();
+  if (!membership) throw new Error("Akun belum terhubung ke organisasi.");
+
+  const { data, error } = await supabase
+    .from("templates")
+    .select("id,name,photo_count")
+    .eq("organization_id", membership.organizationId)
+    .eq("status", "published")
+    .order("display_order", { ascending: true });
+  if (error) throw new Error(`Gagal memuat frame POS: ${error.message}`);
+
+  return (data ?? []).flatMap((frame) => {
+    const photoSlotCount = Math.round(Number(frame.photo_count));
+    if (photoSlotCount < 1 || photoSlotCount > 12) return [];
+    return [{ id: frame.id, name: frame.name, photoSlotCount }];
+  });
 }

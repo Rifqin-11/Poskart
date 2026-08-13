@@ -4,7 +4,7 @@ import {
   requireKioskContext,
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
-import { resolveKioskPricingProduct } from "@/lib/kiosk/pricing";
+import { resolveKioskPricingQuote } from "@/lib/kiosk/pricing";
 
 type PosSaleBody = {
   deviceId?: string;
@@ -13,6 +13,7 @@ type PosSaleBody = {
   packageName?: string;
   printCount?: number;
   amount?: number;
+  templateId?: string;
   paymentMethod?: "Cash" | "QRIS";
   notes?: string | null;
 };
@@ -36,10 +37,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const product = await resolveKioskPricingProduct(
+    const product = await resolveKioskPricingQuote(
       context,
       device,
       body.packageCode,
+      body.templateId,
     );
     if (product.accessMode === "event") {
       return jsonOk(
@@ -60,6 +62,11 @@ export async function POST(request: Request) {
         package_name: product.name,
         print_count: product.printCount,
         amount: product.amount,
+        template_id: product.templateId,
+        pricing_mode: product.pricingMode,
+        pricing_unit_amount: product.unitAmount,
+        photo_slot_count: product.photoSlotCount,
+        pricing_snapshot: product.pricingSnapshot,
         payment_method: body.paymentMethod ?? "QRIS",
         notes: body.notes ?? null,
         created_by: context.user.id,

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { hasOrganizationFeatureAccess } from "@/server/admin/organization-feature-access";
 import { getAdminContext, getAdminMembership } from "@/server/admin/context";
+import { calculatePhotoPricingQuote } from "@/lib/pricing/photo-slot-pricing";
 import {
   getPosSalesForExport,
   getPosSalesPage,
@@ -62,6 +63,7 @@ export async function createPosSale(
     formData.get("paymentMethod") ?? "",
   ) as PosPaymentMethod;
   const notes = String(formData.get("notes") ?? "").trim();
+  const templateId = String(formData.get("templateId") ?? "").trim();
 
   if (!["Cash", "QRIS"].includes(paymentMethod)) {
     return { success: false, error: "Select a valid payment method." };
@@ -79,10 +81,13 @@ export async function createPosSale(
 
   const { data: selectedPackage, error: packageError } = await supabase
     .from("pricing_products")
-    .select("id,name,price,promo_price,print_limit,active")
+    .select(
+      "id,name,price,promo_price,pricing_mode,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,active",
+    )
     .eq("id", packageCode)
     .eq("organization_id", organizationId)
     .eq("active", true)
+    .eq("access_mode", "paid")
     .maybeSingle();
 
   if (packageError) {
@@ -96,12 +101,61 @@ export async function createPosSale(
     return { success: false, error: "Select a valid print package." };
   }
 
+  let selectedTemplate: { id: string; photo_count: number } | null = null;
+  if (templateId) {
+    const { data, error: templateError } = await supabase
+      .from("templates")
+      .select("id,photo_count")
+      .eq("id", templateId)
+      .eq("organization_id", organizationId)
+      .eq("status", "published")
+      .maybeSingle();
+    if (templateError) {
+      return { success: false, error: `Failed to load frame: ${templateError.message}` };
+    }
+    selectedTemplate = data;
+  }
+
+  let quote;
+  try {
+    quote = calculatePhotoPricingQuote(
+      {
+        pricingMode:
+          selectedPackage.pricing_mode === "per_photo_slot"
+            ? "per_photo_slot"
+            : "flat",
+        price: selectedPackage.price,
+        promoPrice: selectedPackage.promo_price,
+        photoSlotPrice: selectedPackage.photo_slot_price,
+        photoSlotPromoPrice: selectedPackage.photo_slot_promo_price,
+        photoSlotPrices: selectedPackage.photo_slot_prices,
+      },
+      selectedTemplate?.photo_count,
+    );
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Harga paket tidak valid.",
+    };
+  }
+
   const { error } = await supabase.from("pos_sales").insert({
     organization_id: organizationId,
     package_code: packageCode,
     package_name: selectedPackage.name,
     print_count: Math.max(1, Number(selectedPackage.print_limit) || 1),
-    amount: Number(selectedPackage.promo_price ?? selectedPackage.price) || 0,
+    amount: quote.amount,
+    template_id: selectedTemplate?.id ?? null,
+    pricing_mode: quote.pricingMode,
+    pricing_unit_amount: quote.unitAmount,
+    photo_slot_count: quote.photoSlotCount,
+    pricing_snapshot: {
+      mode: quote.pricingMode,
+      unitAmount: quote.unitAmount,
+      photoSlotCount: quote.photoSlotCount,
+      finalAmount: quote.amount,
+      templateId: selectedTemplate?.id ?? null,
+    },
     payment_method: paymentMethod,
     notes: notes || null,
     created_by: user.id,

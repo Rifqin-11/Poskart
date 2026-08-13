@@ -7,6 +7,7 @@ import {
 } from "@/server/admin/context";
 import { PRICING_PLAN_ORDER } from "@/lib/constants/business";
 import { parseJakartaDateTimeInput } from "@/lib/jakarta-time";
+import { normalizePhotoSlotPriceTiers } from "@/lib/pricing/photo-slot-pricing";
 import {
   assertSupabaseResult,
   mapPricingProduct,
@@ -28,7 +29,7 @@ export async function getPricingProducts(): Promise<PricingProduct[]> {
   const { data, error } = await supabase
     .from("pricing_products")
     .select(
-      "id,name,price,promo_price,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,requires_reprint_password,event_name,event_expires_at",
+      "id,name,price,promo_price,pricing_mode,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,requires_reprint_password,event_name,event_expires_at",
     )
     .eq("organization_id", organizationId)
     .order("price", { ascending: true });
@@ -52,12 +53,25 @@ export async function createPricingProduct(
   const accessMode = values.accessMode === "event" ? "event" : "paid";
   const eventName = values.eventName?.trim() || null;
   const eventExpiresAt = normalizeEventExpiry(values.eventExpiresAt);
+  const pricingMode = normalizePricingMode(values.pricingMode, accessMode);
+  assertPricingValues(values, accessMode, pricingMode);
   const { error } = await supabase.from("pricing_products").insert({
     id,
     organization_id: organizationId,
     name: values.name,
     price: accessMode === "event" ? 0 : Math.max(0, Math.round(values.price)),
     promo_price: accessMode === "event" ? null : (values.promoPrice ?? null),
+    pricing_mode: pricingMode,
+    photo_slot_price:
+      accessMode === "paid" ? normalizeOptionalMoney(values.photoSlotPrice) : null,
+    photo_slot_promo_price:
+      accessMode === "paid"
+        ? normalizeOptionalMoney(values.photoSlotPromoPrice)
+        : null,
+    photo_slot_prices:
+      accessMode === "paid" && pricingMode === "per_photo_slot"
+        ? normalizePhotoSlotPriceTiers(values.photoSlotPrices)
+        : [],
     print_limit: values.printLimit,
     qris_download: accessMode === "paid" && values.qrisDownload,
     live_photo_enabled: values.livePhotoEnabled,
@@ -85,7 +99,7 @@ export async function updatePricingProduct(
   ]);
   const { data: current, error: currentError } = await supabase
     .from("pricing_products")
-    .select("access_mode")
+    .select("access_mode,pricing_mode")
     .eq("id", id)
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -98,6 +112,18 @@ export async function updatePricingProduct(
       : current?.access_mode === "event"
         ? "event"
         : "paid";
+  const pricingMode = normalizePricingMode(
+    patch.pricingMode,
+    accessMode,
+    current.pricing_mode,
+  );
+  const effectiveValues = await loadEffectivePricingValues(
+    supabase,
+    organizationId,
+    id,
+    patch,
+  );
+  assertPricingValues(effectiveValues, accessMode, pricingMode);
   const dbPatch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
@@ -107,6 +133,25 @@ export async function updatePricingProduct(
   if (patch.promoPrice !== undefined)
     dbPatch.promo_price =
       accessMode === "event" ? null : (patch.promoPrice ?? null);
+  if (patch.pricingMode !== undefined || accessMode === "event") {
+    dbPatch.pricing_mode = pricingMode;
+  }
+  if (patch.photoSlotPrice !== undefined) {
+    dbPatch.photo_slot_price =
+      accessMode === "event" ? null : normalizeOptionalMoney(patch.photoSlotPrice);
+  }
+  if (patch.photoSlotPromoPrice !== undefined) {
+    dbPatch.photo_slot_promo_price =
+      accessMode === "event"
+        ? null
+        : normalizeOptionalMoney(patch.photoSlotPromoPrice);
+  }
+  if (patch.photoSlotPrices !== undefined) {
+    dbPatch.photo_slot_prices =
+      accessMode === "paid" && pricingMode === "per_photo_slot"
+        ? normalizePhotoSlotPriceTiers(patch.photoSlotPrices)
+        : [];
+  }
   if (patch.printLimit !== undefined) dbPatch.print_limit = patch.printLimit;
   if (patch.qrisDownload !== undefined)
     dbPatch.qris_download = accessMode === "event" ? false : patch.qrisDownload;
@@ -125,6 +170,10 @@ export async function updatePricingProduct(
       dbPatch.price = 0;
       dbPatch.promo_price = null;
       dbPatch.qris_download = false;
+      dbPatch.pricing_mode = "flat";
+      dbPatch.photo_slot_price = null;
+      dbPatch.photo_slot_promo_price = null;
+      dbPatch.photo_slot_prices = [];
       dbPatch.requires_reprint_password =
         patch.requiresReprintPassword ?? true;
       dbPatch.event_name = patch.eventName?.trim() || null;
@@ -149,6 +198,87 @@ export async function updatePricingProduct(
     .eq("organization_id", organizationId);
   if (error)
     throw new Error(`Unable to update pricing product: ${error.message}`);
+}
+
+function normalizePricingMode(
+  value: PricingProductInput["pricingMode"] | undefined,
+  accessMode: PricingProductInput["accessMode"],
+  fallback?: unknown,
+) {
+  if (accessMode === "event") return "flat" as const;
+  if (value === "per_photo_slot") return "per_photo_slot" as const;
+  if (value === "flat") return "flat" as const;
+  return fallback === "per_photo_slot" ? "per_photo_slot" : "flat";
+}
+
+function normalizeOptionalMoney(value: number | undefined) {
+  if (value == null) return null;
+  const amount = Math.round(Number(value));
+  return Number.isFinite(amount) ? Math.max(0, amount) : null;
+}
+
+function assertPricingValues(
+  values: Pick<
+    PricingProductInput,
+    | "price"
+    | "promoPrice"
+    | "photoSlotPrice"
+    | "photoSlotPromoPrice"
+    | "photoSlotPrices"
+  >,
+  accessMode: PricingProductInput["accessMode"],
+  pricingMode: PricingProductInput["pricingMode"],
+) {
+  if (accessMode !== "paid") return;
+
+  const tiers = normalizePhotoSlotPriceTiers(values.photoSlotPrices);
+  const amount = values.promoPrice ?? values.price;
+  if (pricingMode === "per_photo_slot" && tiers.length === 0) {
+    throw new Error("Tambahkan minimal harga untuk 1 photo slot.");
+  }
+  if (
+    pricingMode !== "per_photo_slot" &&
+    (!Number.isFinite(Number(amount)) || Number(amount) <= 0)
+  ) {
+    throw new Error(
+      "Harga sesi harus lebih dari 0.",
+    );
+  }
+}
+
+async function loadEffectivePricingValues(
+  supabase: Awaited<ReturnType<typeof verifyRole>>["supabase"],
+  organizationId: string,
+  id: string,
+  patch: Partial<PricingProductInput>,
+) {
+  const { data, error } = await supabase
+    .from("pricing_products")
+    .select("price,promo_price,photo_slot_price,photo_slot_promo_price,photo_slot_prices")
+    .eq("id", id)
+    .eq("organization_id", organizationId)
+    .single();
+  if (error) throw new Error(`Unable to read pricing values: ${error.message}`);
+
+  return {
+    price: patch.price ?? Number(data.price),
+    promoPrice:
+      patch.promoPrice !== undefined
+        ? patch.promoPrice
+        : data.promo_price ?? undefined,
+    photoSlotPrice:
+      patch.photoSlotPrice !== undefined
+        ? patch.photoSlotPrice
+        : data.photo_slot_price ?? undefined,
+    photoSlotPromoPrice:
+      patch.photoSlotPromoPrice !== undefined
+        ? patch.photoSlotPromoPrice
+        : data.photo_slot_promo_price ?? undefined,
+    photoSlotPrices:
+      patch.photoSlotPrices !== undefined
+        ? patch.photoSlotPrices
+        : normalizePhotoSlotPriceTiers(data.photo_slot_prices),
+  };
 }
 
 function normalizeEventExpiry(value: string | undefined) {

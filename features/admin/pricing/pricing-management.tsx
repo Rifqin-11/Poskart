@@ -48,6 +48,10 @@ const EMPTY_PRICING: PricingProductInput = {
   name: "",
   price: 0,
   promoPrice: undefined,
+  pricingMode: "flat",
+  photoSlotPrice: undefined,
+  photoSlotPromoPrice: undefined,
+  photoSlotPrices: [{ slotCount: 1, price: 0, promoPrice: undefined }],
   printLimit: 1,
   qrisDownload: true,
   livePhotoEnabled: false,
@@ -323,6 +327,7 @@ function PricingTableCard({
                   <TableHead>{t("pricing.colExpiry")}</TableHead>
                 ) : (
                   <>
+                    <TableHead>Mode</TableHead>
                     <TableHead>{t("pricing.colPrice")}</TableHead>
                     <TableHead>{t("pricing.colPromo")}</TableHead>
                   </>
@@ -353,11 +358,22 @@ function PricingTableCard({
                     </TableCell>
                   ) : (
                     <>
-                      <TableCell>{formatCurrency(product.price)}</TableCell>
                       <TableCell>
-                        {product.promoPrice
-                          ? formatCurrency(product.promoPrice)
-                          : "-"}
+                        {product.pricingMode === "per_photo_slot"
+                          ? "Per photo slot"
+                          : "Per sesi"}
+                      </TableCell>
+                      <TableCell>
+                        {product.pricingMode === "per_photo_slot"
+                          ? summarizeSlotPrices(product)
+                          : formatCurrency(product.price)}
+                      </TableCell>
+                      <TableCell>
+                        {product.pricingMode === "per_photo_slot"
+                          ? summarizeSlotPromos(product)
+                          : product.promoPrice
+                            ? formatCurrency(product.promoPrice)
+                            : "-"}
                       </TableCell>
                     </>
                   )}
@@ -439,7 +455,7 @@ function PricingTableCard({
               {products.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={eventMode ? 8 : 8}
+                    colSpan={eventMode ? 8 : 10}
                     className="py-8 text-center text-sm text-zinc-400"
                   >
                     {eventMode
@@ -470,4 +486,30 @@ function formatExpiry(value?: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function summarizeSlotPrices(product: PricingProduct) {
+  if (product.photoSlotPrices.length === 0) {
+    return `${formatCurrency(product.photoSlotPrice ?? 0)}/slot`;
+  }
+  const first = product.photoSlotPrices[0];
+  const last = product.photoSlotPrices.at(-1) ?? first;
+  if (!first) return "-";
+  if (first.slotCount === last.slotCount) {
+    return `${formatCurrency(first.price)} (${first.slotCount} slot)`;
+  }
+  return `${formatCurrency(first.price)}–${formatCurrency(last.price)} (1–${last.slotCount} slot)`;
+}
+
+function summarizeSlotPromos(product: PricingProduct) {
+  const promos = product.photoSlotPrices.filter(
+    (tier) => tier.promoPrice != null,
+  );
+  if (promos.length === 0) {
+    return product.photoSlotPromoPrice
+      ? `${formatCurrency(product.photoSlotPromoPrice)}/slot`
+      : "-";
+  }
+  if (promos.length === 1) return formatCurrency(promos[0]!.promoPrice ?? 0);
+  return `${formatCurrency(promos[0]!.promoPrice ?? 0)}–${formatCurrency(promos.at(-1)!.promoPrice ?? 0)}`;
 }

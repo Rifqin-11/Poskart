@@ -5,7 +5,11 @@ import { DEFAULT_POS_SALE_FILTERS } from "@/features/pos/pos-list-defaults";
 import { getQueryClient } from "@/lib/query-client.server";
 import { requireOrganizationFeatureAccess } from "@/server/admin/organization-feature-access";
 import { requireOrganizationSubscriptionAccess } from "@/server/admin/page-access";
-import { getPosPackages, getPosSalesPage } from "@/server/pos/pos-service";
+import {
+  getPosFrames,
+  getPosPackages,
+  getPosSalesPage,
+} from "@/server/pos/pos-service";
 
 export default async function PosPage() {
   await requireOrganizationSubscriptionAccess("/pos");
@@ -13,6 +17,7 @@ export default async function PosPage() {
 
   const queryClient = getQueryClient();
   const packagesPromise = getPosPackages();
+  const framesPromise = getPosFrames();
   await queryClient.prefetchQuery({
     queryKey: adminQueryKeys.posSales(DEFAULT_POS_SALE_FILTERS),
     queryFn: () => getPosSalesPage(DEFAULT_POS_SALE_FILTERS),
@@ -29,11 +34,16 @@ export default async function PosPage() {
         error: "POS packages could not be loaded. Reload the page to try again.",
       };
     });
+  const frames = await framesPromise.catch((error: unknown) => {
+    console.error("[pos] Failed to load POS frames", error);
+    return [];
+  });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <PosDashboard
         packages={packageResult.packages}
+        frames={frames}
         initialLoadError={packageResult.error}
       />
     </HydrationBoundary>

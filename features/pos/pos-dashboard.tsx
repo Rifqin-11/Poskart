@@ -59,6 +59,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import type {
   PosPackageCode,
   PosPackageOption,
+  PosFrameOption,
   PosPaymentMethod,
   PosSale,
   PosSaleFilters,
@@ -66,9 +67,11 @@ import type {
 
 export function PosDashboard({
   packages,
+  frames,
   initialLoadError,
 }: {
   packages: PosPackageOption[];
+  frames: PosFrameOption[];
   initialLoadError?: string | null;
 }) {
   const queryClient = useQueryClient();
@@ -77,6 +80,9 @@ export function PosDashboard({
   const confirmDelete = useConfirmDialog();
   const [selectedPackage, setSelectedPackage] = useState<PosPackageCode>(
     packages[0]?.code ?? "",
+  );
+  const [selectedTemplate, setSelectedTemplate] = useState(
+    frames[0]?.id ?? "",
   );
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -93,6 +99,11 @@ export function PosDashboard({
   const [page, setPage] = useState(1);
   const pageSize = POS_SALE_PAGE_SIZE;
   const hasPackages = packages.length > 0;
+  const activePackage = packages.find(
+    (item) => item.code === selectedPackage,
+  );
+  const activeFrame = frames.find((item) => item.id === selectedTemplate);
+  const requiresFrame = activePackage?.pricingMode === "per_photo_slot";
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -164,6 +175,7 @@ export function PosDashboard({
       toast.success("Transaksi POS berhasil disimpan.");
       formRef.current?.reset();
       setSelectedPackage(packages[0]?.code ?? "");
+      setSelectedTemplate(frames[0]?.id ?? "");
       setPage(1);
       await refreshPosData();
     });
@@ -382,6 +394,7 @@ export function PosDashboard({
           <CardContent>
             <form ref={formRef} action={handleSubmit} className="space-y-5">
               <input type="hidden" name="packageCode" value={selectedPackage} />
+              <input type="hidden" name="templateId" value={selectedTemplate} />
 
               {hasPackages ? (
                 <div className="grid gap-3 md:grid-cols-3">
@@ -434,7 +447,21 @@ export function PosDashboard({
                             active ? "text-white" : "text-zinc-950",
                           )}
                         >
-                          {formatCurrency(item.amount)}
+                          {formatCurrency(
+                            item.pricingMode === "per_photo_slot" && activeFrame
+                              ? getPhotoSlotPackageAmount(
+                                  item,
+                                  activeFrame.photoSlotCount,
+                                )
+                              : item.amount,
+                          )}
+                          {item.pricingMode === "per_photo_slot" ? (
+                            <span className="ml-1 text-xs font-normal opacity-70">
+                              {activeFrame
+                                ? `(harga ${activeFrame.photoSlotCount} slot)`
+                                : "/slot"}
+                            </span>
+                          ) : null}
                         </div>
                         <p
                           className={cn(
@@ -454,6 +481,29 @@ export function PosDashboard({
                   halaman Pricing.
                 </div>
               )}
+
+              {requiresFrame ? (
+                <div className="space-y-2">
+                  <label htmlFor="templateId" className="text-sm font-medium">
+                    Frame untuk perhitungan photo slot
+                  </label>
+                  <Select
+                    id="templateId"
+                    value={selectedTemplate}
+                    onChange={(event) => setSelectedTemplate(event.target.value)}
+                  >
+                    <option value="">Pilih frame</option>
+                    {frames.map((frame) => (
+                      <option key={frame.id} value={frame.id}>
+                        {frame.name} — {frame.photoSlotCount} photo slot
+                      </option>
+                    ))}
+                  </Select>
+                  <p className="text-xs text-zinc-500">
+                    Harga final dihitung dari jumlah photo slot frame ini.
+                  </p>
+                </div>
+              ) : null}
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -493,7 +543,11 @@ export function PosDashboard({
                 type="submit"
                 className="w-full md:w-auto"
                 size="lg"
-                disabled={isPending || !hasPackages}
+                disabled={
+                  isPending ||
+                  !hasPackages ||
+                  (requiresFrame && !selectedTemplate)
+                }
               >
                 <ReceiptText className="size-4" />
                 {isPending ? "Menyimpan transaksi..." : "Simpan transaksi"}
@@ -766,4 +820,14 @@ export function PosDashboard({
       </div>
     </div>
   );
+}
+
+function getPhotoSlotPackageAmount(
+  product: PosPackageOption,
+  photoSlotCount: number,
+) {
+  const tier = product.photoSlotPrices.find(
+    (candidate) => candidate.slotCount === photoSlotCount,
+  );
+  return tier ? tier.promoPrice ?? tier.price : product.amount * photoSlotCount;
 }

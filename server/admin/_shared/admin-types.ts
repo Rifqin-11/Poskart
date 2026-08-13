@@ -312,6 +312,10 @@ export type PricingProductRow = Omit<
   | "requiresReprintPassword"
   | "eventName"
   | "eventExpiresAt"
+  | "pricingMode"
+  | "photoSlotPrice"
+  | "photoSlotPromoPrice"
+  | "photoSlotPrices"
 > & {
   promo_price: number | null;
   print_limit: number;
@@ -322,6 +326,10 @@ export type PricingProductRow = Omit<
   requires_reprint_password: boolean | null;
   event_name: string | null;
   event_expires_at: string | null;
+  pricing_mode: PricingProduct["pricingMode"] | null;
+  photo_slot_price: number | null;
+  photo_slot_promo_price: number | null;
+  photo_slot_prices: unknown;
 };
 
 export type SubscriptionPlanRow = {
@@ -680,6 +688,11 @@ export const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({
   name: row.name,
   price: row.price,
   promoPrice: row.promo_price ?? undefined,
+  pricingMode:
+    row.pricing_mode === "per_photo_slot" ? "per_photo_slot" : "flat",
+  photoSlotPrice: row.photo_slot_price ?? undefined,
+  photoSlotPromoPrice: row.photo_slot_promo_price ?? undefined,
+  photoSlotPrices: normalizePhotoSlotPrices(row.photo_slot_prices),
   printLimit: row.print_limit,
   qrisDownload: row.qris_download,
   livePhotoEnabled: row.live_photo_enabled ?? row.gif_enabled,
@@ -690,6 +703,32 @@ export const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({
   eventName: row.event_name ?? undefined,
   eventExpiresAt: row.event_expires_at ?? undefined,
 });
+
+function normalizePhotoSlotPrices(value: unknown): PricingProduct["photoSlotPrices"] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const source = item as Record<string, unknown>;
+    const slotCount = Math.round(Number(source.slotCount ?? source.slot_count));
+    const price = Math.round(Number(source.price));
+    const promoValue = source.promoPrice ?? source.promo_price;
+    const promoPrice = promoValue == null ? undefined : Math.round(Number(promoValue));
+    if (
+      !Number.isFinite(slotCount) ||
+      slotCount < 1 ||
+      slotCount > 12 ||
+      !Number.isFinite(price) ||
+      price <= 0
+    ) {
+      return [];
+    }
+    return [{
+      slotCount,
+      price,
+      promoPrice: Number.isFinite(promoPrice) ? promoPrice : undefined,
+    }];
+  });
+}
 
 export const mapSubscriptionPlan = (
   row: SubscriptionPlanRow,

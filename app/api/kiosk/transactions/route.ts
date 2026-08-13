@@ -5,7 +5,7 @@ import {
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { resolveKioskPricingProduct } from "@/lib/kiosk/pricing";
+import { resolveKioskPricingQuote } from "@/lib/kiosk/pricing";
 import {
   isDuitkuTransactionPaid,
   normalizeQrisTransactionStatus,
@@ -44,6 +44,12 @@ type ExistingTransaction = {
   duitku_status_code: string | null;
   gateway_response: Record<string, unknown> | null;
   print_count: number | null;
+  amount: number | null;
+  template_id: string | null;
+  pricing_mode: "flat" | "per_photo_slot" | null;
+  pricing_unit_amount: number | null;
+  photo_slot_count: number | null;
+  pricing_snapshot: Record<string, unknown> | null;
 };
 
 export async function POST(request: Request) {
@@ -120,37 +126,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const product = await resolveKioskPricingProduct(
+    const product = await resolveKioskPricingQuote(
       context,
       device,
       transaction.packageCode?.trim() || transaction.packageName?.trim() || "",
+      transaction.templateId,
     );
 
-    const templateId = transaction.templateId?.trim() || null;
-    if (templateId) {
-      const { data: template, error: templateError } = await context.client
-        .from("templates")
-        .select("id")
-        .eq("organization_id", context.organizationId)
-        .eq("id", templateId)
-        .maybeSingle();
-      if (templateError) throw templateError;
-      if (!template) {
-        return jsonOk(
-          {
-            error: "Template is not available for this organization.",
-            code: "KIOSK_TEMPLATE_INVALID",
-          },
-          { status: 400 },
-        );
-      }
-    }
+    const templateId = product.templateId;
 
     const { data: existingTransaction, error: existingTransactionError } =
       await context.client
         .from("transactions")
         .select(
-          "status,provider,paid_at,duitku_status_code,gateway_response,print_count",
+          "status,provider,paid_at,duitku_status_code,gateway_response,print_count,amount,template_id,pricing_mode,pricing_unit_amount,photo_slot_count,pricing_snapshot",
         )
         .eq("organization_id", context.organizationId)
         .eq("id", transaction.id)
@@ -227,11 +216,22 @@ export async function POST(request: Request) {
         location: device.location,
         customer: transaction.customer?.trim() || "Walk-in",
         package_name: product.name,
-        amount: product.amount,
+        amount: existingTransaction?.amount ?? product.amount,
+        pricing_mode:
+          existingTransaction?.pricing_mode ?? product.pricingMode,
+        pricing_unit_amount:
+          existingTransaction?.pricing_unit_amount ?? product.unitAmount,
+        photo_slot_count:
+          existingTransaction?.photo_slot_count ?? product.photoSlotCount,
+        pricing_snapshot:
+          existingTransaction?.pricing_snapshot &&
+          Object.keys(existingTransaction.pricing_snapshot).length > 0
+            ? existingTransaction.pricing_snapshot
+            : product.pricingSnapshot,
         status,
         provider,
         collection_mode: collectionMode,
-        template_id: templateId,
+        template_id: existingTransaction?.template_id ?? templateId,
         // `print_count` is the number of successful physical prints, not the
         // package allowance. It is incremented only by the print-event ledger.
         // Keep a prior confirmed count when a delayed session sync arrives.

@@ -15,7 +15,7 @@ import {
   createMerchantOrderId,
   mapDuitkuTransactionStatusCode,
 } from "@/server/payments/duitku";
-import { resolveKioskPricingProduct } from "@/lib/kiosk/pricing";
+import { resolveKioskPricingQuote } from "@/lib/kiosk/pricing";
 import { isDuitkuTransactionPaid } from "@/server/payments/qris-status";
 
 type CreatePaymentBody = {
@@ -78,10 +78,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const product = await resolveKioskPricingProduct(
+    const product = await resolveKioskPricingQuote(
       context,
       device,
       packageCode,
+      body.templateId,
     );
     if (product.accessMode === "event") {
       return jsonOk(
@@ -149,7 +150,7 @@ export async function POST(request: Request) {
     );
 
     const now = new Date().toISOString();
-    const templateId = body.templateId?.trim() || null;
+    const templateId = product.templateId;
     const { error } = await context.client.from("transactions").upsert({
       id: sessionId,
       organization_id: context.organizationId,
@@ -158,6 +159,10 @@ export async function POST(request: Request) {
       customer: body.customerName?.trim() || "Walk-in",
       package_name: product.name,
       amount: product.amount,
+      pricing_mode: product.pricingMode,
+      pricing_unit_amount: product.unitAmount,
+      photo_slot_count: product.photoSlotCount,
+      pricing_snapshot: product.pricingSnapshot,
       status: "pending",
       provider: "QRIS",
       collection_mode: collectionMode,

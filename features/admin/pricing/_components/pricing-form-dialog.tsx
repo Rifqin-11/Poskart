@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
@@ -29,7 +31,10 @@ export function PricingFormDialog({
   onClose,
   onSubmit,
 }: PricingFormDialogProps) {
-  const [form, setForm] = useState<PricingProductInput>(initial);
+  const [form, setForm] = useState<PricingProductInput>(() => ({
+    ...initial,
+    photoSlotPrices: initialSlotPrices(initial),
+  }));
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()} title={title}>
@@ -72,18 +77,132 @@ export function PricingFormDialog({
             Event access skips package and payment selection on assigned kiosks.
           </span>
         </label>
-        <label className="block text-xs font-medium text-zinc-600">
-          Price
-          <CurrencyInput
-            className="mt-1"
-            min={0}
-            value={form.accessMode === "event" ? 0 : form.price}
-            disabled={form.accessMode === "event"}
-            onValueChange={(price) =>
-              setForm({ ...form, price: price ?? 0 })
-            }
-          />
-        </label>
+        {form.accessMode === "paid" ? (
+          <>
+            <label className="flex items-start gap-2 rounded-xl border border-zinc-200 p-3 text-sm text-zinc-700 md:col-span-2">
+              <Switch
+                checked={form.pricingMode === "per_photo_slot"}
+                onCheckedChange={(enabled) =>
+                  setForm({
+                    ...form,
+                    pricingMode: enabled ? "per_photo_slot" : "flat",
+                    photoSlotPrices:
+                      enabled && form.photoSlotPrices.length === 0
+                        ? [{ slotCount: 1, price: 0 }]
+                        : form.photoSlotPrices,
+                  })
+                }
+              />
+              <span>
+                <span className="block font-medium">
+                  Hitung harga berdasarkan photo slot
+                </span>
+                <span className="mt-0.5 block text-xs text-zinc-500">
+                  Tentukan harga final untuk setiap jumlah photo slot yang
+                  tersedia pada frame.
+                </span>
+              </span>
+            </label>
+
+            {form.pricingMode === "per_photo_slot" ? (
+              <div className="space-y-3 md:col-span-2">
+                {form.photoSlotPrices.map((tier, index) => (
+                  <div
+                    key={tier.slotCount}
+                    className="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 md:grid-cols-[120px_1fr_1fr_auto] md:items-end"
+                  >
+                    <div>
+                      <div className="text-xs font-semibold text-zinc-800">
+                        {tier.slotCount} photo slot
+                      </div>
+                      <div className="mt-1 text-[11px] text-zinc-500">
+                        Harga final
+                      </div>
+                    </div>
+                    <label className="block text-xs font-medium text-zinc-600">
+                      Harga
+                      <CurrencyInput
+                        className="mt-1"
+                        min={0}
+                        value={tier.price}
+                        onValueChange={(price) =>
+                          updateSlotTier(index, { price: price ?? 0 })
+                        }
+                      />
+                    </label>
+                    <label className="block text-xs font-medium text-zinc-600">
+                      Promo (opsional)
+                      <CurrencyInput
+                        className="mt-1"
+                        min={0}
+                        value={tier.promoPrice}
+                        onValueChange={(promoPrice) =>
+                          updateSlotTier(index, {
+                            promoPrice: promoPrice ?? undefined,
+                          })
+                        }
+                      />
+                    </label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={form.photoSlotPrices.length === 1}
+                      aria-label={`Hapus harga ${tier.slotCount} photo slot`}
+                      onClick={() => removeSlotTier(index)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                ))}
+
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-xs text-zinc-500">
+                    Frame hanya dapat dibayar jika harga untuk jumlah slotnya
+                    sudah tersedia.
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={form.photoSlotPrices.length >= 12}
+                    onClick={addSlotTier}
+                  >
+                    <Plus className="size-4" />
+                    Tambah harga {nextSlotCount(form)} slot
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Harga sesi
+                  <CurrencyInput
+                    className="mt-1"
+                    min={0}
+                    value={form.price}
+                    onValueChange={(price) =>
+                      setForm({ ...form, price: price ?? 0 })
+                    }
+                  />
+                </label>
+                <label className="block text-xs font-medium text-zinc-600">
+                  Promo harga sesi (opsional)
+                  <CurrencyInput
+                    className="mt-1"
+                    min={0}
+                    value={form.promoPrice}
+                    onValueChange={(promoPrice) =>
+                      setForm({
+                        ...form,
+                        promoPrice: promoPrice ?? undefined,
+                      })
+                    }
+                  />
+                </label>
+              </>
+            )}
+          </>
+        ) : null}
         {form.accessMode === "event" ? (
           <>
             <label className="block text-xs font-medium text-zinc-600">
@@ -129,20 +248,6 @@ export function PricingFormDialog({
             </label>
           </>
         ) : null}
-        <label className="block text-xs font-medium text-zinc-600">
-          Promo price (optional)
-          <CurrencyInput
-            className="mt-1"
-            min={0}
-            value={form.promoPrice}
-            onValueChange={(promoPrice) =>
-              setForm({
-                ...form,
-                promoPrice: promoPrice ?? undefined,
-              })
-            }
-          />
-        </label>
         <label className="block text-xs font-medium text-zinc-600">
           Print limit
           <Input
@@ -198,8 +303,70 @@ export function PricingFormDialog({
       </form>
     </Dialog>
   );
+
+  function updateSlotTier(
+    index: number,
+    patch: Partial<PricingProductInput["photoSlotPrices"][number]>,
+  ) {
+    setForm((current) => ({
+      ...current,
+      photoSlotPrices: current.photoSlotPrices.map((tier, tierIndex) =>
+        tierIndex === index ? { ...tier, ...patch } : tier,
+      ),
+    }));
+  }
+
+  function addSlotTier() {
+    setForm((current) => {
+      const slotCount = nextSlotCount(current);
+      if (slotCount > 12) return current;
+      return {
+        ...current,
+        photoSlotPrices: [
+          ...current.photoSlotPrices,
+          { slotCount, price: 0 },
+        ],
+      };
+    });
+  }
+
+  function removeSlotTier(index: number) {
+    setForm((current) => {
+      if (current.photoSlotPrices.length === 1) return current;
+      return {
+        ...current,
+        photoSlotPrices: current.photoSlotPrices
+          .filter((_, tierIndex) => tierIndex !== index)
+          .map((tier, tierIndex) => ({ ...tier, slotCount: tierIndex + 1 })),
+      };
+    });
+  }
 }
 
 function toDateTimeLocal(value?: string) {
   return value ? formatJakartaDateTimeLocal(value) : "";
+}
+
+function initialSlotPrices(form: PricingProductInput) {
+  if (form.photoSlotPrices.length > 0) return form.photoSlotPrices;
+  const legacyUnitPrice = Math.max(
+    0,
+    Math.round(form.photoSlotPrice ?? 0),
+  );
+  const legacyPromoPrice = form.photoSlotPromoPrice;
+  if (form.pricingMode === "per_photo_slot" && legacyUnitPrice > 0) {
+    return Array.from({ length: 12 }, (_, index) => ({
+      slotCount: index + 1,
+      price: legacyUnitPrice * (index + 1),
+      promoPrice:
+        legacyPromoPrice == null
+          ? undefined
+          : legacyPromoPrice * (index + 1),
+    }));
+  }
+  return [{ slotCount: 1, price: 0 }];
+}
+
+function nextSlotCount(form: PricingProductInput) {
+  return Math.min(13, form.photoSlotPrices.length + 1);
 }

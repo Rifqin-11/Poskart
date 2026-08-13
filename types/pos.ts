@@ -7,7 +7,19 @@ export type PosPackageOption = {
   description: string;
   printCount: number;
   amount: number;
+  pricingMode: "flat" | "per_photo_slot";
+  photoSlotPrices: Array<{
+    slotCount: number;
+    price: number;
+    promoPrice?: number | null;
+  }>;
   popular?: boolean;
+};
+
+export type PosFrameOption = {
+  id: string;
+  name: string;
+  photoSlotCount: number;
 };
 
 export type PosSale = {

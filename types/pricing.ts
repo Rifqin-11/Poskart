@@ -1,8 +1,18 @@
+export type PhotoSlotPriceTier = {
+  slotCount: number;
+  price: number;
+  promoPrice?: number;
+};
+
 export type PricingProduct = {
   id: string;
   name: string;
   price: number;
   promoPrice?: number;
+  pricingMode: "flat" | "per_photo_slot";
+  photoSlotPrice?: number;
+  photoSlotPromoPrice?: number;
+  photoSlotPrices: PhotoSlotPriceTier[];
   printLimit: number;
   qrisDownload: boolean;
   livePhotoEnabled: boolean;
