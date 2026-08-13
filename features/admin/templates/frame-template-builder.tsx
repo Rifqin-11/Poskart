@@ -48,6 +48,10 @@ import {
 } from "@/features/admin/templates/frame-builder.utils";
 import { useTouchContextMenu } from "@/lib/hooks/use-touch-context-menu";
 import {
+  countUsableFramePhotoSlots,
+  FRAME_PHOTO_SLOT_REQUIRED_MESSAGE,
+} from "@/lib/builder/frame-layout-validation";
+import {
   getBuilderImageValidationError,
   uploadBuilderImage,
 } from "@/lib/services/storage-service";
@@ -233,6 +237,14 @@ export function FrameTemplateBuilder({
 
   const saveCurrentLayout = useCallback(async () => {
     const normalizedLayout = normalizeFrameLayout(layout);
+    if (countUsableFramePhotoSlots(normalizedLayout) < 1) {
+      toast.error("Frame belum dapat disimpan", {
+        description: FRAME_PHOTO_SLOT_REQUIRED_MESSAGE,
+        duration: 10_000,
+      });
+      return false;
+    }
+
     setIsSavingLayout(true);
     try {
       await onSave(normalizedLayout);

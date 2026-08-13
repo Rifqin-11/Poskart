@@ -2,6 +2,7 @@
 
 import { getAdminContext, verifyRole } from "@/server/admin/context";
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
+import { assertRequiredBuilderElements } from "@/lib/builder/required-elements";
 import { normalizeAssetReferences } from "@/lib/assets/asset-url";
 import {
   assertSupabaseResult,
@@ -113,6 +114,7 @@ export async function saveLayoutAsTheme(
     "admin",
     "designer",
   ]);
+  assertRequiredBuilderElements(schema);
   const id = existingId ?? `LYT-${Date.now()}`;
   const { error } = await supabase.from("layout_schemas").upsert({
     id,
@@ -221,6 +223,7 @@ export async function getLayoutSchema(): Promise<LayoutSchemaRow | null> {
 
 export async function publishLayoutSchema(schema: LayoutSchema): Promise<void> {
   const { supabase } = await verifyRole(["owner", "admin", "designer"]);
+  assertRequiredBuilderElements(schema);
   const { error } = await supabase.from("layout_schemas").upsert({
     id: "default-photobooth",
     name: "Default Photobooth Layout",

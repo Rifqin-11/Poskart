@@ -46,6 +46,10 @@ import { VisualSaveDialog } from "@/features/builder/components/visual-save-dial
 import { BuilderGuidedTour } from "@/features/builder/tutorial/builder-guided-tour";
 import { bakeLayoutSchemaColorKeyAssets } from "@/features/builder/utils/bake-color-key-assets";
 import { normalizeAssetReferences } from "@/lib/assets/asset-url";
+import {
+  getMissingRequiredBuilderElements,
+  REQUIRED_ELEMENT_PAGE_LABELS,
+} from "@/lib/builder/required-elements";
 import type { BuilderNode } from "@/types/builder";
 
 export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
@@ -238,6 +242,8 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
     const currentSchema = schema();
     autoSaveSchema(currentSchema);
     setLastAutoSave(new Date().toISOString());
+    if (!validateRequiredElements(currentSchema)) return false;
+
     if (currentThemeId && currentThemeName) {
       setIsSaving(true);
       try {
@@ -302,6 +308,36 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   function handleDiscardAndLeave() {
     pendingLeaveAfterSaveRef.current = false;
     leaveBuilder();
+  }
+
+  function validateRequiredElements(
+    currentSchema: import("@/types/builder").LayoutSchema,
+  ) {
+    const missing = getMissingRequiredBuilderElements(currentSchema);
+    if (missing.length === 0) return true;
+
+    pendingLeaveAfterSaveRef.current = false;
+    setShowSaveDialog(false);
+    setActivePage(missing[0].page);
+    toast.error("Tema belum dapat disimpan", {
+      description: (
+        <div className="space-y-2">
+          <p>Pastikan elemen berikut tersedia dan terlihat:</p>
+          <ul className="list-disc space-y-1 pl-4">
+            {missing.map((item) => (
+              <li key={`${item.page}-${item.label}`}>
+                <span className="font-semibold">
+                  {REQUIRED_ELEMENT_PAGE_LABELS[item.page]}:
+                </span>{" "}
+                {item.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ),
+      duration: 10_000,
+    });
+    return false;
   }
 
   const {
@@ -912,6 +948,10 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
             </BuilderToolbarButton>
             <BuilderToolbarButton
               onClick={() => {
+                const currentSchema = schema();
+                autoSaveSchema(currentSchema);
+                setLastAutoSave(new Date().toISOString());
+                if (!validateRequiredElements(currentSchema)) return;
                 pendingLeaveAfterSaveRef.current = false;
                 setThemeName("");
                 setShowSaveDialog(true);
@@ -1146,9 +1186,11 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   async function handleSaveConfirm() {
     if (!themeName.trim()) return;
     const name = themeName.trim();
+    const currentSchema = schema();
+    if (!validateRequiredElements(currentSchema)) return;
+
     setIsSaving(true);
     try {
-      const currentSchema = schema();
       const bakedSchema = await bakeLayoutSchemaColorKeyAssets(currentSchema);
       // Auto-save to localStorage
       autoSaveSchema(bakedSchema);

@@ -7,24 +7,26 @@ import {
 import {
   assertSupabaseResult,
   mapTemplate,
-  countPhotoSlotsFromLayout,
   type Template,
   type TemplateFormValues,
   type TemplateRow,
 } from "../_shared/admin-types";
+import {
+  assertFrameHasPhotoSlot,
+  countUsableFramePhotoSlots,
+} from "@/lib/builder/frame-layout-validation";
 
 function normalizeFrameCategoryId(value: string | undefined) {
   const normalized = value?.trim() ?? "";
   return normalized || null;
 }
 
-function assertFrameHasPhotoSlot(
+function assertFrameCategoryHasPhotoSlot(
   category: string | undefined,
   frameLayout: TemplateFormValues["frameLayout"] | undefined,
 ) {
   if (category !== "frame") return;
-  if (countPhotoSlotsFromLayout(frameLayout) > 0) return;
-  throw new Error("Frame requires at least one Photo Slot.");
+  assertFrameHasPhotoSlot(frameLayout);
 }
 
 async function assertFrameCategoryAccess(
@@ -63,10 +65,10 @@ export async function createTemplate(
   values: TemplateFormValues,
 ): Promise<void> {
   const { supabase } = await verifyRole(["owner", "admin", "designer"]);
-  assertFrameHasPhotoSlot(values.category, values.frameLayout);
+  assertFrameCategoryHasPhotoSlot(values.category, values.frameLayout);
   const now = new Date().toISOString();
   const id = `TPL-${Date.now()}`;
-  const photoCount = countPhotoSlotsFromLayout(values.frameLayout);
+  const photoCount = countUsableFramePhotoSlots(values.frameLayout);
   const frameCategoryId = normalizeFrameCategoryId(values.frameCategoryId);
   await assertFrameCategoryAccess(supabase, frameCategoryId);
   const { data: lastTemplate, error: orderError } = await supabase
@@ -138,9 +140,9 @@ export async function updateTemplate(
       }
       category = existing.data?.category;
     }
-    assertFrameHasPhotoSlot(category, values.frameLayout);
+    assertFrameCategoryHasPhotoSlot(category, values.frameLayout);
     patch.frame_layout = values.frameLayout ?? null;
-    patch.photo_count = countPhotoSlotsFromLayout(values.frameLayout);
+    patch.photo_count = countUsableFramePhotoSlots(values.frameLayout);
   } else if (values.photoCount !== undefined) {
     patch.photo_count = values.photoCount;
   }

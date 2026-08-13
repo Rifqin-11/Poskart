@@ -5,6 +5,10 @@ import {
   requireKioskContext,
   requireOrganizationDevice,
 } from "@/lib/kiosk/server";
+import {
+  countUsableFramePhotoSlots,
+  FRAME_PHOTO_SLOT_REQUIRED_MESSAGE,
+} from "@/lib/builder/frame-layout-validation";
 
 type SaveTemplateBody = {
   deviceId?: string;
@@ -66,6 +70,16 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    const photoSlotCount = countUsableFramePhotoSlots(template?.frameLayout);
+    if (photoSlotCount < 1) {
+      return jsonOk(
+        {
+          error: FRAME_PHOTO_SLOT_REQUIRED_MESSAGE,
+          code: "FRAME_PHOTO_SLOT_REQUIRED",
+        },
+        { status: 400 },
+      );
+    }
 
     const { data: existing, error: existingError } = await context.client
       .from("templates")
@@ -103,10 +117,7 @@ export async function POST(request: Request) {
       displayOrder = (lastTemplate?.display_order ?? -1) + 1;
     }
 
-    const photoCount = Math.min(
-      8,
-      Math.max(1, Math.round(template?.photoCount ?? 4)),
-    );
+    const photoCount = Math.min(8, photoSlotCount);
     const accentColor =
       typeof template?.accentColor === "string" &&
       /^#[0-9a-fA-F]{6}$/.test(template.accentColor)

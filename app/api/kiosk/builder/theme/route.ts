@@ -1,5 +1,9 @@
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
 import {
+  formatMissingRequiredBuilderElements,
+  getMissingRequiredBuilderElements,
+} from "@/lib/builder/required-elements";
+import {
   jsonError,
   jsonOk,
   requireKioskContext,
@@ -29,6 +33,16 @@ export async function POST(request: Request) {
     if (!body.schema) {
       return jsonOk(
         { error: "schema field is required", code: "BUILDER_SCHEMA_REQUIRED" },
+        { status: 400 },
+      );
+    }
+    const missingElements = getMissingRequiredBuilderElements(body.schema);
+    if (missingElements.length > 0) {
+      return jsonOk(
+        {
+          error: `Pastikan elemen wajib berikut tersedia dan terlihat sebelum menyimpan. ${formatMissingRequiredBuilderElements(missingElements)}`,
+          code: "BUILDER_REQUIRED_ELEMENTS_MISSING",
+        },
         { status: 400 },
       );
     }

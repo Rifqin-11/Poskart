@@ -336,10 +336,6 @@ export type SubscriptionPlanRow = {
   features: Record<string, unknown> | null;
 };
 
-export function countPhotoSlotsFromLayout(layout?: FrameLayout | null) {
-  return layout?.nodes.filter((node) => node.type === "photo-slot").length ?? 0;
-}
-
 export type ThemePresetRow = Omit<ThemePreset, "schema"> & {
   schema: ThemeSchema;
 };

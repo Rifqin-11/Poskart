@@ -23,6 +23,11 @@ import {
   uploadBuilderImage,
 } from "@/lib/services/storage-service";
 import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
+import {
+  assertFrameHasPhotoSlot,
+  countUsableFramePhotoSlots,
+  FRAME_PHOTO_SLOT_REQUIRED_MESSAGE,
+} from "@/lib/builder/frame-layout-validation";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { FrameLayout } from "@/types/frame-template";
@@ -55,10 +60,6 @@ const DEFAULT_FORM: TemplateFormValues = {
   printLengthMm: 150,
   frameLayout: null,
 };
-
-function countPhotoSlots(layout: FrameLayout) {
-  return layout.nodes.filter((node) => node.type === "photo-slot").length;
-}
 
 function getFrameBackgroundImageUrl(layout: FrameLayout) {
   const background =
@@ -223,14 +224,8 @@ export function TemplateBuilderWorkspace({
   };
 
   const handleSave = async (layout: FrameLayout) => {
-    const photoSlotCount = countPhotoSlots(layout);
-    if (photoSlotCount === 0) {
-      toast.error(
-        "Tambahkan minimal satu Photo Slot sebelum menyimpan frame.",
-      );
-      // Keep the builder dirty: a return would make it treat the layout as saved.
-      throw new Error("Frame requires at least one Photo Slot.");
-    }
+    assertFrameHasPhotoSlot(layout);
+    const photoSlotCount = countUsableFramePhotoSlots(layout);
     const bakedLayout = await bakeFrameLayoutColorKeyAssets(layout);
     const payload = {
       ...form,
@@ -259,7 +254,7 @@ export function TemplateBuilderWorkspace({
         error,
         "Frame tidak dapat disimpan saat ini. Coba lagi.",
       );
-      if (message !== "Tambahkan minimal satu Photo Slot sebelum menyimpan frame.") {
+      if (message !== FRAME_PHOTO_SLOT_REQUIRED_MESSAGE) {
         toast.error(message);
       }
       throw error;
