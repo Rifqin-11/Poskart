@@ -5,7 +5,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clipboard,
-  RotateCcw,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,10 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  useDeviceErrors,
-  useSetDeviceErrorResolved,
-} from "@/features/admin/devices/use-devices";
+import { useDeviceErrors } from "@/features/admin/devices/use-devices";
+import { businessProfile } from "@/lib/constants/business";
 import type { Device } from "@/types/device";
 import type {
   DeviceErrorCategory,
@@ -26,7 +24,7 @@ import type {
 
 type DeviceErrorsDialogProps = {
   device: Device;
-  canResolve: boolean;
+  canSendToDeveloper: boolean;
   onClose: () => void;
 };
 
@@ -72,15 +70,20 @@ function buildClipboardText(device: Device, error: DeviceErrorGroup) {
     .join("\n");
 }
 
+function buildDeveloperMailto(device: Device, error: DeviceErrorGroup) {
+  const subject = `[POSKART Device Error] ${device.name} — ${error.category}`;
+  const body = buildClipboardText(device, error);
+  return `mailto:${businessProfile.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 export function DeviceErrorsDialog({
   device,
-  canResolve,
+  canSendToDeveloper,
   onClose,
 }: DeviceErrorsDialogProps) {
   const [status, setStatus] = useState<"open" | "resolved" | "all">("open");
   const [category, setCategory] = useState<DeviceErrorCategory | "all">("all");
   const { data = [], isLoading, isFetching } = useDeviceErrors(device.id);
-  const resolveError = useSetDeviceErrorResolved();
 
   const filteredErrors = useMemo(
     () =>
@@ -97,19 +100,9 @@ export function DeviceErrorsDialog({
     [category, data, status],
   );
 
-  const handleResolve = (item: DeviceErrorGroup) => {
-    const resolved = !item.resolvedAt;
-    resolveError.mutate(
-      { errorId: item.id, resolved },
-      {
-        onSuccess: () =>
-          toast.success(resolved ? "Error marked as resolved" : "Error reopened"),
-        onError: (error) =>
-          toast.error(
-            error instanceof Error ? error.message : "Unable to update error",
-          ),
-      },
-    );
+  const handleSendToDeveloper = (item: DeviceErrorGroup) => {
+    window.location.href = buildDeveloperMailto(device, item);
+    toast.success("Draft laporan dibuka untuk developer");
   };
 
   return (
@@ -289,19 +282,14 @@ export function DeviceErrorsDialog({
                     <Clipboard className="size-3.5" />
                     Copy
                   </Button>
-                  {canResolve ? (
+                  {canSendToDeveloper ? (
                     <Button
-                      variant={item.resolvedAt ? "outline" : "default"}
+                      variant="default"
                       size="sm"
-                      disabled={resolveError.isPending}
-                      onClick={() => handleResolve(item)}
+                      onClick={() => handleSendToDeveloper(item)}
                     >
-                      {item.resolvedAt ? (
-                        <RotateCcw className="size-3.5" />
-                      ) : (
-                        <CheckCircle2 className="size-3.5" />
-                      )}
-                      {item.resolvedAt ? "Reopen" : "Mark resolved"}
+                      <Send className="size-3.5" />
+                      Send to developer
                     </Button>
                   ) : null}
                 </div>

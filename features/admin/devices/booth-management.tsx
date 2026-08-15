@@ -919,7 +919,7 @@ export function BoothManagement({
       {errorsFor ? (
         <DeviceErrorsDialog
           device={errorsFor}
-          canResolve={!isReadOnly("devices")}
+          canSendToDeveloper={!isReadOnly("devices")}
           onClose={() => setErrorsFor(null)}
         />
       ) : null}
