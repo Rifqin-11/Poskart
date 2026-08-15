@@ -84,6 +84,13 @@ export function useSetDeviceErrorResolved() {
   });
 }
 
+export function useSendDeviceErrorToDeveloper() {
+  return useMutation({
+    mutationFn: ({ deviceId, errorId }: { deviceId: string; errorId: string }) =>
+      devicesApi.sendDeviceErrorToDeveloper(deviceId, errorId),
+  });
+}
+
 export function useApproveVoucherRequest() {
   const queryClient = useQueryClient();
   return useMutation({

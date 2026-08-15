@@ -9,7 +9,9 @@ export function useAdminNotifications() {
     queryKey: adminQueryKeys.adminNotifications,
     queryFn: adminNotificationsApi.getMyAdminNotifications,
     staleTime: 60_000,
-    refetchInterval: 120_000,
+    // Device reports are sent from another user's session. Poll frequently
+    // enough that superadmins see them shortly after they are submitted.
+    refetchInterval: 30_000,
   });
 }
 

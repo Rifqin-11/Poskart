@@ -18,6 +18,7 @@ export const devicesApi = {
   validateDevicePairingCode: deviceService.validateDevicePairingCode,
   getDeviceErrors: deviceService.getDeviceErrors,
   setDeviceErrorResolved: deviceService.setDeviceErrorResolved,
+  sendDeviceErrorToDeveloper: deviceService.sendDeviceErrorToDeveloper,
   getFailedPrintsByBooth: transactionService.getFailedPrintsByBooth,
   retryPrint: transactionService.retryPrint,
 };

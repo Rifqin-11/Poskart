@@ -9,6 +9,7 @@ import {
   validateDevicePairingCode,
   getDeviceErrors,
   setDeviceErrorResolved,
+  sendDeviceErrorToDeveloper,
 } from "@/server/admin/actions/device-actions";
 
 export const deviceService = {
@@ -22,4 +23,5 @@ export const deviceService = {
   validateDevicePairingCode,
   getDeviceErrors,
   setDeviceErrorResolved,
+  sendDeviceErrorToDeveloper,
 };

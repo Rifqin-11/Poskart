@@ -14,8 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDeviceErrors } from "@/features/admin/devices/use-devices";
-import { businessProfile } from "@/lib/constants/business";
+import {
+  useDeviceErrors,
+  useSendDeviceErrorToDeveloper,
+} from "@/features/admin/devices/use-devices";
 import type { Device } from "@/types/device";
 import type {
   DeviceErrorCategory,
@@ -70,12 +72,6 @@ function buildClipboardText(device: Device, error: DeviceErrorGroup) {
     .join("\n");
 }
 
-function buildDeveloperMailto(device: Device, error: DeviceErrorGroup) {
-  const subject = `[POSKART Device Error] ${device.name} — ${error.category}`;
-  const body = buildClipboardText(device, error);
-  return `mailto:${businessProfile.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
-
 export function DeviceErrorsDialog({
   device,
   canSendToDeveloper,
@@ -84,6 +80,7 @@ export function DeviceErrorsDialog({
   const [status, setStatus] = useState<"open" | "resolved" | "all">("open");
   const [category, setCategory] = useState<DeviceErrorCategory | "all">("all");
   const { data = [], isLoading, isFetching } = useDeviceErrors(device.id);
+  const sendToDeveloper = useSendDeviceErrorToDeveloper();
 
   const filteredErrors = useMemo(
     () =>
@@ -101,8 +98,19 @@ export function DeviceErrorsDialog({
   );
 
   const handleSendToDeveloper = (item: DeviceErrorGroup) => {
-    window.location.href = buildDeveloperMailto(device, item);
-    toast.success("Draft laporan dibuka untuk developer");
+    sendToDeveloper.mutate(
+      { deviceId: device.id, errorId: item.id },
+      {
+        onSuccess: () =>
+          toast.success("Laporan dikirim ke notifikasi superadmin"),
+        onError: (error) =>
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Gagal mengirim laporan ke superadmin",
+          ),
+      },
+    );
   };
 
   return (
@@ -286,10 +294,11 @@ export function DeviceErrorsDialog({
                     <Button
                       variant="default"
                       size="sm"
+                      disabled={sendToDeveloper.isPending}
                       onClick={() => handleSendToDeveloper(item)}
                     >
                       <Send className="size-3.5" />
-                      Send to developer
+                      {sendToDeveloper.isPending ? "Sending…" : "Send to developer"}
                     </Button>
                   ) : null}
                 </div>

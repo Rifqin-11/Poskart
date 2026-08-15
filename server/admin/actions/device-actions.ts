@@ -11,6 +11,7 @@ import {
   assertSettingsPin,
   normalizeSettingsPin,
 } from "@/lib/kiosk/settings-pin";
+import { createAdminNotification } from "@/server/admin/notifications";
 import type {
   DeviceErrorCategory,
   DeviceErrorGroup,
@@ -166,6 +167,74 @@ export async function setDeviceErrorResolved(
     throw new Error(`Unable to update device error: ${error.message}`);
   }
   if (!data) throw new Error("Device error not found or access was denied.");
+}
+
+export async function sendDeviceErrorToDeveloper(
+  deviceId: string,
+  errorId: string,
+): Promise<void> {
+  const { supabase, organizationId } = await verifyRole(["owner", "admin"]);
+  const normalizedDeviceId = deviceId.trim();
+  const normalizedErrorId = errorId.trim();
+  if (!normalizedDeviceId || !normalizedErrorId) {
+    throw new Error("Device error details are required.");
+  }
+
+  const { data: errorGroup, error } = await supabase
+    .from("device_error_groups")
+    .select(
+      "id,device_id,category,severity,message,stack_trace,context,app_version,occurrence_count,first_seen,last_seen",
+    )
+    .eq("id", normalizedErrorId)
+    .eq("device_id", normalizedDeviceId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`Unable to load device error: ${error.message}`);
+  }
+  if (!errorGroup) {
+    throw new Error("Device error not found or access was denied.");
+  }
+
+  const { data: device, error: deviceError } = await supabase
+    .from("devices")
+    .select("id,name,location")
+    .eq("id", normalizedDeviceId)
+    .maybeSingle();
+  if (deviceError) {
+    throw new Error(`Unable to load device details: ${deviceError.message}`);
+  }
+
+  const deviceName = device?.name ?? normalizedDeviceId;
+  const location = device?.location?.trim();
+  const body = [
+    `${deviceName} (${normalizedDeviceId})${location ? ` — ${location}` : ""}`,
+    `${errorGroup.category} · ${errorGroup.severity} · ${errorGroup.occurrence_count} occurrence(s)`,
+    errorGroup.message,
+  ].join("\n");
+
+  await createAdminNotification(supabase, {
+    audience: "superadmin",
+    organizationId,
+    type: "device_error_report",
+    title: `Device error: ${deviceName}`,
+    body,
+    href: "/superadmin",
+    metadata: {
+      deviceErrorId: errorGroup.id,
+      deviceId: normalizedDeviceId,
+      deviceName,
+      location: location ?? null,
+      category: errorGroup.category,
+      severity: errorGroup.severity,
+      message: errorGroup.message,
+      stackTrace: errorGroup.stack_trace,
+      context: errorGroup.context ?? {},
+      appVersion: errorGroup.app_version,
+      occurrenceCount: errorGroup.occurrence_count,
+      firstSeen: errorGroup.first_seen,
+      lastSeen: errorGroup.last_seen,
+    },
+  });
 }
 
 export async function createDevice(values: BoothInput): Promise<void> {
