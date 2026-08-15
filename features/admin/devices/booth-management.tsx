@@ -336,13 +336,13 @@ export function BoothManagement({
   };
 
   return (
-    <div>
+    <div className="min-w-0">
       {confirmDelete.dialog}
       <PageHeader
         title={t("devices.pageTitle")}
         description={t("devices.pageDesc")}
         action={
-          <div className="flex gap-2">
+          <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap">
             <Button variant="outline" onClick={() => startDeviceTutorial()}>
               <CircleHelp className="size-4" />
               {t("devices.showTutorial")}
@@ -396,24 +396,24 @@ export function BoothManagement({
             </p>
             <Progress value={deviceUsagePercent} className="mt-4" />
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+          <div className="grid min-w-0 grid-cols-3 gap-2 text-center">
+            <div className="min-w-0 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-3 sm:px-4">
               <div className="text-lg font-semibold text-zinc-950">
                 {usedDevices}
               </div>
-              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+              <div className="truncate text-[11px] font-medium uppercase tracking-wide text-zinc-400">
                 Used
               </div>
             </div>
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+            <div className="min-w-0 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-3 sm:px-4">
               <div className="text-lg font-semibold text-zinc-950">
                 {deviceLimit}
               </div>
-              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+              <div className="truncate text-[11px] font-medium uppercase tracking-wide text-zinc-400">
                 Allowed
               </div>
             </div>
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+            <div className="min-w-0 rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-3 sm:px-4">
               <div
                 className={cn(
                   "text-lg font-semibold",
@@ -422,7 +422,7 @@ export function BoothManagement({
               >
                 {remainingDevices}
               </div>
-              <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+              <div className="truncate text-[11px] font-medium uppercase tracking-wide text-zinc-400">
                 Available
               </div>
             </div>
@@ -431,7 +431,7 @@ export function BoothManagement({
       </Card>
       <div
         data-devices-tour="device-list"
-        className="grid gap-4 xl:grid-cols-2"
+        className="grid min-w-0 gap-4 xl:grid-cols-2"
       >
         {data.map((device: Device) => {
           const paperInitialLengthMm = device.paperInitialLengthMm ?? 0;
@@ -453,7 +453,7 @@ export function BoothManagement({
           return (
           <Card
             key={device.id}
-            className="group overflow-hidden rounded-2xl border border-zinc-200/80 bg-white transition-shadow duration-200 hover:shadow-md"
+            className="group min-w-0 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white transition-shadow duration-200 hover:shadow-md"
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-3 border-b border-zinc-100 px-5 py-4">
@@ -479,7 +479,7 @@ export function BoothManagement({
               />
             </div>
 
-            <CardContent className="space-y-3 p-4">
+            <CardContent className="min-w-0 space-y-3 p-4">
               {/* Battery, paper estimate, and printer row */}
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {/* Battery */}
@@ -623,7 +623,7 @@ export function BoothManagement({
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
                   Active Setup
                 </p>
-                <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+                <div className="grid gap-x-3 gap-y-2 sm:grid-cols-3">
                   <div>
                     <p className="flex items-center gap-1 text-[10px] text-zinc-400">
                       <Palette className="size-3" /> Theme
@@ -671,13 +671,13 @@ export function BoothManagement({
               </div>
 
               {/* Actions */}
-              <div className="flex items-center justify-between gap-2 pt-0.5">
-                <div className="flex gap-1.5">
+              <div className="flex flex-col gap-2 pt-0.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="grid w-full grid-cols-2 gap-1.5 sm:flex sm:w-auto">
                   <Button
                     variant="outline"
                     size="sm"
                     className={cn(
-                      "h-8 rounded-lg px-3 text-xs",
+                      "h-8 w-full rounded-lg px-3 text-xs sm:w-auto",
                       device.unresolvedErrorCount
                         ? "border-red-200 text-red-700 hover:bg-red-50"
                         : "",
@@ -695,7 +695,7 @@ export function BoothManagement({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-lg px-3 text-xs"
+                    className="h-8 w-full rounded-lg px-3 text-xs sm:w-auto"
                     onClick={() => setFailedFor(device)}
                   >
                     <Printer className="size-3.5" /> Prints
@@ -704,7 +704,7 @@ export function BoothManagement({
                 <Button
                   data-devices-tour="configure"
                   size="sm"
-                  className="h-8 rounded-lg bg-[#00357B] px-4 text-xs hover:bg-[#014EB4]"
+                  className="h-8 w-full rounded-lg bg-[#00357B] px-4 text-xs hover:bg-[#014EB4] sm:w-auto"
                   onClick={() => setEditingId(device.id)}
                 >
                   <SlidersHorizontal className="size-3.5" />{" "}
