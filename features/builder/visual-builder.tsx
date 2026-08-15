@@ -9,12 +9,18 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import { FolderOpen, Plus, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useTouchContextMenu } from "@/lib/hooks/use-touch-context-menu";
 import {
-  useActiveLayoutSchema,
   useLayoutSchemas,
   useSaveLayoutAsTheme,
 } from "@/features/admin/layout/use-layout";
@@ -96,13 +102,13 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   const reorderNodes = useBuilderStore((state) => state.reorderNodes);
   const schema = useBuilderStore((state) => state.schema);
   const setSchema = useBuilderStore((state) => state.setSchema);
+  const resetToBlank = useBuilderStore((state) => state.resetToBlank);
   const clipboard = useBuilderStore((state) => state.clipboard);
   const copyNode = useBuilderStore((state) => state.copyNode);
   const cutNode = useBuilderStore((state) => state.cutNode);
   const pasteNode = useBuilderStore((state) => state.pasteNode);
   const bringForward = useBuilderStore((state) => state.bringForward);
   const sendBackward = useBuilderStore((state) => state.sendBackward);
-  const { data: savedLayout } = useActiveLayoutSchema();
   const hydratedLayoutId = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [builderTutorialOpen, setBuilderTutorialOpen] = useState(false);
@@ -140,11 +146,20 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   const [currentThemeId, setCurrentThemeId] = useState<string | null>(null);
   const [currentThemeName, setCurrentThemeName] = useState<string | null>(null);
   const lastCommittedSchemaRef = useRef<string | null>(null);
-  const pendingLeaveAfterSaveRef = useRef(false);
   const currentSchemaKey = JSON.stringify(schema());
   const hasUnsavedChanges =
     lastCommittedSchemaRef.current !== null &&
     lastCommittedSchemaRef.current !== currentSchemaKey;
+
+  // The /new route must not inherit the active theme or a previous builder
+  // session from the Zustand singleton. Existing themes are hydrated below by
+  // their explicit id and remain unchanged.
+  useLayoutEffect(() => {
+    if (initialThemeId) return;
+    resetToBlank();
+    hydratedLayoutId.current = null;
+    lastCommittedSchemaRef.current = "__local_draft_requires_save__";
+  }, [initialThemeId, resetToBlank]);
 
   useEffect(() => {
     let cancelled = false;
@@ -257,6 +272,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
         autoSaveSchema(bakedSchema);
         lastCommittedSchemaRef.current = JSON.stringify(bakedSchema);
         toast.success(`“${currentThemeName}” saved!`);
+        leaveBuilder();
         return true;
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Save failed");
@@ -289,6 +305,16 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
     );
   }
 
+  function startNewTheme() {
+    resetToBlank();
+    setCurrentThemeId(null);
+    setCurrentThemeName(null);
+    hydratedLayoutId.current = null;
+    lastCommittedSchemaRef.current = "__local_draft_requires_save__";
+    setThemeName("");
+    setShowSaveDialog(true);
+  }
+
   function handleDeleteLocalDraft(id: string) {
     deleteDraft(id);
     setLocalDrafts(getDrafts());
@@ -296,17 +322,14 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
 
   async function handleSaveAndLeave() {
     if (!currentThemeId || !currentThemeName) {
-      pendingLeaveAfterSaveRef.current = true;
       await handleSave();
       return;
     }
 
-    const saved = await handleSave();
-    if (saved) leaveBuilder();
+    await handleSave();
   }
 
   function handleDiscardAndLeave() {
-    pendingLeaveAfterSaveRef.current = false;
     leaveBuilder();
   }
 
@@ -316,7 +339,6 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
     const missing = getMissingRequiredBuilderElements(currentSchema);
     if (missing.length === 0) return true;
 
-    pendingLeaveAfterSaveRef.current = false;
     setShowSaveDialog(false);
     setActivePage(missing[0].page);
     toast.error("Tema belum dapat disimpan", {
@@ -736,17 +758,6 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   }, [dbThemes, initialThemeId, setSchema]);
 
   useEffect(() => {
-    if (initialThemeId) return;
-    if (!savedLayout || hydratedLayoutId.current === savedLayout.id) return;
-    const normalizedSchema = normalizeAssetReferences(
-      savedLayout.schema,
-    ) as typeof savedLayout.schema;
-    setSchema(normalizedSchema);
-    hydratedLayoutId.current = savedLayout.id;
-    lastCommittedSchemaRef.current = JSON.stringify(normalizedSchema);
-  }, [initialThemeId, savedLayout, setSchema]);
-
-  useEffect(() => {
     const close = () => setContextMenu(null);
     window.addEventListener("click", close);
     window.addEventListener("blur", close);
@@ -948,13 +959,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
             </BuilderToolbarButton>
             <BuilderToolbarButton
               onClick={() => {
-                const currentSchema = schema();
-                autoSaveSchema(currentSchema);
-                setLastAutoSave(new Date().toISOString());
-                if (!validateRequiredElements(currentSchema)) return;
-                pendingLeaveAfterSaveRef.current = false;
-                setThemeName("");
-                setShowSaveDialog(true);
+                startNewTheme();
               }}
               title="Create new theme"
             >
@@ -1179,7 +1184,6 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   );
 
   function closeSaveDialog() {
-    pendingLeaveAfterSaveRef.current = false;
     setShowSaveDialog(false);
   }
 
@@ -1211,10 +1215,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
       toast.success(
         `Theme "${name}" created! Future saves will update it in-place.`,
       );
-      if (pendingLeaveAfterSaveRef.current) {
-        pendingLeaveAfterSaveRef.current = false;
-        leaveBuilder();
-      }
+      leaveBuilder();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save theme");
     } finally {

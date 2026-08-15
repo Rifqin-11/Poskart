@@ -68,6 +68,8 @@ type BuilderState = {
   undo: () => void;
   redo: () => void;
   setSchema: (schema: LayoutSchema) => void;
+  /** Clear the canvas for a brand-new theme without seeding starter nodes. */
+  resetToBlank: () => void;
   schema: () => LayoutSchema;
   /** Reset all nodes on a single page back to initialBuilderNodes defaults */
   resetPageNodes: (page: BuilderPage) => void;
@@ -93,7 +95,9 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   selectedId: null,
   selectedIds: [],
   canvas: defaultBuilderCanvas,
-  nodes: initialBuilderNodes,
+  // New themes start blank. Starter nodes remain available through
+  // resetPageNodes and schema migration, but must not appear on a new canvas.
+  nodes: [],
   history: [],
   future: [],
   builderFullView: false,
@@ -463,6 +467,17 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       future: [],
     });
   },
+  resetToBlank: () =>
+    set({
+      activePage: "landing",
+      nodes: [],
+      canvas: { ...defaultBuilderCanvas },
+      selectedId: null,
+      selectedIds: [],
+      history: [],
+      future: [],
+      clipboard: null,
+    }),
   schema: () => {
     const state = get();
     return buildLayoutSchema(state.canvas, state.nodes);

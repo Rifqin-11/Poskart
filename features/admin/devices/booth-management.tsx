@@ -41,7 +41,10 @@ import {
 import { useLayoutSchemas } from "@/features/admin/layout/use-layout";
 import { usePricing } from "@/features/admin/pricing/use-pricing";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
-import { useTemplates } from "@/features/admin/templates/use-templates";
+import {
+  useFrameCategories,
+  useTemplates,
+} from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
 import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { usePermission } from "@/features/admin/hooks/use-permission";
@@ -179,6 +182,12 @@ type DeviceFormOptions = {
     accentColor?: string;
     photoCount?: number;
     printLengthMm?: number;
+    frameCategoryId?: string;
+  }>;
+  frameCategories: Array<{
+    id: string;
+    name: string;
+    displayOrder: number;
   }>;
   pricingProducts: PricingProduct[];
 };
@@ -195,6 +204,7 @@ export function BoothManagement({
     useSubscriptionStatus();
   const { data: layouts = [] } = useLayoutSchemas();
   const { data: templates = [] } = useTemplates();
+  const { data: frameCategories = [] } = useFrameCategories();
   const { isReadOnly } = usePermission();
   const { t } = useI18n();
   const { data: pricingProducts = [] } = usePricing();
@@ -278,10 +288,12 @@ export function BoothManagement({
           accentColor: template.accentColor,
           photoCount: template.photoCount,
           printLengthMm: template.printLengthMm,
+          frameCategoryId: template.frameCategoryId,
         })),
+      frameCategories,
       pricingProducts,
     }),
-    [layouts, pricingProducts, templates],
+    [frameCategories, layouts, pricingProducts, templates],
   );
 
   const handleDelete = (device: Device) => {

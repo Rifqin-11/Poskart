@@ -40,6 +40,7 @@ import type { Device } from "@/types/device";
 type DeviceFormOptions = {
   themeOptions: ThemeOption[];
   frameTemplates: FrameTemplateOption[];
+  frameCategories: FrameCategoryOption[];
   pricingProducts: PricingProduct[];
 };
 
@@ -58,10 +59,20 @@ type FrameTemplateOption = {
   accentColor?: string;
   photoCount?: number;
   printLengthMm?: number;
+  frameCategoryId?: string;
+};
+
+type FrameCategoryOption = {
+  id: string;
+  name: string;
+  displayOrder: number;
 };
 
 type SessionAccessMode = "" | "paid" | "event";
 type DeviceConfigurationTab = "general" | "frame" | "system";
+
+const ALL_FRAME_CATEGORY_ID = "__all__";
+const GENERAL_FRAME_CATEGORY_ID = "__general__";
 
 const CUSTOM_PAPER_THICKNESS_MM = 0.065;
 const BLUEPRINT_OIL_RESISTANT_ROLL_LENGTHS_MM = {
@@ -144,6 +155,9 @@ export function BoothFormDialog({
   );
   const [activeTab, setActiveTab] = useState<DeviceConfigurationTab>("general");
   const [frameSearch, setFrameSearch] = useState("");
+  const [activeFrameCategoryId, setActiveFrameCategoryId] = useState(
+    ALL_FRAME_CATEGORY_ID,
+  );
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState<BoothInput>(() => {
     const { id: _ignored, ...rest } = initial as Device;
@@ -185,12 +199,71 @@ export function BoothFormDialog({
         name: id,
       },
   );
+  const selectedFrameCategoryIds = new Set(
+    frameTemplateSelectionOptions
+      .map((template) => template.frameCategoryId)
+      .filter((categoryId): categoryId is string => Boolean(categoryId)),
+  );
+  const availableFrameCategories = options.frameCategories
+    .filter((category) => selectedFrameCategoryIds.has(category.id))
+    .sort((a, b) => a.displayOrder - b.displayOrder);
+  const hasGeneralFrameTemplates = frameTemplateSelectionOptions.some(
+    (template) => !template.frameCategoryId,
+  );
+  const showFrameCategoryTabs =
+    availableFrameCategories.length > 0 || hasGeneralFrameTemplates;
+  const effectiveFrameCategoryId =
+    activeFrameCategoryId === GENERAL_FRAME_CATEGORY_ID &&
+    hasGeneralFrameTemplates
+      ? activeFrameCategoryId
+      : activeFrameCategoryId === ALL_FRAME_CATEGORY_ID ||
+          availableFrameCategories.some(
+            (category) => category.id === activeFrameCategoryId,
+          )
+        ? activeFrameCategoryId
+        : ALL_FRAME_CATEGORY_ID;
+  const categoryFilteredFrameTemplates =
+    effectiveFrameCategoryId === ALL_FRAME_CATEGORY_ID
+      ? frameTemplateSelectionOptions
+      : effectiveFrameCategoryId === GENERAL_FRAME_CATEGORY_ID
+        ? frameTemplateSelectionOptions.filter(
+            (template) => !template.frameCategoryId,
+          )
+        : frameTemplateSelectionOptions.filter(
+            (template) =>
+              template.frameCategoryId === effectiveFrameCategoryId,
+          );
+  const frameCategoryTabs = [
+    {
+      id: ALL_FRAME_CATEGORY_ID,
+      label: "All",
+      count: frameTemplateSelectionOptions.length,
+    },
+    ...(hasGeneralFrameTemplates
+      ? [
+          {
+            id: GENERAL_FRAME_CATEGORY_ID,
+            label: "General",
+            count: frameTemplateSelectionOptions.filter(
+              (template) => !template.frameCategoryId,
+            ).length,
+          },
+        ]
+      : []),
+    ...availableFrameCategories.map((category) => ({
+      id: category.id,
+      label: category.name,
+      count: frameTemplateSelectionOptions.filter(
+        (template) => template.frameCategoryId === category.id,
+      ).length,
+    })),
+  ];
   const allFramesSelected =
     frameTemplateOptions.length > 0 &&
     frameTemplateOptions.every((template) =>
       form.frameTemplates.includes(template),
     );
-  const visibleFrameTemplates = frameTemplateSelectionOptions.filter(
+  const visibleFrameTemplates = categoryFilteredFrameTemplates.filter(
     (template) =>
       template.name
         .toLocaleLowerCase()
@@ -795,6 +868,46 @@ export function BoothFormDialog({
                   />
                 </div>
               </div>
+              {showFrameCategoryTabs ? (
+                <div className="px-4 pt-4 sm:px-5 sm:pt-5">
+                  <div
+                    aria-label="Filter frames by category"
+                    className="flex min-w-0 gap-1.5 overflow-x-auto rounded-2xl border border-zinc-200 bg-zinc-100/80 p-1.5"
+                    role="tablist"
+                  >
+                    {frameCategoryTabs.map((tab) => {
+                      const selected = effectiveFrameCategoryId === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={selected}
+                          onClick={() => setActiveFrameCategoryId(tab.id)}
+                          className={cn(
+                            "flex min-h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-semibold transition-colors",
+                            selected
+                              ? "bg-[#00357B] text-white shadow-sm"
+                              : "text-zinc-500 hover:bg-white hover:text-zinc-900",
+                          )}
+                        >
+                          {tab.label}
+                          <span
+                            className={cn(
+                              "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums",
+                              selected
+                                ? "bg-white/15 text-white"
+                                : "bg-zinc-200 text-zinc-500",
+                            )}
+                          >
+                            {tab.count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
               <div className="p-4 sm:p-5">
                 <FrameTemplateMultiSelect
                   values={form.frameTemplates}
