@@ -277,8 +277,6 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         type === "qr" ||
         type === "qr-link" ||
         type === "return-countdown" ||
-        type === "camera-view" ||
-        type === "frame-preview" ||
         type === "receipt-preview" ||
         type === "qr-placeholder";
 

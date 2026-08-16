@@ -88,6 +88,22 @@ export const REQUIRED_BUILDER_ELEMENTS: readonly RequiredBuilderElement[] = [
   },
 ] as const;
 
+// Keep validation aligned with the page visibility behavior in the builder:
+// legacy schemas hide Tutorial unless it is explicitly enabled.
+const DEFAULT_ENABLED_BUILDER_PAGES: readonly BuilderPage[] = [
+  "landing",
+  "template",
+  "camera",
+  "preview",
+  "thanks",
+];
+
+function isBuilderPageEnabled(schema: LayoutSchema, page: BuilderPage) {
+  return schema.canvas.enabledPages
+    ? schema.canvas.enabledPages.includes(page)
+    : DEFAULT_ENABLED_BUILDER_PAGES.includes(page);
+}
+
 function isUsableRequiredNode(
   node: BuilderNode,
   requirement: RequiredBuilderElement,
@@ -106,6 +122,8 @@ export function getMissingRequiredBuilderElements(
   schema: LayoutSchema,
 ): MissingRequiredBuilderElement[] {
   return REQUIRED_BUILDER_ELEMENTS.filter((requirement) => {
+    if (!isBuilderPageEnabled(schema, requirement.page)) return false;
+
     const pageNodes = schema.pages[requirement.page] ?? [];
     return !pageNodes.some((node) =>
       isUsableRequiredNode(node, requirement),
