@@ -23,11 +23,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   Boxes,
+  Check,
   CloudUpload,
   FolderPlus,
   Grid2X2,
   GripVertical,
   List,
+  Loader2,
   Pencil,
   Plus,
   Trash2,
@@ -417,14 +419,14 @@ export function TemplateManagement() {
         title={t("templates.pageTitle")}
         description={t("templates.pageDesc")}
         action={
-          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end">
-            <div className="flex rounded-full border border-zinc-200 bg-white p-1">
+          <div className="flex w-full flex-wrap items-center gap-2.5 md:w-auto md:justify-end">
+            <div className="flex h-10 items-center gap-0.5 rounded-full border border-zinc-200 bg-white p-1 shadow-sm shadow-zinc-950/[0.03]">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
                 size="icon"
                 title="Grid view"
                 aria-label="Grid view"
-                className="rounded-full"
+                className="size-8 rounded-full"
                 onClick={() => setViewMode("grid")}
               >
                 <Grid2X2 className="size-4" />
@@ -434,7 +436,7 @@ export function TemplateManagement() {
                 size="icon"
                 title="List view"
                 aria-label="List view"
-                className="rounded-full"
+                className="size-8 rounded-full"
                 onClick={() => setViewMode("list")}
               >
                 <List className="size-4" />
@@ -444,15 +446,15 @@ export function TemplateManagement() {
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-full"
+                className="h-10 rounded-full px-4"
                 onClick={() => setFrameCategoriesOpen(true)}
               >
                 <FolderPlus className="size-4" /> {t("templates.frameCategories")}
               </Button>
             )}
             {!isReadOnly("templates") && (
-              <Button onClick={openAdd} className="rounded-full">
-                <CloudUpload className="size-4 " /> {t("templates.addTemplate")}
+              <Button onClick={openAdd} className="h-10 rounded-full px-4">
+                <CloudUpload className="size-4" /> {t("templates.addTemplate")}
               </Button>
             )}
           </div>
@@ -718,80 +720,145 @@ function FrameCategoriesDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Frame categories"
-      className="max-w-xl"
+      className="max-w-2xl border-zinc-200/80 shadow-[0_24px_80px_rgba(24,24,27,0.18)]"
+      overlayClassName="bg-zinc-950/40 p-3 backdrop-blur-md sm:p-6"
+      headerAction={
+        <span className="hidden items-center gap-1.5 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] text-zinc-500 sm:inline-flex">
+          <span className="font-semibold tabular-nums text-zinc-900">
+            {orderedCategories.length}
+          </span>
+          {orderedCategories.length === 1 ? "collection" : "collections"}
+        </span>
+      }
     >
-      <div className="space-y-5">
-        <div>
-          <p className="text-sm font-medium text-zinc-900">
-            Organize frame collections
-          </p>
-          <p className="mt-1 text-xs leading-5 text-zinc-500">
-            Assign a category while editing a frame. Flutter only shows tabs
-            when at least one available frame belongs to a category. Use the
-            drag handle to set tab order.
-          </p>
-        </div>
-        <form
-          className="flex gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const name = newName.trim();
-            if (!name || creating) return;
-            onCreate(name);
-            setNewName("");
-          }}
-        >
-          <Input
-            value={newName}
-            maxLength={64}
-            placeholder="e.g. Wedding, Graduation, Seasonal"
-            onChange={(event) => setNewName(event.target.value)}
-          />
-          <Button type="submit" disabled={!newName.trim() || creating}>
-            <Plus className="size-4" /> Add
-          </Button>
-        </form>
-        <div className="space-y-2">
-          {orderedCategories.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-zinc-200 px-4 py-8 text-center text-sm text-zinc-400">
-              No categories yet. Frames will appear in one grid until you create
-              and assign a category.
+      <div className="space-y-6">
+        <section className="overflow-hidden rounded-2xl border border-[#00357B]/10 bg-[#00357B]/[0.035]">
+          <div className="flex gap-3 p-4 sm:p-5">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#00357B] text-white shadow-sm shadow-[#00357B]/20">
+              <FolderPlus className="size-5" />
             </div>
-          ) : (
-            <DndContext
-              sensors={categorySensors}
-              onDragEnd={handleCategoryDragEnd}
+            <div className="min-w-0">
+              <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-zinc-950">
+                Organize frame collections
+              </h3>
+              <p className="mt-1 max-w-2xl text-[13px] leading-5 text-zinc-500">
+                Assign a collection while editing a frame. Collections appear
+                as kiosk tabs when they contain at least one frame. Drag rows
+                to set the tab order.
+              </p>
+            </div>
+          </div>
+          <form
+            className="border-t border-[#00357B]/10 p-3 sm:p-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const name = newName.trim();
+              if (!name || creating) return;
+              onCreate(name);
+              setNewName("");
+            }}
+          >
+            <label
+              htmlFor="new-frame-category"
+              className="mb-2 block text-xs font-medium text-zinc-600"
             >
-              <SortableContext
-                items={orderedCategories.map((category) => category.id)}
-                strategy={verticalListSortingStrategy}
+              Create a new collection
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="new-frame-category"
+                value={newName}
+                maxLength={64}
+                aria-label="New frame category name"
+                placeholder="e.g. Wedding, Graduation, Seasonal"
+                onChange={(event) => setNewName(event.target.value)}
+                className="h-10 rounded-xl border-zinc-200 bg-white shadow-none focus:border-[#00357B]/40 focus:ring-[#00357B]/10"
+              />
+              <Button
+                type="submit"
+                disabled={!newName.trim() || creating}
+                className="h-10 rounded-xl bg-[#00357B] px-4 shadow-sm shadow-[#00357B]/15 hover:bg-[#002b63] sm:w-auto"
               >
-                <div className="space-y-2">
-                  {orderedCategories.map((category) => (
-                    <SortableFrameCategoryRow
-                      key={category.id}
-                      category={category}
-                      draftName={
-                        resolvedNames.get(category.id) ?? category.name
-                      }
-                      saving={updatingId === category.id}
-                      deleting={deletingId === category.id}
-                      disabled={reordering}
-                      onDraftNameChange={(name) =>
-                        setDraftNames((current) => ({
-                          ...current,
-                          [category.id]: name,
-                        }))
-                      }
-                      onUpdate={onUpdate}
-                      onDelete={onDelete}
-                    />
-                  ))}
+                {creating ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Plus className="size-4" />
+                )}
+                {creating ? "Adding..." : "Add collection"}
+              </Button>
+            </div>
+          </form>
+        </section>
+
+        <section aria-labelledby="frame-collections-heading">
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div>
+              <h3
+                id="frame-collections-heading"
+                className="text-sm font-semibold text-zinc-950"
+              >
+                Your collections
+              </h3>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Changes save per collection. The order controls the kiosk tabs.
+              </p>
+            </div>
+            <span className="shrink-0 text-xs tabular-nums text-zinc-400 sm:hidden">
+              {orderedCategories.length}
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {orderedCategories.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/70 px-6 py-10 text-center">
+                <div className="mx-auto grid size-11 place-items-center rounded-2xl bg-white text-[#00357B] shadow-sm ring-1 ring-zinc-200">
+                  <FolderPlus className="size-5" />
                 </div>
-              </SortableContext>
-            </DndContext>
-          )}
-        </div>
+                <p className="mt-3 text-sm font-semibold text-zinc-900">
+                  No collections yet
+                </p>
+                <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-zinc-500">
+                  Frames will stay in one grid until you create a collection
+                  and assign frames to it.
+                </p>
+              </div>
+            ) : (
+              <DndContext
+                sensors={categorySensors}
+                onDragEnd={handleCategoryDragEnd}
+              >
+                <SortableContext
+                  items={orderedCategories.map((category) => category.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-2.5">
+                    {orderedCategories.map((category, index) => (
+                      <SortableFrameCategoryRow
+                        key={category.id}
+                        category={category}
+                        index={index}
+                        draftName={
+                          resolvedNames.get(category.id) ?? category.name
+                        }
+                        saving={updatingId === category.id}
+                        deleting={deletingId === category.id}
+                        disabled={reordering}
+                        onDraftNameChange={(name) =>
+                          setDraftNames((current) => ({
+                            ...current,
+                            [category.id]: name,
+                          }))
+                        }
+                        onUpdate={onUpdate}
+                        onDelete={onDelete}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+          </div>
+        </section>
       </div>
     </Dialog>
   );
@@ -799,6 +866,7 @@ function FrameCategoriesDialog({
 
 function SortableFrameCategoryRow({
   category,
+  index,
   draftName,
   saving,
   deleting,
@@ -808,6 +876,7 @@ function SortableFrameCategoryRow({
   onDelete,
 }: {
   category: FrameCategory;
+  index: number;
   draftName: string;
   saving: boolean;
   deleting: boolean;
@@ -834,12 +903,15 @@ function SortableFrameCategoryRow({
         transition,
         zIndex: isDragging ? 10 : undefined,
       }}
-      className={cn(isDragging && "opacity-60")}
+      className={cn(
+        "transition-[opacity,transform]",
+        isDragging && "opacity-60",
+      )}
     >
-      <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50/70 p-2">
+      <div className="group flex items-center gap-2 rounded-2xl border border-zinc-200/80 bg-white p-2 shadow-[0_2px_8px_rgba(24,24,27,0.04)] transition-[border-color,box-shadow] hover:border-zinc-300 hover:shadow-[0_6px_18px_rgba(24,24,27,0.07)] sm:gap-2.5 sm:p-2.5">
         <button
           type="button"
-          className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-white hover:text-zinc-700 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex size-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-xl text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
           title="Geser untuk mengubah urutan kategori"
           aria-label={`Ubah urutan kategori ${category.name}`}
           disabled={disabled}
@@ -848,23 +920,42 @@ function SortableFrameCategoryRow({
         >
           <GripVertical className="size-4" />
         </button>
-        <FolderPlus className="size-4 shrink-0 text-[#00357B]" />
+        <div className="hidden size-8 shrink-0 place-items-center rounded-xl bg-[#00357B]/[0.08] text-[#00357B] sm:grid">
+          <FolderPlus className="size-4" />
+        </div>
+        <span className="w-5 shrink-0 text-center text-[11px] font-semibold tabular-nums text-zinc-400">
+          {String(index + 1).padStart(2, "0")}
+        </span>
         <Input
           value={draftName}
           maxLength={64}
           aria-label={`Category name for ${category.name}`}
           disabled={disabled}
           onChange={(event) => onDraftNameChange(event.target.value)}
+          className="h-10 min-w-0 flex-1 rounded-xl border-zinc-200 bg-zinc-50/70 shadow-none focus:border-[#00357B]/30 focus:bg-white focus:ring-[#00357B]/10"
         />
         <Button
           type="button"
-          variant="outline"
+          variant={changed ? "secondary" : "ghost"}
           size="icon"
           disabled={disabled || !changed || !draftName.trim() || saving}
           aria-label={`Save ${category.name}`}
+          title={changed ? "Save collection name" : "No changes to save"}
           onClick={() => onUpdate(category.id, draftName.trim())}
+          className={cn(
+            "size-9 rounded-xl",
+            changed
+              ? "bg-[#00357B]/[0.08] text-[#00357B] hover:bg-[#00357B]/[0.14]"
+              : "text-zinc-400",
+          )}
         >
-          <Pencil className="size-4" />
+          {saving ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : changed ? (
+            <Check className="size-4" />
+          ) : (
+            <Pencil className="size-4" />
+          )}
         </Button>
         <Button
           type="button"
@@ -872,7 +963,8 @@ function SortableFrameCategoryRow({
           size="icon"
           disabled={disabled || deleting}
           aria-label={`Delete ${category.name}`}
-          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+          title={`Delete ${category.name}`}
+          className="size-9 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"
           onClick={() => onDelete(category)}
         >
           <Trash2 className="size-4" />
