@@ -88,11 +88,12 @@ function buildMonthEventPeriod(
   const label =
     monthKey === "all" ? "Monthly" : formatDashboardMonthLabel(monthKey);
   const qrisRows = stats.filter((stat) => stat.provider === "QRIS");
-  const qrisTotal = qrisRows.reduce(
-    (sum, stat) => sum + stat.transactionCount,
+  const qrisPaid = qrisRows.reduce((sum, stat) => sum + stat.paidCount, 0);
+  const qrisFailed = qrisRows.reduce(
+    (sum, stat) => sum + stat.failedCount,
     0,
   );
-  const qrisPaid = qrisRows.reduce((sum, stat) => sum + stat.paidCount, 0);
+  const qrisTotal = qrisPaid + qrisFailed;
   const paymentMethods = buildStatBreakdown(
     stats,
     (stat) => stat.provider,
@@ -115,7 +116,7 @@ function buildMonthEventPeriod(
     totalRevenue: stats.reduce((sum, stat) => sum + stat.grossRevenue, 0),
     qrisTotal,
     qrisPaid,
-    qrisFailed: qrisTotal - qrisPaid,
+    qrisFailed,
     qrisSuccessRate: qrisTotal > 0 ? (qrisPaid / qrisTotal) * 100 : 0,
     paymentMethods,
     topFrames,

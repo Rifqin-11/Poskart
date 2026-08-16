@@ -139,8 +139,11 @@ function buildPeriodStatistics({
     (row) => normalizeProvider(row.provider) === "QRIS",
   );
   const qrisPaid = qrisRows.filter((row) => row.status === "paid").length;
-  const qrisTotal = qrisRows.length;
-  const qrisFailed = Math.max(qrisTotal - qrisPaid, 0);
+  // Only terminal payment outcomes belong in the success-rate denominator.
+  // Cancelled and pending payments are intentionally excluded instead of
+  // being presented as failed QRIS attempts.
+  const qrisFailed = qrisRows.filter((row) => row.status === "failed").length;
+  const qrisTotal = qrisPaid + qrisFailed;
   const qrisSuccessRate =
     qrisTotal > 0 ? Number(((qrisPaid / qrisTotal) * 100).toFixed(1)) : 0;
 
