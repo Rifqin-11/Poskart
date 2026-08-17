@@ -56,6 +56,7 @@ import {
   uploadBuilderImage,
 } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
+import type { MusicEmbed } from "@/lib/music/embed";
 import {
   type FrameLayout,
   type FrameNode,
@@ -529,6 +530,9 @@ export function FrameTemplateBuilder({
         ),
       };
     });
+
+  const updateMusic = (music: MusicEmbed | null) =>
+    commitLayout((current) => ({ ...current, music }));
 
   const updateNode = (id: string, patch: Partial<FrameNode>) =>
     commitLayout((current) => ({
@@ -1010,6 +1014,7 @@ export function FrameTemplateBuilder({
               selectedNode={selectedNode}
               uploading={uploading}
               onUpdateCanvas={updateCanvas}
+              onUpdateMusic={updateMusic}
               onUpdateNode={updateNode}
               onUpdateNodeProps={updateNodeProps}
               onAssignPhotoSlotOrder={assignPhotoSlotOrder}
@@ -1101,6 +1106,7 @@ export function FrameTemplateBuilder({
               selectedNode={selectedNode}
               uploading={uploading}
               onUpdateCanvas={updateCanvas}
+              onUpdateMusic={updateMusic}
               onUpdateNode={updateNode}
               onUpdateNodeProps={updateNodeProps}
               onAssignPhotoSlotOrder={assignPhotoSlotOrder}

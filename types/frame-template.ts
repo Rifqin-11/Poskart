@@ -1,5 +1,7 @@
 /** Types for the photo-frame template designer (the printed postcard/receipt output) */
 
+import type { MusicEmbed } from "@/lib/music/embed";
+
 export type FrameNodeType =
   | "photo-slot"     // Where a captured photo is composited
   | "text"           // Static text (watermark, branding, tagline)
@@ -51,6 +53,11 @@ export type FrameLayout = {
   version: 1;
   canvas: FrameCanvas;
   nodes: FrameNode[];
+  /**
+   * Optional music player shown on the shared result page (/s/[sessionId]).
+   * Only frames configured here render an embedded player.
+   */
+  music?: MusicEmbed | null;
 };
 
 export const DEFAULT_FRAME_CANVAS: FrameCanvas = {

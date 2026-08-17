@@ -15,6 +15,19 @@ import {
   assertFrameHasPhotoSlot,
   countUsableFramePhotoSlots,
 } from "@/lib/builder/frame-layout-validation";
+import { normalizeMusicEmbed } from "@/lib/music/embed";
+
+/**
+ * The music embed is operator-supplied, so the iframe URL is always recomputed
+ * from the pasted link before it reaches the database.
+ */
+function sanitizeFrameLayout(
+  frameLayout: TemplateFormValues["frameLayout"] | undefined,
+) {
+  if (!frameLayout) return frameLayout ?? null;
+  const music = normalizeMusicEmbed(frameLayout.music);
+  return { ...frameLayout, music: music.url ? music : null };
+}
 
 function normalizeFrameCategoryId(value: string | undefined) {
   const normalized = value?.trim() ?? "";
@@ -95,7 +108,7 @@ export async function createTemplate(
     accent_color: values.accentColor,
     frame_category_id: frameCategoryId,
     frame_image_url: values.frameImageUrl || null,
-    frame_layout: values.frameLayout ?? null,
+    frame_layout: sanitizeFrameLayout(values.frameLayout),
     is_default: values.isDefault,
     print_length_mm: normalizePrintLengthMm(values.printLengthMm),
     display_order: (lastTemplate?.display_order ?? -1) + 1,
@@ -141,7 +154,7 @@ export async function updateTemplate(
       category = existing.data?.category;
     }
     assertFrameCategoryHasPhotoSlot(category, values.frameLayout);
-    patch.frame_layout = values.frameLayout ?? null;
+    patch.frame_layout = sanitizeFrameLayout(values.frameLayout);
     patch.photo_count = countUsableFramePhotoSlots(values.frameLayout);
   } else if (values.photoCount !== undefined) {
     patch.photo_count = values.photoCount;

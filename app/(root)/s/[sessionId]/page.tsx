@@ -13,7 +13,9 @@ import {
   getGalleryRetentionConfig,
   isGalleryLinkExpired,
 } from "@/lib/gallery/retention";
+import { getSessionMusicEmbed } from "@/lib/gallery/session-music";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { GalleryMusicPlayer } from "@/features/public/gallery/gallery-music-player";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +31,7 @@ export default async function SharedGalleryPage({
   const supabase = createSupabaseAdminClient();
   const { data: session } = await supabase
     .from("gallery_sessions")
-    .select("id,template_name,created_at,updated_at")
+    .select("id,organization_id,template_id,template_name,created_at,updated_at")
     .eq("id", sessionId)
     .maybeSingle();
 
@@ -107,6 +109,7 @@ export default async function SharedGalleryPage({
   const gif = photos?.find(
     (photo) => photo.kind === "raw" && photo.photo_index === 98,
   );
+  const musicEmbed = await getSessionMusicEmbed(supabase, session);
   const selectedPhoto = photos?.find((photo) => photo.id === viewPhotoId);
   const photoCount = photos?.length ?? 0;
   // A guest may already have this QR page open when the operator retakes a
@@ -269,6 +272,8 @@ export default async function SharedGalleryPage({
                 </div>
               </div>
             )}
+
+            {musicEmbed && <GalleryMusicPlayer music={musicEmbed} />}
 
             {!framedLivePhoto && !framedStatic && (
               <div className="grid min-h-96 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center text-zinc-500">

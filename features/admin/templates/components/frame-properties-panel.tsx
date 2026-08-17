@@ -25,9 +25,11 @@ import {
   readNumber,
   readString,
 } from "@/features/admin/templates/frame-builder.utils";
+import { FrameMusicSettings } from "@/features/admin/templates/components/frame-music-settings";
 import { TimestampFormatEditor } from "@/features/admin/templates/components/timestamp-format-editor";
 import { BUILDER_IMAGE_ACCEPT } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
+import type { MusicEmbed } from "@/lib/music/embed";
 import type { FrameLayout, FrameNode, TimestampPart } from "@/types/frame-template";
 
 type FrameInspectorTab = "frame" | "canvas" | "layer";
@@ -38,6 +40,7 @@ export function FramePropertiesPanel({
   selectedNode,
   uploading,
   onUpdateCanvas,
+  onUpdateMusic,
   onUpdateNode,
   onUpdateNodeProps,
   onAssignPhotoSlotOrder,
@@ -52,6 +55,7 @@ export function FramePropertiesPanel({
   selectedNode?: FrameNode;
   uploading: boolean;
   onUpdateCanvas: (patch: Partial<FrameLayout["canvas"]>) => void;
+  onUpdateMusic: (music: MusicEmbed | null) => void;
   onUpdateNode: (id: string, patch: Partial<FrameNode>) => void;
   onUpdateNodeProps: (id: string, props: Record<string, unknown>) => void;
   onAssignPhotoSlotOrder: (id: string, order: number) => void;
@@ -119,6 +123,10 @@ export function FramePropertiesPanel({
                 </button>
               ) : null}
               {detailsPanel}
+              <FrameMusicSettings
+                value={layout.music}
+                onChange={onUpdateMusic}
+              />
             </>
           ) : null}
           {activeTab === "canvas" ? (

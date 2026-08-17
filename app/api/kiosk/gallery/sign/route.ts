@@ -13,12 +13,31 @@ import {
 type SignBody = {
   deviceId?: string;
   sessionId?: string;
+  templateId?: string;
   templateName?: string;
   themeName?: string;
   socialMediaConsent?: boolean;
   testMode?: boolean;
   files?: GalleryUploadDescriptor[];
 };
+
+/** Guards against a device claiming a template from another organization. */
+async function resolveOwnedTemplateId(
+  context: Awaited<ReturnType<typeof requireKioskContext>>,
+  templateId: string | undefined,
+) {
+  const id = templateId?.trim();
+  if (!id) return null;
+
+  const { data } = await context.client
+    .from("templates")
+    .select("id")
+    .eq("organization_id", context.organizationId)
+    .eq("id", id)
+    .maybeSingle<{ id: string }>();
+
+  return data?.id ?? null;
+}
 
 export async function POST(request: Request) {
   try {
@@ -53,6 +72,11 @@ export async function POST(request: Request) {
       );
     }
 
+    // Binding the session to the template id keeps frame lookups working after
+    // the frame is renamed. A missing/foreign id falls back to the database
+    // trigger, which resolves it from `template_name`.
+    const templateId = await resolveOwnedTemplateId(context, body.templateId);
+
     const shareUrl = getPublicGalleryUrl(sessionId);
     const { error: sessionError } = await context.client
       .from("gallery_sessions")
@@ -60,6 +84,7 @@ export async function POST(request: Request) {
         id: sessionId,
         organization_id: context.organizationId,
         device_id: device.id,
+        ...(templateId ? { template_id: templateId } : {}),
         template_name: body.templateName?.trim() ?? "",
         theme_name: body.themeName?.trim() ?? "",
         social_media_consent: body.socialMediaConsent === true,
