@@ -184,6 +184,8 @@ export default async function SharedGalleryPage({
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
           <section className="rounded-[28px] border border-black/10 bg-white p-3 shadow-xl shadow-black/5 md:p-5 grid gap-6">
+            {musicEmbed && <GalleryMusicPlayer music={musicEmbed} />}
+
             {framedLivePhoto && (
               <div className="rounded-2xl border border-black/5 bg-zinc-50/50 p-3 md:p-4">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
@@ -272,8 +274,6 @@ export default async function SharedGalleryPage({
                 </div>
               </div>
             )}
-
-            {musicEmbed && <GalleryMusicPlayer music={musicEmbed} />}
 
             {!framedLivePhoto && !framedStatic && (
               <div className="grid min-h-96 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center text-zinc-500">
