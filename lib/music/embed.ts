@@ -212,8 +212,11 @@ export function normalizeMusicEmbed(value: unknown): MusicEmbed {
   const url =
     typeof record.url === "string" ? record.url.trim().slice(0, 600) : "";
   const parsed = parseMusicUrl(url);
+  // NOTE: the title is intentionally NOT trimmed here. This runs on every
+  // keystroke in the builder, and trimming mid-typing would swallow the space
+  // the operator just pressed. Leading/trailing space is stripped on save.
   const title =
-    typeof record.title === "string" ? record.title.trim().slice(0, 80) : "";
+    typeof record.title === "string" ? record.title.slice(0, 80) : "";
 
   return {
     enabled: record.enabled === true && Boolean(parsed),
@@ -223,6 +226,15 @@ export function normalizeMusicEmbed(value: unknown): MusicEmbed {
     title,
     compact: record.compact === true,
   };
+}
+
+/**
+ * Persist-time normalisation. Applies the trimming that `normalizeMusicEmbed`
+ * deliberately skips so mid-typing spaces survive in the builder.
+ */
+export function finalizeMusicEmbed(value: unknown): MusicEmbed {
+  const music = normalizeMusicEmbed(value);
+  return { ...music, title: music.title.trim() };
 }
 
 /** Only returns a player when the frame actually has a usable embed. */

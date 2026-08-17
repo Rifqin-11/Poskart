@@ -1,6 +1,7 @@
 "use client";
 
-import { Music4, TriangleAlert } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Music4, TriangleAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -32,11 +33,62 @@ export function FrameMusicSettings({
   const music = normalizeMusicEmbed(value);
   const hasUrl = music.url.trim().length > 0;
   const isUnsupported = hasUrl && !music.provider;
+  const [isResolvingTitle, setIsResolvingTitle] = useState(false);
 
   const patch = (partial: Partial<MusicEmbed>) => {
     const next = normalizeMusicEmbed({ ...music, ...partial });
     onChange(next.url ? next : null);
   };
+
+  // Auto-fill the title from the provider once a new link resolves. The
+  // operator can still overwrite it, and a manual edit is never clobbered.
+  const embedUrl = music.embedUrl;
+  const resolvedForRef = useRef<string | null>(null);
+  const musicRef = useRef(music);
+
+  useEffect(() => {
+    musicRef.current = music;
+  });
+
+  useEffect(() => {
+    if (!embedUrl) return;
+    if (resolvedForRef.current === embedUrl) return;
+    resolvedForRef.current = embedUrl;
+
+    // Only auto-fill an empty title so a manual one is preserved.
+    if (musicRef.current.title.trim()) return;
+
+    const controller = new AbortController();
+    setIsResolvingTitle(true);
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/admin/music-title", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ url: musicRef.current.url }),
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+
+        const payload = (await response.json()) as { title?: string };
+        const title = payload.title?.trim();
+        const current = musicRef.current;
+        // Bail out if the operator changed the link or typed a title meanwhile.
+        if (!title || current.embedUrl !== embedUrl || current.title.trim()) {
+          return;
+        }
+        onChange(normalizeMusicEmbed({ ...current, title }));
+      } catch {
+        // A failed lookup just leaves the field empty.
+      } finally {
+        if (!controller.signal.aborted) setIsResolvingTitle(false);
+      }
+    })();
+
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedUrl]);
 
   return (
     <section className="space-y-3 rounded-xl border border-zinc-200 bg-white p-3">
@@ -96,11 +148,18 @@ export function FrameMusicSettings({
           </div>
 
           <label className="block text-[11px] font-medium text-zinc-600">
-            Judul (opsional)
+            <span className="flex items-center gap-1.5">
+              Judul lagu
+              {isResolvingTitle ? (
+                <Loader2 className="size-3 animate-spin text-zinc-400" />
+              ) : null}
+            </span>
             <Input
               className="mt-1 text-xs"
               value={music.title}
-              placeholder="Soundtrack momen ini"
+              placeholder={
+                isResolvingTitle ? "Mengambil judul..." : "Judul lagu"
+              }
               maxLength={80}
               onChange={(event) => patch({ title: event.target.value })}
             />

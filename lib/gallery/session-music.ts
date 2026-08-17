@@ -2,6 +2,7 @@ import "server-only";
 
 import { normalizeAssetReferences } from "@/lib/assets/asset-url";
 import { getPlayableMusicEmbed, type MusicEmbed } from "@/lib/music/embed";
+import { resolveMusicTitle } from "@/lib/music/oembed";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type FrameLayoutRow = {
@@ -46,7 +47,13 @@ export async function getSessionMusicEmbed(
     music?: unknown;
   } | null;
 
-  return getPlayableMusicEmbed(layout?.music);
+  const music = getPlayableMusicEmbed(layout?.music);
+  if (!music) return null;
+  if (music.title) return music;
+
+  // Frames saved before the builder auto-filled titles have none stored.
+  // The oEmbed response is cached for a day, so this is cheap.
+  return { ...music, title: await resolveMusicTitle(music.url) };
 }
 
 async function selectFrameLayoutById(

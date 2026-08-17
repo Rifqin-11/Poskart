@@ -15,7 +15,7 @@ import {
   assertFrameHasPhotoSlot,
   countUsableFramePhotoSlots,
 } from "@/lib/builder/frame-layout-validation";
-import { normalizeMusicEmbed } from "@/lib/music/embed";
+import { finalizeMusicEmbed } from "@/lib/music/embed";
 
 /**
  * The music embed is operator-supplied, so the iframe URL is always recomputed
@@ -25,7 +25,7 @@ function sanitizeFrameLayout(
   frameLayout: TemplateFormValues["frameLayout"] | undefined,
 ) {
   if (!frameLayout) return frameLayout ?? null;
-  const music = normalizeMusicEmbed(frameLayout.music);
+  const music = finalizeMusicEmbed(frameLayout.music);
   return { ...frameLayout, music: music.url ? music : null };
 }
 

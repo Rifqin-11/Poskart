@@ -20,7 +20,7 @@ export function GalleryMusicPlayer({ music }: { music: MusicEmbed }) {
         </span>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-zinc-900">
-            {music.title || "Soundtrack momen ini"}
+            {music.title || "Lagu pilihan"}
           </p>
           <p className="text-xs text-zinc-500">
             Diputar via {MUSIC_EMBED_PROVIDER_LABELS[music.provider]}
