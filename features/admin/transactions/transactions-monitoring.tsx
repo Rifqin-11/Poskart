@@ -115,7 +115,7 @@ function renderTransactionStatus(status: Transaction["status"]) {
             ? "warning"
             : status === "cancelled"
               ? "secondary"
-            : "destructive"
+              : "destructive"
       }
     >
       {status}
@@ -457,9 +457,10 @@ export function TransactionsMonitoring({
   });
   const data = transactionQuery.data?.items ?? [];
   const gatewayFeeSettings =
-    transactionQuery.data?.gatewayFeeSettings ??
-    DEFAULT_GATEWAY_FEE_SETTINGS;
-  const packageOptions = pricingPackages.map((item) => item.name).filter(Boolean);
+    transactionQuery.data?.gatewayFeeSettings ?? DEFAULT_GATEWAY_FEE_SETTINGS;
+  const packageOptions = pricingPackages
+    .map((item) => item.name)
+    .filter(Boolean);
   const totalItems = transactionQuery.data?.totalItems ?? 0;
   const paymentMethodOptions = ["QRIS", "Cash", "Voucher", "Event"];
 
@@ -529,8 +530,7 @@ export function TransactionsMonitoring({
   const serverSummary = transactionQuery.data?.summary;
   const qrisFee = serverSummary
     ? gatewayFeeSettings.gatewayFeeType === "fixed"
-      ? serverSummary.qrisPaidCount *
-        gatewayFeeSettings.gatewayFeeFixedAmount
+      ? serverSummary.qrisPaidCount * gatewayFeeSettings.gatewayFeeFixedAmount
       : calculatePaymentGatewayFee(
           serverSummary.qrisGrossRevenue,
           gatewayFeeSettings,
@@ -548,12 +548,17 @@ export function TransactionsMonitoring({
     statusFilter !== "all" ||
     paymentMethodFilter !== "all" ||
     packageFilter !== "all" ||
-    dateFilter || fromDateFilter || toDateFilter || boothFilter !== "all";
+    dateFilter ||
+    fromDateFilter ||
+    toDateFilter ||
+    boothFilter !== "all";
   const hasAdvancedFilters =
     statusFilter !== "all" ||
     paymentMethodFilter !== "all" ||
     packageFilter !== "all" ||
-    Boolean(dateFilter || fromDateFilter || toDateFilter || boothFilter !== "all");
+    Boolean(
+      dateFilter || fromDateFilter || toDateFilter || boothFilter !== "all",
+    );
   const activePage = transactionQuery.data?.page ?? page;
   const paginatedTransactions = filtered;
   const isTableLoading =
@@ -797,7 +802,9 @@ export function TransactionsMonitoring({
       URL.revokeObjectURL(url);
       toast.success("Laporan transaksi (CSV) berhasil diekspor.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal mengekspor transaksi.");
+      toast.error(
+        error instanceof Error ? error.message : "Gagal mengekspor transaksi.",
+      );
     } finally {
       setIsExporting(false);
     }
@@ -811,22 +818,20 @@ export function TransactionsMonitoring({
       if (!printWindow) throw new Error("Izinkan pop-up untuk ekspor PDF.");
       const rows = transactions
         .map((transaction) => {
-          const gatewayFee = getTransactionGatewayFee(
-            transaction,
-            feeSettings,
-          );
-          const netAmount = getTransactionNetAmount(
-            transaction,
-            feeSettings,
-          );
+          const gatewayFee = getTransactionGatewayFee(transaction, feeSettings);
+          const netAmount = getTransactionNetAmount(transaction, feeSettings);
           return `<tr><td>${escapeHtml(transaction.id)}</td><td>${escapeHtml(formatDateTime(transaction.createdAtRaw))}</td><td>${escapeHtml(transaction.device)}</td><td>${escapeHtml(getTransactionPaymentMethod(transaction))}</td><td>${escapeHtml(transaction.packageName)}</td><td>${escapeHtml(formatCurrency(transaction.amount))}</td><td>${escapeHtml(formatCurrency(gatewayFee))}</td><td>${escapeHtml(formatCurrency(netAmount))}</td><td>${escapeHtml(transaction.status)}</td></tr>`;
         })
         .join("");
-      printWindow.document.write(`<!doctype html><html><head><title>Laporan Transaksi POSKART</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#18181b}h1{font-size:20px;margin:0 0 8px}p{color:#71717a;margin:0 0 20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #e4e4e7;padding:7px;text-align:left}th{background:#f4f4f5}</style></head><body><h1>Laporan Transaksi POSKART</h1><p>${escapeHtml(formatDateRangeLabel(fromDateFilter, toDateFilter))} · ${transactions.length} transaksi</p><table><thead><tr><th>ID</th><th>Date & Time</th><th>Booth</th><th>Payment</th><th>Package</th><th>Gross</th><th>Gateway fee</th><th>Net</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table><script>window.print();</script></body></html>`);
+      printWindow.document.write(
+        `<!doctype html><html><head><title>Laporan Transaksi POSKART</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#18181b}h1{font-size:20px;margin:0 0 8px}p{color:#71717a;margin:0 0 20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #e4e4e7;padding:7px;text-align:left}th{background:#f4f4f5}</style></head><body><h1>Laporan Transaksi POSKART</h1><p>${escapeHtml(formatDateRangeLabel(fromDateFilter, toDateFilter))} · ${transactions.length} transaksi</p><table><thead><tr><th>ID</th><th>Date & Time</th><th>Booth</th><th>Payment</th><th>Package</th><th>Gross</th><th>Gateway fee</th><th>Net</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table><script>window.print();</script></body></html>`,
+      );
       printWindow.document.close();
       toast.success("Jendela PDF laporan transaksi dibuka.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal mengekspor transaksi.");
+      toast.error(
+        error instanceof Error ? error.message : "Gagal mengekspor transaksi.",
+      );
     } finally {
       setIsExporting(false);
     }
@@ -856,7 +861,8 @@ export function TransactionsMonitoring({
         {createdPayment ? (
           <div className="space-y-4 text-center">
             <p className="text-sm text-zinc-600">
-              Scan QRIS ini untuk membayar {formatCurrency(createdPayment.amount)}.
+              Scan QRIS ini untuk membayar{" "}
+              {formatCurrency(createdPayment.amount)}.
             </p>
             <div className="mx-auto w-fit rounded-2xl border border-zinc-200 bg-white p-3">
               <QRCode value={createdPayment.qrString} size={228} />
@@ -880,8 +886,11 @@ export function TransactionsMonitoring({
         ) : (
           <form className="space-y-4" onSubmit={handleCreateTransaction}>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium" htmlFor="qris-customer-name">
-                Nama pelanggan
+              <label
+                className="text-sm font-medium"
+                htmlFor="qris-customer-name"
+              >
+                Nama Produk
               </label>
               <Input
                 id="qris-customer-name"
@@ -912,7 +921,9 @@ export function TransactionsMonitoring({
                 id="qris-description"
                 value={transactionDescription}
                 maxLength={255}
-                onChange={(event) => setTransactionDescription(event.target.value)}
+                onChange={(event) =>
+                  setTransactionDescription(event.target.value)
+                }
                 placeholder="Opsional"
               />
             </div>
@@ -1068,23 +1079,45 @@ export function TransactionsMonitoring({
                 }}
               >
                 <option value="">All packages</option>
-                {packageOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                {packageOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
               </Select>
               <Select
                 className="min-w-0"
                 value={boothFilter}
-                onChange={(e) => { setBoothFilter(e.target.value); setSelectedIds(new Set()); setPage(1); }}
+                onChange={(e) => {
+                  setBoothFilter(e.target.value);
+                  setSelectedIds(new Set());
+                  setPage(1);
+                }}
               >
                 <option value="all">All booths</option>
-                {booths.map((booth) => <option key={booth.id} value={booth.name}>{booth.name}</option>)}
+                {booths.map((booth) => (
+                  <option key={booth.id} value={booth.name}>
+                    {booth.name}
+                  </option>
+                ))}
               </Select>
               <Popover
-                trigger={<span className="flex h-10 min-w-0 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-600"><CalendarDays className="size-4 shrink-0" />{formatDateRangeLabel(fromDateFilter, toDateFilter)}</span>}
+                trigger={
+                  <span className="flex h-10 min-w-0 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-600">
+                    <CalendarDays className="size-4 shrink-0" />
+                    {formatDateRangeLabel(fromDateFilter, toDateFilter)}
+                  </span>
+                }
               >
                 <Calendar
                   selected={dateRange}
                   mode="range"
-                  onSelect={(range: DateRange | undefined) => { setFromDateFilter(toDateValue(range?.from)); setToDateFilter(toDateValue(range?.to)); setSelectedIds(new Set()); setPage(1); }}
+                  onSelect={(range: DateRange | undefined) => {
+                    setFromDateFilter(toDateValue(range?.from));
+                    setToDateFilter(toDateValue(range?.to));
+                    setSelectedIds(new Set());
+                    setPage(1);
+                  }}
                 />
               </Popover>
               <Button
@@ -1147,16 +1180,35 @@ export function TransactionsMonitoring({
               <MobileFilterField label="Package">
                 <Select
                   value={packageFilter === "all" ? "" : packageFilter}
-                  onChange={(e) => { setPackageFilter(e.target.value || "all"); setSelectedIds(new Set()); setPage(1); }}
+                  onChange={(e) => {
+                    setPackageFilter(e.target.value || "all");
+                    setSelectedIds(new Set());
+                    setPage(1);
+                  }}
                 >
                   <option value="">All packages</option>
-                  {packageOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                  {packageOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
                 </Select>
               </MobileFilterField>
               <MobileFilterField label="Booth">
-                <Select value={boothFilter} onChange={(e) => { setBoothFilter(e.target.value); setSelectedIds(new Set()); setPage(1); }}>
+                <Select
+                  value={boothFilter}
+                  onChange={(e) => {
+                    setBoothFilter(e.target.value);
+                    setSelectedIds(new Set());
+                    setPage(1);
+                  }}
+                >
                   <option value="all">All booths</option>
-                  {booths.map((booth) => <option key={booth.id} value={booth.name}>{booth.name}</option>)}
+                  {booths.map((booth) => (
+                    <option key={booth.id} value={booth.name}>
+                      {booth.name}
+                    </option>
+                  ))}
                 </Select>
               </MobileFilterField>
               <MobileFilterField label="Date range">
