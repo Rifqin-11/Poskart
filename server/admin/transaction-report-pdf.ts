@@ -6,7 +6,6 @@ import signPdf from "@signpdf/signpdf";
 import { pdflibAddPlaceholder } from "@signpdf/placeholder-pdf-lib";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import QRCode from "qrcode";
-import sharp from "sharp";
 
 import { calculatePaymentGatewayFee, type GatewayFeeSettings } from "@/lib/payment-gateway-fee";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -100,10 +99,7 @@ export async function createSignedTransactionReport({
   const bold = await document.embedFont(StandardFonts.HelveticaBold);
   const qrImage = await document.embedPng(await QRCode.toDataURL(qrUrl, { margin: 1, width: 240 }));
   const logo = await document.embedPng(
-    await sharp(path.join(process.cwd(), "public", "Logo Poskart.png"))
-      .trim({ background: "#ffffff" })
-      .png()
-      .toBuffer(),
+    await readFile(path.join(process.cwd(), "public", "poskart-report-logo.png")),
   );
   const page = document.addPage([595.28, 841.89]);
   const dark = rgb(0.05, 0.11, 0.22);
