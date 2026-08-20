@@ -34,6 +34,7 @@ import type {
   TransactionPendingAction,
 } from "@/types/transaction";
 import type { PaginatedResult, PaginationInput } from "@/types/pagination";
+import { createSignedTransactionReport } from "@/server/admin/transaction-report-pdf";
 
 type TransactionActionRequestRow = {
   id: string;
@@ -116,6 +117,26 @@ export type TransactionPageResult = PaginatedResult<Transaction> & {
   summary: TransactionPageSummary;
   gatewayFeeSettings: GatewayFeeSettings;
 };
+
+export async function exportSignedTransactionReport(
+  filters: TransactionListFilters = {},
+) {
+  const pageSize = MAX_PAGE_SIZE;
+  const firstPage = await getTransactionsPage({ ...filters, page: 1, pageSize });
+  const remainingPages = await Promise.all(
+    Array.from({ length: Math.max(0, firstPage.totalPages - 1) }, (_, index) =>
+      getTransactionsPage({ ...filters, page: index + 2, pageSize }),
+    ),
+  );
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  if (!siteUrl) throw new Error("NEXT_PUBLIC_SITE_URL belum dikonfigurasi.");
+  const { pdf } = await createSignedTransactionReport({
+    transactions: [firstPage.items, ...remainingPages.map((page) => page.items)].flat(),
+    settings: firstPage.gatewayFeeSettings,
+    verificationUrl: `${siteUrl}/verify/transaction-report`,
+  });
+  return pdf.toString("base64");
+}
 
 export type CreateAdminQrisTransactionInput = {
   customerName: string;

@@ -48,7 +48,8 @@ type GalleryShareContextValue = {
   toggleSelection: (sessionId: string) => void;
   clearSelection: () => void;
   cancelSelection: () => void;
-  openCreateDialog: () => void;
+  continueSelection: () => void;
+  isSavingSelection: boolean;
   openLibraryDialog: () => void;
   openEditGallery: (gallery: SharedGallerySummary) => void;
   showTutorial: () => void;
@@ -94,6 +95,7 @@ export function GalleryShareProvider({
   const [editingGallery, setEditingGallery] = useState<SharedGallerySummary | null>(null);
   const [createdGallery, setCreatedGallery] =
     useState<SharedGallerySummary | null>(null);
+  const [isSavingSelection, startSavingSelection] = useTransition();
   const galleryTutorial = useFeatureTutorial("gallery");
 
   const toggleSelection = useCallback((sessionId: string) => {
@@ -112,11 +114,9 @@ export function GalleryShareProvider({
   }, []);
   const openCreateDialog = useCallback(() => {
     setCreatedGallery(null);
-    // Continue from an existing gallery keeps its edit target so selected
-    // sessions update that gallery rather than creating a new one.
-    if (!isSelectionMode) setEditingGallery(null);
+    setEditingGallery(null);
     setDialogMode("create");
-  }, [isSelectionMode]);
+  }, []);
   const openLibraryDialog = useCallback(() => setDialogMode("library"), []);
   const openEditGallery = useCallback((gallery: SharedGallerySummary) => {
     setEditingGallery(gallery);
@@ -131,6 +131,39 @@ export function GalleryShareProvider({
     setIsSelectionMode(true);
     setDialogMode(null);
   }, []);
+  const continueSelection = useCallback(() => {
+    if (!editingGallery) {
+      openCreateDialog();
+      return;
+    }
+
+    const sessionIds = [...selectedIds];
+    if (sessionIds.length === 0) return;
+
+    startSavingSelection(async () => {
+      try {
+        const gallery = await updateSharedGallery({
+          id: editingGallery.id,
+          name: editingGallery.name,
+          sessionIds,
+        });
+        setSharedGalleries((current) =>
+          current.map((item) => (item.id === gallery.id ? gallery : item)),
+        );
+        setEditingGallery(null);
+        setIsSelectionMode(false);
+        setDialogMode(null);
+        clearSelection();
+        toast.success("Shared gallery updated.");
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Unable to update shared gallery.",
+        );
+      }
+    });
+  }, [clearSelection, editingGallery, openCreateDialog, selectedIds]);
 
   const value = useMemo<GalleryShareContextValue>(
     () => ({
@@ -140,7 +173,8 @@ export function GalleryShareProvider({
       toggleSelection,
       clearSelection,
       cancelSelection,
-      openCreateDialog,
+      continueSelection,
+      isSavingSelection,
       openLibraryDialog,
       openEditGallery,
       showTutorial: galleryTutorial.show,
@@ -148,8 +182,9 @@ export function GalleryShareProvider({
     [
       cancelSelection,
       clearSelection,
+      continueSelection,
       isSelectionMode,
-      openCreateDialog,
+      isSavingSelection,
       openLibraryDialog,
       openEditGallery,
       selectedIds,
@@ -176,9 +211,12 @@ export function GalleryShareProvider({
           clearSelection();
         }}
         onUpdated={(gallery) => {
-          setSharedGalleries((current) => current.map((item) => item.id === gallery.id ? gallery : item));
+          setSharedGalleries((current) =>
+            current.map((item) => (item.id === gallery.id ? gallery : item)),
+          );
           setEditingGallery(null);
           setIsSelectionMode(false);
+          setDialogMode(null);
           clearSelection();
           toast.success("Shared gallery updated.");
         }}
@@ -283,11 +321,15 @@ function SelectionToolbar() {
       </Button>
       <Button
         className="bg-white text-zinc-950 hover:bg-zinc-200"
-        onClick={context.openCreateDialog}
-        disabled={context.selectedIds.size === 0}
+        onClick={context.continueSelection}
+        disabled={context.selectedIds.size === 0 || context.isSavingSelection}
       >
-        <Share2 className="size-4" />
-        Continue
+        {context.isSavingSelection ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Share2 className="size-4" />
+        )}
+        {context.isSavingSelection ? "Saving..." : "Continue"}
       </Button>
     </div>
   );

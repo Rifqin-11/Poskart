@@ -94,14 +94,6 @@ function toDateValue(value: Date | undefined) {
   return `${year}-${month}-${day}`;
 }
 
-function escapeHtml(value: string | number) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 function escapeCsv(value: string | number) {
   const escaped = String(value).replace(/"/g, '""');
   return /[",\n]/.test(escaped) ? `"${escaped}"` : escaped;
@@ -327,6 +319,28 @@ function getTransactionNetAmount(
     0,
     transaction.amount - getTransactionGatewayFee(transaction, settings),
   );
+}
+
+function getExportSummary(
+  transactions: Transaction[],
+  settings: GatewayFeeSettings,
+) {
+  const paidTransactions = transactions.filter(
+    (transaction) => transaction.status === "paid",
+  );
+
+  return {
+    profit: paidTransactions.reduce(
+      (total, transaction) =>
+        total + getTransactionNetAmount(transaction, settings),
+      0,
+    ),
+    sessionCount: paidTransactions.length,
+    printCount: paidTransactions.reduce(
+      (total, transaction) => total + transaction.printCount,
+      0,
+    ),
+  };
 }
 
 function formatPercentage(value?: number) {
@@ -803,6 +817,7 @@ export function TransactionsMonitoring({
     setIsExporting(true);
     try {
       const { transactions, feeSettings } = await getTransactionsForExport();
+      const exportSummary = getExportSummary(transactions, feeSettings);
       const rows = transactions.map((transaction) => {
         const gatewayFee = getTransactionGatewayFee(transaction, feeSettings);
         return [
@@ -819,6 +834,11 @@ export function TransactionsMonitoring({
         ];
       });
       const csv = [
+        ["Laporan Transaksi POSKART"],
+        ["Total keuntungan", exportSummary.profit],
+        ["Total sesi", exportSummary.sessionCount],
+        ["Total print", exportSummary.printCount],
+        [],
         [
           "ID",
           "Date & Time",
@@ -857,21 +877,21 @@ export function TransactionsMonitoring({
   async function exportToPdf() {
     setIsExporting(true);
     try {
-      const { transactions, feeSettings } = await getTransactionsForExport();
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) throw new Error("Izinkan pop-up untuk ekspor PDF.");
-      const rows = transactions
-        .map((transaction) => {
-          const gatewayFee = getTransactionGatewayFee(transaction, feeSettings);
-          const netAmount = getTransactionNetAmount(transaction, feeSettings);
-          return `<tr><td>${escapeHtml(transaction.id)}</td><td>${escapeHtml(formatDateTime(transaction.createdAtRaw))}</td><td>${escapeHtml(transaction.device)}</td><td>${escapeHtml(getTransactionPaymentMethod(transaction))}</td><td>${escapeHtml(transaction.packageName)}</td><td>${escapeHtml(formatCurrency(transaction.amount))}</td><td>${escapeHtml(formatCurrency(gatewayFee))}</td><td>${escapeHtml(formatCurrency(netAmount))}</td><td>${escapeHtml(transaction.status)}</td></tr>`;
-        })
-        .join("");
-      printWindow.document.write(
-        `<!doctype html><html><head><title>Laporan Transaksi POSKART</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#18181b}h1{font-size:20px;margin:0 0 8px}p{color:#71717a;margin:0 0 20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #e4e4e7;padding:7px;text-align:left}th{background:#f4f4f5}</style></head><body><h1>Laporan Transaksi POSKART</h1><p>${escapeHtml(formatDateRangeLabel(fromDateFilter, toDateFilter))} · ${transactions.length} transaksi</p><table><thead><tr><th>ID</th><th>Date & Time</th><th>Booth</th><th>Payment</th><th>Package</th><th>Gross</th><th>Gateway fee</th><th>Net</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table><script>window.print();</script></body></html>`,
-      );
-      printWindow.document.close();
-      toast.success("Jendela PDF laporan transaksi dibuka.");
+      const pdfBase64 = await transactionsApi.exportSignedTransactionReport({
+        search: search.trim(), status: statusFilter,
+        paymentMethod: paymentMethodFilter,
+        packageName: packageFilter === "all" ? "" : packageFilter,
+        fromDate: fromDateFilter, toDate: toDateFilter,
+        booth: boothFilter === "all" ? "" : boothFilter,
+      });
+      const bytes = Uint8Array.from(atob(pdfBase64), (character) => character.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `laporan_transaksi_bertanda_tangan_${Date.now()}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF bertanda tangan digital berhasil diekspor.");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Gagal mengekspor transaksi.",

@@ -7,6 +7,7 @@ import {
   markTransactionAsTesting,
   unmarkTransactionAsTesting,
   createAdminQrisTransaction,
+  exportSignedTransactionReport,
   checkAdminQrisTransactionStatus,
   getTransactionActionRequestsForSuperadmin,
   reviewTransactionActionRequest,
@@ -24,6 +25,7 @@ export const transactionService = {
   markTransactionAsTesting,
   unmarkTransactionAsTesting,
   createAdminQrisTransaction,
+  exportSignedTransactionReport,
   checkAdminQrisTransactionStatus,
   requestTransactionAction: (input: {
     transactionId: string;

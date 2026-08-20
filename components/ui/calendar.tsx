@@ -14,7 +14,7 @@ export function Calendar({ className, ...props }: React.ComponentProps<typeof Da
       navLayout="around"
       showOutsideDays
       className={cn(
-        "rounded-xl border border-zinc-200 bg-white p-4 [--rdp-accent-color:#e4e4e7] [--rdp-accent-background-color:#f4f4f5] [--rdp-range_middle-background-color:#f4f4f5] [--rdp-range_middle-color:#18181b] [--rdp-range_start-color:#18181b] [--rdp-range_start-date-background-color:#e4e4e7] [--rdp-range_end-color:#18181b] [--rdp-range_end-date-background-color:#e4e4e7]",
+        "rounded-xl border border-zinc-200 bg-white p-4 [--rdp-accent-color:#00357B] [--rdp-accent-background-color:#00357B] [--rdp-range_middle-background-color:#e6f0ff] [--rdp-range_middle-color:#00357B] [--rdp-range_start-color:#fff] [--rdp-range_start-date-background-color:#00357B] [--rdp-range_end-color:#fff] [--rdp-range_end-date-background-color:#00357B]",
         className,
       )}
       classNames={{
@@ -29,11 +29,16 @@ export function Calendar({ className, ...props }: React.ComponentProps<typeof Da
         week: "",
         day: "size-9 p-0 text-center text-sm text-zinc-900",
         day_button: "inline-flex size-9 items-center justify-center rounded-md text-zinc-900 hover:bg-zinc-100",
-        selected: "bg-zinc-200 text-zinc-950 [&>button]:text-zinc-950",
-        range_start: "rounded-l-md text-zinc-950 [&>button]:text-zinc-950",
-        range_end: "rounded-r-md text-zinc-950 [&>button]:text-zinc-950",
-        range_middle: "bg-zinc-100 text-zinc-950 [&>button]:text-zinc-950",
-        today: "font-semibold text-zinc-950",
+        selected:
+          "bg-[#00357B] text-white [&>button]:bg-[#00357B] [&>button]:font-semibold [&>button]:text-white hover:[&>button]:bg-[#00275b]",
+        range_start:
+          "rounded-l-md bg-[#00357B] text-white [&>button]:bg-[#00357B] [&>button]:text-white",
+        range_end:
+          "rounded-r-md bg-[#00357B] text-white [&>button]:bg-[#00357B] [&>button]:text-white",
+        range_middle:
+          "bg-blue-50 text-[#00357B] [&>button]:rounded-none [&>button]:bg-blue-50 [&>button]:font-medium [&>button]:text-[#00357B]",
+        today:
+          "font-bold text-[#00357B] [&>button]:border-2 [&>button]:border-[#00357B] [&>button]:text-[#00357B]",
         outside: "text-zinc-300",
         disabled: "text-zinc-300",
       }}
