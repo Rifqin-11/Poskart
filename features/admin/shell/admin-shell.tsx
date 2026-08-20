@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
   Bell,
+  Bot,
   ChevronDown,
   CreditCard,
   Gauge,
@@ -42,6 +43,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CommandSearch } from "@/components/ui/command";
 import { Sheet } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import {
@@ -59,6 +61,12 @@ type AdminNavItem = {
   requiresSubscription?: boolean;
   superAdminOnly?: boolean;
   organizationFeature?: OrganizationFeatureKey;
+};
+
+type AiChatMessage = {
+  id: number;
+  role: "assistant" | "user";
+  content: string;
 };
 
 const navItems: AdminNavItem[] = [
@@ -366,6 +374,9 @@ export function AdminShell({
   const [open, setOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [aiDraft, setAiDraft] = useState("");
+  const [aiMessages, setAiMessages] = useState<AiChatMessage[]>([]);
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const { locale, setLocale, t } = useI18n();
@@ -373,6 +384,24 @@ export function AdminShell({
   const builderFullView = useBuilderStore((s) => s.builderFullView);
   const accountName = userName || userEmail || "POSKART User";
   const accountRole = formatAccountRole(userRole, isSuperAdmin);
+
+  function submitAiChat(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const content = aiDraft.trim();
+    if (!content) return;
+
+    setAiMessages((messages) => [
+      ...messages,
+      { id: Date.now(), role: "user", content },
+      {
+        id: Date.now() + 1,
+        role: "assistant",
+        content:
+          "AI belum terhubung. Hubungkan API Anda pada handler submitAiChat di AdminShell.",
+      },
+    ]);
+    setAiDraft("");
+  }
 
   const completeTutorial = useCallback(() => {
     setTutorialOpen(false);
@@ -443,8 +472,9 @@ export function AdminShell({
 
       <div
         className={cn(
-          "transition-all duration-200",
+          "transition-[padding] duration-300 ease-out",
           isStandalone ? "lg:pl-0" : "lg:pl-[17.25rem] xl:pl-[18.75rem]",
+          aiChatOpen && !isStandalone && "xl:pr-[27rem]",
         )}
       >
         {/* Checkout Header — standalone header with Back button & Icon */}
@@ -512,6 +542,19 @@ export function AdminShell({
                 <div data-admin-tour="search" className="md:hidden">
                   <CommandSearch isSuperAdmin={isSuperAdmin} variant="icon" />
                 </div>
+                <button
+                  type="button"
+                  className="grid size-10 place-items-center rounded-2xl border border-white/70 bg-white/55 text-zinc-700 shadow-sm backdrop-blur-xl transition-colors hover:bg-white/75 hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    setNotificationMenuOpen(false);
+                    setAiChatOpen(true);
+                  }}
+                  aria-label="Open POSKART AI chat"
+                  title="POSKART AI"
+                >
+                  <Bot className="size-4" />
+                </button>
                 <div className="relative">
                   <button
                     type="button"
@@ -760,6 +803,88 @@ export function AdminShell({
         open={subscriptionDialogOpen}
         onOpenChange={setSubscriptionDialogOpen}
       />
+      <aside
+        aria-label="POSKART AI chat"
+        className={cn(
+          "fixed top-4 right-4 z-40 flex h-[calc(100%-2rem)] w-[min(calc(100vw-2rem),26rem)] flex-col overflow-hidden rounded-[2rem] border border-zinc-200/70 bg-white p-4 shadow-xl shadow-zinc-950/[0.05] transition-transform duration-300 ease-out sm:w-[26rem]",
+          aiChatOpen ? "translate-x-0" : "translate-x-[calc(100%+1rem)]",
+        )}
+      >
+        <div className="flex items-center justify-between border-b border-zinc-100 px-2 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="grid size-10 place-items-center rounded-2xl bg-zinc-950 text-white shadow-lg shadow-zinc-950/15">
+              <Bot className="size-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-950">
+                POSKART AI
+              </h2>
+              <p className="text-xs text-zinc-500">Assistant workspace</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setAiChatOpen(false)}
+            aria-label="Close POSKART AI chat"
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 py-6">
+          {aiMessages.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-center">
+              <div className="max-w-xs">
+                <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-zinc-100 text-zinc-600">
+                  <Bot className="size-6" />
+                </div>
+                <h3 className="mt-4 text-sm font-semibold text-zinc-900">
+                  Mulai percakapan
+                </h3>
+                <p className="mt-2 text-xs leading-5 text-zinc-500">
+                  Tampilan chat sudah siap. AI belum dihubungkan ke API.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {aiMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={cn(
+                    "max-w-[88%] rounded-2xl px-3 py-2.5 text-sm leading-6",
+                    message.role === "user"
+                      ? "ml-auto bg-zinc-950 text-white"
+                      : "bg-zinc-100 text-zinc-700",
+                  )}
+                >
+                  {message.content}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <form onSubmit={submitAiChat} className="border-t border-zinc-100 pt-4">
+          <Textarea
+            aria-label="AI chat message"
+            value={aiDraft}
+            onChange={(event) => setAiDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                event.currentTarget.form?.requestSubmit();
+              }
+            }}
+            placeholder="Tulis pesan untuk POSKART AI..."
+            className="min-h-20 resize-none"
+          />
+          <div className="mt-2 flex justify-end">
+            <Button size="sm" type="submit" disabled={!aiDraft.trim()}>
+              Kirim pesan
+            </Button>
+          </div>
+        </form>
+      </aside>
       {tutorialOpen ? (
         <AdminGuidedTour
           open
