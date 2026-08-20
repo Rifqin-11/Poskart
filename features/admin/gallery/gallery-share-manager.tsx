@@ -112,9 +112,11 @@ export function GalleryShareProvider({
   }, []);
   const openCreateDialog = useCallback(() => {
     setCreatedGallery(null);
-    setEditingGallery(null);
+    // Continue from an existing gallery keeps its edit target so selected
+    // sessions update that gallery rather than creating a new one.
+    if (!isSelectionMode) setEditingGallery(null);
     setDialogMode("create");
-  }, []);
+  }, [isSelectionMode]);
   const openLibraryDialog = useCallback(() => setDialogMode("library"), []);
   const openEditGallery = useCallback((gallery: SharedGallerySummary) => {
     setEditingGallery(gallery);
@@ -125,6 +127,7 @@ export function GalleryShareProvider({
   const startSelection = useCallback(() => {
     setSelectedIds(new Set());
     setCreatedGallery(null);
+    setEditingGallery(null);
     setIsSelectionMode(true);
     setDialogMode(null);
   }, []);
