@@ -6,6 +6,7 @@ import {
   requestTransactionAction,
   markTransactionAsTesting,
   unmarkTransactionAsTesting,
+  createAdminQrisTransaction,
   getTransactionActionRequestsForSuperadmin,
   reviewTransactionActionRequest,
 } from "@/server/admin/actions/transaction-actions";
@@ -21,6 +22,7 @@ export const transactionService = {
   retryPrint,
   markTransactionAsTesting,
   unmarkTransactionAsTesting,
+  createAdminQrisTransaction,
   requestTransactionAction: (input: {
     transactionId: string;
     action: TransactionActionType;

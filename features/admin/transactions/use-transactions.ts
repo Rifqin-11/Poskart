@@ -82,6 +82,17 @@ export function useUnmarkTransactionAsTesting() {
   });
 }
 
+export function useCreateAdminQrisTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: transactionsApi.createAdminQrisTransaction,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.transactionsRoot });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard });
+    },
+  });
+}
+
 export function useTransactionActionRequests(page = 1, pageSize = 10) {
   return useQuery<
     Awaited<ReturnType<typeof transactionsApi.getTransactionActionRequestsForSuperadmin>>,

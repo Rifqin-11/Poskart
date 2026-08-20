@@ -1,9 +1,16 @@
 "use server";
 
+import crypto from "node:crypto";
+
 import { getAdminContext, verifyRole } from "@/server/admin/context";
 import { isSuperAdminProfile } from "@/lib/auth/admin";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAdminNotification } from "@/server/admin/notifications";
+import { resolveDuitkuRuntimeConfigForOrganization } from "@/server/payments/organization-gateway";
+import {
+  createDuitkuDirectPayment,
+  createMerchantOrderId,
+} from "@/server/payments/duitku";
 import {
   DEFAULT_GATEWAY_FEE_SETTINGS,
   normalizeGatewayFeeSettings,
@@ -106,6 +113,117 @@ export type TransactionPageResult = PaginatedResult<Transaction> & {
   summary: TransactionPageSummary;
   gatewayFeeSettings: GatewayFeeSettings;
 };
+
+export type CreateAdminQrisTransactionInput = {
+  customerName: string;
+  amount: number;
+  description?: string;
+};
+
+export type CreatedAdminQrisTransaction = {
+  transactionId: string;
+  merchantOrderId: string;
+  qrString: string;
+  amount: number;
+  expiresAt: string;
+};
+
+/** Creates a standalone QRIS payment from the admin monitoring screen. */
+export async function createAdminQrisTransaction(
+  input: CreateAdminQrisTransactionInput,
+): Promise<CreatedAdminQrisTransaction> {
+  const { supabase, user, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "akuntan",
+  ]);
+  const customerName = input.customerName.trim();
+  const amount = Math.round(Number(input.amount));
+  const description = input.description?.trim() || "Pembayaran QRIS manual";
+
+  if (customerName.length < 1 || customerName.length > 100) {
+    throw new Error("Nama pelanggan wajib diisi (maksimal 100 karakter).");
+  }
+  if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100_000_000) {
+    throw new Error("Nominal harus antara Rp1 dan Rp100.000.000.");
+  }
+  if (description.length > 255) {
+    throw new Error("Keterangan maksimal 255 karakter.");
+  }
+
+  const { data: organization, error: organizationError } = await supabase
+    .from("organizations")
+    .select("payment_collection_mode")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (organizationError) throw new Error(organizationError.message);
+
+  const collectionMode =
+    organization?.payment_collection_mode === "custom" ? "custom" : "platform";
+  const adminClient = createSupabaseAdminClient();
+  const duitkuConfig = await resolveDuitkuRuntimeConfigForOrganization(
+    adminClient,
+    { organizationId, collectionMode },
+  );
+  const merchantOrderId = createMerchantOrderId();
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
+  const payment = await createDuitkuDirectPayment(
+    {
+      merchantOrderId,
+      amount,
+      productDetails: description,
+      customerName,
+      email: user.email ?? "admin@poskart.my.id",
+      callbackUrl: `${siteUrl}/api/payments/duitku/callback`,
+      returnUrl: `${siteUrl}/transactions`,
+      expiryPeriodMinutes: 10,
+    },
+    duitkuConfig,
+  );
+
+  const now = new Date().toISOString();
+  const transactionId = `ADMIN-${crypto.randomUUID()}`;
+  const { error } = await supabase.from("transactions").insert({
+    id: transactionId,
+    organization_id: organizationId,
+    booth: "Web Admin",
+    location: "Transaction Monitoring",
+    customer: customerName,
+    package_name: description,
+    amount,
+    status: "pending",
+    provider: "QRIS",
+    collection_mode: collectionMode,
+    payment_gateway: "duitku",
+    merchant_order_id: payment.merchantOrderId,
+    payment_reference: payment.reference ?? null,
+    payment_url: payment.paymentUrl ?? null,
+    duitku_qr_string: payment.qrString,
+    duitku_status_code: payment.statusCode ?? null,
+    duitku_status_message: payment.statusMessage ?? null,
+    payment_expires_at: payment.expiresAt,
+    gateway_response: payment.raw,
+    print_count: 0,
+    created_at_label: now,
+    print_status: "pending",
+    print_attempts: 0,
+    print_last_error: null,
+    updated_at: now,
+  });
+  if (error) throw new Error(`Gagal menyimpan transaksi: ${error.message}`);
+
+  return {
+    transactionId,
+    merchantOrderId: payment.merchantOrderId,
+    qrString: payment.qrString,
+    amount,
+    expiresAt: payment.expiresAt,
+  };
+}
 
 function normalizePagination(input?: PaginationInput) {
   const page = Math.max(1, Math.floor(Number(input?.page ?? 1)));

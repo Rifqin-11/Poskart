@@ -7,6 +7,7 @@ export const transactionsApi = {
   retryPrint: transactionService.retryPrint,
   markTransactionAsTesting: transactionService.markTransactionAsTesting,
   unmarkTransactionAsTesting: transactionService.unmarkTransactionAsTesting,
+  createAdminQrisTransaction: transactionService.createAdminQrisTransaction,
   requestTransactionAction: transactionService.requestTransactionAction,
   getTransactionActionRequestsForSuperadmin:
     transactionService.getTransactionActionRequestsForSuperadmin,

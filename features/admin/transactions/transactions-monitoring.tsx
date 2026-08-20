@@ -15,15 +15,19 @@ import {
   FileSpreadsheet,
   FileText,
   LoaderCircle,
+  Plus,
   Printer,
   ReceiptText,
 } from "lucide-react";
+import QRCode from "react-qr-code";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DropdownMenu } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import { Calendar, type DateRange } from "@/components/ui/calendar";
 import { Popover } from "@/components/ui/popover";
@@ -44,6 +48,7 @@ import {
 } from "@/features/admin/_components";
 import {
   useMarkTransactionAsTesting,
+  useCreateAdminQrisTransaction,
   useRequestTransactionAction,
   useTransactions,
   useUnmarkTransactionAsTesting,
@@ -400,6 +405,7 @@ export function TransactionsMonitoring({
   const requestAction = useRequestTransactionAction();
   const markTesting = useMarkTransactionAsTesting();
   const unmarkTesting = useUnmarkTransactionAsTesting();
+  const createAdminQrisTransaction = useCreateAdminQrisTransaction();
   const { isReadOnly } = usePermission();
   const { data: booths = [] } = useBooths();
   const { data: pricingPackages = [] } = usePricing();
@@ -422,6 +428,15 @@ export function TransactionsMonitoring({
   );
   const exportButtonRef = useRef<HTMLButtonElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [createTransactionOpen, setCreateTransactionOpen] = useState(false);
+  const [customerName, setCustomerName] = useState("");
+  const [transactionAmount, setTransactionAmount] = useState<number | null>(
+    null,
+  );
+  const [transactionDescription, setTransactionDescription] = useState("");
+  const [createdPayment, setCreatedPayment] = useState<Awaited<
+    ReturnType<typeof transactionsApi.createAdminQrisTransaction>
+  > | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [page, setPage] = useState(1);
   const pageSize = TRANSACTION_PAGE_SIZE;
@@ -470,6 +485,42 @@ export function TransactionsMonitoring({
     setBoothFilter("all");
     setSelectedIds(new Set());
     setPage(1);
+  }
+
+  function closeCreateTransactionDialog(open: boolean) {
+    setCreateTransactionOpen(open);
+    if (!open) {
+      setCreatedPayment(null);
+      setCustomerName("");
+      setTransactionAmount(null);
+      setTransactionDescription("");
+    }
+  }
+
+  async function handleCreateTransaction(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    if (!transactionAmount) {
+      toast.error("Masukkan nominal transaksi.");
+      return;
+    }
+    try {
+      const payment = await createAdminQrisTransaction.mutateAsync({
+        customerName,
+        amount: transactionAmount,
+        description: transactionDescription,
+      });
+      setCreatedPayment(payment);
+      setPage(1);
+      toast.success("Transaksi QRIS berhasil dibuat dan tercatat.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal membuat transaksi QRIS.",
+      );
+    }
   }
 
   // Filtering and pagination happen on the server. The summary is aggregated
@@ -786,7 +837,106 @@ export function TransactionsMonitoring({
       <PageHeader
         title="Transaction & QRIS Monitoring"
         description="Track live payments, failed logs, manual verification, retry, and refund tools."
+        action={
+          !isReadOnly("transactions") ? (
+            <Button onClick={() => setCreateTransactionOpen(true)}>
+              <Plus className="size-4" />
+              Create transaction
+            </Button>
+          ) : null
+        }
       />
+
+      <Dialog
+        open={createTransactionOpen}
+        onOpenChange={closeCreateTransactionDialog}
+        title={createdPayment ? "QRIS payment" : "Create transaction"}
+        className="max-w-md"
+      >
+        {createdPayment ? (
+          <div className="space-y-4 text-center">
+            <p className="text-sm text-zinc-600">
+              Scan QRIS ini untuk membayar {formatCurrency(createdPayment.amount)}.
+            </p>
+            <div className="mx-auto w-fit rounded-2xl border border-zinc-200 bg-white p-3">
+              <QRCode value={createdPayment.qrString} size={228} />
+            </div>
+            <div className="rounded-xl bg-zinc-50 p-3 text-left text-xs text-zinc-600">
+              <div className="font-medium text-zinc-900">{customerName}</div>
+              <div className="mt-1 break-all">
+                Order: {createdPayment.merchantOrderId}
+              </div>
+              <div className="mt-1">
+                Berlaku sampai {formatDateTime(createdPayment.expiresAt)}
+              </div>
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => closeCreateTransactionDialog(false)}
+            >
+              Selesai
+            </Button>
+          </div>
+        ) : (
+          <form className="space-y-4" onSubmit={handleCreateTransaction}>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="qris-customer-name">
+                Nama pelanggan
+              </label>
+              <Input
+                id="qris-customer-name"
+                value={customerName}
+                maxLength={100}
+                required
+                onChange={(event) => setCustomerName(event.target.value)}
+                placeholder="Contoh: Budi Santoso"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="qris-amount">
+                Nominal
+              </label>
+              <CurrencyInput
+                id="qris-amount"
+                value={transactionAmount}
+                onValueChange={setTransactionAmount}
+                placeholder="0"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="qris-description">
+                Keterangan
+              </label>
+              <Input
+                id="qris-description"
+                value={transactionDescription}
+                maxLength={255}
+                onChange={(event) => setTransactionDescription(event.target.value)}
+                placeholder="Opsional"
+              />
+            </div>
+            <p className="text-xs leading-5 text-zinc-500">
+              QRIS berlaku selama 10 menit. Transaksi langsung masuk ke tabel
+              dengan status pending.
+            </p>
+            <Button
+              className="w-full"
+              type="submit"
+              disabled={createAdminQrisTransaction.isPending}
+            >
+              {createAdminQrisTransaction.isPending ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+              {createAdminQrisTransaction.isPending
+                ? "Membuat QRIS..."
+                : "Create QRIS payment"}
+            </Button>
+          </form>
+        )}
+      </Dialog>
 
       <Card className="mb-4 overflow-hidden">
         <CardContent className="grid gap-4 p-5 md:grid-cols-3">
