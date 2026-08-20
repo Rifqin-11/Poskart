@@ -8,7 +8,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import QRCode from "qrcode";
 
 import { calculatePaymentGatewayFee, type GatewayFeeSettings } from "@/lib/payment-gateway-fee";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { formatCurrency, formatWibDateTime } from "@/lib/utils";
 import type { Transaction } from "@/types/transaction";
 
 export type TransactionReportSummary = {
@@ -111,7 +111,7 @@ export async function createSignedTransactionReport({
     height: logo.height * logoScale,
   });
   page.drawText("Laporan Transaksi POSKART", { x: 40, y: 792, size: 19, font: bold, color: dark });
-  page.drawText(`Diterbitkan ${formatDateTime(issuedAt)}`, { x: 40, y: 770, size: 9, font: regular, color: rgb(0.35, 0.38, 0.43) });
+  page.drawText(`Diterbitkan ${formatWibDateTime(issuedAt)} WIB`, { x: 40, y: 770, size: 9, font: regular, color: rgb(0.35, 0.38, 0.43) });
   const metrics = [["Total keuntungan", formatCurrency(summary.profit)], ["Total sesi", String(summary.sessionCount)], ["Total print", String(summary.printCount)]];
   metrics.forEach(([label, value], index) => {
     const x = 40 + index * 170;
@@ -140,7 +140,7 @@ export async function createSignedTransactionReport({
   transactions.forEach((transaction) => {
     if (y - rowHeight < 105) return;
     const values = [
-      transaction.id.slice(0, 18), formatDateTime(transaction.createdAtRaw).replace(", ", "\n").slice(0, 28),
+      transaction.id.slice(0, 18), formatWibDateTime(transaction.createdAtRaw).replace(", ", "\n").slice(0, 28),
       paymentMethod(transaction), transaction.packageName.slice(0, 26),
       formatCurrency(transaction.amount), formatCurrency(Math.max(0, transaction.amount - netAmount(transaction, settings))),
       formatCurrency(netAmount(transaction, settings)), transaction.status,

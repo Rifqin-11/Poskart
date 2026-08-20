@@ -1,4 +1,5 @@
 import { readVerificationToken } from "@/server/admin/transaction-report-pdf";
+import { formatWibDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default async function TransactionReportVerificationPage({
         {report ? (
           <div className="mt-5 space-y-3 text-sm text-zinc-600">
             <p>Tautan verifikasi ini diterbitkan oleh POSKART dan belum diubah.</p>
-            <p><strong className="text-zinc-900">Waktu terbit:</strong> {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.issuedAt))}</p>
+            <p><strong className="text-zinc-900">Waktu terbit:</strong> {formatWibDateTime(report.issuedAt)} WIB</p>
             <p><strong className="text-zinc-900">Transaksi:</strong> {report.transactionCount} · <strong className="text-zinc-900">Sesi:</strong> {report.sessionCount} · <strong className="text-zinc-900">Print:</strong> {report.printCount}</p>
           </div>
         ) : (
