@@ -8,6 +8,8 @@ export const transactionsApi = {
   markTransactionAsTesting: transactionService.markTransactionAsTesting,
   unmarkTransactionAsTesting: transactionService.unmarkTransactionAsTesting,
   createAdminQrisTransaction: transactionService.createAdminQrisTransaction,
+  checkAdminQrisTransactionStatus:
+    transactionService.checkAdminQrisTransactionStatus,
   requestTransactionAction: transactionService.requestTransactionAction,
   getTransactionActionRequestsForSuperadmin:
     transactionService.getTransactionActionRequestsForSuperadmin,

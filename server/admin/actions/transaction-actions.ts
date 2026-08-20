@@ -8,9 +8,12 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAdminNotification } from "@/server/admin/notifications";
 import { resolveDuitkuRuntimeConfigForOrganization } from "@/server/payments/organization-gateway";
 import {
+  checkDuitkuTransactionStatus,
   createDuitkuDirectPayment,
   createMerchantOrderId,
+  mapDuitkuTransactionStatusCode,
 } from "@/server/payments/duitku";
+import { recordDuitkuPaymentLedgerEntry } from "@/server/payments/payment-ledger";
 import {
   DEFAULT_GATEWAY_FEE_SETTINGS,
   normalizeGatewayFeeSettings,
@@ -118,17 +121,19 @@ export type CreateAdminQrisTransactionInput = {
   customerName: string;
   amount: number;
   description?: string;
+  paymentMethod: "Cash" | "QRIS";
 };
 
 export type CreatedAdminQrisTransaction = {
   transactionId: string;
   merchantOrderId: string;
-  qrString: string;
+  paymentMethod: "Cash" | "QRIS";
+  qrString: string | null;
   amount: number;
-  expiresAt: string;
+  expiresAt: string | null;
 };
 
-/** Creates a standalone QRIS payment from the admin monitoring screen. */
+/** Creates a standalone cash or QRIS payment from the admin monitoring screen. */
 export async function createAdminQrisTransaction(
   input: CreateAdminQrisTransactionInput,
 ): Promise<CreatedAdminQrisTransaction> {
@@ -140,6 +145,7 @@ export async function createAdminQrisTransaction(
   const customerName = input.customerName.trim();
   const amount = Math.round(Number(input.amount));
   const description = input.description?.trim() || "Pembayaran QRIS manual";
+  const paymentMethod = input.paymentMethod === "Cash" ? "Cash" : "QRIS";
 
   if (customerName.length < 1 || customerName.length > 100) {
     throw new Error("Nama pelanggan wajib diisi (maksimal 100 karakter).");
@@ -160,6 +166,40 @@ export async function createAdminQrisTransaction(
 
   const collectionMode =
     organization?.payment_collection_mode === "custom" ? "custom" : "platform";
+  const now = new Date().toISOString();
+  const transactionId = `ADMIN-${crypto.randomUUID()}`;
+  if (paymentMethod === "Cash") {
+    const { error } = await supabase.from("transactions").insert({
+      id: transactionId,
+      organization_id: organizationId,
+      booth: "Web Admin",
+      location: "Transaction Monitoring",
+      customer: customerName,
+      package_name: description,
+      amount,
+      status: "paid",
+      provider: "Cash",
+      collection_mode: collectionMode,
+      payment_gateway: "cash",
+      paid_at: now,
+      print_count: 0,
+      created_at_label: now,
+      print_status: "pending",
+      print_attempts: 0,
+      print_last_error: null,
+      updated_at: now,
+    });
+    if (error) throw new Error(`Gagal menyimpan transaksi: ${error.message}`);
+    return {
+      transactionId,
+      merchantOrderId: "",
+      paymentMethod,
+      qrString: null,
+      amount,
+      expiresAt: null,
+    };
+  }
+
   const adminClient = createSupabaseAdminClient();
   const duitkuConfig = await resolveDuitkuRuntimeConfigForOrganization(
     adminClient,
@@ -184,9 +224,6 @@ export async function createAdminQrisTransaction(
     },
     duitkuConfig,
   );
-
-  const now = new Date().toISOString();
-  const transactionId = `ADMIN-${crypto.randomUUID()}`;
   const { error } = await supabase.from("transactions").insert({
     id: transactionId,
     organization_id: organizationId,
@@ -219,10 +256,67 @@ export async function createAdminQrisTransaction(
   return {
     transactionId,
     merchantOrderId: payment.merchantOrderId,
+    paymentMethod,
     qrString: payment.qrString,
     amount,
     expiresAt: payment.expiresAt,
   };
+}
+
+export async function checkAdminQrisTransactionStatus(transactionId: string) {
+  const { supabase, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "akuntan",
+  ]);
+  const { data: transaction, error } = await supabase
+    .from("transactions")
+    .select(
+      "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,booth,package_name,paid_at,created_at,gateway_response",
+    )
+    .eq("id", transactionId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!transaction) throw new Error("Transaksi tidak ditemukan.");
+  if (transaction.status === "paid") return { status: "paid" as const };
+  if (!transaction.merchant_order_id || transaction.payment_gateway !== "duitku") {
+    return { status: transaction.status };
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const config = await resolveDuitkuRuntimeConfigForOrganization(adminClient, {
+    organizationId: transaction.organization_id,
+    collectionMode: transaction.collection_mode,
+  });
+  const verifiedStatus = await checkDuitkuTransactionStatus(
+    transaction.merchant_order_id,
+    config,
+  );
+  const status = mapDuitkuTransactionStatusCode(verifiedStatus.statusCode);
+  const now = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({
+      status,
+      payment_reference: verifiedStatus.reference ?? transaction.payment_reference,
+      duitku_status_code: verifiedStatus.statusCode ?? null,
+      duitku_status_message: verifiedStatus.statusMessage ?? null,
+      gateway_status_checked_at: now,
+      gateway_response: verifiedStatus.raw,
+      paid_at: status === "paid" ? now : null,
+      updated_at: now,
+    })
+    .eq("id", transaction.id)
+    .eq("status", "pending");
+  if (updateError) throw new Error(updateError.message);
+  if (status === "paid") {
+    await recordDuitkuPaymentLedgerEntry(adminClient, {
+      transaction: { ...transaction, paid_at: now, gateway_response: verifiedStatus.raw },
+      verifiedStatus,
+    });
+  }
+  return { status };
 }
 
 function normalizePagination(input?: PaginationInput) {

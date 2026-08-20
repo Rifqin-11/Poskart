@@ -7,6 +7,7 @@ import {
   markTransactionAsTesting,
   unmarkTransactionAsTesting,
   createAdminQrisTransaction,
+  checkAdminQrisTransactionStatus,
   getTransactionActionRequestsForSuperadmin,
   reviewTransactionActionRequest,
 } from "@/server/admin/actions/transaction-actions";
@@ -23,6 +24,7 @@ export const transactionService = {
   markTransactionAsTesting,
   unmarkTransactionAsTesting,
   createAdminQrisTransaction,
+  checkAdminQrisTransactionStatus,
   requestTransactionAction: (input: {
     transactionId: string;
     action: TransactionActionType;

@@ -18,6 +18,7 @@ import {
   Plus,
   Printer,
   ReceiptText,
+  CheckCircle2,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { toast } from "sonner";
@@ -49,6 +50,7 @@ import {
 import {
   useMarkTransactionAsTesting,
   useCreateAdminQrisTransaction,
+  useCheckAdminQrisTransactionStatus,
   useRequestTransactionAction,
   useTransactions,
   useUnmarkTransactionAsTesting,
@@ -406,6 +408,7 @@ export function TransactionsMonitoring({
   const markTesting = useMarkTransactionAsTesting();
   const unmarkTesting = useUnmarkTransactionAsTesting();
   const createAdminQrisTransaction = useCreateAdminQrisTransaction();
+  const checkAdminQrisStatus = useCheckAdminQrisTransactionStatus();
   const { isReadOnly } = usePermission();
   const { data: booths = [] } = useBooths();
   const { data: pricingPackages = [] } = usePricing();
@@ -434,6 +437,8 @@ export function TransactionsMonitoring({
     null,
   );
   const [transactionDescription, setTransactionDescription] = useState("");
+  const [createPaymentMethod, setCreatePaymentMethod] = useState<"Cash" | "QRIS">("QRIS");
+  const [paymentComplete, setPaymentComplete] = useState(false);
   const [createdPayment, setCreatedPayment] = useState<Awaited<
     ReturnType<typeof transactionsApi.createAdminQrisTransaction>
   > | null>(null);
@@ -495,6 +500,8 @@ export function TransactionsMonitoring({
       setCustomerName("");
       setTransactionAmount(null);
       setTransactionDescription("");
+      setCreatePaymentMethod("QRIS");
+      setPaymentComplete(false);
     }
   }
 
@@ -511,10 +518,16 @@ export function TransactionsMonitoring({
         customerName,
         amount: transactionAmount,
         description: transactionDescription,
+        paymentMethod: createPaymentMethod,
       });
       setCreatedPayment(payment);
       setPage(1);
-      toast.success("Transaksi QRIS berhasil dibuat dan tercatat.");
+      if (payment.paymentMethod === "Cash") {
+        setPaymentComplete(true);
+        toast.success("Transaksi cash berhasil dicatat.");
+      } else {
+        toast.success("Transaksi QRIS berhasil dibuat dan tercatat.");
+      }
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -523,6 +536,37 @@ export function TransactionsMonitoring({
       );
     }
   }
+
+  useEffect(() => {
+    if (!createdPayment || createdPayment.paymentMethod !== "QRIS" || paymentComplete) {
+      return;
+    }
+    let active = true;
+    const checkStatus = async () => {
+      try {
+        const result = await checkAdminQrisStatus.mutateAsync(
+          createdPayment.transactionId,
+        );
+        if (active && result.status === "paid") {
+          setPaymentComplete(true);
+          toast.success("Pembayaran QRIS berhasil diterima.");
+          window.setTimeout(() => {
+            if (active) closeCreateTransactionDialog(false);
+          }, 1200);
+        }
+      } catch (error) {
+        if (active) {
+          toast.error(error instanceof Error ? error.message : "Gagal mengecek status QRIS.");
+        }
+      }
+    };
+    void checkStatus();
+    const timer = window.setInterval(() => void checkStatus(), 4_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [checkAdminQrisStatus, createdPayment, paymentComplete]);
 
   // Filtering and pagination happen on the server. The summary is aggregated
   // server-side across every matching row, not just the visible page.
@@ -855,17 +899,27 @@ export function TransactionsMonitoring({
       <Dialog
         open={createTransactionOpen}
         onOpenChange={closeCreateTransactionDialog}
-        title={createdPayment ? "QRIS payment" : "Create transaction"}
+        title={createdPayment ? "Payment status" : "Create transaction"}
         className="max-w-md"
       >
-        {createdPayment ? (
+        {createdPayment ? paymentComplete ? (
+          <div className="space-y-4 py-6 text-center">
+            <CheckCircle2 className="mx-auto size-16 text-emerald-500" />
+            <div>
+              <h3 className="text-lg font-semibold text-zinc-950">Pembayaran berhasil</h3>
+              <p className="mt-1 text-sm text-zinc-500">
+                {createdPayment.paymentMethod} {formatCurrency(createdPayment.amount)} sudah tercatat sebagai paid.
+              </p>
+            </div>
+          </div>
+        ) : (
           <div className="space-y-4 text-center">
             <p className="text-sm text-zinc-600">
               Scan QRIS ini untuk membayar{" "}
               {formatCurrency(createdPayment.amount)}.
             </p>
             <div className="mx-auto w-fit rounded-2xl border border-zinc-200 bg-white p-3">
-              <QRCode value={createdPayment.qrString} size={228} />
+              <QRCode value={createdPayment.qrString ?? ""} size={228} />
             </div>
             <div className="rounded-xl bg-zinc-50 p-3 text-left text-xs text-zinc-600">
               <div className="font-medium text-zinc-900">{customerName}</div>
@@ -873,7 +927,7 @@ export function TransactionsMonitoring({
                 Order: {createdPayment.merchantOrderId}
               </div>
               <div className="mt-1">
-                Berlaku sampai {formatDateTime(createdPayment.expiresAt)}
+                Berlaku sampai {formatDateTime(createdPayment.expiresAt ?? "")}
               </div>
             </div>
             <Button
@@ -885,6 +939,21 @@ export function TransactionsMonitoring({
           </div>
         ) : (
           <form className="space-y-4" onSubmit={handleCreateTransaction}>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Metode pembayaran</label>
+              <div className="grid grid-cols-2 gap-2">
+                {(["QRIS", "Cash"] as const).map((method) => (
+                  <Button
+                    key={method}
+                    type="button"
+                    variant={createPaymentMethod === method ? "default" : "outline"}
+                    onClick={() => setCreatePaymentMethod(method)}
+                  >
+                    {method}
+                  </Button>
+                ))}
+              </div>
+            </div>
             <div className="space-y-1.5">
               <label
                 className="text-sm font-medium"
@@ -928,8 +997,9 @@ export function TransactionsMonitoring({
               />
             </div>
             <p className="text-xs leading-5 text-zinc-500">
-              QRIS berlaku selama 10 menit. Transaksi langsung masuk ke tabel
-              dengan status pending.
+              {createPaymentMethod === "QRIS"
+                ? "QRIS berlaku selama 10 menit. Transaksi masuk dengan status pending sampai pembayaran dikonfirmasi."
+                : "Transaksi cash langsung masuk ke tabel dengan status paid."}
             </p>
             <Button
               className="w-full"
@@ -942,8 +1012,8 @@ export function TransactionsMonitoring({
                 <Plus className="size-4" />
               )}
               {createAdminQrisTransaction.isPending
-                ? "Membuat QRIS..."
-                : "Create QRIS payment"}
+                ? "Membuat transaksi..."
+                : `Create ${createPaymentMethod} transaction`}
             </Button>
           </form>
         )}
