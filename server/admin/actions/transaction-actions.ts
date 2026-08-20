@@ -2,7 +2,7 @@
 
 import crypto from "node:crypto";
 
-import { getAdminContext, verifyRole } from "@/server/admin/context";
+import { getAdminContext, getAdminMembership, verifyRole } from "@/server/admin/context";
 import { isSuperAdminProfile } from "@/lib/auth/admin";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAdminNotification } from "@/server/admin/notifications";
@@ -130,12 +130,30 @@ export async function exportSignedTransactionReport(
   );
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
   if (!siteUrl) throw new Error("NEXT_PUBLIC_SITE_URL belum dikonfigurasi.");
-  const { pdf } = await createSignedTransactionReport({
-    transactions: [firstPage.items, ...remainingPages.map((page) => page.items)].flat(),
+  const transactions = [firstPage.items, ...remainingPages.map((page) => page.items)].flat();
+  const report = await createSignedTransactionReport({
+    transactions,
     settings: firstPage.gatewayFeeSettings,
-    verificationUrl: `${siteUrl}/verify/transaction-report`,
+    verificationBaseUrl: `${siteUrl}/verify/transaction-report`,
   });
-  return pdf.toString("base64");
+  const [{ supabase, user }, membership] = await Promise.all([
+    getAdminContext(),
+    getAdminMembership(),
+  ]);
+  if (!membership) throw new Error("Organisasi tidak ditemukan.");
+  const { error } = await supabase.from("transaction_report_verifications").insert({
+    id: report.reportId,
+    organization_id: membership.organizationId,
+    exported_by: user.id,
+    issued_at: report.issuedAt,
+    transaction_count: transactions.length,
+    session_count: report.summary.sessionCount,
+    print_count: report.summary.printCount,
+    profit: report.summary.profit,
+    pdf_sha256: report.pdfSha256,
+  });
+  if (error) throw new Error(`Gagal menyimpan verifikasi laporan: ${error.message}`);
+  return report.pdf.toString("base64");
 }
 
 export type CreateAdminQrisTransactionInput = {

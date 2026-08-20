@@ -17,40 +17,6 @@ export type TransactionReportSummary = {
   printCount: number;
 };
 
-type VerificationPayload = TransactionReportSummary & {
-  reportId: string;
-  issuedAt: string;
-  transactionCount: number;
-  digest: string;
-};
-
-function getVerificationSecret() {
-  const secret = process.env.REPORT_VERIFICATION_SECRET;
-  if (!secret) throw new Error("REPORT_VERIFICATION_SECRET belum dikonfigurasi.");
-  return secret;
-}
-
-function sign(value: string) {
-  return crypto.createHmac("sha256", getVerificationSecret()).update(value).digest("base64url");
-}
-
-export function createVerificationToken(payload: VerificationPayload) {
-  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return `${encoded}.${sign(encoded)}`;
-}
-
-export function readVerificationToken(token: string): VerificationPayload | null {
-  const [encoded, signature] = token.split(".");
-  if (!encoded || !signature) return null;
-  const expected = sign(encoded);
-  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
-  try {
-    return JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as VerificationPayload;
-  } catch {
-    return null;
-  }
-}
-
 function paymentMethod(transaction: Transaction) {
   if (transaction.provider === "Voucher" || transaction.location.toUpperCase().includes("VOUCHER")) return "Voucher";
   return transaction.provider;
@@ -83,17 +49,16 @@ async function getP12Certificate() {
 export async function createSignedTransactionReport({
   transactions,
   settings,
-  verificationUrl,
+  verificationBaseUrl,
 }: {
   transactions: Transaction[];
   settings: GatewayFeeSettings;
-  verificationUrl: string;
+  verificationBaseUrl: string;
 }) {
   const summary = summarizeTransactions(transactions, settings);
   const issuedAt = new Date().toISOString();
-  const digest = crypto.createHash("sha256").update(JSON.stringify(transactions.map(({ id, amount, status, printCount }) => ({ id, amount, status, printCount })))).digest("hex");
-  const token = createVerificationToken({ reportId: crypto.randomUUID(), issuedAt, transactionCount: transactions.length, digest, ...summary });
-  const qrUrl = `${verificationUrl}?token=${encodeURIComponent(token)}`;
+  const reportId = crypto.randomUUID();
+  const qrUrl = `${verificationBaseUrl}/${reportId}`;
   const document = await PDFDocument.create();
   const regular = await document.embedFont(StandardFonts.Helvetica);
   const bold = await document.embedFont(StandardFonts.HelveticaBold);
@@ -157,10 +122,16 @@ export async function createSignedTransactionReport({
   page.drawLine({ start: { x: 40, y: 82 }, end: { x: 555, y: 82 }, thickness: 0.6, color: rgb(0.8, 0.82, 0.85) });
   page.drawText("Digitally signed by POSKART", { x: 40, y: 64, size: 9, font: bold, color: dark });
   page.drawText("Dokumen akan ditandai tidak valid bila diubah setelah ditandatangani.", { x: 40, y: 49, size: 7, font: regular, color: rgb(0.35, 0.38, 0.43) });
-  page.drawText(`Report ID: ${token.slice(0, 18)}...`, { x: 40, y: 36, size: 7, font: regular, color: rgb(0.35, 0.38, 0.43) });
+  page.drawText(`Report ID: ${reportId}`, { x: 40, y: 36, size: 7, font: regular, color: rgb(0.35, 0.38, 0.43) });
   page.drawImage(qrImage, { x: 485, y: 26, width: 60, height: 60 });
   pdflibAddPlaceholder({ pdfDoc: document, reason: "POSKART transaction report integrity", contactInfo: "support@poskart.my.id", name: "POSKART", location: "Indonesia", signatureLength: 16000 });
   const unsigned = await document.save({ useObjectStreams: false });
   const signed = await signPdf.sign(Buffer.from(unsigned), new P12Signer(await getP12Certificate(), { passphrase: process.env.REPORT_SIGNING_P12_PASSWORD ?? "" }));
-  return { pdf: signed, token };
+  return {
+    pdf: signed,
+    reportId,
+    issuedAt,
+    summary,
+    pdfSha256: crypto.createHash("sha256").update(signed).digest("hex"),
+  };
 }
