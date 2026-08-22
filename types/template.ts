@@ -6,6 +6,7 @@ export type Template = {
   category: "receipt" | "frame" | "postcard" | "seasonal" | "event";
   status: "published" | "draft" | "archived";
   assignedBooths: number;
+  createdAt: string;
   updatedAt: string;
   displayOrder: number;
   usageCount: number;
@@ -20,6 +21,16 @@ export type Template = {
   printLengthMm: number;
   /** Full visual frame layout — designed in the Frame Builder */
   frameLayout?: FrameLayout | null;
+};
+
+export type FrameInsightsPeriod = "7d" | "30d" | "90d" | "all";
+
+export type FrameUsageInsight = {
+  templateId: string;
+  sessionCount: number;
+  activeDays: number;
+  lastUsedAt: string | null;
+  assignedDevices: number;
 };
 
 export type FrameCategory = {

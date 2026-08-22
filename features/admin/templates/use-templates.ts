@@ -13,12 +13,31 @@ export function useTemplates() {
   );
 }
 
+export function useFrameUsageInsights(
+  period: "7d" | "30d" | "90d" | "all",
+  enabled = true,
+) {
+  return useQuery<
+    Awaited<ReturnType<typeof templatesApi.getFrameUsageInsights>>,
+    Error
+  >({
+    queryKey: adminQueryKeys.frameInsights(period),
+    queryFn: () => templatesApi.getFrameUsageInsights(period),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    enabled,
+  });
+}
+
 export function useCreateTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: templatesApi.createTemplate,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.frameInsightsRoot });
+    },
   });
 }
 
@@ -30,6 +49,7 @@ export function useAssignTemplateToDevices() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.devices });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.frameInsightsRoot });
     },
   });
 }
@@ -44,8 +64,10 @@ export function useUpdateTemplate() {
       id: string;
       patch: Parameters<typeof templatesApi.updateTemplate>[1];
     }) => templatesApi.updateTemplate(id, patch),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.frameInsightsRoot });
+    },
   });
 }
 
@@ -53,8 +75,10 @@ export function useDeleteTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: templatesApi.deleteTemplate,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.frameInsightsRoot });
+    },
   });
 }
 
@@ -62,8 +86,10 @@ export function useReorderTemplates() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: templatesApi.reorderTemplates,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.frameInsightsRoot });
+    },
   });
 }
 
@@ -84,8 +110,10 @@ export function useMoveTemplateToFrameCategory() {
         frameCategoryId,
         templateIds,
       ),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.frameInsightsRoot });
+    },
   });
 }
 

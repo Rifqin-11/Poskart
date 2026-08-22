@@ -282,12 +282,14 @@ export type BoothRow = Omit<
 export type TemplateRow = Omit<
   Template,
   | "assignedBooths"
+  | "createdAt"
   | "updatedAt"
   | "displayOrder"
   | "usageCount"
   | "frameCategoryId"
 > & {
   assigned_booths: number;
+  created_at: string;
   updated_at_label: string;
   display_order: number;
   usage_count: number;
@@ -669,6 +671,7 @@ export const mapTemplate = (row: TemplateRow): Template => ({
   category: row.category,
   status: row.status,
   assignedBooths: row.assigned_booths,
+  createdAt: row.created_at,
   updatedAt: row.updated_at_label,
   displayOrder: row.display_order ?? 0,
   usageCount: row.usage_count ?? 0,

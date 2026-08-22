@@ -1,5 +1,6 @@
 import {
   getTemplates,
+  getFrameUsageInsights,
   createTemplate,
   assignTemplateToDevices,
   updateTemplate,
@@ -17,6 +18,7 @@ import {
 
 export const templateService = {
   getTemplates,
+  getFrameUsageInsights,
   createTemplate,
   assignTemplateToDevices,
   updateTemplate,

@@ -2,6 +2,7 @@ import { templateService } from "@/server/admin/template-service";
 
 export const templatesApi = {
   getTemplates: templateService.getTemplates,
+  getFrameUsageInsights: templateService.getFrameUsageInsights,
   createTemplate: templateService.createTemplate,
   assignTemplateToDevices: templateService.assignTemplateToDevices,
   updateTemplate: templateService.updateTemplate,

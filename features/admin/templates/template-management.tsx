@@ -32,11 +32,13 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Search,
+  SearchX,
   Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -47,6 +49,7 @@ import {
   useCreateFrameCategory,
   useDeleteFrameCategory,
   useFrameCategories,
+  useFrameUsageInsights,
   useMoveTemplateToFrameCategory,
   useReorderFrameCategories,
   useReorderTemplates,
@@ -58,8 +61,10 @@ import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { FrameCategory, Template } from "@/types/template";
+import type { FrameInsightsPeriod } from "@/types/template";
 
 import { SortableTemplateCard } from "./_components/template-card";
+import { FrameInsightsPanel } from "./components/frame-insights-panel";
 
 const EMPTY_TEMPLATES: Template[] = [];
 const GROUP_DROP_PREFIX = "template-category:";
@@ -93,6 +98,25 @@ export function TemplateManagement() {
   const { t } = useI18n();
   const [orderedTemplates, setOrderedTemplates] = useState<Template[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [searchQuery, setSearchQuery] = useState("");
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredTemplates = useMemo(
+    () =>
+      normalizedSearchQuery
+        ? orderedTemplates.filter((template) =>
+            [template.name, template.tagline, template.category].some((value) =>
+              value?.toLowerCase().includes(normalizedSearchQuery),
+            ),
+          )
+        : orderedTemplates,
+    [normalizedSearchQuery, orderedTemplates],
+  );
+  const isSearchActive = Boolean(normalizedSearchQuery);
+  const [insightsPeriod, setInsightsPeriod] = useState<FrameInsightsPeriod>("all");
+  const hasFrameTemplates = orderedTemplates.some(
+    (template) => template.category === "frame",
+  );
+  const frameInsights = useFrameUsageInsights(insightsPeriod, hasFrameTemplates);
   const [testTemplate, setTestTemplate] = useState<Template | null>(null);
   const [frameCategoriesOpen, setFrameCategoriesOpen] = useState(false);
   const orderedTemplatesRef = useRef<Template[]>([]);
@@ -165,7 +189,7 @@ export function TemplateManagement() {
           id: "all-templates",
           label: null,
           frameCategoryId: null,
-          templates: orderedTemplates,
+          templates: filteredTemplates,
         },
       ];
     }
@@ -174,11 +198,11 @@ export function TemplateManagement() {
       id: category.id,
       label: category.name,
       frameCategoryId: category.id,
-      templates: orderedTemplates.filter(
+      templates: filteredTemplates.filter(
         (template) => template.frameCategoryId === category.id,
       ),
     }));
-    const uncategorizedTemplates = orderedTemplates.filter(
+    const uncategorizedTemplates = filteredTemplates.filter(
       (template) => !template.frameCategoryId,
     );
 
@@ -191,7 +215,7 @@ export function TemplateManagement() {
         templates: uncategorizedTemplates,
       },
     ];
-  }, [frameCategories, orderedTemplates]);
+  }, [filteredTemplates, frameCategories]);
 
   const setTemplateOrder = (templates: Template[]) => {
     orderedTemplatesRef.current = templates;
@@ -207,6 +231,7 @@ export function TemplateManagement() {
     );
 
   const handleDragStart = ({ active }: DragStartEvent) => {
+    if (isSearchActive) return;
     const templateId = String(active.id);
     const sourceGroup = templateGroups.find((candidate) =>
       candidate.templates.some((template) => template.id === templateId),
@@ -222,6 +247,7 @@ export function TemplateManagement() {
   };
 
   const handleDragOver = ({ active, over }: DragOverEvent) => {
+    if (isSearchActive) return;
     const activeDrag = activeTemplateDragRef.current;
     if (!activeDrag || !over || String(active.id) !== activeDrag.templateId) {
       return;
@@ -274,6 +300,10 @@ export function TemplateManagement() {
   };
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (isSearchActive) {
+      activeTemplateDragRef.current = null;
+      return;
+    }
     const activeDrag = activeTemplateDragRef.current;
     activeTemplateDragRef.current = null;
     if (isReadOnly("templates")) return;
@@ -420,6 +450,26 @@ export function TemplateManagement() {
         description={t("templates.pageDesc")}
         action={
           <div className="flex w-full flex-wrap items-center gap-2.5 md:w-auto md:justify-end">
+            <div className="relative w-full sm:w-64">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Cari frame..."
+                aria-label="Cari frame"
+                className="h-10 rounded-full border-zinc-200 bg-white pl-10 pr-10 shadow-sm"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
+                  aria-label="Hapus pencarian"
+                >
+                  <X className="size-3.5" />
+                </button>
+              ) : null}
+            </div>
             <div className="flex h-10 items-center gap-0.5 rounded-full border border-zinc-200 bg-white p-1 shadow-sm shadow-zinc-950/[0.03]">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
@@ -513,6 +563,18 @@ export function TemplateManagement() {
         }}
       />
 
+      {hasFrameTemplates ? (
+        <FrameInsightsPanel
+          templates={orderedTemplates}
+          insights={frameInsights.data ?? []}
+          period={insightsPeriod}
+          isLoading={frameInsights.isLoading}
+          isError={frameInsights.isError}
+          onPeriodChange={setInsightsPeriod}
+          onRetry={() => void frameInsights.refetch()}
+        />
+      ) : null}
+
       {orderedTemplates.length === 0 ? (
         <div className="relative overflow-hidden rounded-4xl border border-blue-100 bg-[#f7f9ff] px-6 py-16 text-center sm:px-10">
           <div className="absolute -right-20 -top-24 size-64 rounded-full bg-blue-100/70 blur-3xl" />
@@ -533,6 +595,26 @@ export function TemplateManagement() {
             )}
           </div>
         </div>
+      ) : filteredTemplates.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-zinc-200 bg-white px-6 py-14 text-center">
+          <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-zinc-100 text-zinc-500">
+            <SearchX className="size-5" />
+          </div>
+          <h2 className="mt-4 text-base font-semibold text-zinc-950">
+            Frame tidak ditemukan
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Tidak ada frame yang cocok dengan “{searchQuery}”.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-5 rounded-full"
+            onClick={() => setSearchQuery("")}
+          >
+            Hapus pencarian
+          </Button>
+        </div>
       ) : (
         <DndContext
           sensors={sensors}
@@ -551,6 +633,7 @@ export function TemplateManagement() {
                 key={group.id}
                 group={group}
                 viewMode={viewMode}
+                dragDisabled={isSearchActive}
                 onDelete={handleDelete}
                 onEdit={openEdit}
                 onTest={setTestTemplate}
@@ -575,12 +658,14 @@ export function TemplateManagement() {
 function TemplateGroupSection({
   group,
   viewMode,
+  dragDisabled,
   onDelete,
   onEdit,
   onTest,
 }: {
   group: TemplateGroup;
   viewMode: "grid" | "list";
+  dragDisabled: boolean;
   onDelete: (template: Template) => void;
   onEdit: (template: Template) => void;
   onTest: (template: Template) => void;
@@ -630,6 +715,7 @@ function TemplateGroupSection({
                 key={template.id}
                 template={template}
                 viewMode={viewMode}
+                dragDisabled={dragDisabled}
                 onDelete={onDelete}
                 onEdit={onEdit}
                 onTest={onTest}

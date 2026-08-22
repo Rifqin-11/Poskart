@@ -11,6 +11,10 @@ import {
   type TemplateFormValues,
   type TemplateRow,
 } from "../_shared/admin-types";
+import type {
+  FrameInsightsPeriod,
+  FrameUsageInsight,
+} from "@/types/template";
 import {
   assertFrameHasPhotoSlot,
   countUsableFramePhotoSlots,
@@ -62,7 +66,7 @@ export async function getTemplates(): Promise<Template[]> {
   const { data, error } = await supabase
     .from("templates")
     .select(
-      "id,name,category,status,assigned_booths,updated_at_label,display_order,usage_count,tagline,photo_count,accent_color,frame_category_id,frame_image_url,frame_layout,is_default,print_length_mm",
+      "id,name,category,status,assigned_booths,created_at,updated_at_label,display_order,usage_count,tagline,photo_count,accent_color,frame_category_id,frame_image_url,frame_layout,is_default,print_length_mm",
     )
     .order("display_order", { ascending: true })
     .order("updated_at", { ascending: false });
@@ -72,6 +76,47 @@ export async function getTemplates(): Promise<Template[]> {
     error,
     "Unable to load templates",
   ).map(mapTemplate);
+}
+
+export async function getFrameUsageInsights(
+  period: FrameInsightsPeriod,
+): Promise<FrameUsageInsight[]> {
+  if (period !== "7d" && period !== "30d" && period !== "90d" && period !== "all") {
+    throw new Error("Invalid frame insights period.");
+  }
+  const { supabase } = await getAdminContext();
+  const daysByPeriod: Record<Exclude<FrameInsightsPeriod, "all">, number> = {
+    "7d": 7,
+    "30d": 30,
+    "90d": 90,
+  };
+  const fromAt =
+    period === "all"
+      ? null
+      : new Date(
+          Date.now() - daysByPeriod[period] * 24 * 60 * 60 * 1000,
+        ).toISOString();
+
+  const { data, error } = await supabase.rpc("get_frame_usage_insights", {
+    p_from_at: fromAt,
+  });
+  if (error) {
+    throw new Error(`Unable to load frame insights: ${error.message}`);
+  }
+
+  return ((data ?? []) as Array<{
+    template_id: string;
+    session_count: number | string | null;
+    active_days: number | string | null;
+    last_used_at: string | null;
+    assigned_devices: number | string | null;
+  }>).map((row) => ({
+    templateId: row.template_id,
+    sessionCount: Number(row.session_count ?? 0),
+    activeDays: Number(row.active_days ?? 0),
+    lastUsedAt: row.last_used_at,
+    assignedDevices: Number(row.assigned_devices ?? 0),
+  }));
 }
 
 export async function createTemplate(

@@ -22,6 +22,8 @@ export const adminQueryKeys = {
   superAdminNotifications: ["superadmin-notifications"] as const,
   vouchers: ["vouchers"] as const,
   templates: ["templates"] as const,
+  frameInsightsRoot: ["frame-insights"] as const,
+  frameInsights: (period: string) => ["frame-insights", period] as const,
   showcases: ["showcases"] as const,
   frameCategories: ["frame-categories"] as const,
   pricing: ["pricing"] as const,

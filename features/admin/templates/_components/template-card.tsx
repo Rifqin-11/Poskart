@@ -19,6 +19,7 @@ import type { Template } from "@/types/template";
 type SortableTemplateCardProps = {
   template: Template;
   viewMode: "grid" | "list";
+  dragDisabled?: boolean;
   onDelete: (template: Template) => void;
   onEdit: (template: Template) => void;
   onTest: (template: Template) => void;
@@ -27,6 +28,7 @@ type SortableTemplateCardProps = {
 export function SortableTemplateCard({
   template,
   viewMode,
+  dragDisabled = false,
   onDelete,
   onEdit,
   onTest,
@@ -40,7 +42,7 @@ export function SortableTemplateCard({
     setNodeRef,
     transform,
     transition,
-  } = useSortable({ id: template.id });
+  } = useSortable({ id: template.id, disabled: dragDisabled });
 
   return (
     <div
@@ -71,7 +73,7 @@ export function SortableTemplateCard({
             <span className="text-xs font-medium text-zinc-400">
               Urutan {template.displayOrder + 1}
             </span>
-            {!readOnly && (
+            {!readOnly && !dragDisabled && (
               <button
                 type="button"
                 className="flex size-9 cursor-grab touch-none items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 active:cursor-grabbing"
