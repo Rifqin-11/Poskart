@@ -6,10 +6,11 @@ import { devicesApi, type BoothInput } from "@/features/admin/devices/api";
 import type { Device } from "@/types/device";
 import type { DeviceErrorGroup } from "@/types/device-error";
 
-export function useBooths() {
+export function useBooths(options?: { enabled?: boolean }) {
   return useQuery<Device[], Error>({
     queryKey: adminQueryKeys.devices,
     queryFn: devicesApi.getDevices,
+    enabled: options?.enabled ?? true,
     // Re-evaluate stale heartbeats shortly after the five-minute offline
     // threshold, even when a disconnected kiosk can no longer emit realtime.
     refetchInterval: 60_000,

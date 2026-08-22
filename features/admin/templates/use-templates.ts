@@ -22,6 +22,18 @@ export function useCreateTemplate() {
   });
 }
 
+export function useAssignTemplateToDevices() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ templateId, deviceIds }: { templateId: string; deviceIds: string[] }) =>
+      templatesApi.assignTemplateToDevices(templateId, deviceIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.devices });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.templates });
+    },
+  });
+}
+
 export function useUpdateTemplate() {
   const queryClient = useQueryClient();
   return useMutation({

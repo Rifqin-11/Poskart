@@ -1,6 +1,7 @@
 import {
   getTemplates,
   createTemplate,
+  assignTemplateToDevices,
   updateTemplate,
   deleteTemplate,
   moveTemplateToFrameCategory,
@@ -17,6 +18,7 @@ import {
 export const templateService = {
   getTemplates,
   createTemplate,
+  assignTemplateToDevices,
   updateTemplate,
   deleteTemplate,
   moveTemplateToFrameCategory,

@@ -76,7 +76,7 @@ export async function getTemplates(): Promise<Template[]> {
 
 export async function createTemplate(
   values: TemplateFormValues,
-): Promise<void> {
+): Promise<string> {
   const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   assertFrameCategoryHasPhotoSlot(values.category, values.frameLayout);
   const now = new Date().toISOString();
@@ -116,6 +116,69 @@ export async function createTemplate(
   });
 
   if (error) throw new Error(`Unable to create template: ${error.message}`);
+  return id;
+}
+
+export async function assignTemplateToDevices(
+  templateId: string,
+  deviceIds: string[],
+): Promise<void> {
+  const { supabase, organizationId } = await verifyRole([
+    "owner",
+    "admin",
+    "designer",
+  ]);
+  const normalizedTemplateId = templateId.trim();
+  const normalizedDeviceIds = Array.from(
+    new Set(deviceIds.map((deviceId) => deviceId.trim()).filter(Boolean)),
+  );
+
+  if (!normalizedTemplateId || normalizedDeviceIds.length === 0) return;
+
+  const { data: template, error: templateError } = await supabase
+    .from("templates")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("id", normalizedTemplateId)
+    .eq("category", "frame")
+    .maybeSingle();
+  if (templateError) {
+    throw new Error(`Unable to validate frame template: ${templateError.message}`);
+  }
+  if (!template) throw new Error("Frame template is unavailable.");
+
+  const { data: devices, error: devicesError } = await supabase
+    .from("devices")
+    .select("id,frame_templates")
+    .eq("organization_id", organizationId)
+    .in("id", normalizedDeviceIds);
+  if (devicesError) {
+    throw new Error(`Unable to load devices: ${devicesError.message}`);
+  }
+  if ((devices?.length ?? 0) !== normalizedDeviceIds.length) {
+    throw new Error("One or more selected devices are unavailable.");
+  }
+
+  for (const device of devices ?? []) {
+    const currentTemplateIds = Array.isArray(device.frame_templates)
+      ? device.frame_templates.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : [];
+    const targetTemplateIds = [
+      normalizedTemplateId,
+      ...currentTemplateIds.filter((id) => id !== normalizedTemplateId),
+    ];
+    const { error } = await supabase.rpc("set_device_frame_templates", {
+      target_device_id: device.id,
+      target_template_ids: targetTemplateIds,
+    });
+    if (error) {
+      throw new Error(
+        `Unable to assign frame to device ${device.id}: ${error.message}`,
+      );
+    }
+  }
 }
 
 export async function updateTemplate(

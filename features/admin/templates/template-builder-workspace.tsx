@@ -12,11 +12,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FrameTemplateBuilder } from "@/features/admin/templates/frame-template-builder";
 import { bakeFrameLayoutColorKeyAssets } from "@/features/builder/utils/bake-color-key-assets";
 import {
+  useAssignTemplateToDevices,
   useCreateTemplate,
   useFrameCategories,
   useTemplates,
   useUpdateTemplate,
 } from "@/features/admin/templates/use-templates";
+import { useBooths } from "@/features/admin/devices/use-devices";
 import {
   BUILDER_IMAGE_ACCEPT,
   getBuilderImageValidationError,
@@ -32,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import type { FrameLayout } from "@/types/frame-template";
 import type { TemplateFormValues } from "@/types/template";
+import { ApplyFrameToDevicesDialog } from "@/features/admin/templates/components/apply-frame-to-devices-dialog";
 
 type ImageDimensions = {
   width: number;
@@ -101,12 +104,17 @@ export function TemplateBuilderWorkspace({
   const router = useRouter();
   const isNew = templateId === "new";
   const {
+    data: devices = [],
+    isLoading: devicesLoading,
+  } = useBooths({ enabled: isNew });
+  const {
     data: templates = [],
     isLoading,
     error: templatesError,
     refetch: refetchTemplates,
   } = useTemplates();
   const { data: frameCategories = [] } = useFrameCategories();
+  const assignTemplateToDevices = useAssignTemplateToDevices();
   const createTemplate = useCreateTemplate();
   const updateTemplate = useUpdateTemplate();
   const template = isNew
@@ -118,6 +126,9 @@ export function TemplateBuilderWorkspace({
   );
   const [uploadedImageDimensions, setUploadedImageDimensions] =
     useState<ImageDimensions | null>(null);
+  const [applyDialogOpen, setApplyDialogOpen] = useState(false);
+  const [createdFrameId, setCreatedFrameId] = useState<string | null>(null);
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
   const builderFullView = useBuilderStore((s) => s.builderFullView);
   const setBuilderFullView = useBuilderStore((s) => s.setBuilderFullView);
 
@@ -242,13 +253,16 @@ export function TemplateBuilderWorkspace({
 
     try {
       if (isNew) {
-        await createTemplate.mutateAsync(payload);
-        toast.success("Template created");
+        const newTemplateId = await createTemplate.mutateAsync(payload);
+        setCreatedFrameId(newTemplateId);
+        setSelectedDeviceIds([]);
+        setApplyDialogOpen(true);
+        toast.success("Frame berhasil dibuat");
       } else {
         await updateTemplate.mutateAsync({ id: templateId, patch: payload });
         toast.success("Template updated");
+        router.push("/templates");
       }
-      router.push("/templates");
     } catch (error) {
       const message = getUserFacingErrorMessage(
         error,
@@ -262,6 +276,51 @@ export function TemplateBuilderWorkspace({
   };
 
   const saving = createTemplate.isPending || updateTemplate.isPending;
+
+  const toggleDeviceSelection = (deviceId: string) => {
+    setSelectedDeviceIds((current) =>
+      current.includes(deviceId)
+        ? current.filter((id) => id !== deviceId)
+        : [...current, deviceId],
+    );
+  };
+
+  const toggleAllDevices = () => {
+    setSelectedDeviceIds((current) =>
+      current.length === devices.length
+        ? []
+        : devices.map((device) => device.id),
+    );
+  };
+
+  const finishFrameCreation = () => {
+    setApplyDialogOpen(false);
+    setCreatedFrameId(null);
+    setSelectedDeviceIds([]);
+    router.push("/templates");
+  };
+
+  const applyFrameToDevices = async () => {
+    if (!createdFrameId || selectedDeviceIds.length === 0) return;
+
+    try {
+      await assignTemplateToDevices.mutateAsync({
+        templateId: createdFrameId,
+        deviceIds: selectedDeviceIds,
+      });
+      toast.success(
+        "Frame diterapkan ke " + selectedDeviceIds.length + " device",
+      );
+      finishFrameCreation();
+    } catch (error) {
+      toast.error(
+        getUserFacingErrorMessage(
+          error,
+          "Frame gagal diterapkan ke devices. Coba lagi.",
+        ),
+      );
+    }
+  };
   const detailsPanel = (
     <section className="space-y-3 rounded-lg border border-zinc-200 p-3">
       <div>
@@ -398,6 +457,18 @@ export function TemplateBuilderWorkspace({
           saving ? "Saving..." : isNew ? "Create frame" : "Save frame"
         }
         detailsPanel={detailsPanel}
+      />
+      <ApplyFrameToDevicesDialog
+        open={applyDialogOpen}
+        frameName={form.name}
+        devices={devices}
+        isLoading={devicesLoading}
+        selectedDeviceIds={selectedDeviceIds}
+        isApplying={assignTemplateToDevices.isPending}
+        onToggleDevice={toggleDeviceSelection}
+        onToggleAll={toggleAllDevices}
+        onSkip={finishFrameCreation}
+        onApply={() => void applyFrameToDevices()}
       />
     </div>
   );
