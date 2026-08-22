@@ -57,7 +57,7 @@ export type PayoutSummary = {
   payoutAccount: PayoutAccount | null;
 };
 
-export type PayoutAvailableLedgerEntry = {
+export type PayoutPendingSettlementEntry = {
   id: string;
   transactionId: string | null;
   merchantOrderId: string;
@@ -66,6 +66,7 @@ export type PayoutAvailableLedgerEntry = {
   packageName: string | null;
   paidAt: string | null;
   verifiedAt: string | null;
+  settlementDate: string | null;
   grossAmount: number;
   gatewayFeeAmount: number;
   platformFeeAmount: number;

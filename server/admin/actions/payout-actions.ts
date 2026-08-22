@@ -19,7 +19,7 @@ import {
 import type {
   PayoutAccount,
   PayoutActionState,
-  PayoutAvailableLedgerEntry,
+  PayoutPendingSettlementEntry,
   PayoutInvoice,
   PayoutInvoiceFilters,
   PayoutInvoiceItem,
@@ -323,6 +323,7 @@ function calculateLine(row: EligibleLedgerEntryRow, settings: PayoutSettings) {
     packageName: row.package_name,
     transactionPaidAt: row.paid_at ?? row.created_at,
     verifiedAt: row.verified_at,
+    settlementDate: row.gateway_settlement_date,
     grossAmount,
     gatewayFeeAmount,
     platformFeeAmount,
@@ -365,9 +366,9 @@ async function notifySafely(
   }
 }
 
-function mapAvailableLedgerEntry(
+function mapPendingSettlementEntry(
   line: ReturnType<typeof calculateLine>,
-): PayoutAvailableLedgerEntry {
+): PayoutPendingSettlementEntry {
   return {
     id: line.ledgerEntryId,
     transactionId: line.transactionId,
@@ -377,6 +378,7 @@ function mapAvailableLedgerEntry(
     packageName: line.packageName,
     paidAt: line.transactionPaidAt,
     verifiedAt: line.verifiedAt,
+    settlementDate: line.settlementDate,
     grossAmount: line.grossAmount,
     gatewayFeeAmount: line.gatewayFeeAmount,
     platformFeeAmount: line.platformFeeAmount,
@@ -634,50 +636,6 @@ async function loadEligibleLedgerEntries(
   return rows;
 }
 
-async function loadEligibleLedgerEntriesPage(
-  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
-  organizationId: string,
-  paginationInput: PaginationInput,
-) {
-  const pagination = normalizePagination(paginationInput);
-  const { data, error, count } = await supabase
-    .from("payment_ledger_entries")
-    .select(
-      "id,transaction_id,provider,merchant_order_id,duitku_reference,gross_amount,gateway_fee_amount,platform_fee_amount,adjustment_amount,net_amount,booth,package_name,paid_at,verified_at,gateway_settlement_date,created_at,verified_response",
-      { count: "exact" },
-    )
-    .eq("organization_id", organizationId)
-    .eq("status", "paid")
-    .eq("provider", "duitku")
-    .eq("payment_method", "QRIS")
-    .eq("collection_mode", "platform")
-    .eq("gateway_settlement_status", "settled")
-    .is("settlement_status", null)
-    .is("payout_invoice_id", null)
-    .order("paid_at", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: true })
-    .range(pagination.from, pagination.to);
-
-  if (error) {
-    if (error.code === "42P01" || error.code === "42703") {
-      return {
-        rows: [] as EligibleLedgerEntryRow[],
-        pagination,
-        totalItems: 0,
-      };
-    }
-    throw new Error(`Failed to load eligible ledger entries: ${error.message}`);
-  }
-
-  return {
-    rows: ((data ?? []) as EligibleLedgerEntryRow[]).filter(
-      isVerifiedDuitkuLedgerEntry,
-    ),
-    pagination,
-    totalItems: count ?? (data ?? []).length,
-  };
-}
-
 async function loadPendingSettlementLines(
   supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
   organizationId: string,
@@ -726,11 +684,23 @@ async function loadPendingSettlementLines(
     if (!data || data.length < pageSize) break;
   }
 
+  const allocations = await loadActivePayoutAllocations(
+    supabase,
+    organizationId,
+    rows.map((row) => row.id),
+  );
+  const allocatedLedgerIds = new Set(
+    allocations
+      .map((allocation) => allocation.ledger_entry_id)
+      .filter((ledgerEntryId): ledgerEntryId is string => Boolean(ledgerEntryId)),
+  );
+  const unallocatedRows = rows.filter((row) => !allocatedLedgerIds.has(row.id));
+  const lines = unallocatedRows.map((row) => calculateLine(row, settings));
+
   return {
-    lines: rows.map((row) => calculateLine(row, settings)),
+    lines,
     nextEstimatedSettlementDate:
-      rows.find((row) => row.gateway_settlement_date)
-        ?.gateway_settlement_date ?? null,
+      lines.find((line) => line.settlementDate)?.settlementDate ?? null,
   };
 }
 
@@ -908,27 +878,28 @@ export async function getMyPayoutInvoices(
   return loadInvoices(supabase, { organizationId }, pagination ?? {});
 }
 
-export async function getMyAvailablePayoutLedgerEntries(
+export async function getMyPendingSettlementEntries(
   paginationInput?: PaginationInput,
-): Promise<PaginatedResult<PayoutAvailableLedgerEntry>> {
+): Promise<PaginatedResult<PayoutPendingSettlementEntry>> {
   const { supabase, organizationId } = await getOrganizationContext();
   const settings = await getPayoutSettings(supabase);
-  const pageResult = await loadEligibleLedgerEntriesPage(
-    supabase,
-    organizationId,
+  const pagination = normalizePagination(
     paginationInput ?? { page: 1, pageSize: 20 },
   );
-  const allocations = await loadActivePayoutAllocations(
+  const pendingSettlement = await loadPendingSettlementLines(
     supabase,
     organizationId,
-    pageResult.rows.map((row) => row.id),
+    settings,
   );
-  const lines = mapAvailablePayoutLines(pageResult.rows, allocations, settings);
+  const lines = pendingSettlement.lines.slice(
+    pagination.from,
+    pagination.to + 1,
+  );
 
   return toPaginatedResult(
-    lines.map((line) => mapAvailableLedgerEntry(line)),
-    pageResult.pagination,
-    pageResult.totalItems,
+    lines.map((line) => mapPendingSettlementEntry(line)),
+    pagination,
+    pendingSettlement.lines.length,
   );
 }
 

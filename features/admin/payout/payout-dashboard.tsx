@@ -43,7 +43,7 @@ import {
   getPayoutStatusLabel,
 } from "@/features/admin/payout/payout-format";
 import {
-  getMyAvailablePayoutLedgerEntries,
+  getMyPendingSettlementEntries,
   getMyPayoutInvoices,
   requestPayout,
   approveInternalPayoutRequest,
@@ -52,7 +52,7 @@ import {
 } from "@/server/admin/actions/payout-actions";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import type {
-  PayoutAvailableLedgerEntry,
+  PayoutPendingSettlementEntry,
   PayoutInvoice,
   PayoutSummary,
 } from "@/types/payout";
@@ -61,16 +61,16 @@ import type { PaginatedResult } from "@/types/pagination";
 export function PayoutDashboard({
   summary,
   invoicesPage,
-  availableLedgerPage,
+  pendingSettlementPage,
 }: {
   summary: PayoutSummary;
   invoicesPage: PaginatedResult<PayoutInvoice>;
-  availableLedgerPage: PaginatedResult<PayoutAvailableLedgerEntry>;
+  pendingSettlementPage: PaginatedResult<PayoutPendingSettlementEntry>;
 }) {
   const router = useRouter();
   const { isReadOnly } = usePermission();
   const [invoicePage, setInvoicePage] = useState(invoicesPage);
-  const [ledgerPage, setLedgerPage] = useState(availableLedgerPage);
+  const [ledgerPage, setLedgerPage] = useState(pendingSettlementPage);
   const [requestOpen, setRequestOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<PayoutInvoice | null>(
     null,
@@ -80,7 +80,7 @@ export function PayoutDashboard({
     amount: summary.availableGrossAmount,
   });
   const invoices = invoicePage.items;
-  const availableLedgerEntries = ledgerPage.items;
+  const pendingSettlementEntries = ledgerPage.items;
 
   const hasAccount = Boolean(summary.payoutAccount);
   const canRequest =
@@ -119,10 +119,10 @@ export function PayoutDashboard({
     });
   };
 
-  const loadLedgerPage = async (page: number) => {
+  const loadPendingSettlementPage = async (page: number) => {
     startTransition(async () => {
       try {
-        const nextPage = await getMyAvailablePayoutLedgerEntries({
+        const nextPage = await getMyPendingSettlementEntries({
           page,
           pageSize: ledgerPage.pageSize,
         });
@@ -131,7 +131,7 @@ export function PayoutDashboard({
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to load available payout entries",
+            : "Failed to load pending settlement entries",
         );
       }
     });
@@ -251,43 +251,44 @@ export function PayoutDashboard({
       <Card>
         <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <CardTitle>Available balance details</CardTitle>
+            <CardTitle>Pending settlement details</CardTitle>
             <CardDescription>
-              Payment ledger entries that currently form the available balance.
-              A partially allocated payment remains here with only its remaining
-              balance.
+              Transactions that are still waiting for payment gateway settlement
+              and cannot be withdrawn yet. Transactions already included in a
+              withdrawal request are not shown.
             </CardDescription>
           </div>
           <div className="grid w-full grid-cols-3 gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs lg:w-auto lg:min-w-64">
             <div>
               <div className="text-zinc-500">Gross</div>
               <div className="mt-1 font-semibold text-zinc-950">
-                {formatPayoutCurrency(summary.availableGrossAmount)}
+                {formatPayoutCurrency(summary.pendingSettlementGrossAmount)}
               </div>
             </div>
             <div>
               <div className="text-zinc-500">Fee</div>
               <div className="mt-1 font-semibold text-zinc-950">
                 {formatPayoutCurrency(
-                  summary.availableGatewayFeeAmount +
-                    summary.availablePlatformFeeAmount,
+                  summary.pendingSettlementGrossAmount -
+                    summary.pendingSettlementNetAmount,
                 )}
               </div>
             </div>
             <div>
               <div className="text-zinc-500">Net</div>
               <div className="mt-1 font-semibold text-zinc-950">
-                {formatPayoutCurrency(summary.availableNetAmount)}
+                {formatPayoutCurrency(summary.pendingSettlementNetAmount)}
               </div>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="hidden overflow-x-auto md:block">
-            <Table className="min-w-[820px]">
+            <Table className="min-w-[980px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Paid</TableHead>
+                  <TableHead>Settlement ends</TableHead>
                   <TableHead>Booth / Package</TableHead>
                   <TableHead>Order</TableHead>
                   <TableHead>Reference</TableHead>
@@ -297,7 +298,7 @@ export function PayoutDashboard({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {availableLedgerEntries.map((entry) => (
+                {pendingSettlementEntries.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell>
                       <div className="text-sm">
@@ -305,6 +306,14 @@ export function PayoutDashboard({
                       </div>
                       <div className="mt-1 text-xs text-zinc-500">
                         Verified {formatPayoutDate(entry.verifiedAt)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium text-amber-700">
+                        {formatSettlementDate(entry.settlementDate)}
+                      </div>
+                      <div className="mt-1 text-xs text-zinc-500">
+                        Estimated availability
                       </div>
                     </TableCell>
                     <TableCell>
@@ -334,13 +343,13 @@ export function PayoutDashboard({
                     </TableCell>
                   </TableRow>
                 ))}
-                {availableLedgerEntries.length === 0 ? (
+                {pendingSettlementEntries.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       className="py-8 text-center text-sm text-zinc-500"
                     >
-                      No eligible payment ledger entries yet.
+                      No pending settlement transactions.
                     </TableCell>
                   </TableRow>
                 ) : null}
@@ -348,18 +357,18 @@ export function PayoutDashboard({
             </Table>
           </div>
           <div className="grid gap-3 md:hidden">
-            {availableLedgerEntries.map((entry) => (
+            {pendingSettlementEntries.map((entry) => (
               <LedgerEntryCard key={entry.id} entry={entry} />
             ))}
-            {availableLedgerEntries.length === 0 ? (
-              <EmptyMobileCard message="No eligible payment ledger entries yet." />
+            {pendingSettlementEntries.length === 0 ? (
+              <EmptyMobileCard message="No pending settlement transactions." />
             ) : null}
           </div>
           <TablePagination
             page={ledgerPage.page}
             pageSize={ledgerPage.pageSize}
             totalItems={ledgerPage.totalItems}
-            onPageChange={(page) => void loadLedgerPage(page)}
+            onPageChange={(page) => void loadPendingSettlementPage(page)}
           />
         </CardContent>
       </Card>
@@ -568,7 +577,8 @@ export function PayoutDashboard({
   );
 }
 
-function formatSettlementDate(value: string) {
+function formatSettlementDate(value: string | null) {
+  if (!value) return "No estimate yet";
   const [year, month, day] = value.split("-").map(Number);
   if (!year || !month || !day) return value;
 
@@ -664,7 +674,7 @@ function PayoutSettingsSummary({ summary }: { summary: PayoutSummary }) {
   );
 }
 
-function LedgerEntryCard({ entry }: { entry: PayoutAvailableLedgerEntry }) {
+function LedgerEntryCard({ entry }: { entry: PayoutPendingSettlementEntry }) {
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -688,6 +698,10 @@ function LedgerEntryCard({ entry }: { entry: PayoutAvailableLedgerEntry }) {
         <MobileMeta
           label="Verified"
           value={formatPayoutDate(entry.verifiedAt)}
+        />
+        <MobileMeta
+          label="Settlement ends"
+          value={formatSettlementDate(entry.settlementDate)}
         />
         <MobileMeta
           label="Order"

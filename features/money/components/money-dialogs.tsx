@@ -1,5 +1,6 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import { useState } from "react";
 import {
   ArrowDownCircle,
@@ -12,12 +13,16 @@ import {
   WalletCards,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CurrencyInput } from "@/components/ui/currency-input";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { categories, toLocalDateTime } from "@/features/money/money-dashboard.utils";
+import {
+  categories,
+  evaluateMoneyExpression,
+  formatMoneyExpression,
+  toLocalDateTime,
+} from "@/features/money/money-dashboard.utils";
 import { formatCurrency } from "@/lib/utils";
 import type {
   MoneyCategory,
@@ -37,6 +42,7 @@ export function MoneyEntryDialog({
   customCategories,
   tags,
   wallets,
+  walletBalances,
   pending,
   onClose,
   onSubmit,
@@ -46,6 +52,7 @@ export function MoneyEntryDialog({
   customCategories: MoneyCustomCategory[];
   tags: MoneyTag[];
   wallets: MoneyWallet[];
+  walletBalances: Map<string, number>;
   pending: boolean;
   onClose: () => void;
   onSubmit: (values: MoneyEntryInput) => void;
@@ -176,7 +183,7 @@ export function MoneyEntryDialog({
                 >
                   {wallets.map((wallet) => (
                     <option key={wallet.id} value={wallet.id}>
-                      {wallet.name}
+                      {formatWalletOption(wallet, walletBalances)}
                     </option>
                   ))}
                 </Select>
@@ -191,7 +198,7 @@ export function MoneyEntryDialog({
                 >
                   {wallets.map((wallet) => (
                     <option key={wallet.id} value={wallet.id}>
-                      {wallet.name}
+                      {formatWalletOption(wallet, walletBalances)}
                     </option>
                   ))}
                 </Select>
@@ -200,11 +207,9 @@ export function MoneyEntryDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-1.5 text-sm font-medium">
                 Transfer amount
-                <CurrencyInput
-                  min={1}
+                <MoneyAmountInput
                   value={amount || null}
                   onValueChange={(value) => setAmount(value ?? 0)}
-                  placeholder="0"
                   required
                 />
               </label>
@@ -245,11 +250,9 @@ export function MoneyEntryDialog({
               </label>
               <label className="space-y-1.5 text-sm font-medium">
                 Transaction amount
-                <CurrencyInput
-                  min={1}
+                <MoneyAmountInput
                   value={amount || null}
                   onValueChange={(value) => setAmount(value ?? 0)}
-                  placeholder="0"
                   required
                 />
               </label>
@@ -265,7 +268,7 @@ export function MoneyEntryDialog({
                 >
                   {wallets.map((wallet) => (
                     <option key={wallet.id} value={wallet.id}>
-                      {wallet.name}
+                      {formatWalletOption(wallet, walletBalances)}
                     </option>
                   ))}
                 </Select>
@@ -373,7 +376,11 @@ export function MoneyEntryDialog({
           </Button>
           <Button
             type="submit"
-            disabled={pending || (entryType === "transfer" && transferWalletInvalid)}
+            disabled={
+              pending ||
+              amount <= 0 ||
+              (entryType === "transfer" && transferWalletInvalid)
+            }
           >
             {pending
               ? "Saving..."
@@ -385,6 +392,86 @@ export function MoneyEntryDialog({
       </form>
     </Dialog>
   );
+}
+
+type MoneyAmountInputProps = Omit<
+  ComponentProps<typeof Input>,
+  "type" | "value" | "onChange"
+> & {
+  value?: number | null;
+  onValueChange: (value: number | null) => void;
+};
+
+function MoneyAmountInput({
+  className,
+  value,
+  onValueChange,
+  ...props
+}: MoneyAmountInputProps) {
+  const [expression, setExpression] = useState(
+    value && value > 0 ? value.toLocaleString("id-ID") : "",
+  );
+  const calculatedAmount = evaluateMoneyExpression(expression);
+  const hasInput = expression.trim().length > 0;
+  const isInvalid =
+    hasInput && (calculatedAmount === null || calculatedAmount <= 0);
+  const hasOperator = /[+\-*/()]/.test(expression);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="relative">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
+          Rp
+        </span>
+        <Input
+          {...props}
+          type="text"
+          inputMode="text"
+          className={`pl-10 ${className ?? ""}`}
+          value={expression}
+          onChange={(event) => {
+            const inputElement = event.currentTarget;
+            const rawExpression = inputElement.value;
+            const rawCaretPosition = inputElement.selectionStart ?? rawExpression.length;
+            const nextExpression = formatMoneyExpression(rawExpression);
+            const nextCaretPosition = formatMoneyExpression(
+              rawExpression.slice(0, rawCaretPosition),
+            ).length;
+            setExpression(nextExpression);
+            const nextAmount = evaluateMoneyExpression(nextExpression);
+            onValueChange(
+              nextAmount !== null && nextAmount > 0 ? nextAmount : 0,
+            );
+            requestAnimationFrame(() => {
+              if (document.activeElement !== inputElement) return;
+              inputElement.setSelectionRange(
+                nextCaretPosition,
+                nextCaretPosition,
+              );
+            });
+          }}
+          aria-invalid={isInvalid}
+          placeholder="0 atau 10.000 + 5.000"
+        />
+      </div>
+      <p
+        className={`text-xs font-normal ${isInvalid ? "text-red-600" : "text-zinc-500"}`}
+      >
+        {isInvalid
+          ? "Masukkan angka dan operator +, -, ×, atau ÷ yang valid."
+          : hasOperator && calculatedAmount !== null
+            ? `Hasil: ${formatCurrency(calculatedAmount)}`
+            : "Bisa hitung dengan +, -, ×, ÷, dan tanda kurung."}
+      </p>
+    </div>
+  );
+}
+
+function formatWalletOption(
+  wallet: MoneyWallet,
+  walletBalances: Map<string, number>,
+) {
+  return `${wallet.name} — Sisa saldo ${formatCurrency(walletBalances.get(wallet.id) ?? 0)}`;
 }
 
 export function WalletManagerDialog({

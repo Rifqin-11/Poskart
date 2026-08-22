@@ -235,6 +235,24 @@ export function MoneyDashboard({
     );
     return { income, expense, balance };
   }, [scopedEntries, walletFilter]);
+  const walletBalances = useMemo(() => {
+    const balances = new Map<string, number>();
+
+    for (const entry of entries) {
+      const amount =
+        entry.entryType === "income" ? getNetAmount(entry) : -entry.amount;
+      balances.set(
+        entry.walletType,
+        (balances.get(entry.walletType) ?? 0) + amount,
+      );
+    }
+
+    return balances;
+  }, [entries]);
+  const totalWalletBalance = useMemo(
+    () => Array.from(walletBalances.values()).reduce((total, value) => total + value, 0),
+    [walletBalances],
+  );
   const activePage = Math.min(
     page,
     Math.max(1, Math.ceil(filteredEntries.length / pageSize)),
@@ -539,6 +557,7 @@ export function MoneyDashboard({
           customCategories={customCategories}
           tags={tags}
           wallets={wallets}
+          walletBalances={walletBalances}
           pending={pending}
           onClose={() => setEditorOpen(false)}
           onSubmit={(values) => {
@@ -823,6 +842,7 @@ export function MoneyDashboard({
                 <WalletFilterButton
                   active={walletFilter === "all"}
                   label="Semua"
+                  balance={totalWalletBalance}
                   icon={WalletCards}
                   onClick={() => setWalletFilter("all")}
                 />
@@ -839,6 +859,7 @@ export function MoneyDashboard({
                       key={wallet.id}
                       active={walletFilter === wallet.id}
                       label={wallet.name}
+                      balance={walletBalances.get(wallet.id) ?? 0}
                       icon={Icon}
                       onClick={() => setWalletFilter(wallet.id)}
                     />
@@ -876,6 +897,10 @@ export function MoneyDashboard({
               </>
             ) : null}
             .
+          </div>
+          <div className="text-xs text-zinc-400">
+            Saldo tersedia dihitung dari seluruh transaksi pada masing-masing
+            wallet.
           </div>
         </CardContent>
       </Card>
@@ -1296,11 +1321,13 @@ export function MoneyDashboard({
 function WalletFilterButton({
   active,
   label,
+  balance,
   icon: Icon,
   onClick,
 }: {
   active: boolean;
   label: string;
+  balance: number;
   icon: typeof WalletCards;
   onClick: () => void;
 }) {
@@ -1309,8 +1336,9 @@ function WalletFilterButton({
       type="button"
       variant="ghost"
       aria-pressed={active}
+      aria-label={`${label}, saldo tersedia ${formatCurrency(balance)}`}
       className={cn(
-        "min-w-[150px] flex-1 shrink-0 snap-center rounded-full px-3",
+        "min-w-[150px] flex-1 shrink-0 snap-center rounded-full px-3 text-left",
         active
           ? "bg-white text-zinc-950 shadow-sm hover:bg-white"
           : "text-zinc-500",
@@ -1318,7 +1346,17 @@ function WalletFilterButton({
       onClick={onClick}
     >
       <Icon className="size-4" />
-      {label}
+      <span className="flex min-w-0 flex-col items-start leading-tight">
+        <span className="max-w-40 truncate">{label}</span>
+        <span
+          className={cn(
+            "text-[11px] font-semibold",
+            active ? "text-zinc-600" : "text-zinc-400",
+          )}
+        >
+          {formatCurrency(balance)}
+        </span>
+      </span>
     </Button>
   );
 }

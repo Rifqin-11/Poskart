@@ -92,6 +92,98 @@ export function getNetAmount(entry: MoneyEntry) {
   return entry.amount - feeAmount;
 }
 
+/**
+ * Evaluates whole-rupiah arithmetic without using eval or the Function
+ * constructor. Thousand separators (dots or commas) are accepted in numbers.
+ */
+export function evaluateMoneyExpression(expression: string) {
+  const input = expression
+    .replace(/\s+/g, "")
+    .replace(/[×xX]/g, "*")
+    .replace(/÷/g, "/");
+  if (!input) return null;
+
+  let position = 0;
+
+  const parsePrimary = (): number => {
+    if (input[position] === "(") {
+      position += 1;
+      const value = parseExpression();
+      if (input[position] !== ")") throw new Error("Missing closing parenthesis");
+      position += 1;
+      return value;
+    }
+
+    const start = position;
+    while (/[\d.,]/.test(input[position] ?? "")) position += 1;
+    const literal = input.slice(start, position);
+    const digits = literal.replace(/[.,]/g, "");
+    if (!digits || !/^\d+$/.test(digits)) {
+      throw new Error("Invalid amount");
+    }
+
+    const value = Number(digits);
+    if (!Number.isSafeInteger(value)) throw new Error("Amount is too large");
+    return value;
+  };
+
+  const parseUnary = (): number => {
+    if (input[position] === "+") {
+      position += 1;
+      return parseUnary();
+    }
+    if (input[position] === "-") {
+      position += 1;
+      return -parseUnary();
+    }
+    return parsePrimary();
+  };
+
+  const parseTerm = (): number => {
+    let value = parseUnary();
+    while (input[position] === "*" || input[position] === "/") {
+      const operator = input[position];
+      position += 1;
+      const nextValue = parseUnary();
+      if (operator === "/" && nextValue === 0) {
+        throw new Error("Cannot divide by zero");
+      }
+      value = operator === "*" ? value * nextValue : value / nextValue;
+      if (!Number.isFinite(value)) throw new Error("Invalid result");
+    }
+    return value;
+  };
+
+  const parseExpression = (): number => {
+    let value = parseTerm();
+    while (input[position] === "+" || input[position] === "-") {
+      const operator = input[position];
+      position += 1;
+      const nextValue = parseTerm();
+      value = operator === "+" ? value + nextValue : value - nextValue;
+      if (!Number.isFinite(value)) throw new Error("Invalid result");
+    }
+    return value;
+  };
+
+  try {
+    const value = parseExpression();
+    if (position !== input.length || !Number.isFinite(value)) return null;
+    const roundedValue = Math.round(value);
+    return Number.isSafeInteger(roundedValue) ? roundedValue : null;
+  } catch {
+    return null;
+  }
+}
+
+export function formatMoneyExpression(expression: string) {
+  return expression.replace(/[\d.,]+/g, (literal) => {
+    const digits = literal.replace(/[.,]/g, "");
+    if (!digits) return literal;
+    return Number(digits).toLocaleString("id-ID");
+  });
+}
+
 export function isTransferEntry(entry: Pick<MoneyEntry, "category">) {
   return entry.category === "transfer";
 }
