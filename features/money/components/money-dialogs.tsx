@@ -75,7 +75,13 @@ export function MoneyEntryDialog({
     entry?.category ?? "opening_balance",
   );
   const [amount, setAmount] = useState(entry?.amount ?? 0);
-  const [feePercentage, setFeePercentage] = useState(entry?.feePercentage ?? 0);
+  const [feePercentageInput, setFeePercentageInput] = useState(
+    entry?.feePercentage ? String(entry.feePercentage) : "",
+  );
+  const feePercentage =
+    feePercentageInput === "" || feePercentageInput === "."
+      ? 0
+      : Number(feePercentageInput);
   const [title, setTitle] = useState(entry?.title ?? "");
   const [notes, setNotes] = useState(entry?.notes ?? "");
   const [selectedTagIds, setSelectedTagIds] = useState(
@@ -291,14 +297,15 @@ export function MoneyEntryDialog({
             QRIS fee (optional)
             <div className="relative">
               <Input
-                type="number"
-                min={0}
-                max={100}
-                step="0.01"
-                value={feePercentage || ""}
-                onChange={(event) =>
-                  setFeePercentage(Number(event.target.value))
-                }
+                type="text"
+                inputMode="decimal"
+                value={feePercentageInput}
+                onChange={(event) => {
+                  const nextValue = event.target.value.replace(",", ".");
+                  if (/^\d*(\.\d*)?$/.test(nextValue)) {
+                    setFeePercentageInput(nextValue);
+                  }
+                }}
                 placeholder="0"
                 className="pr-10"
               />

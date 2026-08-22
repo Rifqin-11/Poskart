@@ -157,7 +157,7 @@ export async function exportSignedTransactionReport(
 }
 
 export type CreateAdminQrisTransactionInput = {
-  customerName: string;
+  productName: string;
   amount: number;
   description?: string;
   paymentMethod: "Cash" | "QRIS";
@@ -181,13 +181,13 @@ export async function createAdminQrisTransaction(
     "admin",
     "akuntan",
   ]);
-  const customerName = input.customerName.trim();
+  const productName = input.productName.trim();
   const amount = Math.round(Number(input.amount));
-  const description = input.description?.trim() || "Pembayaran QRIS manual";
+  const description = input.description?.trim() || productName;
   const paymentMethod = input.paymentMethod === "Cash" ? "Cash" : "QRIS";
 
-  if (customerName.length < 1 || customerName.length > 100) {
-    throw new Error("Nama pelanggan wajib diisi (maksimal 100 karakter).");
+  if (productName.length < 1 || productName.length > 100) {
+    throw new Error("Nama produk wajib diisi (maksimal 100 karakter).");
   }
   if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100_000_000) {
     throw new Error("Nominal harus antara Rp1 dan Rp100.000.000.");
@@ -213,8 +213,8 @@ export async function createAdminQrisTransaction(
       organization_id: organizationId,
       booth: "Web Admin",
       location: "Transaction Monitoring",
-      customer: customerName,
-      package_name: description,
+      customer: productName,
+      package_name: productName,
       amount,
       status: "paid",
       provider: "Cash",
@@ -255,7 +255,7 @@ export async function createAdminQrisTransaction(
       merchantOrderId,
       amount,
       productDetails: description,
-      customerName,
+      customerName: productName,
       email: user.email ?? "admin@poskart.my.id",
       callbackUrl: `${siteUrl}/api/payments/duitku/callback`,
       returnUrl: `${siteUrl}/transactions`,
@@ -268,8 +268,8 @@ export async function createAdminQrisTransaction(
     organization_id: organizationId,
     booth: "Web Admin",
     location: "Transaction Monitoring",
-    customer: customerName,
-    package_name: description,
+    customer: productName,
+    package_name: productName,
     amount,
     status: "pending",
     provider: "QRIS",

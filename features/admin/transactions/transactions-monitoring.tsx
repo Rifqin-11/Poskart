@@ -446,7 +446,7 @@ export function TransactionsMonitoring({
   const exportButtonRef = useRef<HTMLButtonElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [createTransactionOpen, setCreateTransactionOpen] = useState(false);
-  const [customerName, setCustomerName] = useState("");
+  const [productName, setProductName] = useState("");
   const [transactionAmount, setTransactionAmount] = useState<number | null>(
     null,
   );
@@ -511,7 +511,7 @@ export function TransactionsMonitoring({
     setCreateTransactionOpen(open);
     if (!open) {
       setCreatedPayment(null);
-      setCustomerName("");
+      setProductName("");
       setTransactionAmount(null);
       setTransactionDescription("");
       setCreatePaymentMethod("QRIS");
@@ -529,7 +529,7 @@ export function TransactionsMonitoring({
     }
     try {
       const payment = await createAdminQrisTransaction.mutateAsync({
-        customerName,
+        productName,
         amount: transactionAmount,
         description: transactionDescription,
         paymentMethod: createPaymentMethod,
@@ -942,7 +942,7 @@ export function TransactionsMonitoring({
               <QRCode value={createdPayment.qrString ?? ""} size={228} />
             </div>
             <div className="rounded-xl bg-zinc-50 p-3 text-left text-xs text-zinc-600">
-              <div className="font-medium text-zinc-900">{customerName}</div>
+              <div className="font-medium text-zinc-900">{productName}</div>
               <div className="mt-1 break-all">
                 Order: {createdPayment.merchantOrderId}
               </div>
@@ -977,17 +977,17 @@ export function TransactionsMonitoring({
             <div className="space-y-1.5">
               <label
                 className="text-sm font-medium"
-                htmlFor="qris-customer-name"
+                htmlFor="qris-product-name"
               >
                 Nama Produk
               </label>
               <Input
-                id="qris-customer-name"
-                value={customerName}
+                id="qris-product-name"
+                value={productName}
                 maxLength={100}
                 required
-                onChange={(event) => setCustomerName(event.target.value)}
-                placeholder="Contoh: Budi Santoso"
+                onChange={(event) => setProductName(event.target.value)}
+                placeholder="Contoh: Paket Premium"
               />
             </div>
             <div className="space-y-1.5">
