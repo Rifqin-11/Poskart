@@ -53,6 +53,8 @@ const EMPTY_PRICING: PricingProductInput = {
   photoSlotPromoPrice: undefined,
   photoSlotPrices: [{ slotCount: 1, price: 0, promoPrice: undefined }],
   printLimit: 1,
+  extraPrintEnabled: false,
+  extraPrintPrice: 0,
   qrisDownload: true,
   livePhotoEnabled: false,
   gifEnabled: false,
@@ -69,7 +71,9 @@ const EMPTY_EVENT: PricingProductInput = {
   accessMode: "event",
 };
 
-function getPricingTourSteps(t: (key: DictionaryKey) => string): FeatureTourStep[] {
+function getPricingTourSteps(
+  t: (key: DictionaryKey) => string,
+): FeatureTourStep[] {
   return [
     {
       selectors: ['[data-pricing-tour="packages"]'],
@@ -322,7 +326,9 @@ function PricingTableCard({
           <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow>
-                <TableHead>{eventMode ? t("pricing.colEvent") : t("pricing.colProduct")}</TableHead>
+                <TableHead>
+                  {eventMode ? t("pricing.colEvent") : t("pricing.colProduct")}
+                </TableHead>
                 {eventMode ? (
                   <TableHead>{t("pricing.colExpiry")}</TableHead>
                 ) : (
@@ -333,12 +339,17 @@ function PricingTableCard({
                   </>
                 )}
                 <TableHead>{t("pricing.colPrintLimit")}</TableHead>
+                {!eventMode ? <TableHead>Extra print</TableHead> : null}
                 {eventMode ? <TableHead>PIN cetak ulang</TableHead> : null}
-                {!eventMode ? <TableHead>{t("pricing.colQrDownload")}</TableHead> : null}
+                {!eventMode ? (
+                  <TableHead>{t("pricing.colQrDownload")}</TableHead>
+                ) : null}
                 <TableHead>{t("pricing.colLivePhoto")}</TableHead>
                 <TableHead>{t("pricing.colGif")}</TableHead>
                 <TableHead>{t("pricing.colActive")}</TableHead>
-                <TableHead className="text-right">{t("pricing.colActions")}</TableHead>
+                <TableHead className="text-right">
+                  {t("pricing.colActions")}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -378,6 +389,13 @@ function PricingTableCard({
                     </>
                   )}
                   <TableCell>{product.printLimit}</TableCell>
+                  {!eventMode ? (
+                    <TableCell>
+                      {product.extraPrintEnabled
+                        ? `${formatCurrency(product.extraPrintPrice)} / print`
+                        : "-"}
+                    </TableCell>
+                  ) : null}
                   {eventMode ? (
                     <TableCell>
                       <Switch

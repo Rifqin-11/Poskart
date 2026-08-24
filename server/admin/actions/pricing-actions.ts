@@ -29,7 +29,7 @@ export async function getPricingProducts(): Promise<PricingProduct[]> {
   const { data, error } = await supabase
     .from("pricing_products")
     .select(
-      "id,name,price,promo_price,pricing_mode,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,requires_reprint_password,event_name,event_expires_at",
+      "id,name,price,promo_price,pricing_mode,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,extra_print_enabled,extra_print_price,qris_download,live_photo_enabled,gif_enabled,active,access_mode,requires_reprint_password,event_name,event_expires_at",
     )
     .eq("organization_id", organizationId)
     .order("price", { ascending: true });
@@ -63,7 +63,9 @@ export async function createPricingProduct(
     promo_price: accessMode === "event" ? null : (values.promoPrice ?? null),
     pricing_mode: pricingMode,
     photo_slot_price:
-      accessMode === "paid" ? normalizeOptionalMoney(values.photoSlotPrice) : null,
+      accessMode === "paid"
+        ? normalizeOptionalMoney(values.photoSlotPrice)
+        : null,
     photo_slot_promo_price:
       accessMode === "paid"
         ? normalizeOptionalMoney(values.photoSlotPromoPrice)
@@ -73,6 +75,11 @@ export async function createPricingProduct(
         ? normalizePhotoSlotPriceTiers(values.photoSlotPrices)
         : [],
     print_limit: values.printLimit,
+    extra_print_enabled: accessMode === "paid" && values.extraPrintEnabled,
+    extra_print_price:
+      accessMode === "paid" && values.extraPrintEnabled
+        ? Math.round(values.extraPrintPrice)
+        : 0,
     qris_download: accessMode === "paid" && values.qrisDownload,
     live_photo_enabled: values.livePhotoEnabled,
     gif_enabled: values.gifEnabled,
@@ -105,7 +112,8 @@ export async function updatePricingProduct(
     .maybeSingle();
   if (currentError)
     throw new Error(`Unable to read pricing product: ${currentError.message}`);
-  if (!current) throw new Error("Pricing product not found in this organization.");
+  if (!current)
+    throw new Error("Pricing product not found in this organization.");
   const accessMode =
     patch.accessMode === "event" || patch.accessMode === "paid"
       ? patch.accessMode
@@ -138,7 +146,9 @@ export async function updatePricingProduct(
   }
   if (patch.photoSlotPrice !== undefined) {
     dbPatch.photo_slot_price =
-      accessMode === "event" ? null : normalizeOptionalMoney(patch.photoSlotPrice);
+      accessMode === "event"
+        ? null
+        : normalizeOptionalMoney(patch.photoSlotPrice);
   }
   if (patch.photoSlotPromoPrice !== undefined) {
     dbPatch.photo_slot_promo_price =
@@ -153,6 +163,16 @@ export async function updatePricingProduct(
         : [];
   }
   if (patch.printLimit !== undefined) dbPatch.print_limit = patch.printLimit;
+  if (patch.extraPrintEnabled !== undefined) {
+    dbPatch.extra_print_enabled =
+      accessMode === "paid" && patch.extraPrintEnabled;
+  }
+  if (patch.extraPrintPrice !== undefined) {
+    dbPatch.extra_print_price =
+      accessMode === "paid" && effectiveValues.extraPrintEnabled
+        ? Math.round(patch.extraPrintPrice)
+        : 0;
+  }
   if (patch.qrisDownload !== undefined)
     dbPatch.qris_download = accessMode === "event" ? false : patch.qrisDownload;
   if (patch.livePhotoEnabled !== undefined) {
@@ -174,8 +194,9 @@ export async function updatePricingProduct(
       dbPatch.photo_slot_price = null;
       dbPatch.photo_slot_promo_price = null;
       dbPatch.photo_slot_prices = [];
-      dbPatch.requires_reprint_password =
-        patch.requiresReprintPassword ?? true;
+      dbPatch.extra_print_enabled = false;
+      dbPatch.extra_print_price = 0;
+      dbPatch.requires_reprint_password = patch.requiresReprintPassword ?? true;
       dbPatch.event_name = patch.eventName?.trim() || null;
       dbPatch.event_expires_at = normalizeEventExpiry(patch.eventExpiresAt);
     } else {
@@ -225,10 +246,29 @@ function assertPricingValues(
     | "photoSlotPrice"
     | "photoSlotPromoPrice"
     | "photoSlotPrices"
+    | "printLimit"
+    | "extraPrintEnabled"
+    | "extraPrintPrice"
   >,
   accessMode: PricingProductInput["accessMode"],
   pricingMode: PricingProductInput["pricingMode"],
 ) {
+  const printLimit = Math.round(Number(values.printLimit));
+  if (!Number.isFinite(printLimit) || printLimit < 1 || printLimit > 20) {
+    throw new Error("Print limit harus antara 1 sampai 20.");
+  }
+  if (accessMode === "paid" && values.extraPrintEnabled) {
+    const extraPrintPrice = Math.round(Number(values.extraPrintPrice));
+    if (
+      printLimit >= 20 ||
+      !Number.isFinite(extraPrintPrice) ||
+      extraPrintPrice <= 0
+    ) {
+      throw new Error(
+        "Extra print memerlukan harga lebih dari 0 dan print limit di bawah 20.",
+      );
+    }
+  }
   if (accessMode !== "paid") return;
 
   const tiers = normalizePhotoSlotPriceTiers(values.photoSlotPrices);
@@ -245,8 +285,7 @@ function assertPricingValues(
         );
       }
     } else {
-      const legacyAmount =
-        values.photoSlotPromoPrice ?? values.photoSlotPrice;
+      const legacyAmount = values.photoSlotPromoPrice ?? values.photoSlotPrice;
       if (!Number.isFinite(Number(legacyAmount)) || Number(legacyAmount) <= 0) {
         throw new Error("Tambahkan minimal harga untuk 1 photo slot.");
       }
@@ -256,9 +295,7 @@ function assertPricingValues(
     pricingMode !== "per_photo_slot" &&
     (!Number.isFinite(Number(amount)) || Number(amount) <= 0)
   ) {
-    throw new Error(
-      "Harga sesi harus lebih dari 0.",
-    );
+    throw new Error("Harga sesi harus lebih dari 0.");
   }
 }
 
@@ -270,7 +307,9 @@ async function loadEffectivePricingValues(
 ) {
   const { data, error } = await supabase
     .from("pricing_products")
-    .select("price,promo_price,photo_slot_price,photo_slot_promo_price,photo_slot_prices")
+    .select(
+      "price,promo_price,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,extra_print_enabled,extra_print_price",
+    )
     .eq("id", id)
     .eq("organization_id", organizationId)
     .single();
@@ -281,19 +320,24 @@ async function loadEffectivePricingValues(
     promoPrice:
       patch.promoPrice !== undefined
         ? patch.promoPrice
-        : data.promo_price ?? undefined,
+        : (data.promo_price ?? undefined),
     photoSlotPrice:
       patch.photoSlotPrice !== undefined
         ? patch.photoSlotPrice
-        : data.photo_slot_price ?? undefined,
+        : (data.photo_slot_price ?? undefined),
     photoSlotPromoPrice:
       patch.photoSlotPromoPrice !== undefined
         ? patch.photoSlotPromoPrice
-        : data.photo_slot_promo_price ?? undefined,
+        : (data.photo_slot_promo_price ?? undefined),
     photoSlotPrices:
       patch.photoSlotPrices !== undefined
         ? patch.photoSlotPrices
         : normalizePhotoSlotPriceTiers(data.photo_slot_prices),
+    printLimit: patch.printLimit ?? Number(data.print_limit),
+    extraPrintEnabled:
+      patch.extraPrintEnabled ?? Boolean(data.extra_print_enabled),
+    extraPrintPrice:
+      patch.extraPrintPrice ?? Number(data.extra_print_price ?? 0),
   };
 }
 

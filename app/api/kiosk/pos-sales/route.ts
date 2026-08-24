@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       device,
       body.packageCode,
       body.templateId,
+      body.printCount,
     );
     if (product.accessMode === "event") {
       return jsonOk(

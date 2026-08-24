@@ -21,6 +21,8 @@ type PricingProductRow = {
   photo_slot_promo_price: number | null;
   photo_slot_prices: unknown;
   print_limit: number | null;
+  extra_print_enabled: boolean | null;
+  extra_print_price: number | null;
   active: boolean;
   access_mode: "paid" | "event" | null;
   requires_reprint_password: boolean | null;
@@ -37,6 +39,10 @@ export type ResolvedKioskPricingProduct = {
   photoSlotPromoPrice: number | null;
   photoSlotPrices: ReturnType<typeof normalizePhotoSlotPriceTiers>;
   printCount: number;
+  includedPrintCount: number;
+  extraPrintEnabled: boolean;
+  extraPrintPrice: number;
+  extraPrintCount: number;
   accessMode: "paid" | "event";
   requiresReprintPassword: boolean;
   eventName: string | null;
@@ -127,12 +133,12 @@ export async function resolveKioskPricingProduct(
     0,
     Math.round(
       pricingMode === "per_photo_slot"
-        ? photoSlotPrices[0]?.promoPrice ??
-          photoSlotPrices[0]?.price ??
-          product.photo_slot_promo_price ??
-          product.photo_slot_price ??
-          0
-        : product.promo_price ?? product.price ?? 0,
+        ? (photoSlotPrices[0]?.promoPrice ??
+            photoSlotPrices[0]?.price ??
+            product.photo_slot_promo_price ??
+            product.photo_slot_price ??
+            0)
+        : (product.promo_price ?? product.price ?? 0),
     ),
   );
   if (accessMode === "paid" && amount <= 0) {
@@ -143,6 +149,15 @@ export async function resolveKioskPricingProduct(
     );
   }
 
+  const includedPrintCount = Math.min(
+    20,
+    Math.max(1, Math.round(product.print_limit ?? 1)),
+  );
+  const extraPrintPrice = Math.max(
+    0,
+    Math.round(product.extra_print_price ?? 0),
+  );
+
   return {
     id: product.id,
     name: product.name,
@@ -151,7 +166,15 @@ export async function resolveKioskPricingProduct(
     photoSlotPrice: product.photo_slot_price,
     photoSlotPromoPrice: product.photo_slot_promo_price,
     photoSlotPrices,
-    printCount: Math.max(1, Math.round(product.print_limit ?? 1)),
+    printCount: includedPrintCount,
+    includedPrintCount,
+    extraPrintEnabled:
+      accessMode === "paid" &&
+      includedPrintCount < 20 &&
+      Boolean(product.extra_print_enabled) &&
+      extraPrintPrice > 0,
+    extraPrintPrice,
+    extraPrintCount: 0,
     accessMode,
     requiresReprintPassword: product.requires_reprint_password ?? true,
     eventName: product.event_name,
@@ -171,6 +194,7 @@ export async function resolveKioskPricingQuote(
   device: KioskDeviceRow,
   packageCode: string,
   templateId?: string | null,
+  selectedPrintCount?: number | null,
 ): Promise<ResolvedKioskPricingQuote> {
   const product = await resolveKioskPricingProduct(
     context,
@@ -183,10 +207,14 @@ export async function resolveKioskPricingQuote(
     templateId?.trim() || null,
     product.pricingMode === "per_photo_slot",
   );
+  const printCount = resolveSelectedPrintCount(product, selectedPrintCount);
+  const extraPrintCount = printCount - product.includedPrintCount;
 
   if (product.accessMode === "event") {
     return {
       ...product,
+      printCount,
+      extraPrintCount,
       amount: 0,
       unitAmount: 0,
       photoSlotCount: template?.photoCount ?? null,
@@ -197,6 +225,10 @@ export async function resolveKioskPricingQuote(
         photoSlotCount: template?.photoCount ?? null,
         finalAmount: 0,
         templateId: template?.id ?? null,
+        includedPrintCount: product.includedPrintCount,
+        selectedPrintCount: printCount,
+        extraPrintCount,
+        extraPrintUnitPrice: 0,
       },
     };
   }
@@ -214,9 +246,12 @@ export async function resolveKioskPricingQuote(
       template?.photoCount,
     );
 
+    const amount = quote.amount + extraPrintCount * product.extraPrintPrice;
     return {
       ...product,
-      amount: quote.amount,
+      amount,
+      printCount,
+      extraPrintCount,
       unitAmount: quote.unitAmount,
       photoSlotCount: quote.photoSlotCount,
       templateId: template?.id ?? null,
@@ -224,8 +259,13 @@ export async function resolveKioskPricingQuote(
         mode: quote.pricingMode,
         unitAmount: quote.unitAmount,
         photoSlotCount: quote.photoSlotCount,
-        finalAmount: quote.amount,
+        baseAmount: quote.amount,
+        finalAmount: amount,
         templateId: template?.id ?? null,
+        includedPrintCount: product.includedPrintCount,
+        selectedPrintCount: printCount,
+        extraPrintCount,
+        extraPrintUnitPrice: product.extraPrintPrice,
       },
     };
   } catch (error) {
@@ -235,6 +275,35 @@ export async function resolveKioskPricingQuote(
       "KIOSK_PACKAGE_PRICE_INVALID",
     );
   }
+}
+
+function resolveSelectedPrintCount(
+  product: ResolvedKioskPricingProduct,
+  selectedPrintCount: number | null | undefined,
+) {
+  if (selectedPrintCount == null) return product.includedPrintCount;
+  const printCount = Number(selectedPrintCount);
+  if (!Number.isInteger(printCount)) {
+    throw new KioskApiError(
+      "Jumlah print harus berupa angka bulat.",
+      400,
+      "KIOSK_PRINT_COUNT_INVALID",
+    );
+  }
+  if (
+    printCount < product.includedPrintCount ||
+    printCount > 20 ||
+    (printCount > product.includedPrintCount && !product.extraPrintEnabled)
+  ) {
+    throw new KioskApiError(
+      `Jumlah print harus antara ${product.includedPrintCount} sampai ${
+        product.extraPrintEnabled ? 20 : product.includedPrintCount
+      }.`,
+      400,
+      "KIOSK_PRINT_COUNT_INVALID",
+    );
+  }
+  return printCount;
 }
 
 async function resolvePricingTemplate(
@@ -286,7 +355,8 @@ async function resolvePricingTemplate(
   const isAssigned =
     assignedIds.length > 0
       ? assignedIds.includes(template.id)
-      : legacyAssignments.length === 0 || legacyAssignments.includes(template.id);
+      : legacyAssignments.length === 0 ||
+        legacyAssignments.includes(template.id);
   if (!isAssigned) {
     throw new KioskApiError(
       "Frame yang dipilih tidak terpasang pada device ini.",
@@ -314,7 +384,7 @@ async function findPricingProduct(
   const { data: byId, error: idError } = await context.client
     .from("pricing_products")
     .select(
-      "id,name,price,promo_price,pricing_mode,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,active,access_mode,requires_reprint_password,event_name,event_expires_at",
+      "id,name,price,promo_price,pricing_mode,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,extra_print_enabled,extra_print_price,active,access_mode,requires_reprint_password,event_name,event_expires_at",
     )
     .eq("id", packageCode)
     .eq("organization_id", context.organizationId)
@@ -325,7 +395,7 @@ async function findPricingProduct(
   const { data: byName, error: nameError } = await context.client
     .from("pricing_products")
     .select(
-      "id,name,price,promo_price,pricing_mode,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,active,access_mode,requires_reprint_password,event_name,event_expires_at",
+      "id,name,price,promo_price,pricing_mode,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,extra_print_enabled,extra_print_price,active,access_mode,requires_reprint_password,event_name,event_expires_at",
     )
     .eq("name", packageCode)
     .eq("organization_id", context.organizationId)

@@ -129,7 +129,7 @@ function buildLayoutPreviewSchema(rawSchema: unknown): LayoutSchema | null {
     pages: Object.fromEntries(
       builderPages.map((page) => [
         page,
-        page === "landing" ? schema.pages.landing ?? [] : [],
+        page === "landing" ? (schema.pages.landing ?? []) : [],
       ]),
     ) as LayoutSchema["pages"],
   };
@@ -419,11 +419,16 @@ export async function requireActiveKioskSubscription(
 
   const sessionId = options.allowPaidSessionId?.trim() ?? "";
   const device = options.device;
-  if (sessionId && device && (await isRecentPaidDeviceSession(context, device, sessionId))) {
+  if (
+    sessionId &&
+    device &&
+    (await isRecentPaidDeviceSession(context, device, sessionId))
+  ) {
     return;
   }
 
-  const pendingPaymentSessionId = options.allowPendingPaymentSessionId?.trim() ?? "";
+  const pendingPaymentSessionId =
+    options.allowPendingPaymentSessionId?.trim() ?? "";
   if (
     pendingPaymentSessionId &&
     device &&
@@ -463,7 +468,10 @@ async function isRecentPaidDeviceSession(
   if (!data || (data.status !== "paid" && !data.paid_at)) return false;
   const completedAt = Date.parse(data.paid_at ?? data.created_at);
   const maximumSessionAgeMs = 2 * 60 * 60 * 1000;
-  return Number.isFinite(completedAt) && Date.now() - completedAt <= maximumSessionAgeMs;
+  return (
+    Number.isFinite(completedAt) &&
+    Date.now() - completedAt <= maximumSessionAgeMs
+  );
 }
 
 async function isRecentDuitkuPayment(
@@ -497,7 +505,9 @@ async function isRecentDuitkuPayment(
   }
   const createdAt = Date.parse(data.created_at);
   const maximumPaymentAgeMs = 15 * 60 * 1000;
-  return Number.isFinite(createdAt) && Date.now() - createdAt <= maximumPaymentAgeMs;
+  return (
+    Number.isFinite(createdAt) && Date.now() - createdAt <= maximumPaymentAgeMs
+  );
 }
 
 export async function listOrganizationDevices(context: KioskRequestContext) {
@@ -724,7 +734,7 @@ export async function buildKioskBootstrap(
     context.client
       .from("pricing_products")
       .select(
-        "id,name,price,promo_price,pricing_mode,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,qris_download,live_photo_enabled,gif_enabled,active,access_mode,requires_reprint_password,event_name,event_expires_at",
+        "id,name,price,promo_price,pricing_mode,photo_slot_price,photo_slot_promo_price,photo_slot_prices,print_limit,extra_print_enabled,extra_print_price,qris_download,live_photo_enabled,gif_enabled,active,access_mode,requires_reprint_password,event_name,event_expires_at",
       )
       .eq("organization_id", context.organizationId)
       .eq("active", true)

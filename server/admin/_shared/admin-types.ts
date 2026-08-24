@@ -307,6 +307,8 @@ export type PricingProductRow = Omit<
   PricingProduct,
   | "promoPrice"
   | "printLimit"
+  | "extraPrintEnabled"
+  | "extraPrintPrice"
   | "qrisDownload"
   | "livePhotoEnabled"
   | "gifEnabled"
@@ -321,6 +323,8 @@ export type PricingProductRow = Omit<
 > & {
   promo_price: number | null;
   print_limit: number;
+  extra_print_enabled: boolean | null;
+  extra_print_price: number | null;
   qris_download: boolean;
   live_photo_enabled: boolean | null;
   gif_enabled: boolean;
@@ -659,7 +663,9 @@ export const mapBooth = (row: BoothRow): Device => ({
       ? null
       : Number(row.paper_outer_diameter_mm),
   paperCoreDiameterMm:
-    row.paper_core_diameter_mm == null ? null : Number(row.paper_core_diameter_mm),
+    row.paper_core_diameter_mm == null
+      ? null
+      : Number(row.paper_core_diameter_mm),
   voucherRequestedAt: row.voucher_requested_at ?? null,
   voucherCommand: row.voucher_command ?? null,
   voucherCommandUpdatedAt: row.voucher_command_updated_at ?? null,
@@ -697,6 +703,8 @@ export const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({
   photoSlotPromoPrice: row.photo_slot_promo_price ?? undefined,
   photoSlotPrices: normalizePhotoSlotPrices(row.photo_slot_prices),
   printLimit: row.print_limit,
+  extraPrintEnabled: row.extra_print_enabled ?? false,
+  extraPrintPrice: Math.max(0, Number(row.extra_print_price ?? 0)),
   qrisDownload: row.qris_download,
   livePhotoEnabled: row.live_photo_enabled ?? row.gif_enabled,
   gifEnabled: row.live_photo_enabled == null ? false : row.gif_enabled,
@@ -707,7 +715,9 @@ export const mapPricingProduct = (row: PricingProductRow): PricingProduct => ({
   eventExpiresAt: row.event_expires_at ?? undefined,
 });
 
-function normalizePhotoSlotPrices(value: unknown): PricingProduct["photoSlotPrices"] {
+function normalizePhotoSlotPrices(
+  value: unknown,
+): PricingProduct["photoSlotPrices"] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
@@ -715,7 +725,8 @@ function normalizePhotoSlotPrices(value: unknown): PricingProduct["photoSlotPric
     const slotCount = Math.round(Number(source.slotCount ?? source.slot_count));
     const price = Math.round(Number(source.price));
     const promoValue = source.promoPrice ?? source.promo_price;
-    const promoPrice = promoValue == null ? undefined : Math.round(Number(promoValue));
+    const promoPrice =
+      promoValue == null ? undefined : Math.round(Number(promoValue));
     if (
       !Number.isFinite(slotCount) ||
       slotCount < 1 ||
@@ -725,11 +736,13 @@ function normalizePhotoSlotPrices(value: unknown): PricingProduct["photoSlotPric
     ) {
       return [];
     }
-    return [{
-      slotCount,
-      price,
-      promoPrice: Number.isFinite(promoPrice) ? promoPrice : undefined,
-    }];
+    return [
+      {
+        slotCount,
+        price,
+        promoPrice: Number.isFinite(promoPrice) ? promoPrice : undefined,
+      },
+    ];
   });
 }
 

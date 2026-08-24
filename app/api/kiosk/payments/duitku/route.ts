@@ -25,6 +25,7 @@ type CreatePaymentBody = {
   packageName?: string;
   amount?: number;
   printCount?: number;
+  selectedPrintCount?: number;
   templateId?: string | null;
   customerName?: string | null;
 };
@@ -54,6 +55,7 @@ type TransactionRow = {
   package_name: string | null;
   duitku_status_code: string | null;
   gateway_response: Record<string, unknown> | null;
+  ordered_print_count: number | null;
 };
 
 export async function POST(request: Request) {
@@ -83,6 +85,7 @@ export async function POST(request: Request) {
       device,
       packageCode,
       body.templateId,
+      body.selectedPrintCount ?? body.printCount,
     );
     if (product.accessMode === "event") {
       return jsonOk(
@@ -95,6 +98,20 @@ export async function POST(request: Request) {
     }
 
     const existing = await loadTransaction(context, sessionId);
+    if (
+      existing &&
+      ((existing.ordered_print_count != null &&
+        existing.ordered_print_count !== product.printCount) ||
+        (existing.ordered_print_count == null && product.extraPrintCount > 0))
+    ) {
+      return jsonOk(
+        {
+          error: "Jumlah print untuk pembayaran ini sudah berbeda.",
+          code: "KIOSK_PRINT_COUNT_MISMATCH",
+        },
+        { status: 409 },
+      );
+    }
     if (existing && isDuitkuTransactionPaid(existing)) {
       return jsonOk({
         status: "paid",
@@ -163,6 +180,7 @@ export async function POST(request: Request) {
       pricing_unit_amount: product.unitAmount,
       photo_slot_count: product.photoSlotCount,
       pricing_snapshot: product.pricingSnapshot,
+      ordered_print_count: product.printCount,
       status: "pending",
       provider: "QRIS",
       collection_mode: collectionMode,
@@ -309,7 +327,7 @@ export async function PATCH(request: Request) {
       .eq("organization_id", context.organizationId)
       .eq("status", "pending")
       .select(
-        "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response",
+        "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response,ordered_print_count",
       )
       .maybeSingle();
 
@@ -319,7 +337,7 @@ export async function PATCH(request: Request) {
     const { data: latest, error: latestError } = await adminClient
       .from("transactions")
       .select(
-        "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response",
+        "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response,ordered_print_count",
       )
       .eq("organization_id", context.organizationId)
       .eq("id", transaction.id)
@@ -367,7 +385,7 @@ async function loadTransaction(
   const { data, error } = await context.client
     .from("transactions")
     .select(
-      "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response",
+      "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response,ordered_print_count",
     )
     .eq("organization_id", context.organizationId)
     .eq("id", sessionId)
@@ -419,7 +437,7 @@ async function refreshTransactionStatus(
     // flight. Only the original pending record may be refreshed.
     .eq("status", "pending")
     .select(
-      "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response",
+      "id,organization_id,status,amount,provider,collection_mode,payment_gateway,merchant_order_id,payment_reference,duitku_qr_string,payment_expires_at,gateway_status_checked_at,paid_at,created_at,booth,package_name,duitku_status_code,gateway_response,ordered_print_count",
     )
     .maybeSingle();
 

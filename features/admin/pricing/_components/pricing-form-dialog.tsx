@@ -242,7 +242,8 @@ export function PricingFormDialog({
               <span>
                 <span className="block font-medium">PIN cetak ulang</span>
                 <span className="mt-0.5 block text-xs text-zinc-500">
-                  Saat aktif, cetak ulang foto event ini meminta PIN Settings kiosk.
+                  Saat aktif, cetak ulang foto event ini meminta PIN Settings
+                  kiosk.
                 </span>
               </span>
             </label>
@@ -256,11 +257,60 @@ export function PricingFormDialog({
             min={1}
             max={20}
             value={form.printLimit}
-            onChange={(e) =>
-              setForm({ ...form, printLimit: Number(e.target.value) })
-            }
+            onChange={(e) => {
+              const printLimit = Number(e.target.value);
+              setForm({
+                ...form,
+                printLimit,
+                extraPrintEnabled:
+                  printLimit >= 20 ? false : form.extraPrintEnabled,
+                extraPrintPrice: printLimit >= 20 ? 0 : form.extraPrintPrice,
+              });
+            }}
           />
         </label>
+        {form.accessMode === "paid" ? (
+          <div className="space-y-3 rounded-xl border border-zinc-200 p-3 md:col-span-2">
+            <label className="flex items-start gap-2 text-sm text-zinc-700">
+              <Switch
+                checked={form.extraPrintEnabled}
+                disabled={form.printLimit >= 20}
+                onCheckedChange={(extraPrintEnabled) =>
+                  setForm({
+                    ...form,
+                    extraPrintEnabled,
+                    extraPrintPrice: extraPrintEnabled
+                      ? form.extraPrintPrice
+                      : 0,
+                  })
+                }
+              />
+              <span>
+                <span className="block font-medium">Aktifkan extra print</span>
+                <span className="mt-0.5 block text-xs text-zinc-500">
+                  Pelanggan dapat menambah jumlah print setelah memilih paket,
+                  hingga total 20 print.
+                </span>
+              </span>
+            </label>
+            {form.extraPrintEnabled ? (
+              <label className="block text-xs font-medium text-zinc-600">
+                Harga per extra print
+                <CurrencyInput
+                  className="mt-1"
+                  min={1}
+                  value={form.extraPrintPrice}
+                  onValueChange={(extraPrintPrice) =>
+                    setForm({ ...form, extraPrintPrice: extraPrintPrice ?? 0 })
+                  }
+                />
+                <span className="mt-1 block text-[11px] font-normal text-zinc-400">
+                  Extra print 0 tidak menambah biaya.
+                </span>
+              </label>
+            ) : null}
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center gap-6 md:col-span-2">
           <label className="flex items-center gap-2 text-sm text-zinc-700">
             <Switch
@@ -322,10 +372,7 @@ export function PricingFormDialog({
       if (slotCount > 12) return current;
       return {
         ...current,
-        photoSlotPrices: [
-          ...current.photoSlotPrices,
-          { slotCount, price: 0 },
-        ],
+        photoSlotPrices: [...current.photoSlotPrices, { slotCount, price: 0 }],
       };
     });
   }
@@ -349,19 +396,14 @@ function toDateTimeLocal(value?: string) {
 
 function initialSlotPrices(form: PricingProductInput) {
   if (form.photoSlotPrices.length > 0) return form.photoSlotPrices;
-  const legacyUnitPrice = Math.max(
-    0,
-    Math.round(form.photoSlotPrice ?? 0),
-  );
+  const legacyUnitPrice = Math.max(0, Math.round(form.photoSlotPrice ?? 0));
   const legacyPromoPrice = form.photoSlotPromoPrice;
   if (form.pricingMode === "per_photo_slot" && legacyUnitPrice > 0) {
     return Array.from({ length: 12 }, (_, index) => ({
       slotCount: index + 1,
       price: legacyUnitPrice * (index + 1),
       promoPrice:
-        legacyPromoPrice == null
-          ? undefined
-          : legacyPromoPrice * (index + 1),
+        legacyPromoPrice == null ? undefined : legacyPromoPrice * (index + 1),
     }));
   }
   return [{ slotCount: 1, price: 0 }];

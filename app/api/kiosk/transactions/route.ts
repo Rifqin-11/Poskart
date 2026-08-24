@@ -24,6 +24,7 @@ type TransactionBody = {
     provider?: "QRIS" | "Cash" | "Voucher" | "Event";
     templateId?: string;
     printCount?: number;
+    selectedPrintCount?: number;
     printStatus?: "pending" | "printed" | "failed" | "reprinting";
     printAttempts?: number;
     printLastError?: string | null;
@@ -31,11 +32,7 @@ type TransactionBody = {
 };
 
 type TransactionStatus =
-  | "paid"
-  | "pending"
-  | "failed"
-  | "refunded"
-  | "cancelled";
+  "paid" | "pending" | "failed" | "refunded" | "cancelled";
 
 type ExistingTransaction = {
   status: TransactionStatus | null;
@@ -50,6 +47,7 @@ type ExistingTransaction = {
   pricing_unit_amount: number | null;
   photo_slot_count: number | null;
   pricing_snapshot: Record<string, unknown> | null;
+  ordered_print_count: number | null;
 };
 
 export async function POST(request: Request) {
@@ -131,6 +129,7 @@ export async function POST(request: Request) {
       device,
       transaction.packageCode?.trim() || transaction.packageName?.trim() || "",
       transaction.templateId,
+      transaction.selectedPrintCount ?? transaction.printCount,
     );
 
     const templateId = product.templateId;
@@ -139,13 +138,28 @@ export async function POST(request: Request) {
       await context.client
         .from("transactions")
         .select(
-          "status,provider,paid_at,duitku_status_code,gateway_response,print_count,amount,template_id,pricing_mode,pricing_unit_amount,photo_slot_count,pricing_snapshot",
+          "status,provider,paid_at,duitku_status_code,gateway_response,print_count,amount,template_id,pricing_mode,pricing_unit_amount,photo_slot_count,pricing_snapshot,ordered_print_count",
         )
         .eq("organization_id", context.organizationId)
         .eq("id", transaction.id)
         .maybeSingle();
 
     if (existingTransactionError) throw existingTransactionError;
+    if (
+      existingTransaction &&
+      ((existingTransaction.ordered_print_count != null &&
+        existingTransaction.ordered_print_count !== product.printCount) ||
+        (existingTransaction.ordered_print_count == null &&
+          product.extraPrintCount > 0))
+    ) {
+      return jsonOk(
+        {
+          error: "Jumlah print transaksi tidak sesuai dengan pembayaran.",
+          code: "KIOSK_PRINT_COUNT_MISMATCH",
+        },
+        { status: 409 },
+      );
+    }
 
     const now = new Date().toISOString();
     const requestedProvider =
@@ -217,8 +231,7 @@ export async function POST(request: Request) {
         customer: transaction.customer?.trim() || "Walk-in",
         package_name: product.name,
         amount: existingTransaction?.amount ?? product.amount,
-        pricing_mode:
-          existingTransaction?.pricing_mode ?? product.pricingMode,
+        pricing_mode: existingTransaction?.pricing_mode ?? product.pricingMode,
         pricing_unit_amount:
           existingTransaction?.pricing_unit_amount ?? product.unitAmount,
         photo_slot_count:
@@ -228,6 +241,8 @@ export async function POST(request: Request) {
           Object.keys(existingTransaction.pricing_snapshot).length > 0
             ? existingTransaction.pricing_snapshot
             : product.pricingSnapshot,
+        ordered_print_count:
+          existingTransaction?.ordered_print_count ?? product.printCount,
         status,
         provider,
         collection_mode: collectionMode,

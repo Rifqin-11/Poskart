@@ -14,6 +14,8 @@ export type PricingProduct = {
   photoSlotPromoPrice?: number;
   photoSlotPrices: PhotoSlotPriceTier[];
   printLimit: number;
+  extraPrintEnabled: boolean;
+  extraPrintPrice: number;
   qrisDownload: boolean;
   livePhotoEnabled: boolean;
   gifEnabled: boolean;
