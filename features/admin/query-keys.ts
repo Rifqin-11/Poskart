@@ -20,6 +20,8 @@ export const adminQueryKeys = {
   superAdminDeviceErrors: ["superadmin-device-errors"] as const,
   superAdminSystemErrors: ["superadmin-system-errors"] as const,
   superAdminNotifications: ["superadmin-notifications"] as const,
+  superAdminFeedback: ["superadmin-feedback"] as const,
+  myFeedback: ["my-feedback"] as const,
   vouchers: ["vouchers"] as const,
   templates: ["templates"] as const,
   frameInsightsRoot: ["frame-insights"] as const,

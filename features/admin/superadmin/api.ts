@@ -22,6 +22,10 @@ import {
   revokeTrialByRequestId,
 } from "@/server/admin/actions/trial-actions";
 import type { TenantInput } from "@/server/admin/_shared/admin-types";
+import {
+  getSuperAdminProductFeedback,
+  reviewProductFeedback,
+} from "@/server/admin/actions/feedback-actions";
 
 export const superadminApi = {
   getOrganizations: organizationService.getOrganizations,
@@ -44,6 +48,8 @@ export const superadminApi = {
   revokeTrialClaim,
   createTrialOverride,
   revokeTrialByRequestId,
+  getSuperAdminProductFeedback,
+  reviewProductFeedback,
 };
 
 export type { TenantInput };

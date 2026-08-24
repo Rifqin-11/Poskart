@@ -121,11 +121,37 @@ export function useSuperAdminSystemErrors() {
   });
 }
 
+export function useSuperAdminFeedback() {
+  return useQuery({
+    queryKey: adminQueryKeys.superAdminFeedback,
+    queryFn: superadminApi.getSuperAdminProductFeedback,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useReviewProductFeedback() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: superadminApi.reviewProductFeedback,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.superAdminFeedback,
+      });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.myFeedback });
+    },
+  });
+}
+
 export function useSetSuperAdminSystemErrorResolved() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ errorId, resolved }: { errorId: string; resolved: boolean }) =>
-      superadminApi.setSystemErrorResolved(errorId, resolved),
+    mutationFn: ({
+      errorId,
+      resolved,
+    }: {
+      errorId: string;
+      resolved: boolean;
+    }) => superadminApi.setSystemErrorResolved(errorId, resolved),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: adminQueryKeys.superAdminSystemErrors,
@@ -175,9 +201,15 @@ export function useReviewTrialRequest() {
   return useMutation({
     mutationFn: superadminApi.reviewTrialRequest,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.trialRequestsRoot });
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.subscriptionStatus });
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.myTrialRequest });
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.trialRequestsRoot,
+      });
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.subscriptionStatus,
+      });
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.myTrialRequest,
+      });
     },
   });
 }
@@ -188,7 +220,9 @@ export function useRevokeTrialClaim() {
     mutationFn: ({ claimId, reason }: { claimId: string; reason: string }) =>
       superadminApi.revokeTrialClaim(claimId, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.trialRequestsRoot });
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.trialRequestsRoot,
+      });
     },
   });
 }
@@ -196,10 +230,17 @@ export function useRevokeTrialClaim() {
 export function useRevokeTrialByRequestId() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ requestId, reason }: { requestId: string; reason: string }) =>
-      superadminApi.revokeTrialByRequestId(requestId, reason),
+    mutationFn: ({
+      requestId,
+      reason,
+    }: {
+      requestId: string;
+      reason: string;
+    }) => superadminApi.revokeTrialByRequestId(requestId, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.trialRequestsRoot });
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.trialRequestsRoot,
+      });
     },
   });
 }

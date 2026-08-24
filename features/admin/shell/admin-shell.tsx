@@ -28,11 +28,11 @@ import {
   UserRound,
   Ticket,
   WalletCards,
+  MessageSquareMore,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
 import { useTenantDetails } from "@/features/admin/organization/use-organization";
-import { useRealtimeSync } from "@/features/admin/hooks/use-realtime-sync";
 import {
   useAdminNotifications,
   useMarkAdminNotificationsRead,
@@ -143,6 +143,11 @@ const navItems: AdminNavItem[] = [
     labelKey: "nav.superAdmin",
     icon: Shield,
     superAdminOnly: true,
+  },
+  {
+    href: "/feedback",
+    labelKey: "nav.feedback",
+    icon: MessageSquareMore,
   },
   {
     href: "/settings",
@@ -347,7 +352,9 @@ function SidebarContent({
                       : t("common.locked")}
                   </span>
                   <span className="mx-1.5 text-zinc-300">•</span>
-                  <span>{t("common.exp")} {expiry}</span>
+                  <span>
+                    {t("common.exp")} {expiry}
+                  </span>
                 </div>
               </>
             )}
@@ -590,7 +597,9 @@ export function AdminShell({
                         {hasUnread ? (
                           <button
                             onClick={() => {
-                              markRead.mutate(unreadNotifications.map((n) => n.id));
+                              markRead.mutate(
+                                unreadNotifications.map((n) => n.id),
+                              );
                             }}
                             className="rounded-full bg-zinc-100 hover:bg-zinc-200 transition px-2.5 py-1 text-[11px] font-medium text-zinc-700 shrink-0"
                           >
@@ -622,11 +631,16 @@ export function AdminShell({
                                   "relative flex flex-col gap-1 rounded-2xl p-3 text-sm transition border",
                                   isUnread
                                     ? "bg-emerald-50/50 border-emerald-100/70 hover:bg-emerald-50/80"
-                                    : "bg-white hover:bg-zinc-50 border-zinc-100"
+                                    : "bg-white hover:bg-zinc-50 border-zinc-100",
                                 )}
                               >
                                 <div className="flex items-start justify-between gap-2">
-                                  <span className={cn("font-semibold text-zinc-950", isUnread && "text-emerald-950")}>
+                                  <span
+                                    className={cn(
+                                      "font-semibold text-zinc-950",
+                                      isUnread && "text-emerald-950",
+                                    )}
+                                  >
                                     {notif.title}
                                   </span>
                                   <span className="text-[10px] text-zinc-400 shrink-0">
@@ -650,13 +664,15 @@ export function AdminShell({
                                       }}
                                       className={cn(
                                         buttonVariants({
-                                          variant: isUnread ? "default" : "outline",
+                                          variant: isUnread
+                                            ? "default"
+                                            : "outline",
                                           size: "sm",
                                         }),
                                         "h-7 rounded-xl text-xs px-3 font-medium transition-colors",
                                         isUnread
                                           ? "bg-emerald-600 hover:bg-emerald-700 text-white border-0"
-                                          : "text-zinc-600 hover:text-zinc-900"
+                                          : "text-zinc-600 hover:text-zinc-900",
                                       )}
                                     >
                                       {t("notifications.openDetail")}
@@ -710,7 +726,8 @@ export function AdminShell({
                               type="button"
                               className={cn(
                                 "rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition-colors",
-                                locale === "en" && "bg-white text-zinc-950 shadow-sm",
+                                locale === "en" &&
+                                  "bg-white text-zinc-950 shadow-sm",
                               )}
                               onClick={() => setLocale("en")}
                             >
@@ -720,7 +737,8 @@ export function AdminShell({
                               type="button"
                               className={cn(
                                 "rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition-colors",
-                                locale === "id" && "bg-white text-zinc-950 shadow-sm",
+                                locale === "id" &&
+                                  "bg-white text-zinc-950 shadow-sm",
                               )}
                               onClick={() => setLocale("id")}
                             >

@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Users,
   WalletCards,
+  MessageSquareMore,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,7 @@ import { GalleryStorageManagement } from "./_components/gallery-storage-manageme
 import { DeviceErrorLogManagement } from "./_components/device-error-log-management";
 import { SystemErrorLogManagement } from "./_components/system-error-log-management";
 import { NotificationManagement } from "./_components/notification-management";
+import { ProductFeedbackManagement } from "./_components/product-feedback-management";
 import { DEFAULT_ORGANIZATION_FEATURES } from "@/lib/organization-features";
 
 type AdminUserProfile = {
@@ -77,11 +79,7 @@ type AdminUserProfile = {
 };
 
 type SuperAdminSection =
-  | "overview"
-  | "organizations"
-  | "SaaS"
-  | "requests"
-  | "error-logs";
+  "overview" | "organizations" | "SaaS" | "requests" | "error-logs";
 
 const EMPTY_TENANT: TenantInput = {
   name: "",
@@ -119,7 +117,9 @@ export function TenantManagement() {
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
   const [creating, setCreating] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
-  const [broadcastTarget, setBroadcastTarget] = useState<"all" | "organization">("all");
+  const [broadcastTarget, setBroadcastTarget] = useState<
+    "all" | "organization"
+  >("all");
   const [broadcastOrgId, setBroadcastOrgId] = useState("");
   const [broadcastType, setBroadcastType] = useState("info");
   const [broadcastCustomType, setBroadcastCustomType] = useState("");
@@ -614,9 +614,7 @@ export function TenantManagement() {
                 <TabsTrigger value="gallery-storage">
                   Gallery Storage
                 </TabsTrigger>
-                <TabsTrigger value="notifications">
-                  Notifications
-                </TabsTrigger>
+                <TabsTrigger value="notifications">Notifications</TabsTrigger>
               </TabsList>
             </div>
             <TabsContent value="saas-pricing">
@@ -653,8 +651,9 @@ export function TenantManagement() {
                 <TabsTrigger value="transaction-requests">
                   Transaction Requests
                 </TabsTrigger>
-                <TabsTrigger value="trial-requests">
-                  Trial Requests
+                <TabsTrigger value="trial-requests">Trial Requests</TabsTrigger>
+                <TabsTrigger value="product-feedback">
+                  Product Feedback
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -666,6 +665,21 @@ export function TenantManagement() {
             </TabsContent>
             <TabsContent value="trial-requests">
               <TrialRequestManagement />
+            </TabsContent>
+            <TabsContent value="product-feedback">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquareMore className="size-4" /> Product feedback
+                  </CardTitle>
+                  <CardDescription>
+                    Review kritik, saran, bug, dan masukan lain dari organisasi.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ProductFeedbackManagement />
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
@@ -804,7 +818,9 @@ export function TenantManagement() {
                 setBroadcastCustomType("");
               } catch (err) {
                 toast.error(
-                  err instanceof Error ? err.message : "Gagal mengirim notifikasi.",
+                  err instanceof Error
+                    ? err.message
+                    : "Gagal mengirim notifikasi.",
                 );
               }
             }}
