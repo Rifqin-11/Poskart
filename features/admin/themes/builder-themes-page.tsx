@@ -5,7 +5,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   Check,
+  Copy,
   Layers,
+  Lightbulb,
   Loader2,
   MoreVertical,
   Monitor,
@@ -43,6 +45,7 @@ import type { LayoutSchemaRow } from "@/features/admin/layout/api";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { THEME_BRAINSTORM_PROMPT } from "@/features/admin/themes/theme-brainstorm-prompt";
 
 // ── Assign Devices Modal ─────────────────────────────────────────────────────
 
@@ -283,6 +286,18 @@ export function BuilderThemesPage() {
     refetch: refreshStatistics,
   } = useActiveThemeStatistics(activeLayout?.name ?? null);
 
+  /** Copy the ready-made AI brainstorming prompt to the clipboard */
+  const handleCopyPrompt = () => {
+    void navigator.clipboard
+      .writeText(THEME_BRAINSTORM_PROMPT)
+      .then(() =>
+        toast.success(
+          "Prompt disalin! Paste ke Lovable/Stitch untuk brainstorming tema.",
+        ),
+      )
+      .catch(() => toast.error("Gagal menyalin prompt"));
+  };
+
   /** Activate theme in DB (sets is_active = true) */
   const handleActivate = async (id: string) => {
     setLoadingId(id);
@@ -346,15 +361,38 @@ export function BuilderThemesPage() {
           </p>
         </div>
         {!isReadOnly("themes") && (
-          <Link
-            href="/themes/builder/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-[#00357B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#014EB4]"
-          >
-            <Plus className="size-4" />
-            Create Theme
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <button
+              onClick={handleCopyPrompt}
+              className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+            >
+              <Copy className="size-4" />
+              Copy Prompt
+            </button>
+            <Link
+              href="/themes/builder/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#00357B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#014EB4]"
+            >
+              <Plus className="size-4" />
+              Create Theme
+            </Link>
+          </div>
         )}
       </div>
+
+      {/* Copy Prompt explanation */}
+      {/* <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <Lightbulb className="mt-0.5 size-4 shrink-0 text-amber-600" />
+        <p className="text-sm leading-6 text-amber-800">
+          <span className="font-semibold">Copy Prompt</span> menyalin prompt
+          siap pakai untuk brainstorming desain tema di AI tools seperti
+          Lovable atau Stitch. Prompt tersebut sudah menjelaskan semua halaman
+          kiosk (Landing, Tutorial, Frame Picker, Camera, Preview, Thanks)
+          beserta fungsinya dan node apa saja yang tersedia — jadi Anda tidak
+          perlu menjelaskan ulang setiap kali. Cukup paste, lalu isi mood/gaya
+          tema yang diinginkan.
+        </p>
+      </div> */}
 
       {/* Active banner
       {activeLayout && (
