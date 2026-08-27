@@ -49,6 +49,21 @@ export function VisualCountdownProperties({
           icon={<RotateCcw className="size-3.5 text-zinc-500" />}
         >
           <div className="space-y-2 text-xs text-zinc-500">
+            <label className="block">
+              Layout
+              <select
+                className="mt-1 h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-700 outline-none focus:ring-1 focus:ring-zinc-400"
+                value={readString(selectedNode.props.countdownVariant, "bar")}
+                onChange={(event) =>
+                  updateNodeProps(selectedNode.id, {
+                    countdownVariant: event.target.value,
+                  })
+                }
+              >
+                <option value="bar">Label + progress bar</option>
+                <option value="circle">Circle countdown</option>
+              </select>
+            </label>
             <ColorField
               label="Text color"
               value={readString(selectedNode.props.textColor, "#000000")}

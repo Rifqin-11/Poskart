@@ -690,6 +690,51 @@ export function NodeRenderer({
   if (node.type === "return-countdown") {
     const scale = node.height / 72;
     const tokens = getComponentStyleTokens(node);
+    const isCircle = readString(node.props.countdownVariant, "bar") === "circle";
+    if (isCircle) {
+      const diameter = Math.min(node.height * 0.82, node.width * 0.34);
+      return (
+        <div
+          className="flex h-full w-full items-center gap-3 overflow-hidden select-none"
+          style={{
+            ...presetSurfaceStyle(node),
+            color: tokens.textColor,
+            fontFamily: tokens.fontFamily,
+          }}
+        >
+          <div
+            className="relative shrink-0 rounded-full"
+            style={{
+              width: diameter,
+              height: diameter,
+              border: `${Math.max(2, tokens.progressHeight * 0.65)}px solid ${colorWithOpacity(tokens.progressColor, tokens.trackOpacity)}`,
+            }}
+          >
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{
+                border: `${Math.max(2, tokens.progressHeight * 0.65)}px solid transparent`,
+                borderTopColor: tokens.progressColor,
+                borderRightColor: tokens.progressColor,
+                transform: "rotate(-45deg)",
+              }}
+            />
+            <span
+              className="absolute inset-0 flex items-center justify-center tabular-nums"
+              style={{ fontSize: diameter * 0.32, fontWeight: tokens.fontWeight }}
+            >
+              8
+            </span>
+          </div>
+          <span
+            className="min-w-0 truncate"
+            style={{ fontSize: tokens.fontSize * scale, fontWeight: tokens.fontWeight }}
+          >
+            {readString(node.props.countdownText, "Kembali ke halaman awal")}
+          </span>
+        </div>
+      );
+    }
     return (
       <div
         className="flex h-full w-full flex-col justify-center overflow-hidden select-none"

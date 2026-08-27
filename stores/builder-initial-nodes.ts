@@ -781,6 +781,7 @@ export const initialBuilderNodes: BuilderNode[] = [
     props: {
       countdownText: "Returning to start",
       countdownSeconds: 8,
+      countdownVariant: "bar",
       semanticRole: "thanks.countdown_timer",
     },
   },
