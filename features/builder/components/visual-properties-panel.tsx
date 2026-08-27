@@ -9,6 +9,8 @@ import { VisualQrProperties } from "@/features/builder/components/properties/vis
 import { VisualTemplateGridProperties } from "@/features/builder/components/properties/visual-template-grid-properties";
 import { VisualTextProperties } from "@/features/builder/components/properties/visual-text-properties";
 import { VisualTransformProperties } from "@/features/builder/components/properties/visual-transform-properties";
+import { VisualStylePresetProperties } from "@/features/builder/components/properties/visual-style-preset-properties";
+import { VisualPresetBackgroundProperties } from "@/features/builder/components/properties/visual-preset-background-properties";
 import { VisualMediaProperties } from "@/features/builder/components/visual-media-properties";
 import {
   isEditableTextNode,
@@ -201,6 +203,14 @@ export function PropertiesPanel({
   if (activeTab === "style") {
     return (
       <div className="space-y-2">
+        <VisualStylePresetProperties
+          selectedNode={selectedNode}
+          updateNodeProps={updateNodeProps}
+        />
+        <VisualPresetBackgroundProperties
+          selectedNode={selectedNode}
+          updateNodeProps={updateNodeProps}
+        />
         {(editableText || isCameraOverlay) && (
           <VisualTextProperties
             canvas={canvas}

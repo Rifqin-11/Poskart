@@ -3,6 +3,10 @@
 import QRCodeSVG from "react-qr-code";
 import type React from "react";
 import { Camera, Film, Image as ImageIcon, Share2 } from "lucide-react";
+import {
+  getComponentStyleTokens,
+  readComponentStylePreset,
+} from "@/features/builder/component-style-presets";
 import { ColorKeyImage } from "@/features/builder/components/color-key-image";
 import { HOTSPOT_COLORS, SEMANTIC_ROLES } from "@/features/builder/constants";
 import { isMediaNode, readNumber, readString } from "@/features/builder/utils";
@@ -53,6 +57,30 @@ function getThumbTint(bg: string): string {
   const [r, g, b] = rgb;
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.6 ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.12)";
+}
+
+function colorWithOpacity(color: string, opacity: number): string {
+  const rgb = parseHex(color);
+  if (!rgb) return color;
+  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${opacity})`;
+}
+
+function presetSurfaceStyle(node: BuilderNode): React.CSSProperties {
+  const tokens = getComponentStyleTokens(node);
+  const preset = readComponentStylePreset(node.props);
+  return {
+    backgroundColor: colorWithOpacity(tokens.surfaceColor, tokens.surfaceOpacity),
+    borderColor: colorWithOpacity(tokens.borderColor, tokens.borderOpacity),
+    borderStyle: tokens.borderWidth > 0 ? "solid" : undefined,
+    borderWidth: tokens.borderWidth,
+    borderRadius: tokens.radius,
+    boxShadow:
+      tokens.shadowOpacity > 0
+        ? `0 ${tokens.shadowY}px ${tokens.shadowBlur}px ${colorWithOpacity(tokens.shadowColor, tokens.shadowOpacity)}`
+        : undefined,
+    padding: `${tokens.paddingY}px ${tokens.paddingX}px`,
+    backdropFilter: preset === "glass" ? "blur(14px)" : undefined,
+  };
 }
 
 
@@ -661,30 +689,38 @@ export function NodeRenderer({
 
   if (node.type === "return-countdown") {
     const scale = node.height / 72;
-    const textColor = readString(node.props.textColor, "#000000");
-    const progressColor = readString(node.props.progressColor, "#27272A");
+    const tokens = getComponentStyleTokens(node);
     return (
       <div
-        className="flex h-full w-full flex-col justify-center select-none px-1"
-        style={{ fontFamily: "'Manrope', 'Outfit', 'Inter', sans-serif" }}
+        className="flex h-full w-full flex-col justify-center overflow-hidden select-none"
+        style={{
+          ...presetSurfaceStyle(node),
+          fontFamily: tokens.fontFamily,
+          color: tokens.textColor,
+        }}
       >
         <div
           className="flex w-full items-center justify-between"
           style={{ marginBottom: 10 * scale }}
         >
-          <span style={{ fontSize: 13 * scale, fontWeight: 700, color: textColor }}>
+          <span style={{ fontSize: tokens.fontSize * scale, fontWeight: tokens.fontWeight }}>
             {readString(node.props.countdownText, "Kembali ke halaman awal")}
           </span>
-          <span style={{ fontSize: 12 * scale, color: textColor, fontWeight: 500, opacity: 0.6 }}>
+          <span style={{ fontSize: 12 * scale, fontWeight: 500, opacity: 0.65 }}>
             39%
           </span>
         </div>
         <div
           className="w-full"
-          style={{ height: 7 * scale, borderRadius: 9999, overflow: "hidden", background: `${progressColor}33` }}
+          style={{
+            height: tokens.progressHeight * scale,
+            borderRadius: 9999,
+            overflow: "hidden",
+            background: colorWithOpacity(tokens.progressColor, tokens.trackOpacity),
+          }}
         >
           <div
-            style={{ width: "39%", height: "100%", borderRadius: 9999, background: progressColor }}
+            style={{ width: "39%", height: "100%", borderRadius: 9999, background: tokens.progressColor }}
           />
         </div>
       </div>
@@ -758,10 +794,22 @@ export function NodeRenderer({
   }
 
   if (node.type === "camera-flash") {
-    const textColor = readString(node.props.color, "#ffffff");
+    const tokens = getComponentStyleTokens(node);
+    const fontSize = readComponentStylePreset(node.props) === "default"
+      ? Math.max(9, node.height * 0.28)
+      : tokens.fontSize;
     return (
-      <div className="flex h-full w-full items-center justify-center">
-        <span style={{ fontSize: Math.max(9, node.height * 0.28), fontWeight: 700, color: textColor }}>
+      <div
+        className="flex h-full w-full items-center justify-center overflow-hidden"
+        style={presetSurfaceStyle(node)}
+      >
+        <span style={{
+          fontFamily: tokens.fontFamily,
+          fontSize,
+          fontWeight: tokens.fontWeight,
+          letterSpacing: tokens.letterSpacing,
+          color: tokens.textColor,
+        }}>
           Flash on
         </span>
       </div>
@@ -769,14 +817,46 @@ export function NodeRenderer({
   }
 
   if (node.type === "camera-timer") {
-    const scale = node.height / 36;
-    const textColor = readString(node.props.color, "#ffffff");
+    const tokens = getComponentStyleTokens(node);
+    const fontSize = readComponentStylePreset(node.props) === "default"
+      ? 11 * (node.height / 36)
+      : tokens.fontSize;
     const seconds = readNumber(node.props.countdownSeconds, 3);
     return (
-      <div className="pointer-events-none flex h-full w-full items-center justify-center">
-        <span style={{ fontSize: 11 * scale, fontWeight: 800, color: textColor, lineHeight: 1 }}>
+      <div
+        className="pointer-events-none flex h-full w-full items-center justify-center overflow-hidden"
+        style={presetSurfaceStyle(node)}
+      >
+        <span style={{
+          fontFamily: tokens.fontFamily,
+          fontSize,
+          fontWeight: tokens.fontWeight,
+          letterSpacing: tokens.letterSpacing,
+          color: tokens.textColor,
+          lineHeight: 1,
+        }}>
           {seconds} dtk
         </span>
+      </div>
+    );
+  }
+
+  if (node.type === "camera-shot-counter") {
+    const tokens = getComponentStyleTokens(node);
+    return (
+      <div
+        className="flex h-full w-full items-center justify-center overflow-hidden text-center"
+        style={{
+          ...presetSurfaceStyle(node),
+          color: tokens.textColor,
+          fontFamily: tokens.fontFamily,
+          fontSize: tokens.fontSize,
+          fontWeight: tokens.fontWeight,
+          letterSpacing: tokens.letterSpacing,
+          lineHeight: 1.2,
+        }}
+      >
+        {readString(node.props.content, "FOTO 1 DARI 4")}
       </div>
     );
   }

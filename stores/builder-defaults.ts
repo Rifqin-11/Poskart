@@ -109,7 +109,11 @@ export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
   }
 
   if (type === "return-countdown") {
-    return { countdownText: "Kembali ke halaman awal", countdownSeconds: 8 };
+    return {
+      countdownText: "Kembali ke halaman awal",
+      countdownSeconds: 8,
+      stylePreset: "default",
+    };
   }
 
   if (type === "camera-timer") {
@@ -119,6 +123,7 @@ export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
       color: "#ffffff",
       fontWeight: 800,
       textAlign: "center",
+      stylePreset: "default",
     };
   }
 
@@ -130,13 +135,14 @@ export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
       fontWeight: 800,
       letterSpacing: 1,
       textAlign: "center",
+      stylePreset: "default",
     };
   }
 
   if (type === "camera-flash") {
     return {
-      textColor: "#ffffff",
-      backgroundColor: "rgba(0,0,0,0.52)",
+      color: "#ffffff",
+      stylePreset: "default",
     };
   }
 

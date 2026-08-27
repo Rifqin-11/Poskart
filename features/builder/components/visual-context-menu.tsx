@@ -216,7 +216,6 @@ export function VisualContextMenu({
               "text",
               "button",
               "image",
-              "background-decoration",
             ] as BuilderComponentType[]
           ).map((type) => (
             <button

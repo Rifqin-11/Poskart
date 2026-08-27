@@ -432,21 +432,6 @@ export const initialBuilderNodes: BuilderNode[] = [
       semanticRole: "camera.continue",
     },
   },
-  {
-    id: "cam-social",
-    type: "social-handle",
-    page: "camera",
-    x: 40,
-    y: 752,
-    width: 200,
-    height: 28,
-    rotation: 0,
-    opacity: 1,
-    locked: false,
-    visible: true,
-    zIndex: 10,
-    props: { content: "@poskart", fontSize: 15, color: "#1B1B1B" },
-  },
   // ═══ PREVIEW ══════════════════════════════════════════
   {
     id: "pv-heading-1",
