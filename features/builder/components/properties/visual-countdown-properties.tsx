@@ -84,42 +84,7 @@ export function VisualCountdownProperties({
     }
 
     if (section === "advanced") {
-      return (
-        <PanelSection
-          title="Auto Return Timer"
-          icon={<RotateCcw className="size-3.5 text-zinc-500" />}
-        >
-          <div className="space-y-2 text-xs text-zinc-500">
-            <CountdownDurationInput
-              disabled={selectedNode.props.useGlobalDuration !== false}
-              value={readNumber(selectedNode.props.countdownSeconds, 8)}
-              min={3}
-              max={60}
-              onChange={(value) =>
-                updateNodeProps(selectedNode.id, { countdownSeconds: value })
-              }
-            />
-            <label className="flex items-start gap-2 text-xs text-zinc-500">
-              <input
-                className="mt-0.5 size-3.5 accent-zinc-800"
-                type="checkbox"
-                checked={selectedNode.props.useGlobalDuration !== false}
-                onChange={(event) =>
-                  updateNodeProps(selectedNode.id, {
-                    useGlobalDuration: event.target.checked,
-                  })
-                }
-              />
-              <span>
-                Use device setting
-                <span className="mt-0.5 block text-[10px] text-zinc-400">
-                  Follow the auto-return duration configured on the kiosk.
-                </span>
-              </span>
-            </label>
-          </div>
-        </PanelSection>
-      );
+      return null;
     }
 
     return null;

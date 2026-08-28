@@ -780,8 +780,6 @@ export const initialBuilderNodes: BuilderNode[] = [
     zIndex: 10,
     props: {
       countdownText: "Returning to start",
-      countdownSeconds: 8,
-      useGlobalDuration: true,
       countdownVariant: "bar",
       semanticRole: "thanks.countdown_timer",
     },
