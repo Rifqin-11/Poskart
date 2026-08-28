@@ -19,6 +19,18 @@ export function getUserFacingErrorMessage(error: unknown, fallback: string) {
 
   const message = error.message.trim();
   if (!message || MASKED_SERVER_ERROR.test(message)) return fallback;
+
+  // Keep dependency failures useful before the generic data-layer masking.
+  // Server actions may receive an FK message from an older deployment while
+  // the client is already using the actionable error contract.
+  if (
+    /foreign key|violates .*constraint|still referenced|is still in use|pricing product.*device|device.*pricing/i.test(
+      message,
+    )
+  ) {
+    return "Data ini masih digunakan oleh device atau data terkait. Lepaskan package dari konfigurasi device terlebih dahulu, lalu coba lagi.";
+  }
+
   if (INTERNAL_ERROR_PATTERNS.some((pattern) => pattern.test(message))) {
     return fallback;
   }
@@ -29,10 +41,6 @@ export function getUserFacingErrorMessage(error: unknown, fallback: string) {
 
   if (/^not authenticated$/i.test(message)) {
     return "Sesi Anda telah berakhir. Silakan masuk kembali.";
-  }
-
-  if (/foreign key|violates .*constraint|still referenced|is still in use/i.test(message)) {
-    return "Data ini masih digunakan oleh data terkait. Lepaskan atau hapus data terkait terlebih dahulu, lalu coba lagi.";
   }
 
   return message;

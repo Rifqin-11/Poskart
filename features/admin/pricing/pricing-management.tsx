@@ -143,12 +143,12 @@ export function PricingManagement() {
       onConfirm: () => {
         deletePricing.mutate(product.id, {
           onSuccess: () => toast.success(t("pricing.deleteSuccess")),
-          onError: (err) =>
-            showErrorToast(
-              "Tidak dapat menghapus pricing",
-              err,
-              t("pricing.deleteFailed"),
-            ),
+            onError: (err) =>
+              showErrorToast(
+                "Tidak dapat menghapus pricing",
+                err,
+                "Pricing ini masih dipakai oleh Poskart Devices. Lepaskan package dari konfigurasi device terlebih dahulu, lalu coba hapus lagi.",
+              ),
         });
       },
     });

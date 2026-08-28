@@ -50,6 +50,8 @@ import { VisualPropertiesSidebar } from "@/features/builder/components/visual-pr
 import { VisualLoadDialog } from "@/features/builder/components/visual-load-dialog";
 import { VisualSaveDialog } from "@/features/builder/components/visual-save-dialog";
 import { BuilderGuidedTour } from "@/features/builder/tutorial/builder-guided-tour";
+import { AssignThemeToDevicesDialog } from "@/features/admin/themes/components/assign-theme-to-devices-dialog";
+import type { LayoutSchemaRow } from "@/features/admin/layout/api";
 import { bakeLayoutSchemaColorKeyAssets } from "@/features/builder/utils/bake-color-key-assets";
 import { normalizeAssetReferences } from "@/lib/assets/asset-url";
 import {
@@ -114,6 +116,8 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   const [builderTutorialOpen, setBuilderTutorialOpen] = useState(false);
   const { isPortraitBuilder } = useBuilderResponsiveMode();
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [assignCreatedTheme, setAssignCreatedTheme] =
+    useState<LayoutSchemaRow | null>(null);
   const [themeName, setThemeName] = useState("");
   const saveLayoutMutation = useSaveLayoutAsTheme();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1173,6 +1177,20 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
         />
       )}
 
+      {assignCreatedTheme ? (
+        <AssignThemeToDevicesDialog
+          layout={assignCreatedTheme}
+          onClose={() => {
+            setAssignCreatedTheme(null);
+            leaveBuilder();
+          }}
+          onDone={() => {
+            setAssignCreatedTheme(null);
+            leaveBuilder();
+          }}
+        />
+      ) : null}
+
       {builderTutorialOpen ? (
         <BuilderGuidedTour
           open
@@ -1212,10 +1230,16 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
       lastCommittedSchemaRef.current = JSON.stringify(bakedSchema);
       setShowSaveDialog(false);
       setThemeName("");
-      toast.success(
-        `Theme "${name}" created! Future saves will update it in-place.`,
-      );
-      leaveBuilder();
+      toast.success(`Theme "${name}" created. Choose the devices to assign it to.`);
+      setAssignCreatedTheme({
+        id: newId,
+        name,
+        status: "draft",
+        schema: bakedSchema,
+        is_active: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
     } catch (err) {
       showErrorToast("Tidak dapat membuat theme", err, "Theme belum dapat dibuat. Coba lagi.");
     } finally {
