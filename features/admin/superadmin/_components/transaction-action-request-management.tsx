@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { CheckCircle2, LoaderCircle, XCircle } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,7 +77,11 @@ export function TransactionActionRequestManagement() {
         decision === "approved" ? "Request approved" : "Request rejected",
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Review failed");
+      showErrorToast(
+        decision === "approved" ? "Tidak dapat menyetujui request" : "Tidak dapat menolak request",
+        error,
+        "Request belum diperbarui. Periksa statusnya lalu coba lagi.",
+      );
     }
   }
 

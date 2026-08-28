@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Printer, X } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -68,8 +68,10 @@ export function PrintQueuePanel() {
       void queryClient.invalidateQueries({ queryKey: printQueueKey });
     },
     onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to cancel print.",
+      showErrorToast(
+        "Failed to cancel print job",
+        error,
+        "Print job tidak dapat dibatalkan. Coba lagi.",
       );
       void queryClient.invalidateQueries({ queryKey: printQueueKey });
     },

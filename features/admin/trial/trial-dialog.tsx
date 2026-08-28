@@ -11,7 +11,7 @@ import {
   WalletCards,
   XCircle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -56,7 +56,11 @@ function TrialContent({
         onClose();
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal memulai trial.");
+      showErrorToast(
+        "Tidak dapat memulai trial",
+        error,
+        "Gagal memulai trial.",
+      );
     } finally {
       setSubmitting(false);
     }

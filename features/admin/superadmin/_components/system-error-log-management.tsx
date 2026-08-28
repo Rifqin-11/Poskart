@@ -7,7 +7,7 @@ import {
   Clipboard,
   RotateCcw,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -16,7 +16,6 @@ import {
   useSetSuperAdminSystemErrorResolved,
   useSuperAdminSystemErrors,
 } from "@/features/admin/superadmin/use-superadmin";
-import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import type { SuperAdminSystemError } from "@/server/admin/actions/superadmin-system-error-actions";
 
 const sources: Array<SuperAdminSystemError["source"] | "all"> = [
@@ -85,8 +84,10 @@ export function SystemErrorLogManagement() {
         onSuccess: () =>
           toast.success(resolved ? "System error marked as resolved" : "System error reopened"),
         onError: (error) =>
-          toast.error(
-            getUserFacingErrorMessage(error, "System error status belum dapat diperbarui."),
+          showErrorToast(
+            "System error status could not be updated",
+            error,
+            "System error status belum dapat diperbarui.",
           ),
       },
     );

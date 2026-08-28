@@ -31,7 +31,7 @@ import {
   Send,
   Loader2,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 
@@ -111,8 +111,10 @@ export function VoucherApproval() {
       toast.success(`Voucher approved and sent to ${selectedDevice.name}`);
       setSelectedDevice(null);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to send voucher",
+      showErrorToast(
+        "Voucher could not be sent",
+        err,
+        "The voucher could not be sent. Please try again.",
       );
     }
   };
@@ -250,8 +252,12 @@ export function VoucherApproval() {
                             toast.success(
                               `Request cancelled for ${device.name}`,
                             );
-                          } catch {
-                            toast.error("Failed to cancel request");
+                          } catch (err) {
+                            showErrorToast(
+                              "Voucher request cancellation failed",
+                              err,
+                              "The voucher request could not be cancelled. Please try again.",
+                            );
                           }
                         }}
                       >

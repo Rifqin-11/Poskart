@@ -103,7 +103,7 @@ export async function deleteFrameCategory(id: string): Promise<void> {
     .delete()
     .eq("id", id);
   if (error)
-    throw new Error(`Unable to delete frame category: ${error.message}`);
+    throw new Error("Frame category could not be deleted. Please try again.");
 }
 
 export async function reorderFrameCategories(

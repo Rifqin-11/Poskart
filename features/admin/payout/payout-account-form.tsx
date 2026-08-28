@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Landmark, Save } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BankSelect } from "@/features/admin/payout/bank-select";
@@ -55,7 +55,11 @@ function PayoutAccountFields({
     startTransition(async () => {
       const result = await saveMyPayoutAccount(form);
       if (!result.success) {
-        toast.error(result.error ?? "Failed to save payout account");
+        showErrorToast(
+          "Failed to save payout account",
+          result.error ? new Error(result.error) : null,
+          "Rekening payout tidak dapat disimpan. Periksa data lalu coba lagi.",
+        );
         return;
       }
       toast.success("Payout account saved");

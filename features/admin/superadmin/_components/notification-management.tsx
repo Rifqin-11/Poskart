@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,8 +52,10 @@ export function NotificationManagement() {
         deleteNotification.mutate(notification.id, {
           onSuccess: () => toast.success("Notifikasi dihapus."),
           onError: (err) =>
-            toast.error(
-              err instanceof Error ? err.message : "Gagal menghapus.",
+            showErrorToast(
+              "Notifikasi tidak dapat dihapus",
+              err,
+              "Gagal menghapus notifikasi.",
             ),
         });
       },

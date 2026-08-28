@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Card, CardContent } from "@/components/ui/card";
@@ -269,7 +269,11 @@ export function TemplateBuilderWorkspace({
         "Frame tidak dapat disimpan saat ini. Coba lagi.",
       );
       if (message !== FRAME_PHOTO_SLOT_REQUIRED_MESSAGE) {
-        toast.error(message);
+        showErrorToast(
+          "Frame tidak dapat disimpan",
+          error,
+          "Frame tidak dapat disimpan saat ini. Coba lagi.",
+        );
       }
       throw error;
     }
@@ -313,11 +317,10 @@ export function TemplateBuilderWorkspace({
       );
       finishFrameCreation();
     } catch (error) {
-      toast.error(
-        getUserFacingErrorMessage(
-          error,
-          "Frame gagal diterapkan ke devices. Coba lagi.",
-        ),
+      showErrorToast(
+        "Frame gagal diterapkan ke devices",
+        error,
+        "Frame gagal diterapkan ke devices. Coba lagi.",
       );
     }
   };

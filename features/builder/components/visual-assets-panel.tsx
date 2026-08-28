@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Grid2X2, Image, List, Plus, Type, X } from "lucide-react";
 import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Input } from "@/components/ui/input";

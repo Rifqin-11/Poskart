@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { CloudUpload, Folder, Edit2, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,7 +87,11 @@ export function AssetLibrary() {
           {
             onSuccess: () => toast.success("Asset deleted"),
             onError: (err) =>
-              toast.error(err instanceof Error ? err.message : "Delete failed"),
+              showErrorToast(
+                "Asset deletion failed",
+                err,
+                "The asset could not be deleted. Please try again.",
+              ),
           },
         );
       },
@@ -208,10 +212,12 @@ export function AssetLibrary() {
                 toast.success("Asset uploaded");
                 setUploading(false);
               },
-              onError: (err) =>
-                toast.error(
-                  err instanceof Error ? err.message : "Upload failed",
-                ),
+                onError: (err) =>
+                  showErrorToast(
+                    "Asset upload failed",
+                    err,
+                    "The asset could not be uploaded. Please try again.",
+                  ),
             });
           }}
         />
@@ -230,8 +236,10 @@ export function AssetLibrary() {
                   setEditing(null);
                 },
                 onError: (err) =>
-                  toast.error(
-                    err instanceof Error ? err.message : "Update failed",
+                  showErrorToast(
+                    "Asset update failed",
+                    err,
+                    "The asset could not be updated. Please try again.",
                   ),
               },
             );

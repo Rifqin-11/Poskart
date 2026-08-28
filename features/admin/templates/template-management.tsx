@@ -37,7 +37,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
@@ -57,7 +57,6 @@ import {
   useUpdateFrameCategory,
 } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
-import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { FrameCategory, Template } from "@/types/template";
@@ -158,7 +157,11 @@ export function TemplateManagement() {
         deleteTemplate.mutate(t.id, {
           onSuccess: () => toast.success("Frame deleted"),
           onError: (err) =>
-            toast.error(getUserFacingErrorMessage(err, "Frame tidak dapat dihapus.")),
+            showErrorToast(
+              "Frame deletion failed",
+              err,
+              "Frame tidak dapat dihapus. Lepaskan assignment device terlebih dahulu, lalu coba lagi.",
+            ),
         });
       },
     });
@@ -174,8 +177,10 @@ export function TemplateManagement() {
         deleteFrameCategory.mutate(category.id, {
           onSuccess: () => toast.success("Frame category deleted"),
           onError: (error) =>
-            toast.error(
-              getUserFacingErrorMessage(error, "Kategori frame tidak dapat dihapus."),
+            showErrorToast(
+              "Frame category deletion failed",
+              error,
+              "Kategori frame tidak dapat dihapus. Coba lagi.",
             ),
         });
       },
@@ -337,11 +342,10 @@ export function TemplateManagement() {
             toast.success("Kategori dan urutan frame disimpan"),
           onError: (error) => {
             setTemplateOrder(activeDrag.initialTemplates);
-            toast.error(
-              getUserFacingErrorMessage(
-                error,
-                "Gagal menyimpan kategori frame. Coba lagi.",
-              ),
+            showErrorToast(
+              "Kategori frame tidak dapat disimpan",
+              error,
+              "Gagal menyimpan kategori frame. Coba lagi.",
             );
           },
         },
@@ -414,11 +418,10 @@ export function TemplateManagement() {
     const templateIds = reordered.map((template) => template.id);
     const rollback = (error: unknown) => {
       setTemplateOrder(activeDrag?.initialTemplates ?? data);
-      toast.error(
-        getUserFacingErrorMessage(
-          error,
-          "Gagal menyimpan urutan frame. Coba lagi.",
-        ),
+      showErrorToast(
+        "Urutan frame tidak dapat disimpan",
+        error,
+        "Gagal menyimpan urutan frame. Coba lagi.",
       );
     };
 
@@ -523,11 +526,10 @@ export function TemplateManagement() {
           createFrameCategory.mutate(name, {
             onSuccess: () => toast.success("Frame category created"),
             onError: (error) =>
-              toast.error(
-                getUserFacingErrorMessage(
-                  error,
-                  "Kategori frame tidak dapat dibuat.",
-                ),
+              showErrorToast(
+                "Kategori frame tidak dapat dibuat",
+                error,
+                "Kategori frame tidak dapat dibuat.",
               ),
           })
         }
@@ -537,11 +539,10 @@ export function TemplateManagement() {
             {
               onSuccess: () => toast.success("Frame category updated"),
               onError: (error) =>
-                toast.error(
-                  getUserFacingErrorMessage(
-                    error,
-                    "Kategori frame tidak dapat diperbarui.",
-                  ),
+                showErrorToast(
+                  "Kategori frame tidak dapat diperbarui",
+                  error,
+                  "Kategori frame tidak dapat diperbarui.",
                 ),
             },
           )
@@ -552,11 +553,10 @@ export function TemplateManagement() {
             await reorderFrameCategories.mutateAsync(categoryIds);
             toast.success("Urutan kategori disimpan");
           } catch (error) {
-            toast.error(
-              getUserFacingErrorMessage(
-                error,
-                "Gagal menyimpan urutan kategori. Coba lagi.",
-              ),
+            showErrorToast(
+              "Urutan kategori tidak dapat disimpan",
+              error,
+              "Gagal menyimpan urutan kategori. Coba lagi.",
             );
             throw error;
           }

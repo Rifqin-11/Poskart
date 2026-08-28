@@ -1,7 +1,7 @@
 "use client";
 
 import { Printer } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -31,7 +31,11 @@ export function FailedPrintsDialog({
         void refetch();
       },
       onError: (err) =>
-        toast.error(err instanceof Error ? err.message : "Reprint failed"),
+        showErrorToast(
+          "Reprint failed",
+          err,
+          "Print ulang tidak dapat dijadwalkan. Coba lagi.",
+        ),
     });
   };
 

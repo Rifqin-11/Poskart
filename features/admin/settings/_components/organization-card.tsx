@@ -18,7 +18,7 @@ import {
   Check,
   LogOut,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -278,10 +278,10 @@ export function OrganizationCard({
                           setEditedName(null);
                         },
                         onError: (err) =>
-                          toast.error(
-                            err instanceof Error
-                              ? err.message
-                              : "Failed to update organization",
+                          showErrorToast(
+                            "Organization name could not be updated",
+                            err,
+                            "Failed to update organization.",
                           ),
                       });
                     }}
@@ -467,10 +467,10 @@ export function OrganizationCard({
                                   toast.success(`Role ${member.email} berhasil diubah menjadi ${newRole}`);
                                 },
                                 onError: (err) => {
-                                  toast.error(
-                                    err instanceof Error
-                                      ? err.message
-                                      : t("settings.changeRoleFailed"),
+                                  showErrorToast(
+                                    "Member role could not be changed",
+                                    err,
+                                    t("settings.changeRoleFailed"),
                                   );
                                 },
                               }
@@ -520,10 +520,10 @@ export function OrganizationCard({
                                         transferOwnership.mutate(member.profile_id!, {
                                           onSuccess: () => toast.success(t("settings.transferOwnershipSuccess")),
                                           onError: (err) =>
-                                            toast.error(
-                                              err instanceof Error
-                                                ? err.message
-                                                : t("settings.transferOwnershipFailed"),
+                                            showErrorToast(
+                                              "Workspace ownership could not be transferred",
+                                              err,
+                                              t("settings.transferOwnershipFailed"),
                                             ),
                                         });
                                       },
@@ -551,10 +551,10 @@ export function OrganizationCard({
                                         removeMember.mutate(member.id, {
                                           onSuccess: () => toast.success("Member removed"),
                                           onError: (err) =>
-                                            toast.error(
-                                              err instanceof Error
-                                                ? err.message
-                                                : "Failed to remove member",
+                                            showErrorToast(
+                                              "Member could not be removed",
+                                              err,
+                                              "Failed to remove member.",
                                             ),
                                         });
                                       },
@@ -620,10 +620,10 @@ export function OrganizationCard({
                                 onSuccess: () =>
                                   toast.success("Invitation cancelled"),
                                 onError: (err) =>
-                                  toast.error(
-                                    err instanceof Error
-                                      ? err.message
-                                      : "Failed to cancel invitation",
+                                  showErrorToast(
+                                    "Failed to cancel invitation",
+                                    err,
+                                    "Undangan tidak dapat dibatalkan. Coba lagi.",
                                   ),
                               });
                             }}
@@ -672,12 +672,12 @@ export function OrganizationCard({
                             disabled={acceptJoinRequest.isPending || rejectJoinRequest.isPending}
                             onClick={() => {
                               acceptJoinRequest.mutate(request.id, {
-                                onSuccess: () => toast.success("Permintaan bergabung diterima!"),
-                                onError: (err) =>
-                                  toast.error(
-                                    err instanceof Error
-                                      ? err.message
-                                      : t("settings.acceptRequestFailed"),
+                              onSuccess: () => toast.success("Permintaan bergabung diterima!"),
+                              onError: (err) =>
+                                  showErrorToast(
+                                    "Join request could not be accepted",
+                                    err,
+                                    t("settings.acceptRequestFailed"),
                                   ),
                               });
                             }}
@@ -695,10 +695,10 @@ export function OrganizationCard({
                               rejectJoinRequest.mutate(request.id, {
                                 onSuccess: () => toast.success("Permintaan bergabung ditolak"),
                                 onError: (err) =>
-                                  toast.error(
-                                    err instanceof Error
-                                      ? err.message
-                                      : t("settings.rejectRequestFailed"),
+                                  showErrorToast(
+                                    "Join request could not be rejected",
+                                    err,
+                                    t("settings.rejectRequestFailed"),
                                   ),
                               });
                             }}
@@ -741,8 +741,10 @@ export function OrganizationCard({
                   onConfirm: () => {
                     leaveOrg.mutate(undefined, {
                       onError: (err) =>
-                        toast.error(
-                          err instanceof Error ? err.message : "Gagal keluar dari organisasi",
+                        showErrorToast(
+                          "Tidak dapat keluar dari organisasi",
+                          err,
+                          "Gagal keluar dari organisasi.",
                         ),
                     });
                   },
@@ -800,8 +802,10 @@ export function OrganizationCard({
               setInviteDialogOpen(false);
             },
             onError: (err) =>
-              toast.error(
-                err instanceof Error ? err.message : "Failed to invite user",
+              showErrorToast(
+                "Invitation could not be sent",
+                err,
+                "Failed to invite user.",
               ),
           });
         }}
@@ -815,10 +819,10 @@ export function OrganizationCard({
           onConfirm={(confirmation) => {
             deleteMyOrganization.mutate(confirmation, {
               onError: (error) => {
-                toast.error(
-                  error instanceof Error
-                    ? error.message
-                    : "Gagal menghapus workspace.",
+                showErrorToast(
+                  "Workspace deletion failed",
+                  error,
+                  "Workspace tidak dapat dihapus. Hapus data terkait terlebih dahulu, lalu coba lagi.",
                 );
               },
             });

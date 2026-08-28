@@ -9,7 +9,7 @@ import {
   MessagesSquare,
   Send,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +27,6 @@ import {
   useMyFeedback,
   useSubmitFeedback,
 } from "@/features/admin/feedback/use-feedback";
-import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { cn } from "@/lib/utils";
 import type {
   FeedbackCategory,
@@ -90,8 +89,10 @@ export function FeedbackPage() {
         setForm(initialForm);
       },
       onError: (error) =>
-        toast.error(
-          getUserFacingErrorMessage(error, "Masukan belum dapat dikirim."),
+        showErrorToast(
+          "Masukan belum dapat dikirim",
+          error,
+          "Masukan belum dapat dikirim.",
         ),
     });
   };

@@ -84,9 +84,16 @@ export async function getVoucherCampaigns(): Promise<VoucherCampaignSummary[]> {
 }
 
 export async function deleteVoucherCampaign(id: string): Promise<void> {
-  const { supabase } = await verifyRole(["owner", "admin"]);
-  const { error } = await supabase.from("voucher_campaigns").delete().eq("id", id);
-  if (error) throw new Error(`Unable to delete voucher campaign: ${error.message}`);
+  const { supabase, organizationId } = await verifyRole(["owner", "admin"]);
+  const { data, error } = await supabase
+    .from("voucher_campaigns")
+    .delete()
+    .eq("id", id)
+    .eq("organization_id", organizationId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error("Voucher campaign could not be deleted. Please try again.");
+  if (!data) throw new Error("Voucher campaign was not found or is no longer available.");
 }
 
 function firstRelation<T>(value: T | T[] | null) {

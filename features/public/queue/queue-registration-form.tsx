@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { registerQueueVisitor } from "@/app/(root)/q/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

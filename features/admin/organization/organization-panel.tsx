@@ -10,7 +10,7 @@ import {
   Timer,
   UserPlus,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -244,10 +244,10 @@ function OrganizationSettings({
                       setEditedName(null);
                     },
                     onError: (err) =>
-                      toast.error(
-                        err instanceof Error
-                          ? err.message
-                          : "Failed to update name",
+                      showErrorToast(
+                        "Organization name could not be updated",
+                        err,
+                        "Failed to update organization name.",
                       ),
                   });
                 }}
@@ -367,10 +367,10 @@ function OrganizationSettings({
                             removeMember.mutate(m.id, {
                               onSuccess: () => toast.success("Member removed"),
                               onError: (err) =>
-                                toast.error(
-                                  err instanceof Error
-                                    ? err.message
-                                    : "Failed to remove member",
+                                showErrorToast(
+                                  "Member could not be removed",
+                                  err,
+                                  "Failed to remove member.",
                                 ),
                             });
                           },
@@ -423,6 +423,12 @@ function OrganizationSettings({
                             deleteInvitation.mutate(inv.id, {
                               onSuccess: () =>
                                 toast.success("Invitation cancelled"),
+                              onError: (err) =>
+                                showErrorToast(
+                                  "Invitation could not be cancelled",
+                                  err,
+                                  "Failed to cancel invitation.",
+                                ),
                             });
                           }}
                         >
@@ -453,8 +459,10 @@ function OrganizationSettings({
               setInviteDialogOpen(false);
             },
             onError: (err) =>
-              toast.error(
-                err instanceof Error ? err.message : "Failed to invite user",
+              showErrorToast(
+                "Invitation could not be sent",
+                err,
+                "Failed to invite user.",
               ),
           });
         }}

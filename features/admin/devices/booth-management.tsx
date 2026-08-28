@@ -17,7 +17,7 @@ import {
   SlidersHorizontal,
   Store,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { DeviceStatusBadge } from "@/components/ui/device-status-badge";
 import { Dialog } from "@/components/ui/dialog";
@@ -46,7 +46,6 @@ import {
   useTemplates,
 } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
-import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { type DictionaryKey } from "@/lib/i18n/dictionaries";
@@ -306,8 +305,10 @@ export function BoothManagement({
         deleteBooth.mutate(device.id, {
           onSuccess: () => toast.success(t("devices.deleteSuccess")),
           onError: (err) =>
-            toast.error(
-              getUserFacingErrorMessage(err, t("devices.deleteFailed")),
+            showErrorToast(
+              "Gagal menghapus device",
+              err,
+              t("devices.deleteFailed"),
             ),
         });
       },
@@ -329,8 +330,10 @@ export function BoothManagement({
         setCreating(true);
       },
       onError: (error) =>
-        toast.error(
-          getUserFacingErrorMessage(error, t("devices.pairingFailed")),
+        showErrorToast(
+          "Gagal memvalidasi pairing device",
+          error,
+          t("devices.pairingFailed"),
         ),
     });
   };
@@ -853,11 +856,10 @@ export function BoothManagement({
                   setCreatedDeviceId(null);
                 },
                 onError: (err) =>
-                  toast.error(
-                    getUserFacingErrorMessage(
-                      err,
-                      "Konfigurasi device gagal. Coba lagi.",
-                    ),
+                  showErrorToast(
+                    "Gagal mengonfigurasi device",
+                    err,
+                    "Konfigurasi device gagal. Coba lagi.",
                   ),
               },
             );
@@ -907,11 +909,10 @@ export function BoothManagement({
                   setEditingId(null);
                 },
                 onError: (err) =>
-                  toast.error(
-                    getUserFacingErrorMessage(
-                      err,
-                      "Device tidak dapat diperbarui. Coba lagi.",
-                    ),
+                  showErrorToast(
+                    "Gagal memperbarui device",
+                    err,
+                    "Device tidak dapat diperbarui. Coba lagi.",
                   ),
               },
             );

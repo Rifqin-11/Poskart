@@ -31,5 +31,9 @@ export function getUserFacingErrorMessage(error: unknown, fallback: string) {
     return "Sesi Anda telah berakhir. Silakan masuk kembali.";
   }
 
+  if (/foreign key|violates .*constraint|still referenced|is still in use/i.test(message)) {
+    return "Data ini masih digunakan oleh data terkait. Lepaskan atau hapus data terkait terlebih dahulu, lalu coba lagi.";
+  }
+
   return message;
 }

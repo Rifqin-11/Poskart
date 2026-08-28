@@ -16,7 +16,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Button } from "@/components/ui/button";
@@ -179,8 +179,10 @@ export function ShowcaseManagement() {
           await deleteShowcase.mutateAsync(showcase.id);
           toast.success("Showcase deleted");
         } catch (error) {
-          toast.error(
-            error instanceof Error ? error.message : "Unable to delete showcase",
+          showErrorToast(
+            "Showcase deletion failed",
+            error,
+            "The showcase could not be deleted. Please try again.",
           );
         }
       },

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { CheckCircle2, ExternalLink } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -17,7 +17,6 @@ import {
   useReviewProductFeedback,
   useSuperAdminFeedback,
 } from "@/features/admin/superadmin/use-superadmin";
-import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import type {
   FeedbackCategory,
   FeedbackStatus,
@@ -69,11 +68,10 @@ export function ProductFeedbackManagement() {
           setSelected(null);
         },
         onError: (error) =>
-          toast.error(
-            getUserFacingErrorMessage(
-              error,
-              "Feedback belum dapat diperbarui.",
-            ),
+          showErrorToast(
+            "Feedback belum dapat diperbarui",
+            error,
+            "Feedback belum dapat diperbarui.",
           ),
       },
     );

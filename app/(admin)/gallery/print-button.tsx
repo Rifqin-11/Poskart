@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Printer } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import { queueGalleryPrint } from "./actions";
 import { usePermission } from "@/features/admin/hooks/use-permission";

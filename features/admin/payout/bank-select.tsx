@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { cn } from "@/lib/utils";
 
 const BANK_API_URL = "https://bank.thecloudalert.com/api/get/";
@@ -90,7 +91,7 @@ export function BankSelect({
       } catch (error) {
         if (controller.signal.aborted) return;
         setLoadError(
-          error instanceof Error ? error.message : "Unable to load banks.",
+          getUserFacingErrorMessage(error, "Daftar bank tidak tersedia."),
         );
       } finally {
         if (!controller.signal.aborted) setIsLoading(false);

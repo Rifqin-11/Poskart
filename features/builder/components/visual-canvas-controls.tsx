@@ -6,7 +6,7 @@ import {
   Image as ImageIcon,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";

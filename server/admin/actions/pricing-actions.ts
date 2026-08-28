@@ -356,13 +356,57 @@ export async function deletePricingProduct(id: string): Promise<void> {
     "admin",
     "akuntan",
   ]);
+
+  const { data: assignments, error: assignmentError } = await supabase
+    .from("device_pricing_products")
+    .select("device_id")
+    .eq("organization_id", organizationId)
+    .eq("pricing_product_id", id);
+  if (assignmentError) {
+    throw new Error(
+      `Unable to check device pricing assignments: ${assignmentError.message}`,
+    );
+  }
+
+  const deviceIds = (assignments ?? []).map((assignment) => assignment.device_id);
+  if (deviceIds.length > 0) {
+    const { data: devices, error: deviceError } = await supabase
+      .from("devices")
+      .select("id,name")
+      .eq("organization_id", organizationId)
+      .in("id", deviceIds);
+    if (deviceError) {
+      throw new Error(
+        `Unable to check assigned devices: ${deviceError.message}`,
+      );
+    }
+
+    const deviceNames = (devices ?? [])
+      .map((device) => device.name)
+      .filter(Boolean);
+    const deviceLabel =
+      deviceNames.length > 0
+        ? deviceNames.slice(0, 3).join(", ") +
+          (deviceNames.length > 3 ? ` dan ${deviceNames.length - 3} lainnya` : "")
+        : `${deviceIds.length} device`;
+    throw new Error(
+      `Pricing ini masih dipakai oleh ${deviceLabel}. Lepaskan package dari konfigurasi device terlebih dahulu, lalu coba hapus lagi.`,
+    );
+  }
+
   const { error } = await supabase
     .from("pricing_products")
     .delete()
     .eq("id", id)
     .eq("organization_id", organizationId);
-  if (error)
+  if (error) {
+    if (error.code === "23503") {
+      throw new Error(
+        "Pricing ini masih dipakai oleh device. Lepaskan package dari konfigurasi device terlebih dahulu, lalu coba hapus lagi.",
+      );
+    }
     throw new Error(`Unable to delete pricing product: ${error.message}`);
+  }
 }
 
 export async function getSubscriptionPlans(): Promise<SubscriptionPlan[]> {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { ImageUploadDropzone } from "@/components/ui/image-upload-dropzone";
 import { Dialog } from "@/components/ui/dialog";
@@ -72,7 +72,7 @@ export function AssetUploadDialog({
         storagePath = result.path;
         size = result.size;
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Upload failed");
+        showErrorToast("Tidak dapat mengunggah asset", err, "File belum berhasil diunggah. Periksa ukuran dan format file.");
         setUploadingFile(false);
         return;
       }
@@ -198,7 +198,7 @@ export function AssetEditDialog({
         patch.storage_path = result.path;
         patch.size = result.size;
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Upload failed");
+        showErrorToast("Tidak dapat mengunggah asset", err, "File belum berhasil diunggah. Periksa ukuran dan format file.");
         setUploadingFile(false);
         return;
       }

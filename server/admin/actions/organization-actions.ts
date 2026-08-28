@@ -199,7 +199,11 @@ export async function updateOrganization(
 export async function deleteOrganization(id: string): Promise<void> {
   const { supabase } = await getAdminContext();
   const { error } = await supabase.from("organizations").delete().eq("id", id);
-  if (error) throw new Error(`Unable to delete organization: ${error.message}`);
+  if (error) {
+    throw new Error(
+      "Organization could not be deleted. Remove related data first, then try again.",
+    );
+  }
 }
 
 export async function deleteMyOrganization(confirmation: string) {
@@ -231,7 +235,9 @@ export async function deleteMyOrganization(confirmation: string) {
     .eq("id", organization.id);
 
   if (deleteError) {
-    throw new Error(`Gagal menghapus workspace: ${deleteError.message}`);
+    throw new Error(
+      "Workspace tidak dapat dihapus. Hapus data terkait terlebih dahulu, lalu coba lagi.",
+    );
   }
 
   revalidatePath("/");

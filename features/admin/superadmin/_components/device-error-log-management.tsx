@@ -9,7 +9,7 @@ import {
   MonitorSmartphone,
   RotateCcw,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,8 +94,10 @@ export function DeviceErrorLogManagement() {
             resolved ? "Error marked as resolved" : "Error reopened",
           ),
         onError: (error) =>
-          toast.error(
-            error instanceof Error ? error.message : "Unable to update error",
+          showErrorToast(
+            "Error status could not be updated",
+            error,
+            "Unable to update error.",
           ),
       },
     );

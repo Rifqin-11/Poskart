@@ -56,5 +56,5 @@ export async function deleteAsset(
     await supabase.storage.from("builder-assets").remove([storagePath]);
   }
   const { error } = await supabase.from("assets").delete().eq("id", id);
-  if (error) throw new Error(`Unable to delete asset: ${error.message}`);
+  if (error) throw new Error("Asset could not be deleted. Please try again.");
 }

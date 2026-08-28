@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import {
   Check,
   Copy,
@@ -257,7 +257,7 @@ function AssignDevicesModal({
       );
       onDone();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Assignment failed");
+      showErrorToast("Tidak dapat menerapkan theme", err, "Theme belum diterapkan ke device.");
     } finally {
       setActivating(false);
     }
@@ -304,8 +304,10 @@ export function BuilderThemesPage() {
     try {
       await setActive.mutateAsync(id);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to activate theme",
+      showErrorToast(
+        "Theme activation failed",
+        err,
+        "The theme could not be activated. Please try again.",
       );
     } finally {
       setLoadingId(null);
@@ -324,8 +326,10 @@ export function BuilderThemesPage() {
       await deactivate.mutateAsync(id);
       toast.success("Theme deactivated.");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to deactivate theme",
+      showErrorToast(
+        "Theme deactivation failed",
+        err,
+        "The theme could not be deactivated. Please try again.",
       );
     } finally {
       setLoadingId(null);
@@ -339,8 +343,10 @@ export function BuilderThemesPage() {
       setConfirmDelete(null);
       toast.success("Theme deleted.");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to delete theme",
+      showErrorToast(
+        "Theme deletion failed",
+        err,
+        "The theme could not be deleted. Please try again.",
       );
     } finally {
       setLoadingId(null);

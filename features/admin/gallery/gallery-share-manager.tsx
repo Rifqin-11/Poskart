@@ -22,7 +22,7 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 
 import {
   createSharedGallery,
@@ -156,10 +156,10 @@ export function GalleryShareProvider({
         clearSelection();
         toast.success("Shared gallery updated.");
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Unable to update shared gallery.",
+        showErrorToast(
+          "Shared gallery could not be updated",
+          error,
+          "Unable to update shared gallery.",
         );
       }
     });
@@ -371,9 +371,13 @@ function CreateSharedGalleryDialog({
         setName("");
         if (!editingGallery) toast.success("Shared gallery created.");
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
+        showErrorToast(
+          editingGallery
+            ? "Shared gallery could not be updated"
+            : "Shared gallery could not be created",
+          error,
+          editingGallery
+            ? "Unable to update shared gallery."
             : "Unable to create shared gallery.",
         );
       }
@@ -502,10 +506,10 @@ function SharedGalleryLibraryDialog({
             );
           })
           .catch((error) =>
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "Unable to delete shared gallery.",
+            showErrorToast(
+              "Shared gallery deletion failed",
+              error,
+              "The shared gallery could not be deleted. Please try again.",
             ),
           )
           .finally(() => setDeletingId(null));

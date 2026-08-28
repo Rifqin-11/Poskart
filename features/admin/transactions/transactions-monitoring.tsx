@@ -21,7 +21,8 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import QRCode from "react-qr-code";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
+import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -543,10 +544,10 @@ export function TransactionsMonitoring({
         toast.success("Transaksi QRIS berhasil dibuat dan tercatat.");
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Gagal membuat transaksi QRIS.",
+      showErrorToast(
+        "Gagal membuat transaksi QRIS",
+        error,
+        "Transaksi QRIS tidak dapat dibuat. Coba lagi.",
       );
     }
   }
@@ -570,7 +571,11 @@ export function TransactionsMonitoring({
         }
       } catch (error) {
         if (active) {
-          toast.error(error instanceof Error ? error.message : "Gagal mengecek status QRIS.");
+          showErrorToast(
+            "Gagal mengecek status QRIS",
+            error,
+            "Status pembayaran QRIS tidak dapat diperiksa. Coba lagi.",
+          );
         }
       }
     };
@@ -690,8 +695,10 @@ export function TransactionsMonitoring({
         `${getTransactionActionLabel(action)} is waiting for Super Admin approval.`,
       );
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create request",
+      showErrorToast(
+        `Failed to ${getTransactionActionLabel(action).toLowerCase()} transaction request`,
+        error,
+        "Permintaan tindakan transaksi tidak dapat dibuat. Coba lagi.",
       );
     }
   }
@@ -701,10 +708,10 @@ export function TransactionsMonitoring({
       await markTesting.mutateAsync(transaction.id);
       toast.success("Transaction marked as test mode.");
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to mark transaction as test mode",
+      showErrorToast(
+        "Failed to mark transaction as test mode",
+        error,
+        "Transaksi tidak dapat ditandai sebagai test mode. Coba lagi.",
       );
     }
   }
@@ -714,10 +721,10 @@ export function TransactionsMonitoring({
       await unmarkTesting.mutateAsync(transaction.id);
       toast.success("Transaction test mode was removed.");
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to remove transaction test mode",
+      showErrorToast(
+        "Failed to remove transaction test mode",
+        error,
+        "Mode test transaksi tidak dapat dihapus. Coba lagi.",
       );
     }
   }
@@ -749,10 +756,10 @@ export function TransactionsMonitoring({
         successCount += 1;
       } catch (error) {
         failedCount += 1;
-        failedMessage =
-          error instanceof Error
-            ? error.message
-            : `Failed to run ${getBulkActionLabel(action)}`;
+        failedMessage = getUserFacingErrorMessage(
+          error,
+          `Tidak dapat menjalankan ${getBulkActionLabel(action).toLowerCase()}.`,
+        );
       }
     }
 
@@ -771,10 +778,12 @@ export function TransactionsMonitoring({
       toast.success(`${successCount} transactions processed${approvalSuffix}.`);
     }
     if (failedMessage) {
-      toast.error(
+      showErrorToast(
+        `Failed to ${getBulkActionLabel(action).toLowerCase()} transactions`,
+        new Error(failedMessage),
         failedCount > 1
-          ? `${failedCount} transactions failed. ${failedMessage}`
-          : failedMessage,
+          ? `${failedCount} transaksi gagal diproses. Coba lagi.`
+          : "Tindakan transaksi tidak dapat diproses. Coba lagi.",
       );
     }
   }
@@ -866,8 +875,10 @@ export function TransactionsMonitoring({
       URL.revokeObjectURL(url);
       toast.success("Laporan transaksi (CSV) berhasil diekspor.");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Gagal mengekspor transaksi.",
+      showErrorToast(
+        "Gagal mengekspor transaksi CSV",
+        error,
+        "Laporan transaksi CSV tidak dapat diekspor. Coba lagi.",
       );
     } finally {
       setIsExporting(false);
@@ -893,8 +904,10 @@ export function TransactionsMonitoring({
       URL.revokeObjectURL(url);
       toast.success("PDF bertanda tangan digital berhasil diekspor.");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Gagal mengekspor transaksi.",
+      showErrorToast(
+        "Gagal mengekspor laporan transaksi PDF",
+        error,
+        "Laporan transaksi PDF tidak dapat diekspor. Coba lagi.",
       );
     } finally {
       setIsExporting(false);

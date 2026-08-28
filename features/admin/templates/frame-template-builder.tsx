@@ -16,7 +16,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { BuilderHeader } from "@/features/builder/shared/builder-header";
 import { BuilderResponsiveWorkspace } from "@/features/builder/shared/builder-responsive-workspace";
 import { BuilderUnsavedDialog } from "@/features/builder/shared/builder-unsaved-dialog";

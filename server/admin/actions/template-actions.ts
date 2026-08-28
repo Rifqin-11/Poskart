@@ -293,7 +293,9 @@ export async function deleteTemplate(id: string): Promise<void> {
     .limit(5);
 
   if (assignmentError) {
-    throw new Error(`Unable to check template assignments: ${assignmentError.message}`);
+    throw new Error(
+      "Frame assignments could not be checked. Please try again before deleting the frame.",
+    );
   }
 
   if (assignments && assignments.length > 0) {
@@ -313,7 +315,7 @@ export async function deleteTemplate(id: string): Promise<void> {
   }
 
   const { error } = await supabase.from("templates").delete().eq("id", id);
-  if (error) throw new Error(`Unable to delete template: ${error.message}`);
+  if (error) throw new Error("Frame could not be deleted. Please try again.");
 }
 
 export async function reorderTemplates(templateIds: string[]): Promise<void> {

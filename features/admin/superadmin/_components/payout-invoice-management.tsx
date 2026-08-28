@@ -14,7 +14,7 @@ import {
   Upload,
   XCircle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,7 +105,11 @@ export function PayoutInvoiceManagement({
       });
       setInvoicePage(data);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to load payouts");
+      showErrorToast(
+        "Payouts could not be loaded",
+        error,
+        "Failed to load payouts.",
+      );
     } finally {
       setLoading(false);
     }
@@ -129,8 +133,10 @@ export function PayoutInvoiceManagement({
       void getPayoutSettingsForSuperadmin()
         .then(setSettings)
         .catch((error) =>
-          toast.error(
-            error instanceof Error ? error.message : "Failed to load payout settings",
+          showErrorToast(
+            "Payout settings could not be loaded",
+            error,
+            "Failed to load payout settings.",
           ),
         );
     }, 0);
@@ -537,7 +543,11 @@ function PayoutGlobalSettingsFields({
       };
       const result = await savePayoutSettingsForSuperadmin(nextSettings);
       if (!result.success) {
-        toast.error(result.error ?? "Failed to save payout settings");
+        showErrorToast(
+          "Payout settings could not be saved",
+          result.error ? new Error(result.error) : null,
+          "Failed to save payout settings.",
+        );
         return;
       }
       onSaved(nextSettings);
@@ -799,7 +809,11 @@ function PayoutReviewContent({
     startTransition(async () => {
       const result = await action();
       if (!result.success) {
-        toast.error(result.error ?? "Action failed");
+        showErrorToast(
+          "Payout action failed",
+          result.error ? new Error(result.error) : null,
+          "The payout action could not be completed. Please try again.",
+        );
         return;
       }
       toast.success(successMessage);
@@ -842,8 +856,10 @@ function PayoutReviewContent({
       }));
       toast.success("Transfer proof uploaded and compressed.");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to upload transfer proof.",
+      showErrorToast(
+        "Transfer proof upload failed",
+        error,
+        "Failed to upload transfer proof.",
       );
     } finally {
       setUploadingProof(false);

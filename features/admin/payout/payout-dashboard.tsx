@@ -10,7 +10,7 @@ import {
   Landmark,
   Wallet,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -112,8 +112,10 @@ export function PayoutDashboard({
         });
         setInvoicePage(nextPage);
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to load withdrawals",
+        showErrorToast(
+          "Failed to load withdrawals",
+          error,
+          "Riwayat withdrawal tidak dapat dimuat. Coba lagi.",
         );
       }
     });
@@ -128,10 +130,10 @@ export function PayoutDashboard({
         });
         setLedgerPage(nextPage);
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Failed to load pending settlement entries",
+        showErrorToast(
+          "Failed to load pending settlements",
+          error,
+          "Settlement tertunda tidak dapat dimuat. Coba lagi.",
         );
       }
     });
@@ -149,7 +151,11 @@ export function PayoutDashboard({
         accountId: summary.payoutAccount!.id,
       });
       if (!result.success) {
-        toast.error(result.error ?? "Failed to request withdrawal");
+        showErrorToast(
+          "Failed to request withdrawal",
+          result.error ? new Error(result.error) : null,
+          "Permintaan withdrawal tidak dapat dikirim. Coba lagi.",
+        );
         return;
       }
       toast.success("Withdrawal request sent");
@@ -1020,7 +1026,11 @@ function PayoutDetailDialog({
         toast.success("Withdrawal draft approved");
         onClose();
       } else {
-        toast.error(result.error ?? "Failed to approve withdrawal draft");
+        showErrorToast(
+          "Failed to approve withdrawal draft",
+          result.error ? new Error(result.error) : null,
+          "Draft withdrawal tidak dapat disetujui. Coba lagi.",
+        );
       }
     });
   };
@@ -1046,7 +1056,11 @@ function PayoutDetailDialog({
         setIsRejectOpen(false);
         onClose();
       } else {
-        toast.error(result.error ?? "Failed to reject withdrawal draft");
+        showErrorToast(
+          "Failed to reject withdrawal draft",
+          result.error ? new Error(result.error) : null,
+          "Draft withdrawal tidak dapat ditolak. Coba lagi.",
+        );
       }
     });
   };
@@ -1067,7 +1081,11 @@ function PayoutDetailDialog({
             toast.success("Withdrawal draft canceled");
             onClose();
           } else {
-            toast.error(result.error ?? "Failed to cancel withdrawal draft");
+            showErrorToast(
+              "Failed to cancel withdrawal draft",
+              result.error ? new Error(result.error) : null,
+              "Draft withdrawal tidak dapat dibatalkan. Coba lagi.",
+            );
           }
         });
       },

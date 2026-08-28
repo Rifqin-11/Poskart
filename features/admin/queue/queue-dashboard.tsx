@@ -18,7 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   createQueueEvent,
   deleteQueueEvent,
@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import { StatCard } from "@/features/admin/_components/stat-card";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { showErrorToast } from "@/lib/toast";
 import { cn, formatDateTime } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import type {
@@ -256,12 +257,18 @@ export function QueueDashboard({
   function runAction(
     action: () => Promise<{ success: boolean; error?: string; eventId?: string }>,
     successMessage: string,
+    errorTitle: string,
+    errorFallback: string,
     after?: (eventId?: string) => void,
   ) {
     startTransition(async () => {
       const result = await action();
       if (!result.success) {
-        toast.error(result.error ?? "Action failed");
+        showErrorToast(
+          errorTitle,
+          result.error ? new Error(result.error) : null,
+          errorFallback,
+        );
         return;
       }
       toast.success(successMessage);
@@ -306,7 +313,15 @@ export function QueueDashboard({
 
   function contact(entry: GuestQueueEntry) {
     startTransition(async () => {
-      await markGuestQueueNotified(entry.id);
+      const result = await markGuestQueueNotified(entry.id);
+      if (!result.success) {
+        showErrorToast(
+          "Failed to mark visitor contacted",
+          result.error ? new Error(result.error) : null,
+          "Status kontak visitor tidak dapat diperbarui. Coba lagi.",
+        );
+        return;
+      }
       router.refresh();
     });
 
@@ -335,6 +350,8 @@ export function QueueDashboard({
           runAction(
             () => createQueueEvent(values),
             "Queue QR created",
+            "Failed to create queue QR",
+            "Queue QR tidak dapat dibuat. Periksa data lalu coba lagi.",
             (eventId) => {
               setDialogOpen(false);
               refreshToEvent(eventId);
@@ -429,6 +446,10 @@ export function QueueDashboard({
                           selectedEvent.status === "active"
                             ? "Queue paused"
                             : "Queue activated",
+                          selectedEvent.status === "active"
+                            ? "Failed to pause queue"
+                            : "Failed to activate queue",
+                          "Status queue tidak dapat diubah. Coba lagi.",
                         )
                       }
                     >
@@ -440,6 +461,8 @@ export function QueueDashboard({
                         runAction(
                           () => deleteQueueEvent(selectedEvent.id),
                           "Queue QR deleted",
+                          "Failed to delete queue QR",
+                          "Queue QR tidak dapat dihapus. Coba lagi.",
                           () => refreshToEvent(),
                         )
                       }
@@ -546,6 +569,8 @@ export function QueueDashboard({
                       nextEntry.emailSentAt
                         ? "Visitor called"
                         : "Visitor called and emailed",
+                      "Failed to call visitor",
+                      "Visitor tidak dapat dipanggil. Coba lagi.",
                     )
                   }
                 >
@@ -559,6 +584,8 @@ export function QueueDashboard({
                       nextEntry.emailSentAt
                         ? "Visitor moved to session"
                         : "Visitor moved to session and emailed",
+                      "Failed to start session",
+                      "Sesi visitor tidak dapat dimulai. Coba lagi.",
                     )
                   }
                 >
@@ -575,6 +602,8 @@ export function QueueDashboard({
                     runAction(
                       () => updateGuestQueueStatus(nextEntry.id, "no_show"),
                       "Visitor skipped as no-show",
+                      "Failed to skip visitor",
+                      "Visitor tidak dapat ditandai sebagai no-show. Coba lagi.",
                     )
                   }
                 >
@@ -650,6 +679,10 @@ export function QueueDashboard({
                                 entry.status === "in_session"
                                   ? "Queue ended"
                                   : "Visitor moved to session",
+                                entry.status === "in_session"
+                                  ? "Failed to end queue session"
+                                  : "Failed to start queue session",
+                                "Status sesi queue tidak dapat diubah. Coba lagi.",
                               )
                             }
                             disabled={[
@@ -668,6 +701,8 @@ export function QueueDashboard({
                                 () =>
                                   updateGuestQueueStatus(entry.id, "no_show"),
                                 "Visitor skipped as no-show",
+                                "Failed to skip visitor",
+                                "Visitor tidak dapat ditandai sebagai no-show. Coba lagi.",
                               )
                             }
                             disabled={[
@@ -693,8 +728,10 @@ export function QueueDashboard({
                                   updateGuestQueueStatus(
                                     entry.id,
                                     event.target.value as GuestQueueStatus,
-                                  ),
+                                ),
                                 "Queue status updated",
+                                "Failed to update queue status",
+                                "Status queue tidak dapat diubah. Coba lagi.",
                               )
                             }
                             aria-label="Change queue status"

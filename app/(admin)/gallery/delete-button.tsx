@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Trash2, Loader2 } from "lucide-react";
 import { deleteGallerySession } from "./actions";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 
 export function DeleteSessionButton({ sessionId }: { sessionId: string }) {
@@ -22,8 +22,10 @@ export function DeleteSessionButton({ sessionId }: { sessionId: string }) {
       await deleteGallerySession(sessionId);
       toast.success("Photo deleted successfully");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to delete photo",
+      showErrorToast(
+        "Photo deletion failed",
+        error,
+        "The photo could not be removed. Please try again.",
       );
     } finally {
       setLoading(false);

@@ -150,7 +150,7 @@ export async function deleteSharedGallery(sharedGalleryId: string) {
     .select("id")
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("Shared gallery could not be deleted. Please try again.");
   if (!data) throw new Error("Shared gallery not found or access denied.");
 
   revalidatePath("/gallery");
@@ -246,24 +246,34 @@ export async function deleteGallerySession(sessionId: string) {
   }
 
   // Verify the session belongs to the user's organization and fetch its storage IDs.
-  const { data: session } = await supabase
+  const { data: session, error: sessionError } = await supabase
     .from("gallery_sessions")
     .select("id")
     .eq("id", sessionId)
     .eq("organization_id", organizationId)
     .maybeSingle();
 
+  if (sessionError) {
+    throw new Error("Gallery session could not be checked. Please try again.");
+  }
   if (!session) {
     throw new Error("Session not found or access denied");
   }
 
-  const { data: photos } = await supabase
+  const { data: photos, error: photosError } = await supabase
     .from("gallery_photos")
     .select("storage_provider,provider_public_id,cloudinary_public_id")
     .eq("session_id", sessionId);
 
+  if (photosError) {
+    throw new Error("Gallery files could not be checked. Please try again.");
+  }
   if ((photos ?? []).length > 0) {
-    await deleteGalleryAssets(photos ?? []);
+    try {
+      await deleteGalleryAssets(photos ?? []);
+    } catch {
+      throw new Error("Gallery files could not be removed. Please try again.");
+    }
   }
 
   // Delete session from Supabase (cascades to gallery_photos)
@@ -274,7 +284,7 @@ export async function deleteGallerySession(sessionId: string) {
     .eq("organization_id", organizationId);
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error("Gallery session could not be deleted. Please try again.");
   }
 
   revalidatePath("/gallery");

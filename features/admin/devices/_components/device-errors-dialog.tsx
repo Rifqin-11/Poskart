@@ -7,7 +7,7 @@ import {
   Clipboard,
   Send,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -104,10 +104,10 @@ export function DeviceErrorsDialog({
         onSuccess: () =>
           toast.success("Laporan dikirim ke notifikasi superadmin"),
         onError: (error) =>
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Gagal mengirim laporan ke superadmin",
+          showErrorToast(
+            "Gagal mengirim laporan device",
+            error,
+            "Laporan device tidak dapat dikirim ke superadmin. Coba lagi.",
           ),
       },
     );

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, CircleHelp, Copy, Loader2, Plus, Ticket, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,7 +109,7 @@ export function VoucherManagement({
       setOpen(false);
       setForm(initialForm);
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Gagal membuat voucher."),
+    onError: (error) => showErrorToast("Tidak dapat membuat voucher", error, "Voucher belum berhasil dibuat."),
   });
   const deleteCampaign = useMutation({
     mutationFn: vouchersApi.deleteVoucherCampaign,
@@ -117,7 +117,12 @@ export function VoucherManagement({
       await queryClient.invalidateQueries({ queryKey: adminQueryKeys.vouchers });
       toast.success("Voucher campaign berhasil dihapus.");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Gagal menghapus voucher campaign."),
+    onError: (error) =>
+      showErrorToast(
+        "Gagal menghapus voucher campaign",
+        error,
+        "Voucher campaign tidak dapat dihapus. Coba lagi.",
+      ),
   });
 
   const selectedDevices = useMemo(

@@ -12,7 +12,7 @@ import {
   WalletCards,
   MessageSquareMore,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -169,7 +169,11 @@ export function TenantManagement() {
         deleteTenant.mutate(organization.id, {
           onSuccess: () => toast.success("Organization deleted"),
           onError: (err) =>
-            toast.error(err instanceof Error ? err.message : "Delete failed"),
+            showErrorToast(
+              "Organization deletion failed",
+              err,
+              "The organization could not be deleted. Remove related data first, then try again.",
+            ),
         });
       },
     });
@@ -729,8 +733,10 @@ export function TenantManagement() {
                 setCreating(false);
               },
               onError: (err) =>
-                toast.error(
-                  err instanceof Error ? err.message : "Create failed",
+                showErrorToast(
+                  "Organization could not be created",
+                  err,
+                  "Create failed.",
                 ),
             });
           }}
@@ -752,8 +758,10 @@ export function TenantManagement() {
                   setEditing(null);
                 },
                 onError: (err) =>
-                  toast.error(
-                    err instanceof Error ? err.message : "Update failed",
+                  showErrorToast(
+                    "Organization could not be updated",
+                    err,
+                    "Update failed.",
                   ),
               },
             );
@@ -817,10 +825,10 @@ export function TenantManagement() {
                 setBroadcastType("info");
                 setBroadcastCustomType("");
               } catch (err) {
-                toast.error(
-                  err instanceof Error
-                    ? err.message
-                    : "Gagal mengirim notifikasi.",
+                showErrorToast(
+                  "Notifikasi tidak dapat dikirim",
+                  err,
+                  "Gagal mengirim notifikasi.",
                 );
               }
             }}
@@ -1034,10 +1042,10 @@ export function TenantManagement() {
                         setEditingProfile(null);
                       },
                       onError: (err) =>
-                        toast.error(
-                          err instanceof Error
-                            ? err.message
-                            : "Failed to update user",
+                        showErrorToast(
+                          "User could not be updated",
+                          err,
+                          "Failed to update user.",
                         ),
                     },
                   );
@@ -1064,8 +1072,10 @@ export function TenantManagement() {
                   setEditingPlan(null);
                 },
                 onError: (err) =>
-                  toast.error(
-                    err instanceof Error ? err.message : "Update failed",
+                  showErrorToast(
+                    "Subscription plan could not be updated",
+                    err,
+                    "Update failed.",
                   ),
               },
             );

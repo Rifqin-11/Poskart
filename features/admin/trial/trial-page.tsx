@@ -12,7 +12,7 @@ import {
   Images,
   XCircle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { submitTrialRequest } from "@/server/admin/actions/trial-actions";
@@ -69,7 +69,11 @@ export function TrialPage({
         router.refresh();
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal memulai trial.");
+      showErrorToast(
+        "Tidak dapat memulai trial",
+        error,
+        "Gagal memulai trial.",
+      );
     } finally {
       setSubmitting(false);
     }

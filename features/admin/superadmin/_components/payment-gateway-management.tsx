@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CreditCard, Check, ShieldCheck } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -36,11 +36,7 @@ export function PaymentGatewayManagement() {
         }
       } catch (error) {
         if (!cancelled) {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Unable to load payment gateway",
-          );
+          showErrorToast("Tidak dapat memuat payment gateway", error, "Konfigurasi payment gateway belum dapat dimuat.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -74,7 +70,7 @@ export function PaymentGatewayManagement() {
 
       toast.success("Subscription payment gateway updated");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Save failed");
+      showErrorToast("Tidak dapat menyimpan payment gateway", error, "Konfigurasi payment gateway belum tersimpan.");
     } finally {
       setSaving(false);
     }

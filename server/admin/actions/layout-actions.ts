@@ -190,7 +190,7 @@ export async function deleteLayout(id: string): Promise<void> {
     .eq("organization_id", organizationId);
   if (detachError) {
     throw new Error(
-      `Unable to detach devices from layout: ${detachError.message}`,
+      "Theme could not be deleted because assigned devices could not be updated. Please try again.",
     );
   }
   const { error } = await supabase
@@ -198,7 +198,7 @@ export async function deleteLayout(id: string): Promise<void> {
     .delete()
     .eq("id", id)
     .eq("organization_id", organizationId);
-  if (error) throw new Error(`Unable to delete layout: ${error.message}`);
+  if (error) throw new Error("Theme could not be deleted. Please try again.");
 }
 
 export async function getLayoutSchema(): Promise<LayoutSchemaRow | null> {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CheckCircle2, Info, LoaderCircle, XCircle } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,7 +105,7 @@ export function TrialRequestManagement() {
           { requestId: request.id, decision: "approved", note: "Approved by superadmin" },
           {
             onSuccess: () => toast.success("Trial request disetujui."),
-            onError: (err) => toast.error(err instanceof Error ? err.message : "Gagal menyetujui."),
+            onError: (err) => showErrorToast("Tidak dapat menyetujui trial", err, "Trial request belum disetujui."),
           },
         );
       },
@@ -123,7 +123,7 @@ export function TrialRequestManagement() {
           { requestId: request.id, decision: "rejected", rejectionCode: "manual_reject", note: "Rejected by superadmin" },
           {
             onSuccess: () => toast.success("Trial request ditolak."),
-            onError: (err) => toast.error(err instanceof Error ? err.message : "Gagal menolak."),
+            onError: (err) => showErrorToast("Tidak dapat menolak trial", err, "Trial request belum ditolak."),
           },
         );
       },
@@ -140,7 +140,7 @@ export function TrialRequestManagement() {
           { requestId: request.id, decision: "needs_information", note: "Informasi tambahan diperlukan." },
           {
             onSuccess: () => toast.success("Status diperbarui."),
-            onError: (err) => toast.error(err instanceof Error ? err.message : "Gagal memperbarui."),
+            onError: (err) => showErrorToast("Tidak dapat memperbarui trial", err, "Status trial belum diperbarui."),
           },
         );
       },
@@ -158,7 +158,7 @@ export function TrialRequestManagement() {
           { requestId: request.id, reason: "Revoked by superadmin" },
           {
             onSuccess: () => toast.success("Trial dibatalkan."),
-            onError: (err) => toast.error(err instanceof Error ? err.message : "Gagal membatalkan trial."),
+            onError: (err) => showErrorToast("Tidak dapat membatalkan trial", err, "Trial belum dibatalkan."),
           },
         );
       },

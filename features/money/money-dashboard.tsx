@@ -27,7 +27,7 @@ import {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 
 import {
   createMoneyCategory,
@@ -529,7 +529,11 @@ export function MoneyDashboard({
         startTransition(async () => {
           const result = await deleteMoneyEntry(entry.id);
           if (!result.success) {
-            toast.error(result.error ?? "Transaksi gagal dihapus.");
+            showErrorToast(
+              "Gagal menghapus transaksi",
+              result.error ? new Error(result.error) : null,
+              "Transaksi tidak dapat dihapus. Coba lagi.",
+            );
             return;
           }
           toast.success("Transaksi berhasil dihapus.");
@@ -564,7 +568,11 @@ export function MoneyDashboard({
             startTransition(async () => {
               const result = await saveMoneyEntry(values);
               if (!result.success) {
-                toast.error(result.error ?? "Transaksi gagal disimpan.");
+                showErrorToast(
+                  editing ? "Gagal memperbarui transaksi" : "Gagal menyimpan transaksi",
+                  result.error ? new Error(result.error) : null,
+                  "Transaksi tidak dapat disimpan. Periksa data lalu coba lagi.",
+                );
                 return;
               }
               toast.success(
@@ -580,7 +588,11 @@ export function MoneyDashboard({
             startTransition(async () => {
               const result = await saveMoneyTransfer(values);
               if (!result.success) {
-                toast.error(result.error ?? "Transfer gagal disimpan.");
+                showErrorToast(
+                  "Gagal menyimpan transfer",
+                  result.error ? new Error(result.error) : null,
+                  "Transfer tidak dapat disimpan. Periksa data lalu coba lagi.",
+                );
                 return;
               }
               toast.success("Transfer berhasil ditambahkan.");
@@ -599,7 +611,11 @@ export function MoneyDashboard({
             startTransition(async () => {
               const result = await createMoneyTag({ name });
               if (!result.success) {
-                toast.error(result.error ?? "Tag gagal dibuat.");
+                showErrorToast(
+                  "Gagal membuat tag",
+                  result.error ? new Error(result.error) : null,
+                  "Tag tidak dapat dibuat. Coba lagi.",
+                );
                 return;
               }
               toast.success("Tag berhasil ditambahkan.");
@@ -616,7 +632,11 @@ export function MoneyDashboard({
                 startTransition(async () => {
                   const result = await deleteMoneyTag(tag.id);
                   if (!result.success) {
-                    toast.error(result.error ?? "Tag gagal dihapus.");
+                    showErrorToast(
+                      "Gagal menghapus tag",
+                      result.error ? new Error(result.error) : null,
+                      "Tag tidak dapat dihapus. Coba lagi.",
+                    );
                     return;
                   }
                   if (tagFilter === tag.id) setTagFilter("all");
@@ -637,7 +657,11 @@ export function MoneyDashboard({
             startTransition(async () => {
               const result = await createMoneyCategory({ entryType, name });
               if (!result.success) {
-                toast.error(result.error ?? "Kategori gagal dibuat.");
+                showErrorToast(
+                  "Gagal membuat kategori",
+                  result.error ? new Error(result.error) : null,
+                  "Kategori tidak dapat dibuat. Coba lagi.",
+                );
                 return;
               }
               toast.success("Kategori berhasil ditambahkan.");
@@ -654,7 +678,11 @@ export function MoneyDashboard({
                 startTransition(async () => {
                   const result = await deleteMoneyCategory(category.id);
                   if (!result.success) {
-                    toast.error(result.error ?? "Kategori gagal dihapus.");
+                    showErrorToast(
+                      "Gagal menghapus kategori",
+                      result.error ? new Error(result.error) : null,
+                      "Kategori tidak dapat dihapus. Coba lagi.",
+                    );
                     return;
                   }
                   toast.success("Kategori berhasil dihapus.");
@@ -674,7 +702,11 @@ export function MoneyDashboard({
             startTransition(async () => {
               const result = await createMoneyWallet({ name });
               if (!result.success) {
-                toast.error(result.error ?? "Dompet gagal dibuat.");
+                showErrorToast(
+                  "Gagal membuat dompet",
+                  result.error ? new Error(result.error) : null,
+                  "Dompet tidak dapat dibuat. Coba lagi.",
+                );
                 return;
               }
               toast.success("Dompet berhasil ditambahkan.");
@@ -691,7 +723,11 @@ export function MoneyDashboard({
                 startTransition(async () => {
                   const result = await deleteMoneyWallet(wallet.id);
                   if (!result.success) {
-                    toast.error(result.error ?? "Dompet gagal dihapus.");
+                    showErrorToast(
+                      "Gagal menghapus dompet",
+                      result.error ? new Error(result.error) : null,
+                      "Dompet tidak dapat dihapus. Coba lagi.",
+                    );
                     return;
                   }
                   if (walletFilter === wallet.id) setWalletFilter("all");

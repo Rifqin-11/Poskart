@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import {
   createPosSale,
   deletePosSale,
@@ -168,7 +168,11 @@ export function PosDashboard({
     startTransition(async () => {
       const result = await createPosSale(formData);
       if (!result.success) {
-        toast.error(result.error ?? "Transaksi gagal disimpan.");
+        showErrorToast(
+          "Gagal menyimpan transaksi POS",
+          result.error ? new Error(result.error) : null,
+          "Transaksi POS tidak dapat disimpan. Periksa data lalu coba lagi.",
+        );
         return;
       }
 
@@ -221,8 +225,10 @@ export function PosDashboard({
         link.click();
         URL.revokeObjectURL(url);
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Laporan gagal diekspor.",
+        showErrorToast(
+          "Gagal mengekspor laporan POS",
+          error,
+          "Laporan POS tidak dapat diekspor. Coba lagi.",
         );
       }
     });
@@ -238,7 +244,11 @@ export function PosDashboard({
         startTransition(async () => {
           const result = await deletePosSale(sale.id);
           if (!result.success) {
-            toast.error(result.error ?? "Transaksi gagal dihapus.");
+            showErrorToast(
+              "Gagal menghapus transaksi POS",
+              result.error ? new Error(result.error) : null,
+              "Transaksi POS tidak dapat dihapus. Coba lagi.",
+            );
             return;
           }
 
@@ -260,7 +270,11 @@ export function PosDashboard({
         startTransition(async () => {
           const result = await deletePosSales(selectedIds);
           if (!result.success) {
-            toast.error(result.error ?? "Transaksi gagal dihapus.");
+            showErrorToast(
+              "Gagal menghapus transaksi POS",
+              result.error ? new Error(result.error) : null,
+              "Transaksi POS tidak dapat dihapus. Coba lagi.",
+            );
             return;
           }
 
@@ -285,7 +299,11 @@ export function PosDashboard({
             startTransition(async () => {
               const result = await updatePosSale(values);
               if (!result.success) {
-                toast.error(result.error ?? "Transaksi gagal diubah.");
+                showErrorToast(
+                  "Gagal memperbarui transaksi POS",
+                  result.error ? new Error(result.error) : null,
+                  "Transaksi POS tidak dapat diperbarui. Coba lagi.",
+                );
                 return;
               }
               toast.success("Transaksi POS berhasil diubah.");

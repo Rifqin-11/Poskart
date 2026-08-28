@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CalendarDays, CircleHelp, Edit2, Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,7 +30,6 @@ import {
   useUpdatePricing,
 } from "@/features/admin/pricing/use-pricing";
 import { formatCurrency } from "@/lib/utils";
-import { getUserFacingErrorMessage } from "@/lib/errors/user-facing-error";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import {
   FeatureGuidedTour,
@@ -126,8 +125,10 @@ export function PricingManagement() {
       {
         onSuccess: () => toast.success(t("pricing.updated")),
         onError: (err) =>
-          toast.error(
-            getUserFacingErrorMessage(err, t("pricing.updateFailed")),
+          showErrorToast(
+            "Tidak dapat memperbarui pricing",
+            err,
+            t("pricing.updateFailed"),
           ),
       },
     );
@@ -143,8 +144,10 @@ export function PricingManagement() {
         deletePricing.mutate(product.id, {
           onSuccess: () => toast.success(t("pricing.deleteSuccess")),
           onError: (err) =>
-            toast.error(
-              getUserFacingErrorMessage(err, t("pricing.deleteFailed")),
+            showErrorToast(
+              "Tidak dapat menghapus pricing",
+              err,
+              t("pricing.deleteFailed"),
             ),
         });
       },
@@ -213,8 +216,10 @@ export function PricingManagement() {
                 setCreating(null);
               },
               onError: (err) =>
-                toast.error(
-                  getUserFacingErrorMessage(err, t("pricing.createFailed")),
+                showErrorToast(
+                  "Tidak dapat membuat pricing",
+                  err,
+                  t("pricing.createFailed"),
                 ),
             });
           }}
@@ -235,8 +240,10 @@ export function PricingManagement() {
                   setEditing(null);
                 },
                 onError: (err) =>
-                  toast.error(
-                    getUserFacingErrorMessage(err, t("pricing.updateFailed")),
+                  showErrorToast(
+                    "Tidak dapat menyimpan pricing",
+                    err,
+                    t("pricing.updateFailed"),
                   ),
               },
             );

@@ -18,7 +18,7 @@ import {
   useMemo,
 } from "react";
 import { FolderOpen, Plus, Smartphone } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { useTouchContextMenu } from "@/lib/hooks/use-touch-context-menu";
 import {
   useLayoutSchemas,
@@ -275,7 +275,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
         leaveBuilder();
         return true;
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Save failed");
+        showErrorToast("Tidak dapat menyimpan theme", err, "Perubahan belum tersimpan. Coba lagi.");
         return false;
       } finally {
         setIsSaving(false);
@@ -1217,7 +1217,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
       );
       leaveBuilder();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save theme");
+      showErrorToast("Tidak dapat membuat theme", err, "Theme belum dapat dibuat. Coba lagi.");
     } finally {
       setIsSaving(false);
     }

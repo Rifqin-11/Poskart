@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Cloud, Image as ImageIcon, ShieldCheck } from "lucide-react";
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -80,11 +80,7 @@ export function GalleryStorageManagement() {
         }
       } catch (error) {
         if (!cancelled) {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Unable to load gallery storage",
-          );
+          showErrorToast("Tidak dapat memuat penyimpanan gallery", error, "Konfigurasi penyimpanan gallery belum dapat dimuat.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -126,7 +122,7 @@ export function GalleryStorageManagement() {
       }
       toast.success("Gallery storage updated");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Save failed");
+      showErrorToast("Tidak dapat menyimpan penyimpanan gallery", error, "Konfigurasi penyimpanan gallery belum tersimpan.");
     } finally {
       setSaving(false);
     }

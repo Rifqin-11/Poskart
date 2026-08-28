@@ -1,6 +1,6 @@
 "use client";
 
-import { toast } from "sonner";
+import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +33,7 @@ export function ThemeBuilder() {
                 publish();
                 toast.success(t("themeBuilder.publishSuccess"));
               } catch (error) {
-                toast.error(error instanceof Error ? error.message : t("themeBuilder.publishFailed"));
+                showErrorToast("Tidak dapat publish theme", error, t("themeBuilder.publishFailed"));
               }
             }}
           >
