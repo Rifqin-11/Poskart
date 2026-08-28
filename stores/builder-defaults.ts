@@ -112,6 +112,7 @@ export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
     return {
       countdownText: "Kembali ke halaman awal",
       countdownSeconds: 8,
+      useGlobalDuration: true,
       countdownVariant: "bar",
       stylePreset: "default",
     };
