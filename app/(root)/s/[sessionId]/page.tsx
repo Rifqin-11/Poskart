@@ -150,7 +150,7 @@ export default async function SharedGalleryPage({
               <span className="block text-sm font-semibold tracking-tight">
                 {businessProfile.brandName}
               </span>
-              <span className="block text-xs text-zinc-500">Photobooth OS</span>
+              <span className="block text-xs text-zinc-500">Receipt Photobooth</span>
             </span>
           </Link>
           <span className="inline-flex items-center gap-2 text-xs font-medium text-zinc-500">
