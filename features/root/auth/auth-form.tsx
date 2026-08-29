@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
-import { LockKeyhole } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle, LockKeyhole } from "lucide-react";
+import { useState } from "react";
 import { signInAction, signInWithGoogleAction, signUpAction } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LoginCharacterScene, type LoginCharacterMood } from "./login-character-scene";
 
 export function AuthForm({
   mode,
@@ -17,96 +20,138 @@ export function AuthForm({
   next?: string;
 }) {
   const isLogin = mode === "login";
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [activeField, setActiveField] = useState<"email" | "password" | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const mood: LoginCharacterMood = error && !isSubmitting
+    ? "error"
+    : isSubmitting
+      ? "loading"
+      : passwordVisible
+        ? "peeking"
+        : activeField === "password"
+          ? "hiding"
+          : activeField === "email"
+            ? "watching"
+            : "idle";
+
+  const handleSubmit = () => {
+    setIsSubmitting(true);
+  };
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-10 text-zinc-950">
-      <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md flex-col justify-center">
-        <Link href="/" className="mb-8 flex items-center gap-3 self-center">
-          <div className="grid size-10 place-items-center overflow-hidden rounded-lg">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/Logo Poskart.png"
-              alt="POSKART Logo"
-              className="size-8 object-contain"
-            />
-          </div>
-          <div>
-            <div className="text-sm font-semibold tracking-tight">POSKART</div>
-            <div className="text-xs text-zinc-500">Login authentication</div>
-          </div>
-        </Link>
+    <main className="auth-page">
+      <div className={`auth-shell${isLogin ? "" : " auth-shell--register"}`}>
+        <section className="auth-art" aria-label="POSKART workspace">
+          <Link href="/" className="auth-brand">
+            <span className="auth-brand__mark">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/Logo Poskart.png" alt="" className="size-8 object-contain" />
+            </span>
+            <span>
+              <strong>POSKART</strong>
+              <small>merchant workspace</small>
+            </span>
+          </Link>
+          <LoginCharacterScene mood={mood} />
+          <p className="auth-art__footer">Simple tools for busy counters.</p>
+        </section>
 
-        <Card>
-          <CardHeader>
-            <div className="mb-3 grid size-10 place-items-center rounded-lg bg-zinc-100">
-              <LockKeyhole className="size-5 text-zinc-700" />
+        <section className="auth-panel">
+          <div className="auth-panel__inner">
+            <div className="auth-mobile-brand">
+              <span className="auth-brand__mark">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/Logo Poskart.png" alt="POSKART" className="size-8 object-contain" />
+              </span>
+              <strong>POSKART</strong>
             </div>
-            <CardTitle className="text-xl">{isLogin ? "Sign in to POSKART" : "Create POSKART account"}</CardTitle>
-            <CardDescription>
-              {isLogin
-                ? "Access dashboard, builder, transactions, and device operations."
-                : "Create an account for POSKART dashboard access."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            <div className="auth-heading">
+              <div className="auth-heading__spark"><span>*</span></div>
+              <p className="auth-kicker">{isLogin ? "Welcome back" : "Get started"}</p>
+              <h1>{isLogin ? "Keep your business moving." : "Set up your workspace."}</h1>
+              <p>{isLogin ? "Sign in to manage your store, devices, and daily sales." : "Create an account for POSKART dashboard access."}</p>
+            </div>
+
             {error ? (
-              <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {error}
+              <div className="auth-message auth-message--error" role="alert" aria-live="assertive">
+                <LockKeyhole className="size-4 shrink-0" />
+                <span>{error}</span>
               </div>
             ) : null}
             {success ? (
-              <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                {success}
-              </div>
+              <div className="auth-message auth-message--success" role="status" aria-live="polite">{success}</div>
             ) : null}
 
-            <form action={signInWithGoogleAction}>
+            <form action={signInWithGoogleAction} onSubmit={() => setIsSubmitting(true)}>
               {next ? <input type="hidden" name="next" value={next} /> : null}
-              <Button className="w-full" size="lg" type="submit" variant="outline">
-                <span className="grid size-4 place-items-center rounded-full bg-white text-[11px] font-bold text-[#4285F4]">
-                  G
-                </span>
+              <Button className="auth-google-button" size="lg" type="submit" variant="outline" disabled={isSubmitting}>
+                <span className="auth-google-mark">G</span>
                 Continue with Google
               </Button>
             </form>
 
-            <div className="my-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-zinc-200" />
-              <span className="text-xs text-zinc-400">or continue with email</span>
-              <div className="h-px flex-1 bg-zinc-200" />
-            </div>
+            <div className="auth-divider"><span>or continue with email</span></div>
 
-            <form action={isLogin ? signInAction : signUpAction} className="space-y-4">
+            <form action={isLogin ? signInAction : signUpAction} className="auth-form" onSubmit={handleSubmit}>
               {next ? <input type="hidden" name="next" value={next} /> : null}
               {!isLogin ? (
-                <label className="block text-xs font-medium text-zinc-500">
-                  Full name
-                  <Input className="mt-1" name="fullName" placeholder="POSKART Photobooth" required />
+                <label className="auth-field">
+                  <span>Full name</span>
+                  <Input name="fullName" placeholder="POSKART Photobooth" required autoComplete="name" />
                 </label>
               ) : null}
-              <label className="block text-xs font-medium text-zinc-500">
-                Email
-                <Input className="mt-1" name="email" type="email" placeholder="admin@poskart.id" required />
+              <label className="auth-field">
+                <span>Email</span>
+                <Input
+                  name="email"
+                  type="email"
+                  placeholder="admin@poskart.id"
+                  required
+                  autoComplete="email"
+                  onFocus={() => setActiveField("email")}
+                  onBlur={() => setActiveField(null)}
+                />
               </label>
-              <label className="block text-xs font-medium text-zinc-500">
-                Password
-                <Input className="mt-1" name="password" type="password" placeholder="Minimum 8 characters" required minLength={8} />
+              <label className="auth-field">
+                <span>Password</span>
+                <span className="auth-password-wrap">
+                  <Input
+                    name="password"
+                    type={passwordVisible ? "text" : "password"}
+                    placeholder="Minimum 8 characters"
+                    required
+                    minLength={8}
+                    autoComplete={isLogin ? "current-password" : "new-password"}
+                    onFocus={() => setActiveField("password")}
+                    onBlur={() => setActiveField(null)}
+                  />
+                  <button
+                    className="auth-password-toggle"
+                    type="button"
+                    onClick={() => setPasswordVisible((visible) => !visible)}
+                    aria-label={passwordVisible ? "Hide password" : "Show password"}
+                    aria-pressed={passwordVisible}
+                  >
+                    {passwordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </span>
               </label>
-              <Button className="w-full" size="lg" type="submit">
-                {isLogin ? "Sign in" : "Create account"}
+              <Button className="auth-submit-button" size="lg" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : null}
+                {isSubmitting ? "Checking..." : isLogin ? "Sign in" : "Create account"}
               </Button>
             </form>
 
-            <div className="mt-5 text-center text-sm text-zinc-500">
+            <p className="auth-switch">
               {isLogin ? "Do not have an account?" : "Already have an account?"}{" "}
-              <Link href={isLogin ? "/register" : "/login"} className="font-medium text-zinc-950 underline-offset-4 hover:underline">
-                {isLogin ? "Create one" : "Sign in"}
-              </Link>
-            </div>
-
-          </CardContent>
-        </Card>
+              <Link href={isLogin ? "/register" : "/login"}>{isLogin ? "Create one" : "Sign in"}</Link>
+            </p>
+          </div>
+          <p className="auth-panel__legal">By continuing, you agree to use POSKART for your business operations.</p>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }

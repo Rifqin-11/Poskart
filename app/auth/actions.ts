@@ -10,6 +10,11 @@ function readField(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function readPassword(formData: FormData) {
+  const value = formData.get("password");
+  return typeof value === "string" ? value : "";
+}
+
 function safeNextPath(value: string) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return "/onboarding";
@@ -29,7 +34,7 @@ function getSignUpErrorMessage(message: string) {
 
 export async function signInAction(formData: FormData) {
   const email = readField(formData, "email");
-  const password = readField(formData, "password");
+  const password = readPassword(formData);
   const next = safeNextPath(readField(formData, "next"));
   const loginPath = next === "/onboarding" ? "/login" : `/login?next=${encodeURIComponent(next)}`;
 
@@ -48,7 +53,13 @@ export async function signInAction(formData: FormData) {
   });
 
   if (error) {
-    return encodedRedirect("error", loginPath, error.message);
+    return encodedRedirect(
+      "error",
+      loginPath,
+      error.message.toLowerCase().includes("rate limit")
+        ? "Too many sign-in attempts. Please wait a few minutes and try again."
+        : "Email or password is incorrect.",
+    );
   }
 
   return encodedRedirect("success", next, "Signed in successfully.");
@@ -56,7 +67,7 @@ export async function signInAction(formData: FormData) {
 
 export async function signUpAction(formData: FormData) {
   const email = readField(formData, "email");
-  const password = readField(formData, "password");
+  const password = readPassword(formData);
   const fullName = readField(formData, "fullName");
 
   if (!email || !password || !fullName) {
