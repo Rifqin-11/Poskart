@@ -1,18 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useI18n } from "@/lib/i18n/i18n-provider";
 import { toast } from "@/lib/toast";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { DialogActions } from "@/features/admin/_components/dialog-actions";
 import { pricingPlans } from "@/lib/constants/business";
-import {
-  DEFAULT_ORGANIZATION_FEATURES,
-  normalizeOrganizationFeatures,
-} from "@/lib/organization-features";
+import { DEFAULT_ORGANIZATION_FEATURES } from "@/lib/organization-features";
 import { formatCurrency } from "@/lib/utils";
 import {
   addJakartaMonthsToDateInput,
@@ -94,7 +89,6 @@ export function TenantFormDialog({
   onClose,
   onSubmit,
 }: TenantFormDialogProps) {
-  const { t } = useI18n();
   const [form, setForm] = useState<TenantInput>(() => {
     const { id: _ignored, ...rest } = initial as Organization;
     void _ignored;
@@ -119,9 +113,7 @@ export function TenantFormDialog({
           : null),
       deviceLimit: rest.deviceLimit || 1,
       paymentCollectionMode: rest.paymentCollectionMode ?? "platform",
-      features: normalizeOrganizationFeatures(
-        rest.features ?? DEFAULT_ORGANIZATION_FEATURES,
-      ),
+      features: rest.features ?? DEFAULT_ORGANIZATION_FEATURES,
     } as TenantInput;
   });
 
@@ -358,44 +350,6 @@ export function TenantFormDialog({
             <option value="platform">POSKART shared payment gateway</option>
             <option value="custom">Custom organization payment gateway</option>
           </Select>
-        </section>
-
-        <section className="md:col-span-2 rounded-2xl border border-zinc-200 bg-white p-4">
-          <div className="mb-3">
-            <h3 className="text-sm font-semibold text-zinc-950">
-              Operational features
-            </h3>
-            <p className="mt-1 text-xs leading-5 text-zinc-500">
-              POS Cashier hanya diaktifkan untuk organisasi yang membutuhkan
-              input penjualan manual. Finance tersedia untuk semua organisasi
-              dengan subscription aktif.
-            </p>
-          </div>
-          <div className="grid gap-2 md:grid-cols-2">
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3">
-              <div>
-                <div className="text-sm font-medium text-zinc-950">
-                  POS Cashier
-                </div>
-                <div className="mt-0.5 text-xs text-zinc-500">
-                  {t("superadmin.showPosDesc")}
-                </div>
-              </div>
-              <Switch
-                checked={form.features?.posKasir ?? false}
-                onCheckedChange={(checked) =>
-                  setForm({
-                    ...form,
-                    features: {
-                      ...normalizeOrganizationFeatures(form.features),
-                      posKasir: checked,
-                    },
-                  })
-                }
-                aria-label="Toggle POS Cashier"
-              />
-            </div>
-          </div>
         </section>
 
         <div className="border-t border-zinc-100 pt-2 md:col-span-2">

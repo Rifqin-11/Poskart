@@ -24,6 +24,23 @@ export function useUpdateTenantName() {
   });
 }
 
+export function useUpdateOrganizationFeatures() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: organizationApi.updateMyOrganizationFeatures,
+    onSuccess: (features) => {
+      queryClient.setQueryData(
+        adminQueryKeys.organizationDetails,
+        (current: Awaited<ReturnType<typeof organizationApi.getMyOrganizationDetails>> | undefined) =>
+          current ? { ...current, features } : current,
+      );
+      queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.organizationDetails,
+      });
+    },
+  });
+}
+
 export function useDeleteMyOrganization() {
   const queryClient = useQueryClient();
   return useMutation({

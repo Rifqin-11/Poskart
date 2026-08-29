@@ -87,7 +87,9 @@ export async function updateSession(request: NextRequest) {
   const featureRoute =
     pathname === "/pos" || pathname.startsWith("/pos/")
       ? "posKasir"
-      : null;
+      : pathname === "/showcase" || pathname.startsWith("/showcase/")
+        ? "showcase"
+        : null;
   const isOrganizationSettingsRoute =
     pathname === "/settings" && request.nextUrl.searchParams.get("tab") === "organization";
   // Page access is now enforced by server-side route guards. Preserve the

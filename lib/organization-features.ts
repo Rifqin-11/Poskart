@@ -1,13 +1,15 @@
-export type OrganizationFeatureKey = "posKasir";
+export type OrganizationFeatureKey = "posKasir" | "showcase";
 
 export type OrganizationFeatureAccess = Record<OrganizationFeatureKey, boolean>;
 
 export const DEFAULT_ORGANIZATION_FEATURES: OrganizationFeatureAccess = {
   posKasir: false,
+  showcase: false,
 };
 
 export const ORGANIZATION_FEATURE_LABELS: Record<OrganizationFeatureKey, string> = {
   posKasir: "POS Cashier",
+  showcase: "Showcase",
 };
 
 export function normalizeOrganizationFeatures(
@@ -20,5 +22,6 @@ export function normalizeOrganizationFeatures(
 
   return {
     posKasir: source.posKasir === true,
+    showcase: source.showcase === true,
   };
 }

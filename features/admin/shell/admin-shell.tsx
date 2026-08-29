@@ -132,6 +132,7 @@ const navItems: AdminNavItem[] = [
     labelKey: "nav.showcase",
     icon: PanelsTopLeft,
     requiresSubscription: true,
+    organizationFeature: "showcase",
   },
   {
     href: "/gallery",

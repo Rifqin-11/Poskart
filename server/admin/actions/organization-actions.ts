@@ -17,6 +17,7 @@ import {
 import {
   DEFAULT_ORGANIZATION_FEATURES,
   normalizeOrganizationFeatures,
+  type OrganizationFeatureAccess,
 } from "@/lib/organization-features";
 import {
   parseJakartaDateInputEnd,
@@ -371,6 +372,27 @@ const getCachedMyOrganizationDetails = cache(async () => {
 
 export async function getMyOrganizationDetails() {
   return getCachedMyOrganizationDetails();
+}
+
+export async function updateMyOrganizationFeatures(
+  features: OrganizationFeatureAccess,
+) {
+  const { supabase, user } = await getAdminContext();
+  const membership = await getMyManageableOrganizationMembership(
+    supabase,
+    user.id,
+  );
+  const nextFeatures = normalizeOrganizationFeatures(features);
+
+  const { data, error } = await supabase
+    .from("organizations")
+    .update({ features: nextFeatures, updated_at: new Date().toISOString() })
+    .eq("id", membership.organization_id)
+    .select("id,features")
+    .single();
+
+  if (error) throw error;
+  return normalizeOrganizationFeatures(data.features);
 }
 
 export async function updateMyOrganizationName(name: string) {

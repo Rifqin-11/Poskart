@@ -1,6 +1,7 @@
 "use server";
 
 import { getAdminContext, getAdminMembership, verifyRole } from "@/server/admin/context";
+import { hasOrganizationFeatureAccess } from "@/server/admin/organization-feature-access";
 import { randomBytes } from "node:crypto";
 import type {
   Showcase,
@@ -135,6 +136,9 @@ function mapShowcase(row: ShowcaseRow): Showcase {
 }
 
 export async function getShowcases(): Promise<Showcase[]> {
+  if (!(await hasOrganizationFeatureAccess("showcase"))) {
+    throw new Error("Showcase is disabled for this organization.");
+  }
   const { supabase } = await getAdminContext();
   const membership = await getAdminMembership();
   if (!membership) throw new Error("Organization membership not found");
@@ -152,6 +156,9 @@ export async function getShowcases(): Promise<Showcase[]> {
 }
 
 export async function createShowcase(input: ShowcaseInput): Promise<string> {
+  if (!(await hasOrganizationFeatureAccess("showcase"))) {
+    throw new Error("Showcase is disabled for this organization.");
+  }
   const values = validateShowcaseInput(input);
   const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const { data, error } = await supabase.rpc("save_showcase", {
@@ -177,6 +184,9 @@ export async function updateShowcase(
   id: string,
   input: ShowcaseInput,
 ): Promise<string> {
+  if (!(await hasOrganizationFeatureAccess("showcase"))) {
+    throw new Error("Showcase is disabled for this organization.");
+  }
   const values = validateShowcaseInput(input);
   const { supabase } = await verifyRole(["owner", "admin", "designer"]);
   const { data, error } = await supabase.rpc("save_showcase", {
@@ -194,6 +204,9 @@ export async function updateShowcase(
 }
 
 export async function deleteShowcase(id: string): Promise<void> {
+  if (!(await hasOrganizationFeatureAccess("showcase"))) {
+    throw new Error("Showcase is disabled for this organization.");
+  }
   const { supabase, organizationId } = await verifyRole([
     "owner",
     "admin",

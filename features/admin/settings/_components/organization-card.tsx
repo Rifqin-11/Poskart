@@ -17,12 +17,15 @@ import {
   Copy,
   Check,
   LogOut,
+  PanelsTopLeft,
+  Calculator,
 } from "lucide-react";
 import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -42,6 +45,7 @@ import {
   useTenantInvitations,
   useTenantMembers,
   useUpdateTenantName,
+  useUpdateOrganizationFeatures,
   useLeaveOrganization,
   useTransferOwnership,
   useUpdateMemberRole,
@@ -135,6 +139,7 @@ export function OrganizationCard({
   const { data: members = [] } = useTenantMembers();
   const { data: invitations = [] } = useTenantInvitations();
   const updateName = useUpdateTenantName();
+  const updateFeatures = useUpdateOrganizationFeatures();
   const inviteUser = useInviteUser();
   const deleteInvitation = useDeleteInvitation();
   const deleteMyOrganization = useDeleteMyOrganization();
@@ -253,41 +258,121 @@ export function OrganizationCard({
             </SettingsPanelBlock>
 
             {isEditing && canEditDetails && (
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <label className="block text-[11px] font-medium uppercase tracking-wide text-zinc-400">
-                  Edit organization name
-                  <Input
-                    className="mt-1.5"
-                    value={organizationName}
-                    onChange={(event) => setEditedName(event.target.value)}
-                    placeholder="POSKART Admin"
-                  />
-                </label>
-                <div className="flex gap-2 self-end">
-                  <Button
-                    className="rounded-xl"
-                    disabled={
-                      !organizationName.trim() ||
-                      organizationName === tenant?.name ||
-                      updateName.isPending
-                    }
-                    onClick={() => {
-                      updateName.mutate(organizationName.trim(), {
-                        onSuccess: () => {
-                          toast.success("Organization name updated");
-                          setEditedName(null);
-                        },
-                        onError: (err) =>
-                          showErrorToast(
-                            "Organization name could not be updated",
-                            err,
-                            "Failed to update organization.",
-                          ),
-                      });
-                    }}
-                  >
-                    {updateName.isPending ? "Saving..." : "Save name"}
-                  </Button>
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <label className="block text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                    Edit organization name
+                    <Input
+                      className="mt-1.5"
+                      value={organizationName}
+                      onChange={(event) => setEditedName(event.target.value)}
+                      placeholder="POSKART Admin"
+                    />
+                  </label>
+                  <div className="flex gap-2 self-end">
+                    <Button
+                      className="rounded-xl"
+                      disabled={
+                        !organizationName.trim() ||
+                        organizationName === tenant?.name ||
+                        updateName.isPending
+                      }
+                      onClick={() => {
+                        updateName.mutate(organizationName.trim(), {
+                          onSuccess: () => {
+                            toast.success("Organization name updated");
+                            setEditedName(null);
+                          },
+                          onError: (err) =>
+                            showErrorToast(
+                              "Organization name could not be updated",
+                              err,
+                              "Failed to update organization.",
+                            ),
+                        });
+                      }}
+                    >
+                      {updateName.isPending ? "Saving..." : "Save name"}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-zinc-950">
+                        Feature access
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-zinc-500">
+                        Aktifkan fitur tambahan yang ingin digunakan oleh workspace
+                        ini. Perubahan berlaku untuk semua anggota organisasi.
+                      </p>
+                    </div>
+                    {updateFeatures.isPending ? (
+                      <span className="shrink-0 text-xs text-zinc-400">Saving...</span>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {[
+                      {
+                        key: "posKasir" as const,
+                        label: "POS Cashier",
+                        description: "Input penjualan manual dan pencatatan kasir.",
+                        icon: Calculator,
+                      },
+                      {
+                        key: "showcase" as const,
+                        label: "Showcase",
+                        description: "Halaman publik untuk menampilkan frame dan theme.",
+                        icon: PanelsTopLeft,
+                      },
+                    ].map((feature) => {
+                      const Icon = feature.icon;
+                      const enabled = tenant?.features?.[feature.key] ?? false;
+                      return (
+                        <div
+                          key={feature.key}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-3"
+                        >
+                          <div className="flex min-w-0 items-start gap-2.5">
+                            <Icon className="mt-0.5 size-4 shrink-0 text-zinc-500" />
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-zinc-950">
+                                {feature.label}
+                              </div>
+                              <div className="mt-0.5 text-xs leading-5 text-zinc-500">
+                                {feature.description}
+                              </div>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={enabled}
+                            disabled={updateFeatures.isPending}
+                            onCheckedChange={(checked) => {
+                              updateFeatures.mutate(
+                                {
+                                  posKasir: tenant?.features?.posKasir ?? false,
+                                  showcase: tenant?.features?.showcase ?? false,
+                                  [feature.key]: checked,
+                                },
+                                {
+                                  onSuccess: () =>
+                                    toast.success(`${feature.label} updated`),
+                                  onError: (err) =>
+                                    showErrorToast(
+                                      `${feature.label} could not be updated`,
+                                      err,
+                                      "Feature setting could not be saved.",
+                                    ),
+                                },
+                              );
+                            }}
+                            aria-label={`Toggle ${feature.label}`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}

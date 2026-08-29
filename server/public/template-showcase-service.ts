@@ -89,7 +89,7 @@ export const getPublicTemplateShowcase = cache(
       await Promise.all([
         supabase
           .from("organizations")
-          .select("name")
+          .select("name,features")
           .eq("id", showcase.organization_id)
           .maybeSingle(),
         supabase
@@ -118,6 +118,12 @@ export const getPublicTemplateShowcase = cache(
       throw new Error(
         `Unable to load showcase organization${organizationResult.error ? `: ${organizationResult.error.message}` : ""}`,
       );
+    }
+    if (
+      (organizationResult.data.features as { showcase?: boolean } | null)
+        ?.showcase !== true
+    ) {
+      return null;
     }
     if (templateLinksResult.error) {
       throw new Error(

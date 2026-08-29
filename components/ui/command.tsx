@@ -161,6 +161,7 @@ const pages: PageItem[] = [
     href: "/showcase",
     keywords: "showcase public frame theme cafe partner presentation",
     requiresSubscription: true,
+    organizationFeature: "showcase",
     icon: PanelsTopLeft,
   },
   {

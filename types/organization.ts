@@ -13,5 +13,6 @@ export type Organization = {
   paymentCollectionMode?: "platform" | "custom";
   features?: {
     posKasir: boolean;
+    showcase: boolean;
   };
 };

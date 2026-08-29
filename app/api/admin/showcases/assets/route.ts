@@ -2,6 +2,7 @@ import { recordKioskAssetManifest } from "@/lib/assets/asset-manifest";
 import { jsonError, jsonOk } from "@/lib/kiosk/server";
 import { createR2SignedUploadUrl } from "@/lib/r2/server";
 import { verifyRole } from "@/server/admin/context";
+import { hasOrganizationFeatureAccess } from "@/server/admin/organization-feature-access";
 
 export const runtime = "nodejs";
 
@@ -35,6 +36,12 @@ function validateUpload(fileType: string, fileSize: number) {
 
 export async function POST(request: Request) {
   try {
+    if (!(await hasOrganizationFeatureAccess("showcase"))) {
+      return jsonOk(
+        { error: "Showcase is disabled for this organization." },
+        { status: 403 },
+      );
+    }
     const { organizationId } = await verifyRole(["owner", "admin", "designer"]);
     const payload = (await request.json().catch(() => null)) as {
       fileName?: string;
