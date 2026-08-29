@@ -2,6 +2,7 @@
 
 import {
   ArrowUpRight,
+  Calculator,
   CreditCard,
   FileDown,
   Gauge,
@@ -88,6 +89,16 @@ const pages: PageItem[] = [
     keywords: "finance money keuangan pemasukan pengeluaran",
     requiresSubscription: true,
     icon: WalletCards,
+  },
+  {
+    key: "page-pos",
+    title: "POS Cashier",
+    description: "Manual sales and cashier records",
+    href: "/pos",
+    keywords: "pos cashier kasir penjualan manual sales",
+    requiresSubscription: true,
+    organizationFeature: "posKasir",
+    icon: Calculator,
   },
   {
     key: "page-transactions",

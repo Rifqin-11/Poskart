@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Bell,
   Bot,
+  Calculator,
   ChevronDown,
   CreditCard,
   Gauge,
@@ -82,6 +83,13 @@ const navItems: AdminNavItem[] = [
     labelKey: "nav.money",
     icon: WalletCards,
     requiresSubscription: true,
+  },
+  {
+    href: "/pos",
+    labelKey: "nav.pos",
+    icon: Calculator,
+    requiresSubscription: true,
+    organizationFeature: "posKasir",
   },
   {
     href: "/transactions",
