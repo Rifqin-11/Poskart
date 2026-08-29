@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { layoutApi } from "@/features/admin/layout/api";
 import type { LayoutSchema } from "@/types/builder";
+import type { GalleryBrandingOverrides } from "@/lib/gallery/branding";
 
 export function useActiveLayoutSchema() {
   return useQuery<Awaited<ReturnType<typeof layoutApi.getLayoutSchema>>, Error>({
@@ -54,6 +55,24 @@ export function useSetActiveLayout() {
   return useMutation({
     mutationFn: layoutApi.setActiveLayout,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: adminQueryKeys.layoutSchemas }),
+  });
+}
+
+export function useGalleryBranding() {
+  return useQuery({
+    queryKey: ["gallery-branding"],
+    queryFn: layoutApi.getGalleryBranding,
+  });
+}
+
+export function useUpdateOrganizationGalleryBranding() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (branding: GalleryBrandingOverrides) =>
+      layoutApi.updateOrganizationGalleryBranding(branding),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gallery-branding"] });
+    },
   });
 }
 

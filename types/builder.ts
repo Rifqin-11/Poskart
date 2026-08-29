@@ -1,4 +1,5 @@
 import type { ColorKeySettings } from "@/types/color-key";
+import type { GalleryBrandingOverrides } from "@/lib/gallery/branding";
 
 export type BuilderPage =
   | "landing"
@@ -100,4 +101,6 @@ export type LayoutSchema = {
   version: 1;
   canvas: BuilderCanvas;
   pages: Record<BuilderPage, BuilderNode[]>;
+  /** Optional public gallery branding override for sessions using this theme. */
+  galleryBranding?: GalleryBrandingOverrides;
 };

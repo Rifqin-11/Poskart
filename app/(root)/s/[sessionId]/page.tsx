@@ -7,17 +7,20 @@ import {
   X,
 } from "lucide-react";
 
-import { businessProfile } from "@/lib/constants/business";
 import {
   getGalleryLinkExpiryDate,
   getGalleryRetentionConfig,
   isGalleryLinkExpired,
 } from "@/lib/gallery/retention";
 import { getSessionMusicEmbed } from "@/lib/gallery/session-music";
+import { resolveGallerySessionBranding } from "@/server/public/gallery-branding";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { GalleryMusicPlayer } from "@/features/public/gallery/gallery-music-player";
 
 export const dynamic = "force-dynamic";
+export const metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function SharedGalleryPage({
   params,
@@ -31,7 +34,7 @@ export default async function SharedGalleryPage({
   const supabase = createSupabaseAdminClient();
   const { data: session } = await supabase
     .from("gallery_sessions")
-    .select("id,organization_id,template_id,template_name,created_at,updated_at")
+    .select("id,organization_id,layout_schema_id,template_id,template_name,theme_name,created_at,updated_at")
     .eq("id", sessionId)
     .maybeSingle();
 
@@ -82,6 +85,8 @@ export default async function SharedGalleryPage({
     return <ExpiredGalleryPage formattedExpiryDate={formattedExpiryDate} />;
   }
 
+  const { branding } = await resolveGallerySessionBranding(supabase, session);
+
   const { data: photos } = await supabase
     .from("gallery_photos")
     .select("id,kind,photo_index,secure_url,format")
@@ -131,7 +136,9 @@ export default async function SharedGalleryPage({
   const shouldRefreshWhileProcessing = !selectedPhoto;
 
   return (
-    <main className="min-h-screen bg-white px-5 py-6 text-zinc-950 md:px-8 md:py-10">
+    <main
+      className="gallery-page min-h-screen px-5 py-6 text-zinc-950 md:px-8 md:py-10"
+    >
       {shouldRefreshWhileProcessing && (
         <ProcessingRefresh refreshUntil={refreshUntil} />
       )}
@@ -141,16 +148,16 @@ export default async function SharedGalleryPage({
             <span className="grid size-10 place-items-center overflow-hidden rounded-xl bg-white">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/Logo Poskart.png"
-                alt="POSKART Logo"
+                src={branding.logoUrl}
+                alt={`${branding.brandName} logo`}
                 className="size-8 object-contain"
               />
             </span>
             <span>
               <span className="block text-sm font-semibold tracking-tight">
-                {businessProfile.brandName}
+                {branding.brandName}
               </span>
-              <span className="block text-xs text-zinc-500">Receipt Photobooth</span>
+               <span className="block text-xs text-zinc-500">{branding.subtitle}</span>
             </span>
           </Link>
           <span className="inline-flex items-center gap-2 text-xs font-medium text-zinc-500">
@@ -183,7 +190,7 @@ export default async function SharedGalleryPage({
         </section>
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-          <section className="rounded-[28px] border border-black/10 bg-white p-3 shadow-xl shadow-black/5 md:p-5 grid gap-6">
+           <section className="gallery-card rounded-[28px] border border-black/10 p-3 shadow-xl shadow-black/5 md:p-5 grid gap-6">
             {musicEmbed && <GalleryMusicPlayer music={musicEmbed} />}
 
             {framedLivePhoto && (
@@ -284,7 +291,7 @@ export default async function SharedGalleryPage({
             )}
           </section>
 
-          <aside className="rounded-[28px] border border-black/10 bg-white p-5 md:p-6">
+           <aside className="gallery-card rounded-[28px] border border-black/10 p-5 md:p-6">
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-xl bg-zinc-100">
                 <Images className="size-5" />
@@ -381,10 +388,10 @@ export default async function SharedGalleryPage({
           </aside>
         </div>
 
-        <footer className="mt-10 overflow-hidden bg-white">
+         <footer className="gallery-footer mt-10 overflow-hidden">
           <div className="flex min-h-[300px] flex-col px-0 py-7 sm:min-h-[360px] lg:min-h-[384px]">
             <div className="flex flex-col gap-4 text-sm text-zinc-500 sm:flex-row sm:items-start sm:justify-between">
-              <p>© 2026 {businessProfile.legalName}. All rights reserved.</p>
+               <p>{formatCopyright(branding.brandName)}</p>
               <Link
                 href="/contact"
                 className="inline-flex h-10 w-fit items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-900 shadow-[0_1px_2px_rgba(24,24,27,0.02)] transition-colors hover:bg-zinc-50"
@@ -398,7 +405,7 @@ export default async function SharedGalleryPage({
                 aria-hidden="true"
                 className="text-center font-sans text-[clamp(5.75rem,20vw,15rem)] font-black uppercase leading-[0.78] tracking-[-0.085em] text-[#f4f4f5] sm:leading-[0.74]"
               >
-                POSKART
+                 {branding.footerText}
               </div>
             </div>
           </div>
@@ -536,6 +543,10 @@ function formatExpiryDuration(hours: number) {
     return `${days} hari`;
   }
   return `${hours} jam`;
+}
+
+function formatCopyright(brandName: string) {
+  return `© ${new Date().getFullYear()} ${brandName}. All rights reserved.`;
 }
 
 function ProcessingRefresh({ refreshUntil }: { refreshUntil: number }) {

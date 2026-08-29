@@ -84,6 +84,7 @@ export async function POST(request: Request) {
         id: sessionId,
         organization_id: context.organizationId,
         device_id: device.id,
+        layout_schema_id: device.layout_schema_id,
         ...(templateId ? { template_id: templateId } : {}),
         template_name: body.templateName?.trim() ?? "",
         theme_name: body.themeName?.trim() ?? "",

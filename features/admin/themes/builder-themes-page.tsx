@@ -7,6 +7,7 @@ import {
   Check,
   Copy,
   Layers,
+  Palette,
   Lightbulb,
   Loader2,
   MoreVertical,
@@ -46,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { THEME_BRAINSTORM_PROMPT } from "@/features/admin/themes/theme-brainstorm-prompt";
+import { GalleryBrandingPage } from "@/features/admin/themes/components/gallery-branding-page";
 
 // ── Assign Devices Modal ─────────────────────────────────────────────────────
 
@@ -277,6 +279,7 @@ export function BuilderThemesPage() {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   /** Layout pending activation — opens the assign-to-devices modal */
   const [assignModal, setAssignModal] = useState<LayoutSchemaRow | null>(null);
+  const [activeTab, setActiveTab] = useState<"ui" | "gallery">("ui");
 
   const activeLayout = layouts.find((l) => l.is_active);
   const {
@@ -418,6 +421,48 @@ export function BuilderThemesPage() {
         </div>
       )} */}
 
+      <nav className="flex items-stretch gap-2">
+      <div
+        role="tablist"
+        className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-zinc-50 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "ui"}
+          data-themes-tab="ui"
+          onClick={() => setActiveTab("ui")}
+          className={cn(
+            "flex min-w-[150px] flex-1 shrink-0 items-center justify-center rounded-full px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]/20",
+            activeTab === "ui"
+              ? "bg-white text-zinc-950 shadow-sm hover:bg-white"
+              : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",
+          )}
+        >
+          UI
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "gallery"}
+          data-themes-tab="gallery"
+          onClick={() => setActiveTab("gallery")}
+          className={cn(
+            "flex min-w-[150px] flex-1 shrink-0 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]/20",
+            activeTab === "gallery"
+              ? "bg-white text-zinc-950 shadow-sm hover:bg-white"
+              : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",
+          )}
+        >
+          <Palette className="size-4" /> Gallery branding
+        </button>
+      </div>
+      </nav>
+
+      {activeTab === "gallery" ? <GalleryBrandingPage /> : null}
+
+      {activeTab === "ui" && (
+      <>
       {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-16">
@@ -474,6 +519,8 @@ export function BuilderThemesPage() {
           onClose={() => setAssignModal(null)}
           onDone={() => void handleActivateWithAssign(assignModal)}
         />
+      )}
+      </>
       )}
     </div>
   );

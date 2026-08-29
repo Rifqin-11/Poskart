@@ -5,6 +5,7 @@ import type {
   BuilderPage,
   LayoutSchema,
 } from "@/types/builder";
+import { normalizeGalleryBrandingOverrides } from "@/lib/gallery/branding";
 
 export const builderPages: BuilderPage[] = [
   "landing",
@@ -72,6 +73,9 @@ export function buildLayoutSchema(
 
 export function sanitizeLayoutSchema(schema: LayoutSchema): LayoutSchema {
   const overlayMode = !!schema.canvas.overlayMode;
+  const galleryBranding = normalizeGalleryBrandingOverrides(
+    schema.galleryBranding,
+  );
 
   return {
     version: 1,
@@ -86,5 +90,6 @@ export function sanitizeLayoutSchema(schema: LayoutSchema): LayoutSchema {
         }),
       ]),
     ) as LayoutSchema["pages"],
+    ...(Object.keys(galleryBranding).length > 0 ? { galleryBranding } : {}),
   };
 }

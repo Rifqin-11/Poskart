@@ -97,6 +97,16 @@ export async function POST(request: Request) {
       },
     );
     if (jobError) throw jobError;
+
+    // The migration trigger derives this again from the verified device row;
+    // this explicit update also keeps the binding visible for RPC-created rows.
+    const { error: bindingError } = await createSupabaseAdminClient()
+      .from("gallery_sessions")
+      .update({ layout_schema_id: device.layout_schema_id })
+      .eq("id", sessionId)
+      .eq("organization_id", context.organizationId);
+    if (bindingError) throw bindingError;
+
     const job = data as { id: string; status: string } | null;
     if (!job) {
       return jsonOk({ success: true, sessionId, shareUrl, skipped: true });

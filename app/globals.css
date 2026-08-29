@@ -27,12 +27,88 @@ body {
   font-family: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
 }
 
-html {
-  scroll-behavior: smooth;
+html { scroll-behavior: smooth; }
+
+* { border-color: var(--border); }
+
+/* Gallery branding v1 customizes identity only. The public palette is fixed. */
+.gallery-page,
+.gallery-branding-preview {
+  background-color: #ffffff !important;
+  color: #18181b !important;
 }
 
-* {
-  border-color: var(--border);
+.gallery-page .gallery-card,
+.gallery-page .gallery-footer,
+.gallery-branding-card,
+.gallery-branding-preview-footer {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+}
+
+.gallery-page h1,
+.gallery-page h2,
+.gallery-page h3,
+.gallery-page strong,
+.gallery-page .text-zinc-950,
+.gallery-page .text-zinc-900,
+.gallery-page .text-zinc-800,
+.gallery-branding-preview h3,
+.gallery-branding-preview strong,
+.gallery-branding-preview .text-zinc-900,
+.gallery-branding-card .text-zinc-900,
+.gallery-branding-card .text-zinc-800,
+.gallery-branding-card strong {
+  color: #18181b !important;
+}
+
+.gallery-page .text-zinc-600,
+.gallery-page .text-zinc-500,
+.gallery-page .text-zinc-400,
+.gallery-branding-preview .text-zinc-600,
+.gallery-branding-preview .text-zinc-500,
+.gallery-branding-preview .text-zinc-400,
+.gallery-branding-card .text-zinc-500,
+.gallery-branding-card .text-zinc-400 {
+  color: #71717a !important;
+}
+
+/* Gallery branding v1 intentionally keeps the public gallery palette fixed to
+   the POSKART defaults; only identity fields are organization-configurable. */
+.gallery-page,
+.gallery-branding-preview {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+}
+
+.gallery-page .gallery-card,
+.gallery-branding-preview .gallery-branding-card,
+.gallery-branding-preview-footer,
+.gallery-page .gallery-footer {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+}
+
+.gallery-page h1,
+.gallery-page h2,
+.gallery-page h3,
+.gallery-page strong,
+.gallery-page .text-zinc-950,
+.gallery-page .text-zinc-900,
+.gallery-page .text-zinc-800,
+.gallery-branding-preview h3,
+.gallery-branding-preview strong,
+.gallery-branding-preview .text-zinc-900 {
+  color: #18181b !important;
+}
+
+.gallery-page .text-zinc-600,
+.gallery-page .text-zinc-500,
+.gallery-page .text-zinc-400,
+.gallery-branding-preview .text-zinc-600,
+.gallery-branding-preview .text-zinc-500,
+.gallery-branding-preview .text-zinc-400 {
+  color: #71717a !important;
 }
 
 /* Keep all Leaflet layers below modal z-index (modals use z-50 = 50) */

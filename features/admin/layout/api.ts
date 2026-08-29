@@ -5,6 +5,8 @@ export const layoutApi = {
   getLayoutSchemas: layoutService.getLayoutSchemas,
   getActiveThemeStatistics: layoutService.getActiveThemeStatistics,
   saveLayoutAsTheme: layoutService.saveLayoutAsTheme,
+  getGalleryBranding: layoutService.getGalleryBranding,
+  updateOrganizationGalleryBranding: layoutService.updateOrganizationGalleryBranding,
   setActiveLayout: layoutService.setActiveLayout,
   deactivateLayout: layoutService.deactivateLayout,
   deleteLayout: layoutService.deleteLayout,
