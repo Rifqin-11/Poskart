@@ -17,7 +17,7 @@ function readPassword(formData: FormData) {
 
 function safeNextPath(value: string) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/onboarding";
+    return "/dashboard";
   }
   return value;
 }
@@ -36,7 +36,7 @@ export async function signInAction(formData: FormData) {
   const email = readField(formData, "email");
   const password = readPassword(formData);
   const next = safeNextPath(readField(formData, "next"));
-  const loginPath = next === "/onboarding" ? "/login" : `/login?next=${encodeURIComponent(next)}`;
+  const loginPath = next === "/dashboard" ? "/login" : `/login?next=${encodeURIComponent(next)}`;
 
   if (!email || !password) {
     return encodedRedirect(
@@ -120,7 +120,7 @@ export async function signInWithGoogleAction(formData: FormData) {
   const supabase = await createClient();
   const siteUrl = await getSiteUrl();
   const next = safeNextPath(readField(formData, "next"));
-  const loginPath = next === "/onboarding" ? "/login" : `/login?next=${encodeURIComponent(next)}`;
+  const loginPath = next === "/dashboard" ? "/login" : `/login?next=${encodeURIComponent(next)}`;
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
