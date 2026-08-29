@@ -11,13 +11,13 @@ import { DialogActions } from "@/features/admin/_components/dialog-actions";
 import { pricingPlans } from "@/lib/constants/business";
 import {
   DEFAULT_ORGANIZATION_FEATURES,
-  ORGANIZATION_FEATURE_LABELS,
   normalizeOrganizationFeatures,
 } from "@/lib/organization-features";
 import { formatCurrency } from "@/lib/utils";
 import {
+  addJakartaMonthsToDateInput,
   formatJakartaDateInput,
-  parseJakartaDateTimeInput,
+  parseJakartaDateInputEnd,
 } from "@/lib/jakarta-time";
 import type { Organization } from "@/types/organization";
 import type { SubscriptionPlan } from "@/types/pricing";
@@ -54,6 +54,38 @@ function getSubscriptionPlanOptions(plans: SubscriptionPlan[]) {
   ];
 }
 
+function getPlanDurationMonths(
+  planId: string | undefined,
+  plans: SubscriptionPlan[],
+) {
+  if (!planId || planId === "free") return 0;
+  return (
+    plans.find((plan) => plan.id === planId)?.durationMonths ??
+    pricingPlans.find((plan) => plan.id === planId)?.durationMonths ??
+    1
+  );
+}
+
+function getAutomaticExpiry(
+  planId: string | undefined,
+  plans: SubscriptionPlan[],
+) {
+  const durationMonths = getPlanDurationMonths(planId, plans);
+  if (!durationMonths) return null;
+  const today = formatJakartaDateInput(new Date());
+  const date = addJakartaMonthsToDateInput(today, durationMonths);
+  return parseJakartaDateInputEnd(date)?.toISOString() ?? null;
+}
+
+function normalizeFormSubscriptionStatus(planId: string, status: string) {
+  if (planId === "free") return "free";
+  if (status === "free") return "active";
+  if (["active", "trialing", "past_due", "canceled"].includes(status)) {
+    return status;
+  }
+  return "active";
+}
+
 export function TenantFormDialog({
   title,
   initial,
@@ -66,6 +98,11 @@ export function TenantFormDialog({
   const [form, setForm] = useState<TenantInput>(() => {
     const { id: _ignored, ...rest } = initial as Organization;
     void _ignored;
+    const planId = rest.planId || "free";
+    const subscriptionStatus = normalizeFormSubscriptionStatus(
+      planId,
+      rest.subscriptionStatus || "free",
+    );
     return {
       name: rest.name || "",
       plan: rest.plan || "Free",
@@ -73,9 +110,13 @@ export function TenantFormDialog({
       devices: rest.devices || 0,
       users: rest.users || 1,
       renewalDate: rest.renewalDate || formatJakartaDateInput(new Date()),
-      planId: rest.planId || "free",
-      subscriptionStatus: rest.subscriptionStatus || "free",
-      subscriptionExpiresAt: rest.subscriptionExpiresAt || null,
+      planId,
+      subscriptionStatus,
+      subscriptionExpiresAt:
+        rest.subscriptionExpiresAt ||
+        ((subscriptionStatus === "active" || subscriptionStatus === "trialing")
+          ? getAutomaticExpiry(planId, subscriptionPlans)
+          : null),
       deviceLimit: rest.deviceLimit || 1,
       paymentCollectionMode: rest.paymentCollectionMode ?? "platform",
       features: normalizeOrganizationFeatures(
@@ -112,6 +153,23 @@ export function TenantFormDialog({
             toast.error("Device limit cannot be lower than existing devices");
             return;
           }
+          if (form.planId === "free" && form.subscriptionStatus !== "free") {
+            toast.error("Free Account must use Free subscription status");
+            return;
+          }
+          if (
+            form.subscriptionStatus === "active" ||
+            form.subscriptionStatus === "trialing"
+          ) {
+            if (!form.subscriptionExpiresAt) {
+              toast.error("Active subscriptions need an expiry date");
+              return;
+            }
+            if (new Date(form.subscriptionExpiresAt).getTime() <= Date.now()) {
+              toast.error("Expiry date must be in the future");
+              return;
+            }
+          }
           onSubmit(form);
         }}
       >
@@ -136,16 +194,16 @@ export function TenantFormDialog({
                 subscriptionPlans.find((plan) => plan.id === val) ??
                 pricingPlans.find((plan) => plan.id === val);
               const includedDevices = selected?.includedDevices ?? 1;
+              const nextStatus = val === "free" ? "free" : "active";
               setForm({
                 ...form,
                 planId: val,
                 plan: val === "free" ? "Free" : (selected?.name ?? "Free"),
-                subscriptionStatus:
+                subscriptionStatus: nextStatus,
+                subscriptionExpiresAt:
                   val === "free"
-                    ? "free"
-                    : form.subscriptionStatus === "free"
-                      ? "active"
-                      : form.subscriptionStatus,
+                    ? null
+                    : getAutomaticExpiry(val, subscriptionPlans),
                 deviceLimit: Math.max(includedDevices, form.devices ?? 0),
               });
             }}
@@ -163,11 +221,24 @@ export function TenantFormDialog({
           <Select
             className="mt-1"
             value={form.subscriptionStatus || "free"}
-            onChange={(e) =>
-              setForm({ ...form, subscriptionStatus: e.target.value })
-            }
+            onChange={(e) => {
+              const status = e.target.value;
+              setForm({
+                ...form,
+                subscriptionStatus: status,
+                subscriptionExpiresAt:
+                  (status === "active" || status === "trialing") &&
+                  !form.subscriptionExpiresAt
+                    ? getAutomaticExpiry(form.planId, subscriptionPlans)
+                    : status === "free"
+                      ? null
+                      : form.subscriptionExpiresAt,
+              });
+            }}
           >
-            <option value="free">Free</option>
+            <option value="free" disabled={form.planId !== "free"}>
+              Free
+            </option>
             <option value="active">Active</option>
             <option value="trialing">Trialing</option>
             <option value="past_due">Past Due</option>
@@ -207,11 +278,36 @@ export function TenantFormDialog({
               setForm({
                 ...form,
                 subscriptionExpiresAt: e.target.value
-                  ? parseJakartaDateTimeInput(e.target.value)?.toISOString() ?? null
+                  ? parseJakartaDateInputEnd(e.target.value)?.toISOString() ?? null
                   : null,
               })
             }
           />
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[11px] font-normal leading-4 text-zinc-500">
+            <span>
+              Berlaku sampai akhir hari WIB. Kosongkan hanya untuk status Free,
+              Canceled, atau Past Due.
+            </span>
+            {form.planId !== "free" &&
+            (form.subscriptionStatus === "active" ||
+              form.subscriptionStatus === "trialing") ? (
+              <button
+                type="button"
+                className="font-medium text-zinc-700 underline underline-offset-2 hover:text-zinc-950"
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    subscriptionExpiresAt: getAutomaticExpiry(
+                      form.planId,
+                      subscriptionPlans,
+                    ),
+                  })
+                }
+              >
+                Reset ke durasi plan
+              </button>
+            ) : null}
+          </div>
         </label>
 
         <label className="block text-xs font-medium text-zinc-600">
@@ -270,42 +366,35 @@ export function TenantFormDialog({
               Operational features
             </h3>
             <p className="mt-1 text-xs leading-5 text-zinc-500">
-              Aktifkan hanya untuk organisasi yang memang memakai alur booth
-              internal. Organisasi SaaS biasa tetap memakai dashboard kiosk,
-              themes, templates, transactions, gallery, dan devices.
+              POS Cashier hanya diaktifkan untuk organisasi yang membutuhkan
+              input penjualan manual. Finance tersedia untuk semua organisasi
+              dengan subscription aktif.
             </p>
           </div>
           <div className="grid gap-2 md:grid-cols-2">
-            {(["posKasir", "money"] as const).map((featureKey) => (
-              <div
-                key={featureKey}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3"
-              >
-                <div>
-                  <div className="text-sm font-medium text-zinc-950">
-                    {ORGANIZATION_FEATURE_LABELS[featureKey]}
-                  </div>
-                  <div className="mt-0.5 text-xs text-zinc-500">
-                    {featureKey === "posKasir"
-                      ? t("superadmin.showPosDesc")
-                      : t("superadmin.showMoneyDesc")}
-                  </div>
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-3">
+              <div>
+                <div className="text-sm font-medium text-zinc-950">
+                  POS Cashier
                 </div>
-                <Switch
-                  checked={form.features?.[featureKey] ?? false}
-                  onCheckedChange={(checked) =>
-                    setForm({
-                      ...form,
-                      features: {
-                        ...normalizeOrganizationFeatures(form.features),
-                        [featureKey]: checked,
-                      },
-                    })
-                  }
-                  aria-label={`Toggle ${ORGANIZATION_FEATURE_LABELS[featureKey]}`}
-                />
+                <div className="mt-0.5 text-xs text-zinc-500">
+                  {t("superadmin.showPosDesc")}
+                </div>
               </div>
-            ))}
+              <Switch
+                checked={form.features?.posKasir ?? false}
+                onCheckedChange={(checked) =>
+                  setForm({
+                    ...form,
+                    features: {
+                      ...normalizeOrganizationFeatures(form.features),
+                      posKasir: checked,
+                    },
+                  })
+                }
+                aria-label="Toggle POS Cashier"
+              />
+            </div>
           </div>
         </section>
 

@@ -87,7 +87,6 @@ const pages: PageItem[] = [
     href: "/money",
     keywords: "finance money keuangan pemasukan pengeluaran",
     requiresSubscription: true,
-    organizationFeature: "money",
     icon: WalletCards,
   },
   {

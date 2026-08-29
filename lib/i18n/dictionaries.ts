@@ -253,8 +253,6 @@ export const dictionaries = {
     "dashboard.top5BySession": "Top 5 by session",
     "superadmin.showPosDesc":
       "Show the POS Cashier page for manual sales input.",
-    "superadmin.showMoneyDesc":
-      "Show the Finance page for wallets, income, expenses, and transfers.",
     "tour.welcomeTitle": "Welcome to POSKART",
     "tour.welcomeDesc":
       "Manage all photobooth operations from one connected workspace.",
@@ -351,8 +349,6 @@ export const dictionaries = {
       "Merchant code Duitku wajib diisi untuk Payment Private.",
     "superadmin.showPosDesc":
       "Tampilkan halaman POS Kasir untuk input penjualan manual.",
-    "superadmin.showMoneyDesc":
-      "Tampilkan halaman Keuangan untuk dompet, pemasukan, pengeluaran, dan transfer.",
     "tour.welcomeTitle": "Selamat datang di POSKART",
     "tour.welcomeDesc":
       "Kelola seluruh operasional photobooth dari satu workspace yang terhubung.",

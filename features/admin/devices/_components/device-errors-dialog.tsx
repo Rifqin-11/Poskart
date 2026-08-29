@@ -102,12 +102,12 @@ export function DeviceErrorsDialog({
       { deviceId: device.id, errorId: item.id },
       {
         onSuccess: () =>
-          toast.success("Laporan dikirim ke notifikasi superadmin"),
+          toast.success("Laporan dikirim ke notifikasi Developer"),
         onError: (error) =>
           showErrorToast(
             "Gagal mengirim laporan device",
             error,
-            "Laporan device tidak dapat dikirim ke superadmin. Coba lagi.",
+            "Laporan device tidak dapat dikirim ke Developer. Coba lagi.",
           ),
       },
     );

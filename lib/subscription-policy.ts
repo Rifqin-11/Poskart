@@ -3,6 +3,15 @@ export type SubscriptionPolicyInput = {
   current_period_end?: string | null;
 };
 
+export type EffectiveSubscriptionStatus =
+  | "active"
+  | "trialing"
+  | "expired"
+  | "invalid"
+  | "past_due"
+  | "canceled"
+  | "free";
+
 export function subscriptionExpiryTime(
   subscription?: SubscriptionPolicyInput | null,
 ) {
@@ -18,4 +27,22 @@ export function isSubscriptionActive(
     ["active", "trialing"].includes(subscription?.status ?? "") &&
     subscriptionExpiryTime(subscription) > Date.now()
   );
+}
+
+export function getEffectiveSubscriptionStatus(
+  subscription?: SubscriptionPolicyInput | null,
+): EffectiveSubscriptionStatus {
+  const status = subscription?.status ?? "free";
+  const expiry = subscriptionExpiryTime(subscription);
+
+  if (status === "active" || status === "trialing") {
+    if (!subscription?.current_period_end || !Number.isFinite(expiry)) {
+      return "invalid";
+    }
+    return expiry > Date.now() ? status : "expired";
+  }
+
+  if (status === "past_due") return "past_due";
+  if (status === "canceled") return "canceled";
+  return "free";
 }

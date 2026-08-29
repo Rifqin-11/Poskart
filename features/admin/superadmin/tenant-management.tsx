@@ -67,6 +67,7 @@ import { SystemErrorLogManagement } from "./_components/system-error-log-managem
 import { NotificationManagement } from "./_components/notification-management";
 import { ProductFeedbackManagement } from "./_components/product-feedback-management";
 import { DEFAULT_ORGANIZATION_FEATURES } from "@/lib/organization-features";
+import { getEffectiveSubscriptionStatus, isSubscriptionActive } from "@/lib/subscription-policy";
 
 type AdminUserProfile = {
   id: string;
@@ -147,9 +148,10 @@ export function TenantManagement() {
   ).length;
   const activeSubscriptions = tenantsList.filter(
     (organization) =>
-      organization.subscriptionStatus === "active" ||
-      organization.subscriptionStatus === "trialing" ||
-      organization.subscriptionStatus === "trial",
+      isSubscriptionActive({
+        status: organization.subscriptionStatus,
+        current_period_end: organization.subscriptionExpiresAt,
+      }),
   ).length;
   const customPaymentOrganizations = tenantsList.filter(
     (organization) => organization.paymentCollectionMode === "custom",
@@ -1091,18 +1093,24 @@ function SubscriptionStatusBadge({
 }: {
   organization: Organization;
 }) {
+  const status = getEffectiveSubscriptionStatus({
+    status: organization.subscriptionStatus,
+    current_period_end: organization.subscriptionExpiresAt,
+  });
+  const label = status === "past_due" ? "Past due" : status;
   return (
     <Badge
       variant={
-        organization.subscriptionStatus === "active"
+        status === "active"
           ? "success"
-          : organization.subscriptionStatus === "trialing" ||
-              organization.subscriptionStatus === "trial"
+          : status === "trialing" || status === "past_due"
             ? "warning"
+            : status === "expired" || status === "invalid"
+              ? "destructive"
             : "secondary"
       }
     >
-      {organization.subscriptionStatus || "free"}
+      {label}
     </Badge>
   );
 }
@@ -1251,10 +1259,8 @@ function OrganizationFeatureBadges({
       {organization.features?.posKasir ? (
         <Badge variant="outline">POS Kasir</Badge>
       ) : null}
-      {organization.features?.money ? (
-        <Badge variant="outline">Keuangan</Badge>
-      ) : null}
-      {!organization.features?.posKasir && !organization.features?.money ? (
+      <Badge variant="outline">Keuangan</Badge>
+      {!organization.features?.posKasir ? (
         <span className="text-xs text-zinc-400">SaaS default</span>
       ) : null}
     </div>

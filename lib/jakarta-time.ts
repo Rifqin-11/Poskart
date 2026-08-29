@@ -26,6 +26,39 @@ export function parseJakartaDateTimeInput(value: string) {
   return new Date(`${withSeconds}${JAKARTA_OFFSET}`);
 }
 
+/** Converts a date-only form value to the end of that day in Asia/Jakarta. */
+export function parseJakartaDateInputEnd(value: string) {
+  const date = parseJakartaDateTimeInput(value);
+  if (!date || Number.isNaN(date.getTime())) return null;
+  return new Date(date.getTime() + 24 * 60 * 60 * 1000 - 1);
+}
+
+/** Adds calendar months to a Jakarta date-only form value. */
+export function addJakartaMonthsToDateInput(value: string, months: number) {
+  const [year, month, day] = value.split("-").map(Number);
+  if (![year, month, day].every(Number.isFinite) || months < 0) return "";
+  const targetMonth = new Date(Date.UTC(year, month - 1 + months, 1));
+  const lastDayOfTargetMonth = new Date(
+    Date.UTC(
+      targetMonth.getUTCFullYear(),
+      targetMonth.getUTCMonth() + 1,
+      0,
+    ),
+  ).getUTCDate();
+  const date = new Date(
+    Date.UTC(
+      targetMonth.getUTCFullYear(),
+      targetMonth.getUTCMonth(),
+      Math.min(day, lastDayOfTargetMonth),
+    ),
+  );
+  return [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
 export function getJakartaDayStart(value: string) {
   return parseJakartaDateTimeInput(value);
 }

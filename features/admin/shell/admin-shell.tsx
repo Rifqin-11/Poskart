@@ -82,7 +82,6 @@ const navItems: AdminNavItem[] = [
     labelKey: "nav.money",
     icon: WalletCards,
     requiresSubscription: true,
-    organizationFeature: "money",
   },
   {
     href: "/transactions",
@@ -143,11 +142,6 @@ const navItems: AdminNavItem[] = [
     labelKey: "nav.superAdmin",
     icon: Shield,
     superAdminOnly: true,
-  },
-  {
-    href: "/feedback",
-    labelKey: "nav.feedback",
-    icon: MessageSquareMore,
   },
   {
     href: "/settings",
@@ -754,6 +748,15 @@ export function AdminShell({
                         >
                           <UserRound className="size-4" />
                           {t("account.preference")}
+                        </Link>
+                        <Link
+                          href="/feedback"
+                          role="menuitem"
+                          className="flex items-center gap-2 rounded-2xl px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
+                          onClick={() => setAccountMenuOpen(false)}
+                        >
+                          <MessageSquareMore className="size-4" />
+                          {t("nav.feedback")}
                         </Link>
                         <button
                           type="button"

@@ -1,15 +1,13 @@
-export type OrganizationFeatureKey = "posKasir" | "money";
+export type OrganizationFeatureKey = "posKasir";
 
 export type OrganizationFeatureAccess = Record<OrganizationFeatureKey, boolean>;
 
 export const DEFAULT_ORGANIZATION_FEATURES: OrganizationFeatureAccess = {
   posKasir: false,
-  money: false,
 };
 
 export const ORGANIZATION_FEATURE_LABELS: Record<OrganizationFeatureKey, string> = {
   posKasir: "POS Cashier",
-  money: "Finance",
 };
 
 export function normalizeOrganizationFeatures(
@@ -22,6 +20,5 @@ export function normalizeOrganizationFeatures(
 
   return {
     posKasir: source.posKasir === true,
-    money: source.money === true,
   };
 }

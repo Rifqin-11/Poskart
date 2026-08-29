@@ -18,7 +18,10 @@ import {
   DEFAULT_ORGANIZATION_FEATURES,
   normalizeOrganizationFeatures,
 } from "@/lib/organization-features";
-import { parseJakartaDateTimeInput } from "@/lib/jakarta-time";
+import {
+  parseJakartaDateInputEnd,
+  parseJakartaDateTimeInput,
+} from "@/lib/jakarta-time";
 import { getServiceRoleClient } from "@/lib/supabase/server";
 import {
   getOrganizationDuitkuGatewaySummary,
@@ -29,11 +32,81 @@ import { revalidatePath } from "next/cache";
 
 function normalizeSubscriptionExpiry(value?: string | null) {
   if (!value) return null;
-  const date = parseJakartaDateTimeInput(value);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? parseJakartaDateInputEnd(value)
+    : parseJakartaDateTimeInput(value);
   if (!date || Number.isNaN(date.getTime())) {
     throw new Error("Subscription expiry date is invalid.");
   }
   return date.toISOString();
+}
+
+function validateSubscriptionInput(values: {
+  planId?: string | null;
+  subscriptionStatus?: string | null;
+  subscriptionExpiresAt?: string | null;
+}) {
+  const planId = values.planId || "free";
+  const status = values.subscriptionStatus || "free";
+  const expiry = normalizeSubscriptionExpiry(values.subscriptionExpiresAt);
+
+  if (planId === "free") {
+    if (status !== "free") {
+      throw new Error("Free Account must use Free subscription status.");
+    }
+    return { planId, status, expiry: null };
+  }
+
+  if (!["active", "trialing", "past_due", "canceled"].includes(status)) {
+    throw new Error("Paid plans must use a valid subscription status.");
+  }
+
+  if (status === "active" || status === "trialing") {
+    if (!expiry || new Date(expiry).getTime() <= Date.now()) {
+      throw new Error(
+        "Active or trialing subscriptions require a future expiry date.",
+      );
+    }
+  }
+
+  return { planId, status, expiry };
+}
+
+async function saveOrganizationWithSubscription(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  organizationId: string,
+  organization: {
+    name: string;
+    status: Organization["status"];
+    renewalDate: string;
+    features: Organization["features"];
+    paymentCollectionMode: Organization["paymentCollectionMode"];
+  },
+  subscription: {
+    planId: string;
+    status: string;
+    expiry: string | null;
+    deviceLimit: number;
+  },
+) {
+  const { error } = await supabase.rpc("admin_save_organization", {
+    p_organization_id: organizationId,
+    p_organization: {
+      name: organization.name,
+      status: organization.status,
+      renewal_date: organization.renewalDate,
+      features: normalizeOrganizationFeatures(organization.features),
+      payment_collection_mode: organization.paymentCollectionMode ?? "platform",
+    },
+    p_subscription: {
+      plan_id: subscription.planId,
+      status: subscription.status,
+      current_period_end: subscription.expiry,
+      device_limit: subscription.deviceLimit,
+    },
+  });
+
+  if (error) throw new Error(`Unable to save organization: ${error.message}`);
 }
 
 export async function getOrganizations(): Promise<Organization[]> {
@@ -105,30 +178,20 @@ export async function getOrganizations(): Promise<Organization[]> {
 export async function createOrganization(values: TenantInput): Promise<void> {
   const { supabase } = await getAdminContext();
   const orgId = `org_${Date.now()}`;
+  const subscription = validateSubscriptionInput(values);
 
-  const { error: orgErr } = await supabase.from("organizations").insert({
-    id: orgId,
+  await saveOrganizationWithSubscription(supabase, orgId, {
     name: values.name,
     status: values.status,
-    renewal_date: values.renewalDate,
-    features: normalizeOrganizationFeatures(
-      values.features ?? DEFAULT_ORGANIZATION_FEATURES,
-    ),
-    payment_collection_mode: values.paymentCollectionMode ?? "platform",
-    updated_at: new Date().toISOString(),
+    renewalDate: values.renewalDate,
+    features: values.features ?? DEFAULT_ORGANIZATION_FEATURES,
+    paymentCollectionMode: values.paymentCollectionMode ?? "platform",
+  }, {
+    planId: subscription.planId,
+    status: subscription.status,
+    expiry: subscription.expiry,
+    deviceLimit: values.deviceLimit ?? 1,
   });
-  if (orgErr)
-    throw new Error(`Unable to create organization: ${orgErr.message}`);
-
-  const { error: subErr } = await supabase.from("subscriptions").insert({
-    organization_id: orgId,
-    plan_id: values.planId || "free",
-    status: values.subscriptionStatus || "free",
-    current_period_end: normalizeSubscriptionExpiry(values.subscriptionExpiresAt),
-    device_limit: values.deviceLimit ?? 1,
-  });
-  if (subErr)
-    throw new Error(`Unable to create subscription: ${subErr.message}`);
 }
 
 export async function updateOrganization(
@@ -136,64 +199,65 @@ export async function updateOrganization(
   patch: Partial<TenantInput>,
 ): Promise<void> {
   const { supabase } = await getAdminContext();
-  const dbPatch: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
-  if (patch.name !== undefined) dbPatch.name = patch.name;
-  if (patch.status !== undefined) dbPatch.status = patch.status;
-  if (patch.renewalDate !== undefined) dbPatch.renewal_date = patch.renewalDate;
-  if (patch.features !== undefined) {
-    dbPatch.features = normalizeOrganizationFeatures(patch.features);
-  }
-  if (patch.paymentCollectionMode !== undefined) {
-    dbPatch.payment_collection_mode = patch.paymentCollectionMode;
-  }
-
-  if (Object.keys(dbPatch).length > 1) {
-    const { error } = await supabase
+  const [{ data: currentOrganization, error: organizationError }, {
+    data: currentSubscription,
+    error: subscriptionError,
+  }] = await Promise.all([
+    supabase
       .from("organizations")
-      .update(dbPatch)
-      .eq("id", id);
-    if (error)
-      throw new Error(`Unable to update organization: ${error.message}`);
+      .select("name, status, renewal_date, features, payment_collection_mode")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("subscriptions")
+      .select("plan_id, status, current_period_end, device_limit")
+      .eq("organization_id", id)
+      .maybeSingle(),
+  ]);
+
+  if (organizationError) {
+    throw new Error(`Unable to load organization: ${organizationError.message}`);
+  }
+  if (subscriptionError) {
+    throw new Error(
+      `Unable to load current subscription: ${subscriptionError.message}`,
+    );
+  }
+  if (!currentOrganization) {
+    throw new Error("Organization not found.");
   }
 
-  // Update subscription separately
-  if (
-    patch.planId !== undefined ||
-    patch.subscriptionStatus !== undefined ||
-    patch.subscriptionExpiresAt !== undefined ||
-    patch.deviceLimit !== undefined
-  ) {
-    const subPatch: Record<string, unknown> = {};
-    if (patch.planId !== undefined) subPatch.plan_id = patch.planId;
-    if (patch.subscriptionStatus !== undefined)
-      subPatch.status = patch.subscriptionStatus;
-    if (patch.subscriptionExpiresAt !== undefined)
-      subPatch.current_period_end = normalizeSubscriptionExpiry(
-        patch.subscriptionExpiresAt,
-      );
-    if (patch.deviceLimit !== undefined)
-      subPatch.device_limit = Math.max(1, patch.deviceLimit);
+  const nextSubscription = validateSubscriptionInput({
+    planId: patch.planId ?? currentSubscription?.plan_id,
+    subscriptionStatus: patch.subscriptionStatus ?? currentSubscription?.status,
+    subscriptionExpiresAt:
+      patch.subscriptionExpiresAt !== undefined
+        ? patch.subscriptionExpiresAt
+        : currentSubscription?.current_period_end,
+  });
 
-    if (Object.keys(subPatch).length > 0) {
-      const { error } = await supabase
-        .from("subscriptions")
-        .update(subPatch)
-        .eq("organization_id", id);
-      if (error) {
-        await supabase.from("subscriptions").upsert({
-          organization_id: id,
-          plan_id: patch.planId || "free",
-          status: patch.subscriptionStatus || "free",
-          current_period_end: normalizeSubscriptionExpiry(
-            patch.subscriptionExpiresAt,
-          ),
-          device_limit: patch.deviceLimit ?? 1,
-        });
-      }
-    }
-  }
+  await saveOrganizationWithSubscription(supabase, id, {
+    name: patch.name ?? currentOrganization.name,
+    status: patch.status ?? currentOrganization.status,
+    renewalDate:
+      patch.renewalDate ?? currentOrganization.renewal_date,
+    features: patch.features ?? currentOrganization.features,
+    paymentCollectionMode:
+      patch.paymentCollectionMode ??
+      currentOrganization.payment_collection_mode ??
+      "platform",
+  }, {
+    planId: nextSubscription.planId,
+    status: nextSubscription.status,
+    expiry: nextSubscription.expiry,
+    deviceLimit: Math.max(
+      1,
+      patch.deviceLimit ?? currentSubscription?.device_limit ?? 1,
+    ),
+  });
+
+  revalidatePath("/superadmin");
+  revalidatePath("/settings");
 }
 
 export async function deleteOrganization(id: string): Promise<void> {
