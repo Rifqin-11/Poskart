@@ -66,7 +66,7 @@ export async function createSignedTransactionReport({
   const logo = await document.embedPng(
     await readFile(path.join(process.cwd(), "public", "poskart-report-logo.png")),
   );
-  const page = document.addPage([595.28, 841.89]);
+  let page = document.addPage([595.28, 841.89]);
   const dark = rgb(0.05, 0.11, 0.22);
   const logoScale = 48 / logo.width;
   page.drawImage(logo, {
@@ -92,25 +92,41 @@ export async function createSignedTransactionReport({
     { label: "Net", width: 48 }, { label: "Status", width: 45 },
   ];
   const tableX = 40;
-  const tableTop = 678;
   const headerHeight = 27;
   const rowHeight = 28;
-  let columnX = tableX;
-  columns.forEach((column) => {
-    page.drawRectangle({ x: columnX, y: tableTop - headerHeight, width: column.width, height: headerHeight, color: rgb(0.96, 0.97, 0.98), borderColor: rgb(0.84, 0.86, 0.89), borderWidth: 0.6 });
-    column.label.split("\n").forEach((line, index) => page.drawText(line, { x: columnX + 4, y: tableTop - 12 - index * 8, size: 6.3, font: bold, color: dark }));
-    columnX += column.width;
-  });
-  let y = tableTop - headerHeight;
+  const drawTableHeader = (targetPage: typeof page, tableTop: number) => {
+    let columnX = tableX;
+    columns.forEach((column) => {
+      targetPage.drawRectangle({ x: columnX, y: tableTop - headerHeight, width: column.width, height: headerHeight, color: rgb(0.96, 0.97, 0.98), borderColor: rgb(0.84, 0.86, 0.89), borderWidth: 0.6 });
+      column.label.split("\n").forEach((line, index) => targetPage.drawText(line, { x: columnX + 4, y: tableTop - 12 - index * 8, size: 6.3, font: bold, color: dark }));
+      columnX += column.width;
+    });
+  };
+  const drawFooter = (targetPage: typeof page, includeQr: boolean) => {
+    targetPage.drawLine({ start: { x: 40, y: 82 }, end: { x: 555, y: 82 }, thickness: 0.6, color: rgb(0.8, 0.82, 0.85) });
+    targetPage.drawText("Digitally signed by POSKART", { x: 40, y: 64, size: 9, font: bold, color: dark });
+    targetPage.drawText("Dokumen akan ditandai tidak valid bila diubah setelah ditandatangani.", { x: 40, y: 49, size: 7, font: regular, color: rgb(0.35, 0.38, 0.43) });
+    targetPage.drawText(`Report ID: ${reportId}`, { x: 40, y: 36, size: 7, font: regular, color: rgb(0.35, 0.38, 0.43) });
+    if (includeQr) targetPage.drawImage(qrImage, { x: 485, y: 26, width: 60, height: 60 });
+  };
+
+  drawTableHeader(page, 678);
+  let y = 678 - headerHeight;
   transactions.forEach((transaction) => {
-    if (y - rowHeight < 105) return;
+    if (y - rowHeight < 105) {
+      drawFooter(page, false);
+      page = document.addPage([595.28, 841.89]);
+      page.drawText("Laporan Transaksi POSKART (lanjutan)", { x: 40, y: 813, size: 10, font: bold, color: dark });
+      drawTableHeader(page, 790);
+      y = 790 - headerHeight;
+    }
     const values = [
       transaction.id.slice(0, 18), formatWibDateTime(transaction.createdAtRaw).replace(", ", "\n").slice(0, 28),
       paymentMethod(transaction), transaction.packageName.slice(0, 26),
       formatCurrency(transaction.amount), formatCurrency(Math.max(0, transaction.amount - netAmount(transaction, settings))),
       formatCurrency(netAmount(transaction, settings)), transaction.status,
     ];
-    columnX = tableX;
+    let columnX = tableX;
     values.forEach((value, index) => {
       const column = columns[index];
       page.drawRectangle({ x: columnX, y: y - rowHeight, width: column.width, height: rowHeight, borderColor: rgb(0.84, 0.86, 0.89), borderWidth: 0.6 });
@@ -119,11 +135,7 @@ export async function createSignedTransactionReport({
     });
     y -= rowHeight;
   });
-  page.drawLine({ start: { x: 40, y: 82 }, end: { x: 555, y: 82 }, thickness: 0.6, color: rgb(0.8, 0.82, 0.85) });
-  page.drawText("Digitally signed by POSKART", { x: 40, y: 64, size: 9, font: bold, color: dark });
-  page.drawText("Dokumen akan ditandai tidak valid bila diubah setelah ditandatangani.", { x: 40, y: 49, size: 7, font: regular, color: rgb(0.35, 0.38, 0.43) });
-  page.drawText(`Report ID: ${reportId}`, { x: 40, y: 36, size: 7, font: regular, color: rgb(0.35, 0.38, 0.43) });
-  page.drawImage(qrImage, { x: 485, y: 26, width: 60, height: 60 });
+  drawFooter(page, true);
   pdflibAddPlaceholder({ pdfDoc: document, reason: "POSKART transaction report integrity", contactInfo: "support@poskart.my.id", name: "POSKART", location: "Indonesia", signatureLength: 16000 });
   const unsigned = await document.save({ useObjectStreams: false });
   const signed = await signPdf.sign(Buffer.from(unsigned), new P12Signer(await getP12Certificate(), { passphrase: process.env.REPORT_SIGNING_P12_PASSWORD ?? "" }));
