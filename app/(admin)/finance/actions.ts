@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { parseJakartaDateTimeInput } from "@/lib/jakarta-time";
-import { defaultMoneyWallets } from "@/features/money/money-dashboard.utils";
+import { defaultMoneyWallets } from "@/features/finance/finance-dashboard.utils";
 import type {
   MoneyActionState,
   MoneyCategoryInput,
@@ -16,7 +16,7 @@ import type {
   MoneyTransferInput,
   MoneyWalletInput,
   MoneyWalletType,
-} from "@/types/money";
+} from "@/types/finance";
 
 const incomeCategories = new Set<MoneyCategory>([
   "opening_balance",
@@ -249,7 +249,7 @@ export async function saveMoneyEntry(
     }
   }
 
-  revalidatePath("/money");
+  revalidatePath("/finance");
   return { success: true };
 }
 
@@ -360,7 +360,7 @@ export async function saveMoneyTransfer(
     }
   }
 
-  revalidatePath("/money");
+  revalidatePath("/finance");
   return { success: true };
 }
 
@@ -388,7 +388,7 @@ export async function createMoneyTag(
     return { success: false, error: `Gagal membuat tag: ${error.message}` };
   }
 
-  revalidatePath("/money");
+  revalidatePath("/finance");
   return { success: true };
 }
 
@@ -424,7 +424,7 @@ export async function createMoneyWallet(
     return { success: false, error: `Gagal membuat dompet: ${error.message}` };
   }
 
-  revalidatePath("/money");
+  revalidatePath("/finance");
   return { success: true };
 }
 
@@ -469,7 +469,7 @@ export async function deleteMoneyWallet(
     return { success: false, error: `Gagal menghapus dompet: ${error.message}` };
   if (!data) return { success: false, error: "Dompet tidak ditemukan." };
 
-  revalidatePath("/money");
+  revalidatePath("/finance");
   return { success: true };
 }
 
@@ -491,7 +491,7 @@ export async function deleteMoneyTag(
     return { success: false, error: `Gagal menghapus tag: ${error.message}` };
   if (!data) return { success: false, error: "Tag tidak ditemukan." };
 
-  revalidatePath("/money");
+  revalidatePath("/finance");
   return { success: true };
 }
 
@@ -535,7 +535,7 @@ export async function createMoneyCategory(
     return { success: false, error: `Gagal membuat kategori: ${error.message}` };
   }
 
-  revalidatePath("/money");
+  revalidatePath("/finance");
   return { success: true };
 }
 
@@ -557,7 +557,7 @@ export async function deleteMoneyCategory(
     return { success: false, error: `Gagal menghapus kategori: ${error.message}` };
   if (!data) return { success: false, error: "Category not found." };
 
-  revalidatePath("/money");
+  revalidatePath("/finance");
   return { success: true };
 }
 
@@ -594,6 +594,6 @@ export async function deleteMoneyEntry(
     return { success: false, error: `Failed to delete transaction: ${error.message}` };
   if (!data?.length) return { success: false, error: "Transaction not found." };
 
-  revalidatePath("/money");
+  revalidatePath("/finance");
   return { success: true };
 }

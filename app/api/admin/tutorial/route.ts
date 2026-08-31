@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { safeApiError } from "@/lib/http/safe-api-error";
-import { getAdminContext, getAdminMembership } from "@/server/admin/context";
+import { createClient } from "@/lib/supabase/server";
 
 type TutorialScope =
   | "admin"
@@ -28,13 +28,32 @@ function getTutorialScope(request: Request): TutorialScope {
     : "admin";
 }
 
+async function getOptionalTutorialContext() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return user ? { supabase, user } : null;
+}
+
 export async function GET(request: Request) {
   try {
     const scope = getTutorialScope(request);
-    const [{ supabase, user }, membership] = await Promise.all([
-      getAdminContext(),
-      getAdminMembership(),
-    ]);
+    const context = await getOptionalTutorialContext();
+    if (!context) {
+      return NextResponse.json({ completed: false }, { status: 401 });
+    }
+
+    const { supabase, user } = context;
+    const { data: membership, error: membershipError } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("profile_id", user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (membershipError) throw membershipError;
 
     if (!membership) {
       return NextResponse.json({ message: "Organization not found." }, { status: 403 });
@@ -72,10 +91,20 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const scope = getTutorialScope(request);
-    const [{ supabase, user }, membership] = await Promise.all([
-      getAdminContext(),
-      getAdminMembership(),
-    ]);
+    const context = await getOptionalTutorialContext();
+    if (!context) {
+      return NextResponse.json({ completed: false }, { status: 401 });
+    }
+
+    const { supabase, user } = context;
+    const { data: membership, error: membershipError } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("profile_id", user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (membershipError) throw membershipError;
 
     if (!membership) {
       return NextResponse.json({ message: "Organization not found." }, { status: 403 });

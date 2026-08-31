@@ -1,27 +1,18 @@
-import { MoneyDashboard } from "@/features/money/money-dashboard";
-import { requireOrganizationSubscriptionAccess } from "@/server/admin/page-access";
-import {
-  getMoneyCategories,
-  getMoneyEntries,
-  getMoneyTags,
-  getMoneyWallets,
-} from "@/server/money/money-service";
+import { redirect } from "next/navigation";
 
-export default async function MoneyPage() {
-  await requireOrganizationSubscriptionAccess("/money");
-
-  const [entries, categories, tags, wallets] = await Promise.all([
-    getMoneyEntries(),
-    getMoneyCategories(),
-    getMoneyTags(),
-    getMoneyWallets(),
-  ]);
-  return (
-    <MoneyDashboard
-      entries={entries}
-      categories={categories}
-      tags={tags}
-      wallets={wallets}
-    />
-  );
+export default async function LegacyMoneyPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (Array.isArray(value)) {
+      value.forEach((item) => query.append(key, item));
+    } else if (value !== undefined) {
+      query.set(key, value);
+    }
+  }
+  redirect(`/finance${query.toString() ? `?${query.toString()}` : ""}`);
 }

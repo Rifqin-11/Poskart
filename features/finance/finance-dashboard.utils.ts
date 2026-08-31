@@ -4,7 +4,7 @@ import type {
   MoneyEntryType,
   MoneyWallet,
   MoneyWalletType,
-} from "@/types/money";
+} from "@/types/finance";
 import { formatJakartaDateTimeLocal } from "@/lib/jakarta-time";
 
 export type WalletFilter = "all" | MoneyWalletType;

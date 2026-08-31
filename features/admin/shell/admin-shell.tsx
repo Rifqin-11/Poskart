@@ -79,7 +79,7 @@ const navItems: AdminNavItem[] = [
     requiresSubscription: true,
   },
   {
-    href: "/money",
+    href: "/finance",
     labelKey: "nav.money",
     icon: WalletCards,
     requiresSubscription: true,

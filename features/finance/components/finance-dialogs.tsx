@@ -6,6 +6,8 @@ import {
   ArrowDownCircle,
   ArrowLeftRight,
   ArrowUpCircle,
+  CalendarDays,
+  Clock3,
   Plus,
   Tag,
   Tags,
@@ -15,6 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover } from "@/components/ui/popover";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -22,7 +26,7 @@ import {
   evaluateMoneyExpression,
   formatMoneyExpression,
   toLocalDateTime,
-} from "@/features/money/money-dashboard.utils";
+} from "@/features/finance/finance-dashboard.utils";
 import { formatCurrency } from "@/lib/utils";
 import type {
   MoneyCategory,
@@ -35,9 +39,9 @@ import type {
   MoneyTransferInput,
   MoneyWallet,
   MoneyWalletType,
-} from "@/types/money";
+} from "@/types/finance";
 
-export function MoneyEntryDialog({
+export function FinanceEntryDialog({
   entry,
   customCategories,
   tags,
@@ -45,6 +49,7 @@ export function MoneyEntryDialog({
   walletBalances,
   pending,
   onClose,
+  onAddTag,
   onSubmit,
   onTransferSubmit,
 }: {
@@ -55,6 +60,7 @@ export function MoneyEntryDialog({
   walletBalances: Map<string, number>;
   pending: boolean;
   onClose: () => void;
+  onAddTag: () => void;
   onSubmit: (values: MoneyEntryInput) => void;
   onTransferSubmit: (values: MoneyTransferInput) => void;
 }) {
@@ -90,6 +96,8 @@ export function MoneyEntryDialog({
   const [occurredAt, setOccurredAt] = useState(
     toLocalDateTime(entry?.occurredAt ?? new Date().toISOString()),
   );
+  const occurredDate = getLocalDate(occurredAt);
+  const occurredTime = getLocalTime(occurredAt);
 
   const changeType = (nextType: MoneyEntryMode) => {
     setEntryType(nextType);
@@ -322,15 +330,56 @@ export function MoneyEntryDialog({
             </span>
           </label>
         ) : null}
-        <label className="block space-y-1.5 text-sm font-medium">
-          Time
-          <Input
-            type="datetime-local"
-            value={occurredAt}
-            onChange={(event) => setOccurredAt(event.target.value)}
-            required
-          />
-        </label>
+        <div className="space-y-1.5 text-sm font-medium">
+          <span className="block">Date and time</span>
+          <Popover
+            className="finance-date-picker w-[min(360px,calc(100vw-2rem))] p-2"
+            align="right"
+            width={360}
+            trigger={
+              <span className="flex h-10 w-full items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-normal text-zinc-700 shadow-sm transition-colors hover:border-zinc-300">
+                <span className="flex min-w-0 items-center gap-2">
+                  <CalendarDays className="size-4 shrink-0 text-zinc-500" />
+                  <span className="truncate">{formatLocalDateLabel(occurredDate)}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1.5 text-zinc-500">
+                  <Clock3 className="size-3.5" />
+                  {occurredTime}
+                </span>
+              </span>
+            }
+          >
+            <div className="space-y-3">
+              <Calendar
+                mode="single"
+                numberOfMonths={1}
+                className="w-full border-0 p-1"
+                selected={occurredDate}
+                onSelect={(date: Date | undefined) => {
+                  if (!date) return;
+                  setOccurredAt(`${formatDateInput(date)}T${occurredTime}`);
+                }}
+              />
+              <label className="flex items-center justify-between gap-3 border-t border-zinc-100 px-1 pt-3 text-sm font-medium">
+                <span className="flex items-center gap-2">
+                  <Clock3 className="size-4 text-zinc-500" />
+                  Time
+                </span>
+                <Input
+                  type="time"
+                  value={occurredTime}
+                  onChange={(event) =>
+                    setOccurredAt(
+                      `${formatDateInput(occurredDate)}T${event.target.value}`,
+                    )
+                  }
+                  className="h-9 w-[130px] rounded-xl"
+                  required
+                />
+              </label>
+            </div>
+          </Popover>
+        </div>
         <label className="block space-y-1.5 text-sm font-medium">
           Additional notes
           <Textarea
@@ -341,9 +390,21 @@ export function MoneyEntryDialog({
           />
         </label>
         <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium">Transaction tags</span>
-            <span className="text-xs text-zinc-500">Maximum 10 tags</span>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium">Transaction tags</span>
+              <div className="flex items-center gap-2">
+                <span className="hidden text-xs text-zinc-500 sm:inline">Maximum 10 tags</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 rounded-full px-3"
+                  onClick={onAddTag}
+                >
+                  <Plus className="size-3.5" />
+                  Add tag
+                </Button>
+              </div>
           </div>
           {tags.length ? (
             <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto rounded-xl border border-zinc-200 p-3">
@@ -479,6 +540,30 @@ function formatWalletOption(
   walletBalances: Map<string, number>,
 ) {
   return `${wallet.name} — Sisa saldo ${formatCurrency(walletBalances.get(wallet.id) ?? 0)}`;
+}
+
+function getLocalDate(value: string) {
+  const [datePart] = value.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
+}
+
+function getLocalTime(value: string) {
+  return value.split("T")[1]?.slice(0, 5) || "00:00";
+}
+
+function formatDateInput(value: Date) {
+  return [
+    value.getFullYear(),
+    String(value.getMonth() + 1).padStart(2, "0"),
+    String(value.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function formatLocalDateLabel(value: Date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+  }).format(value);
 }
 
 export function WalletManagerDialog({

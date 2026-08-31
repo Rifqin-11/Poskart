@@ -254,6 +254,26 @@ html { scroll-behavior: smooth; }
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
+.finance-date-picker .rdp-months,
+.finance-date-picker .rdp-month,
+.finance-date-picker .rdp-month_grid {
+  width: 100%;
+  min-width: 0;
+}
+
+.finance-date-picker .rdp-month_grid {
+  table-layout: fixed;
+}
+
+.finance-date-picker .rdp-weekday,
+.finance-date-picker .rdp-day {
+  width: 14.2857%;
+}
+
+.finance-date-picker .rdp-day_button {
+  width: 100%;
+}
+
 /* ── Auth experience ─────────────────────────────────────────── */
 .auth-page {
   min-height: 100dvh;

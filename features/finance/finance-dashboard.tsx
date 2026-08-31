@@ -39,7 +39,7 @@ import {
   deleteMoneyWallet,
   saveMoneyEntry,
   saveMoneyTransfer,
-} from "@/app/(admin)/money/actions";
+} from "@/app/(admin)/finance/actions";
 import {
   MobileFilterButton,
   MobileFilterDrawer,
@@ -77,13 +77,13 @@ import {
   getWalletLabel,
   isTransferEntry,
   type WalletFilter,
-} from "@/features/money/money-dashboard.utils";
+} from "@/features/finance/finance-dashboard.utils";
 import {
   CategoryManagerDialog,
-  MoneyEntryDialog,
+  FinanceEntryDialog,
   TagManagerDialog,
   WalletManagerDialog,
-} from "@/features/money/components/money-dialogs";
+} from "@/features/finance/components/finance-dialogs";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
   FeatureGuidedTour,
@@ -96,7 +96,7 @@ import type {
   MoneyEntryType,
   MoneyTag,
   MoneyWallet,
-} from "@/types/money";
+} from "@/types/finance";
 
 const FINANCE_TOUR_STEPS: FeatureTourStep[] = [
   {
@@ -125,7 +125,7 @@ const FINANCE_TOUR_STEPS: FeatureTourStep[] = [
   },
 ];
 
-export function MoneyDashboard({
+export function FinanceDashboard({
   entries,
   categories: customCategories,
   tags,
@@ -556,7 +556,7 @@ export function MoneyDashboard({
         />
       ) : null}
       {editorOpen ? (
-        <MoneyEntryDialog
+        <FinanceEntryDialog
           entry={editing}
           customCategories={customCategories}
           tags={tags}
@@ -564,6 +564,7 @@ export function MoneyDashboard({
           walletBalances={walletBalances}
           pending={pending}
           onClose={() => setEditorOpen(false)}
+          onAddTag={() => setTagManagerOpen(true)}
           onSubmit={(values) => {
             startTransition(async () => {
               const result = await saveMoneyEntry(values);

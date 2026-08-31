@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import { defaultMoneyWallets } from "@/features/money/money-dashboard.utils";
+import { defaultMoneyWallets } from "@/features/finance/finance-dashboard.utils";
 import type {
   MoneyCategory,
   MoneyCustomCategory,
@@ -10,7 +10,7 @@ import type {
   MoneyTag,
   MoneyWallet,
   MoneyWalletType,
-} from "@/types/money";
+} from "@/types/finance";
 
 type MoneyEntryRow = {
   id: string;

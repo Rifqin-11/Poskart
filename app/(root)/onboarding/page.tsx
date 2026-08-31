@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/server";
+import { OnboardingSubmitButton } from "@/features/root/onboarding/onboarding-submit-button";
 
 export default async function OnboardingPage({
   searchParams,
@@ -113,13 +114,13 @@ export default async function OnboardingPage({
               </div>
               <form action={cancelMyPendingRequestAction}>
                 <input type="hidden" name="requestId" value={pendingRequest.id} />
-                <Button
-                  type="submit"
-                  variant="outline"
-                  className="w-full rounded-xl border-zinc-200 text-zinc-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-                >
-                  Cancel Request
-                </Button>
+                 <Button
+                   type="submit"
+                   variant="outline"
+                   className="w-full rounded-xl border-zinc-200 text-zinc-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                 >
+                   Cancel Request
+                 </Button>
               </form>
             </div>
           </div>
@@ -183,10 +184,10 @@ export default async function OnboardingPage({
                   required
                 />
               </label>
-              <Button type="submit" className="w-full" size="lg">
-                Create organization
-                <Building2 className="size-4" />
-              </Button>
+               <OnboardingSubmitButton pendingLabel="Membuat workspace...">
+                 Create organization
+                 <Building2 className="size-4" />
+               </OnboardingSubmitButton>
             </form>
           </CardContent>
         </Card>
@@ -212,10 +213,10 @@ export default async function OnboardingPage({
                   required
                 />
               </label>
-              <Button type="submit" className="w-full" size="lg" variant="outline">
-                Join organization
-                <UsersRound className="size-4" />
-              </Button>
+               <OnboardingSubmitButton pendingLabel="Mengirim permintaan..." variant="outline">
+                 Join organization
+                 <UsersRound className="size-4" />
+               </OnboardingSubmitButton>
             </form>
           </CardContent>
         </Card>

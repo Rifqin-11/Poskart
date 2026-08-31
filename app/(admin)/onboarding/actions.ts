@@ -20,18 +20,33 @@ export async function createOrganizationAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("create_organization_for_current_user", {
-    org_name: organizationName,
-  });
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return encodedRedirect("error", "/login", "Sesi Anda telah berakhir. Silakan masuk lagi.");
+  }
 
-  if (error) {
-    return encodedRedirect("error", "/onboarding", error.message);
+  let createError: { message: string } | null = null;
+  try {
+    const result = await supabase.rpc("create_organization_for_current_user", {
+      org_name: organizationName,
+    });
+    createError = result.error;
+  } catch {
+    createError = { message: "Organization creation failed" };
+  }
+
+  if (createError) {
+    return encodedRedirect(
+      "error",
+      "/onboarding",
+      "Workspace belum dapat dibuat. Periksa nama workspace lalu coba lagi.",
+    );
   }
 
   return encodedRedirect(
     "success",
     "/dashboard",
-    "Organization created. You can start from the dashboard.",
+    "Workspace berhasil dibuat. Dashboard sedang disiapkan.",
   );
 }
 

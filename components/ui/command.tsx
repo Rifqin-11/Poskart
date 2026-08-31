@@ -85,7 +85,7 @@ const pages: PageItem[] = [
     key: "page-money",
     title: "Finance",
     description: "Income and expense records",
-    href: "/money",
+    href: "/finance",
     keywords: "finance money keuangan pemasukan pengeluaran",
     requiresSubscription: true,
     icon: WalletCards,
