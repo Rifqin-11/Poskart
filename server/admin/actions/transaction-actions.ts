@@ -34,7 +34,11 @@ import type {
   TransactionPendingAction,
 } from "@/types/transaction";
 import type { PaginatedResult, PaginationInput } from "@/types/pagination";
-import { createSignedTransactionReport } from "@/server/admin/transaction-report-pdf";
+import {
+  createSignedProfitSharingStatement,
+  createSignedTransactionReport,
+  type ProfitSharingPackageInput,
+} from "@/server/admin/transaction-report-pdf";
 
 type TransactionActionRequestRow = {
   id: string;
@@ -153,6 +157,88 @@ export async function exportSignedTransactionReport(
     pdf_sha256: report.pdfSha256,
   });
   if (error) throw new Error(`Gagal menyimpan verifikasi laporan: ${error.message}`);
+  return report.pdf.toString("base64");
+}
+
+export type ProfitSharingStatementInput = TransactionListFilters & {
+  partnerName: string;
+  sharingPercentage: number;
+  packageReferences: ProfitSharingPackageInput[];
+};
+
+export async function exportProfitSharingStatement(
+  input: ProfitSharingStatementInput,
+) {
+  const partnerName = input.partnerName.trim();
+  if (!partnerName || partnerName.length > 120) {
+    throw new Error("Nama partner wajib diisi dan maksimal 120 karakter.");
+  }
+  const sharingPercentage = Number(input.sharingPercentage);
+  if (!Number.isFinite(sharingPercentage) || sharingPercentage < 0 || sharingPercentage > 100) {
+    throw new Error("Persentase profit sharing harus 0 sampai 100.");
+  }
+  if (!Array.isArray(input.packageReferences)) {
+    throw new Error("Daftar paket tidak valid.");
+  }
+
+  const packageReferences = input.packageReferences.map((item) => {
+    const packageName = item.packageName.trim() || "Tanpa paket";
+    const price = Number(item.price);
+    if (!Number.isFinite(price) || price < 0) {
+      throw new Error(`Harga paket ${packageName} harus berupa angka positif atau nol.`);
+    }
+    return { packageName, price };
+  });
+  const packageNames = new Set(packageReferences.map((item) => item.packageName));
+  if (packageNames.size !== packageReferences.length) {
+    throw new Error("Paket profit sharing tidak boleh duplikat.");
+  }
+
+  const pageSize = MAX_PAGE_SIZE;
+  const filters = { ...input, page: 1, pageSize };
+  const firstPage = await getTransactionsPage(filters);
+  const remainingPages = await Promise.all(
+    Array.from({ length: Math.max(0, firstPage.totalPages - 1) }, (_, index) =>
+      getTransactionsPage({ ...filters, page: index + 2 }),
+    ),
+  );
+  const transactions = [
+    firstPage.items,
+    ...remainingPages.map((page) => page.items),
+  ].flat();
+  const report = await createSignedProfitSharingStatement({
+    transactions,
+    settings: firstPage.gatewayFeeSettings,
+    packageInputs: packageReferences,
+    partnerName,
+    sharingPercentage,
+    verificationBaseUrl: `${(
+      process.env.NEXT_PUBLIC_SITE_URL ?? ""
+    ).replace(/\/$/, "")}/verify/transaction-report`,
+  });
+  const [{ supabase, user }, membership] = await Promise.all([
+    getAdminContext(),
+    getAdminMembership(),
+  ]);
+  if (!membership) throw new Error("Organisasi tidak ditemukan.");
+  const { error: verificationError } = await supabase
+    .from("transaction_report_verifications")
+    .insert({
+      id: report.statementId,
+      organization_id: membership.organizationId,
+      exported_by: user.id,
+      issued_at: report.issuedAt,
+      transaction_count: report.transactionCount,
+      session_count: report.sessionCount,
+      print_count: report.printCount,
+      profit: report.profit,
+      pdf_sha256: report.pdfSha256,
+    });
+  if (verificationError) {
+    throw new Error(
+      `Gagal menyimpan verifikasi statement: ${verificationError.message}`,
+    );
+  }
   return report.pdf.toString("base64");
 }
 

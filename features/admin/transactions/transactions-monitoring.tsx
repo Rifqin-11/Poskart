@@ -19,6 +19,7 @@ import {
   Printer,
   ReceiptText,
   CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { showErrorToast, toast } from "@/lib/toast";
@@ -68,6 +69,7 @@ import {
 } from "@/lib/payment-gateway-fee";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { PricingProduct } from "@/types/pricing";
 import type { Transaction, TransactionActionType } from "@/types/transaction";
 
 function getTransactionPaymentMethod(transaction: Transaction) {
@@ -98,6 +100,19 @@ function toDateValue(value: Date | undefined) {
 function escapeCsv(value: string | number) {
   const escaped = String(value).replace(/"/g, '""');
   return /[",\n]/.test(escaped) ? `"${escaped}"` : escaped;
+}
+
+function getPricingReferencePrice(product: PricingProduct) {
+  if (product.promoPrice != null && product.promoPrice > 0) {
+    return product.promoPrice;
+  }
+  if (product.photoSlotPromoPrice != null && product.photoSlotPromoPrice > 0) {
+    return product.photoSlotPromoPrice;
+  }
+  const tierPromoPrice = product.photoSlotPrices.find(
+    (tier) => tier.promoPrice != null && tier.promoPrice > 0,
+  )?.promoPrice;
+  return tierPromoPrice ?? product.photoSlotPrice ?? product.price;
 }
 
 function renderTransactionStatus(status: Transaction["status"]) {
@@ -446,7 +461,16 @@ export function TransactionsMonitoring({
   );
   const exportButtonRef = useRef<HTMLButtonElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [profitSharingOpen, setProfitSharingOpen] = useState(false);
+  const [profitSharingLoading, setProfitSharingLoading] = useState(false);
+  const [profitSharingPartnerName, setProfitSharingPartnerName] = useState("");
+  const [profitSharingPercentage, setProfitSharingPercentage] = useState("");
+  const [profitSharingPackages, setProfitSharingPackages] = useState<
+    { id: string; packageName: string; price: string }[]
+  >([]);
+  const [profitSharingError, setProfitSharingError] = useState("");
   const [createTransactionOpen, setCreateTransactionOpen] = useState(false);
+  const [selectedPricingPackage, setSelectedPricingPackage] = useState("");
   const [productName, setProductName] = useState("");
   const [transactionAmount, setTransactionAmount] = useState<number | null>(
     null,
@@ -481,6 +505,9 @@ export function TransactionsMonitoring({
   const packageOptions = pricingPackages
     .map((item) => item.name)
     .filter(Boolean);
+  const activePaidPricingPackages = pricingPackages.filter(
+    (item) => item.active && item.accessMode === "paid",
+  );
   const totalItems = transactionQuery.data?.totalItems ?? 0;
   const paymentMethodOptions = ["QRIS", "Cash", "Voucher", "Event"];
 
@@ -516,6 +543,7 @@ export function TransactionsMonitoring({
       setTransactionAmount(null);
       setTransactionDescription("");
       setCreatePaymentMethod("QRIS");
+      setSelectedPricingPackage("");
       setPaymentComplete(false);
     }
   }
@@ -914,6 +942,120 @@ export function TransactionsMonitoring({
     }
   }
 
+  async function openProfitSharingForm() {
+    setExportDropdownOpen(false);
+    setProfitSharingOpen(true);
+    setProfitSharingLoading(true);
+    setProfitSharingError("");
+    try {
+      const { transactions } = await getTransactionsForExport();
+      const pricingPrices = new Map(
+        pricingPackages
+          .filter((item) => item.name.trim())
+          .map((item) => [
+            item.name.trim(),
+            getPricingReferencePrice(item),
+          ]),
+      );
+      const packagePrices = new Map<string, number>();
+      for (const transaction of transactions) {
+        const packageName = transaction.packageName.trim() || "Tanpa paket";
+        packagePrices.set(
+          packageName,
+          pricingPrices.get(packageName) ?? transaction.amount,
+        );
+      }
+      const packageNames = Array.from(packagePrices.keys()).sort((first, second) =>
+        first.localeCompare(second),
+      );
+      setProfitSharingPackages(
+        packageNames.map((packageName) => ({
+          id: `pricing-${packageName}`,
+          packageName,
+          price: String(packagePrices.get(packageName) ?? 0),
+        })),
+      );
+      if (packageNames.length === 0) {
+        setProfitSharingError("Tidak ada paket pada hasil filter saat ini.");
+      }
+    } catch (error) {
+      setProfitSharingError(
+        getUserFacingErrorMessage(
+          error,
+          "Daftar paket tidak dapat dimuat. Coba lagi.",
+        ),
+      );
+    } finally {
+      setProfitSharingLoading(false);
+    }
+  }
+
+  async function exportProfitSharing() {
+    const partnerName = profitSharingPartnerName.trim();
+    if (!partnerName) {
+      setProfitSharingError("Nama partner wajib diisi.");
+      return;
+    }
+    if (
+      profitSharingPercentage === "" ||
+      Number(profitSharingPercentage) < 0 ||
+      Number(profitSharingPercentage) > 100
+    ) {
+      setProfitSharingError("Isi persentase profit sharing dengan nilai 0 sampai 100.");
+      return;
+    }
+    if (
+      profitSharingPackages.some(
+        (item) => !item.packageName.trim() || Number(item.price) < 0 || item.price === "",
+      )
+    ) {
+      setProfitSharingError("Isi nama dan harga setiap paket dengan benar.");
+      return;
+    }
+
+    setIsExporting(true);
+    setProfitSharingError("");
+    try {
+      const pdfBase64 = await transactionsApi.exportProfitSharingStatement({
+        search: search.trim(),
+        status: statusFilter,
+        paymentMethod: paymentMethodFilter,
+        packageName: packageFilter === "all" ? "" : packageFilter,
+        fromDate: fromDateFilter,
+        toDate: toDateFilter,
+        booth: boothFilter === "all" ? "" : boothFilter,
+        partnerName,
+        sharingPercentage: Number(profitSharingPercentage),
+        packageReferences: profitSharingPackages.map((item) => ({
+          packageName: item.packageName,
+          price: Number(item.price),
+        })),
+      });
+      const bytes = Uint8Array.from(atob(pdfBase64), (character) =>
+        character.charCodeAt(0),
+      );
+      const url = URL.createObjectURL(
+        new Blob([bytes], { type: "application/pdf" }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `profit_sharing_statement_${Date.now()}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setProfitSharingOpen(false);
+      toast.success("Profit Sharing Statement berhasil diekspor.");
+    } catch (error) {
+      setProfitSharingError(
+        getUserFacingErrorMessage(
+          error,
+          "Profit Sharing Statement tidak dapat diekspor. Coba lagi.",
+        ),
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <div className="min-w-0">
       <PageHeader
@@ -990,6 +1132,38 @@ export function TransactionsMonitoring({
             <div className="space-y-1.5">
               <label
                 className="text-sm font-medium"
+                htmlFor="transaction-pricing-package"
+              >
+                Paket pricing (opsional)
+              </label>
+              <Select
+                id="transaction-pricing-package"
+                value={selectedPricingPackage}
+                onChange={(event) => {
+                  const packageName = event.target.value;
+                  setSelectedPricingPackage(packageName);
+                  const selectedPackage = activePaidPricingPackages.find(
+                    (item) => item.id === packageName,
+                  );
+                  if (!selectedPackage) return;
+                  setProductName(selectedPackage.name);
+                  setTransactionAmount(getPricingReferencePrice(selectedPackage));
+                }}
+              >
+                <option value="">Input manual</option>
+                {activePaidPricingPackages.map((pricingPackage) => (
+                  <option key={pricingPackage.id} value={pricingPackage.id}>
+                    {pricingPackage.name} - {formatCurrency(getPricingReferencePrice(pricingPackage))}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-xs leading-5 text-zinc-500">
+                Memilih paket akan mengisi nama produk dan nominal. Keduanya tetap dapat diubah manual.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <label
+                className="text-sm font-medium"
                 htmlFor="qris-product-name"
               >
                 Nama Produk
@@ -1050,6 +1224,186 @@ export function TransactionsMonitoring({
             </Button>
           </form>
         )}
+      </Dialog>
+
+      <Dialog
+        open={profitSharingOpen}
+        onOpenChange={setProfitSharingOpen}
+        title="Profit Sharing Statement"
+        className="max-w-lg"
+      >
+        <form
+          className="space-y-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void exportProfitSharing();
+          }}
+        >
+          <div>
+            <p className="text-sm leading-6 text-zinc-600">
+              Isi nama partner dan satu persentase pembagian untuk seluruh transaksi. Daftar paket di bawah hanya menjadi referensi harga untuk partner.
+            </p>
+            <p className="mt-2 text-xs leading-5 text-zinc-500">
+              Nilai partner dihitung dari seluruh transaksi paid setelah gateway fee.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-zinc-900" htmlFor="profit-sharing-partner">
+              Nama partner
+            </label>
+            <Input
+              id="profit-sharing-partner"
+              value={profitSharingPartnerName}
+              maxLength={120}
+              required
+              onChange={(event) => setProfitSharingPartnerName(event.target.value)}
+              placeholder="Contoh: Partner Event ABC"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-zinc-900" htmlFor="profit-sharing-percentage">
+              Profit sharing partner
+            </label>
+            <div className="relative">
+              <Input
+                id="profit-sharing-percentage"
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                inputMode="decimal"
+                value={profitSharingPercentage}
+                required
+                onChange={(event) => setProfitSharingPercentage(event.target.value)}
+                placeholder="Contoh: 20"
+                className="pr-8"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">
+                %
+              </span>
+            </div>
+            <p className="text-xs leading-5 text-zinc-500">
+              Persentase ini diterapkan ke total revenue bersih dari semua transaksi paid pada laporan.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-sm font-medium text-zinc-900">
+                Referensi paket dan harga
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setProfitSharingPackages((current) => [
+                    ...current,
+                    {
+                      id: `custom-${Date.now()}-${current.length}`,
+                      packageName: "",
+                      price: "",
+                    },
+                  ])
+                }
+              >
+                <Plus className="size-3.5" />
+                Tambah paket
+              </Button>
+            </div>
+            {profitSharingLoading ? (
+              <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-500">
+                <LoaderCircle className="size-4 animate-spin" />
+                Memuat daftar paket...
+              </div>
+            ) : profitSharingPackages.length > 0 ? (
+              <div className="space-y-2 rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3">
+                {profitSharingPackages.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className="grid grid-cols-[minmax(0,1fr)_120px_32px] items-center gap-2 rounded-xl bg-white p-2.5"
+                  >
+                    <Input
+                      aria-label={`Nama paket ${index + 1}`}
+                      value={item.packageName}
+                      maxLength={120}
+                      onChange={(event) =>
+                        setProfitSharingPackages((current) =>
+                          current.map((packageItem, packageIndex) =>
+                            packageIndex === index
+                              ? { ...packageItem, packageName: event.target.value }
+                              : packageItem,
+                          ),
+                        )
+                      }
+                      placeholder="Nama paket"
+                    />
+                    <div className="relative">
+                      <Input
+                        aria-label={`Harga ${item.packageName || `paket ${index + 1}`}`}
+                        type="number"
+                        min="0"
+                        step="1"
+                        inputMode="numeric"
+                        value={item.price}
+                        onChange={(event) =>
+                          setProfitSharingPackages((current) =>
+                            current.map((packageItem, packageIndex) =>
+                              packageIndex === index
+                                ? { ...packageItem, price: event.target.value }
+                                : packageItem,
+                            ),
+                          )
+                        }
+                        placeholder="Harga"
+                        className="pr-8 text-right"
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">Rp</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Hapus ${item.packageName || `paket ${index + 1}`}`}
+                      onClick={() =>
+                        setProfitSharingPackages((current) =>
+                          current.filter((_, packageIndex) => packageIndex !== index),
+                        )
+                      }
+                    >
+                      <Trash2 className="size-4 text-zinc-400" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-zinc-300 p-4 text-sm text-zinc-500">
+                Daftar paket belum tersedia.
+              </div>
+            )}
+          </div>
+          {profitSharingError ? (
+            <p className="text-sm text-red-600">{profitSharingError}</p>
+          ) : null}
+          <div className="flex justify-end gap-2 border-t border-zinc-100 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setProfitSharingOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                profitSharingLoading ||
+                isExporting
+              }
+            >
+              {isExporting ? <LoaderCircle className="size-4 animate-spin" /> : <FileText className="size-4" />}
+              {isExporting ? "Membuat PDF..." : "Buat statement PDF"}
+            </Button>
+          </div>
+        </form>
       </Dialog>
 
       <Card className="mb-4 overflow-hidden">
@@ -1381,6 +1735,14 @@ export function TransactionsMonitoring({
                         >
                           <FileText className="size-4 text-rose-600" />
                           Ekspor PDF (.pdf)
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+                          onClick={() => void openProfitSharingForm()}
+                        >
+                          <ReceiptText className="size-4 text-[#00357B]" />
+                          Profit Sharing Statement (PDF)
                         </button>
                       </div>
                     </>

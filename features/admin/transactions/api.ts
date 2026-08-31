@@ -10,6 +10,8 @@ export const transactionsApi = {
   createAdminQrisTransaction: transactionService.createAdminQrisTransaction,
   exportSignedTransactionReport:
     transactionService.exportSignedTransactionReport,
+  exportProfitSharingStatement:
+    transactionService.exportProfitSharingStatement,
   checkAdminQrisTransactionStatus:
     transactionService.checkAdminQrisTransactionStatus,
   requestTransactionAction: transactionService.requestTransactionAction,
