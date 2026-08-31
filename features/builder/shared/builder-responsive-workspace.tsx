@@ -200,6 +200,7 @@ export function BuilderResponsiveWorkspace({
             >
               <button
                 type="button"
+                data-builder-tour="layers"
                 onClick={() => openPanel("layers")}
                 className="flex h-11 items-center gap-2 rounded-xl px-3 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
               >
@@ -211,6 +212,7 @@ export function BuilderResponsiveWorkspace({
               </button>
               <button
                 type="button"
+                data-builder-tour="add"
                 onClick={() => openPanel("add")}
                 className="flex h-11 items-center gap-2 rounded-xl px-3 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
               >
@@ -219,6 +221,7 @@ export function BuilderResponsiveWorkspace({
               </button>
               <button
                 type="button"
+                data-builder-tour="inspector-tabs"
                 onClick={() => openPanel("properties")}
                 className="flex h-11 max-w-48 items-center gap-2 rounded-xl px-3 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
               >

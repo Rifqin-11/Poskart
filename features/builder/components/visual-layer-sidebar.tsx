@@ -96,7 +96,6 @@ export function VisualLayerSidebar({
   // Desktop keeps creation separate from layer management.
   return (
     <aside
-      data-builder-tour="layers"
       className="flex h-full w-full border-r border-zinc-200/80 bg-[#fcfcfb]"
     >
       <div className="flex w-14 shrink-0 flex-col items-center border-r border-zinc-200/70 bg-white py-3">
@@ -105,8 +104,9 @@ export function VisualLayerSidebar({
         </div>
         <div className="flex flex-col items-center gap-1.5">
           {PRIMARY_SIDEBAR_TABS.map(({ id, icon: Icon, label }) => (
-            <SidebarTabButton
+             <SidebarTabButton
               key={id}
+              tourTarget={id}
               active={activeTab === id}
               icon={Icon}
               label={label}
@@ -119,6 +119,7 @@ export function VisualLayerSidebar({
           active={activeTab === "assets"}
           icon={Package}
           label="Assets"
+          tourTarget="assets"
           onClick={() => setActiveTab("assets")}
         />
       </div>
@@ -191,11 +192,13 @@ export function VisualLayerSidebar({
 /* ─── Sub-components ─── */
 
 function SidebarTabButton({
+  tourTarget,
   active,
   icon: Icon,
   label,
   onClick,
 }: {
+  tourTarget?: "add" | "layers" | "assets";
   active: boolean;
   icon: ElementType;
   label: string;
@@ -206,6 +209,7 @@ function SidebarTabButton({
       type="button"
       title={label}
       aria-label={label}
+      data-builder-tour={tourTarget}
       aria-pressed={active}
       onClick={onClick}
       className={cn(

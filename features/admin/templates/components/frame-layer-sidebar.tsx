@@ -49,7 +49,10 @@ export function FrameLayerSidebar({
       )}
     >
       {showAdd ? (
-        <div className={cn("shrink-0 p-4", !showLayers && "overflow-y-auto")}>
+        <div
+          data-frame-builder-tour="add"
+          className={cn("shrink-0 p-4", !showLayers && "overflow-y-auto")}
+        >
           <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">
             Add layer
           </div>
@@ -71,6 +74,7 @@ export function FrameLayerSidebar({
 
       {showLayers ? (
         <div
+          data-frame-builder-tour="layers"
           className={cn(
             "flex min-h-0 flex-1 flex-col",
             showAdd && "border-t border-zinc-100",

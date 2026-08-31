@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Bell,
@@ -381,6 +381,9 @@ export function AdminShell({
   userRole?: string | null;
   isSuperAdmin?: boolean;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const shouldOpenTutorialFromOnboarding = searchParams.get("tutorial") === "1";
   const [open, setOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
@@ -388,7 +391,9 @@ export function AdminShell({
   const [aiDraft, setAiDraft] = useState("");
   const [aiMessages, setAiMessages] = useState<AiChatMessage[]>([]);
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
-  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(
+    shouldOpenTutorialFromOnboarding,
+  );
   const { locale, setLocale, t } = useI18n();
   const initials = userEmail?.slice(0, 2).toUpperCase() ?? "PK";
   const builderFullView = useBuilderStore((s) => s.builderFullView);
@@ -427,24 +432,12 @@ export function AdminShell({
   }, []);
 
   useEffect(() => {
-    let active = true;
-
-    void fetch("/api/admin/tutorial", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) return null;
-        return (await response.json()) as { completed?: boolean };
-      })
-      .then((progress) => {
-        if (active && progress && !progress.completed) {
-          setTutorialOpen(true);
-        }
-      })
-      .catch(() => undefined);
-
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (shouldOpenTutorialFromOnboarding) {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("tutorial");
+      router.replace(`${cleanUrl.pathname}${cleanUrl.search}`, { scroll: false });
+    }
+  }, [router, shouldOpenTutorialFromOnboarding]);
 
   // Subscribe to Supabase Realtime so layout_schemas + devices queries
   // auto-refresh when the Flutter kiosk app pushes changes (e.g. active theme)

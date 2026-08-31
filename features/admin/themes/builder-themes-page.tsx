@@ -60,6 +60,13 @@ function AssignDevicesModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { t } = useI18n();
+
+  const translate = (key: Parameters<typeof t>[0], values: Record<string, string>) =>
+    Object.entries(values).reduce(
+      (text, [name, value]) => text.replace(`{${name}}`, value),
+      t(key),
+    );
   const { data: devices = [], isLoading: devicesLoading } = useBooths();
   const updateBooth = useUpdateBooth();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
@@ -94,11 +101,10 @@ function AssignDevicesModal({
         <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-4">
           <div>
             <h2 className="text-base font-semibold text-zinc-900">
-              Assign to Devices
+              {t("themes.assignTitle")}
             </h2>
             <p className="mt-0.5 text-xs text-zinc-500">
-              Select which kiosks will use{" "}
-              <span className="font-medium text-zinc-700">{layout.name}</span>
+              {t("themes.assignDesc").replace("{name}", layout.name)}
             </p>
           </div>
           <button
@@ -119,7 +125,7 @@ function AssignDevicesModal({
           {!devicesLoading && devices.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <Monitor className="mb-2 size-8 text-zinc-300" />
-              <p className="text-sm text-zinc-500">No devices registered yet</p>
+              <p className="text-sm text-zinc-500">{t("themes.noDevices")}</p>
             </div>
           )}
           {!devicesLoading && devices.length > 0 && (
@@ -143,8 +149,8 @@ function AssignDevicesModal({
                 </div>
                 <span className="text-xs font-semibold text-zinc-600">
                   {selected.size === devices.length
-                    ? "Deselect all"
-                    : "Select all"}
+                    ? t("themes.deselectAll")
+                    : t("themes.selectAll")}
                 </span>
                 <Badge variant="secondary" className="ml-auto text-[10px]">
                   {devices.length}
@@ -193,13 +199,12 @@ function AssignDevicesModal({
                         </p>
                         {hasCurrentTheme && (
                           <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
-                            current
+                            {t("themes.current")}
                           </span>
                         )}
                       </div>
                       <p className="mt-0.5 truncate text-[11px] text-zinc-400">
-                        {device.location} ·{" "}
-                        {device.theme || "no theme assigned"}
+                        {device.location} · {device.theme || t("themes.noTheme")}
                       </p>
                     </div>
                     {/* Status badge */}
@@ -220,7 +225,7 @@ function AssignDevicesModal({
             onClick={onClose}
             className="flex-1 rounded-lg border border-zinc-200 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
           >
-            Cancel
+            {t("themes.cancel")}
           </button>
           <button
             onClick={() => void handleConfirm()}
@@ -233,8 +238,10 @@ function AssignDevicesModal({
               <Power className="size-3.5" />
             )}
             {activating
-              ? "Assigning…"
-              : `Assign${selected.size > 0 ? ` to ${selected.size} device${selected.size > 1 ? "s" : ""}` : ""}`}
+              ? t("themes.assigning")
+              : selected.size > 0
+                ? translate("themes.assignTo", { count: String(selected.size) })
+                : t("themes.createWithoutAssignment")}
           </button>
         </div>
       </div>
@@ -254,12 +261,20 @@ function AssignDevicesModal({
       );
       toast.success(
         selected.size > 0
-          ? `Theme "${layout.name}" assigned to ${selected.size} device${selected.size > 1 ? "s" : ""}.`
-          : `Theme "${layout.name}" assigned as the active theme.`,
+          ? translate("themes.themeAssigned", {
+              name: layout.name,
+              count: String(selected.size),
+              devices: selected.size > 1 ? t("themes.devicesCount") : t("themes.deviceCount"),
+            })
+          : translate("themes.themeAssignedActive", { name: layout.name }),
       );
       onDone();
     } catch (err) {
-      showErrorToast("Tidak dapat menerapkan theme", err, "Theme belum diterapkan ke device.");
+      showErrorToast(
+        t("themes.activationFailed"),
+        err,
+        t("themes.themeApplyFailed"),
+      );
     } finally {
       setActivating(false);
     }
@@ -295,10 +310,10 @@ export function BuilderThemesPage() {
       .writeText(THEME_BRAINSTORM_PROMPT)
       .then(() =>
         toast.success(
-          "Prompt disalin! Paste ke Lovable/Stitch untuk brainstorming tema.",
+          "Prompt berhasil disalin. Tempelkan ke Lovable atau Stitch untuk mencari inspirasi tema.",
         ),
       )
-      .catch(() => toast.error("Gagal menyalin prompt"));
+      .catch(() => toast.error("Prompt tidak dapat disalin."));
   };
 
   /** Activate theme in DB (sets is_active = true) */
@@ -308,9 +323,9 @@ export function BuilderThemesPage() {
       await setActive.mutateAsync(id);
     } catch (err) {
       showErrorToast(
-        "Theme activation failed",
+        t("themes.activationFailed"),
         err,
-        "The theme could not be activated. Please try again.",
+        t("themes.activationError"),
       );
     } finally {
       setLoadingId(null);
@@ -327,12 +342,12 @@ export function BuilderThemesPage() {
     setLoadingId(id);
     try {
       await deactivate.mutateAsync(id);
-      toast.success("Theme deactivated.");
+      toast.success(t("themes.deactivated"));
     } catch (err) {
       showErrorToast(
-        "Theme deactivation failed",
+        t("themes.deactivationFailed"),
         err,
-        "The theme could not be deactivated. Please try again.",
+        t("themes.deactivationError"),
       );
     } finally {
       setLoadingId(null);
@@ -344,12 +359,12 @@ export function BuilderThemesPage() {
     try {
       await deleteLayout.mutateAsync(id);
       setConfirmDelete(null);
-      toast.success("Theme deleted.");
+      toast.success(t("themes.deleted"));
     } catch (err) {
       showErrorToast(
-        "Theme deletion failed",
+        t("themes.deletionFailed"),
         err,
-        "The theme could not be deleted. Please try again.",
+        t("themes.deletionError"),
       );
     } finally {
       setLoadingId(null);
@@ -362,11 +377,10 @@ export function BuilderThemesPage() {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Builder Themes
+            {t("themes.pageTitle")}
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Layouts saved from the Visual Builder. Assign one to deploy it to
-            the kiosk.
+            {t("themes.pageDesc")}
           </p>
         </div>
         {!isReadOnly("themes") && (
@@ -376,30 +390,29 @@ export function BuilderThemesPage() {
               className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
             >
               <Copy className="size-4" />
-              Copy Prompt
+              {t("themes.copyPrompt")}
             </button>
             <Link
               href="/themes/builder/new"
               className="inline-flex items-center gap-2 rounded-lg bg-[#00357B] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#014EB4]"
             >
               <Plus className="size-4" />
-              Create Theme
+              {t("themes.createTheme")}
             </Link>
           </div>
         )}
       </div>
 
-      {/* Copy Prompt explanation */}
+      {/* Penjelasan salin prompt */}
       {/* <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
         <Lightbulb className="mt-0.5 size-4 shrink-0 text-amber-600" />
         <p className="text-sm leading-6 text-amber-800">
-          <span className="font-semibold">Copy Prompt</span> menyalin prompt
-          siap pakai untuk brainstorming desain tema di AI tools seperti
-          Lovable atau Stitch. Prompt tersebut sudah menjelaskan semua halaman
-          kiosk (Landing, Tutorial, Frame Picker, Camera, Preview, Thanks)
-          beserta fungsinya dan node apa saja yang tersedia — jadi Anda tidak
-          perlu menjelaskan ulang setiap kali. Cukup paste, lalu isi mood/gaya
-          tema yang diinginkan.
+           <span className="font-semibold">Salin prompt</span> menyalin prompt
+           siap pakai untuk mencari inspirasi desain tema menggunakan alat AI
+           seperti Lovable atau Stitch. Prompt tersebut menjelaskan halaman
+           kiosk dan komponen yang tersedia, sehingga Anda tidak perlu
+           menjelaskan ulang setiap kali. Cukup tempelkan prompt, lalu isi gaya
+           tema yang diinginkan.
         </p>
       </div> */}
 
@@ -454,7 +467,7 @@ export function BuilderThemesPage() {
               : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",
           )}
         >
-          <Palette className="size-4" /> Gallery branding
+          <Palette className="size-4" /> {t("themes.galleryBranding")}
         </button>
       </div>
       </nav>
@@ -578,7 +591,7 @@ function ThemeCard({
         <ThemeThumbnail schema={layout.schema} page="landing" />
         {isActive && (
           <Badge className="absolute right-4 top-4 shrink-0 bg-emerald-500 text-[10px] text-white shadow hover:bg-emerald-500">
-            Active
+             {t("themes.active")}
           </Badge>
         )}
       </div>
@@ -591,9 +604,11 @@ function ThemeCard({
               {layout.name}
             </h3>
             <p className="mt-0.5 text-[11px] text-zinc-400">
-              Updated {updatedAt} · {nodeCount} nodes ·{" "}
-              {layout.schema?.canvas?.width ?? "–"}×
-              {layout.schema?.canvas?.height ?? "–"}
+              {t("themes.updatedNodes")
+                .replace("{date}", updatedAt)
+                .replace("{count}", String(nodeCount))
+                .replace("{width}", String(layout.schema?.canvas?.width ?? "–"))
+                .replace("{height}", String(layout.schema?.canvas?.height ?? "–"))}
             </p>
           </div>
 
@@ -618,7 +633,7 @@ function ThemeCard({
                       onClick={() => setMenuOpen(false)}
                       className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
                     >
-                      <Pencil className="size-3.5" /> Edit
+                       <Pencil className="size-3.5" /> {t("themes.edit")}
                     </Link>
                     {!isActive && (
                       <button
@@ -628,7 +643,7 @@ function ThemeCard({
                         }}
                         className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
                       >
-                        <Monitor className="size-3.5 text-emerald-600" /> Assign
+                         <Monitor className="size-3.5 text-emerald-600" /> {t("themes.assign")}
                       </button>
                     )}
                     {isActive && (
@@ -640,7 +655,7 @@ function ThemeCard({
                         className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
                       >
                         <PowerOff className="size-3.5 text-orange-500" />{" "}
-                        Deactivate
+                         {t("themes.deactivate")}
                       </button>
                     )}
                     <button
@@ -650,7 +665,7 @@ function ThemeCard({
                       }}
                       className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
                     >
-                      <Trash2 className="size-3.5" /> Delete
+                       <Trash2 className="size-3.5" /> {t("themes.deleteThis")}
                     </button>
                   </div>
                 </>
@@ -672,20 +687,20 @@ function ThemeCard({
         {/* Delete confirmation inline */}
         {confirmingDelete ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-            <p className="mb-2 font-medium">Delete this theme?</p>
+              <p className="mb-2 font-medium">{t("themes.deleteThis")}</p>
             <div className="flex gap-2">
               <button
                 onClick={onConfirmDelete}
                 disabled={isLoading}
                 className="flex-1 rounded-md bg-red-600 py-1 font-semibold text-white hover:bg-red-500 disabled:opacity-50"
               >
-                {isLoading ? "Deleting…" : "Yes, delete"}
+                 {isLoading ? t("themes.deleting") : t("themes.yesDelete")}
               </button>
               <button
                 onClick={onCancelDelete}
                 className="flex-1 rounded-md border border-red-200 py-1 text-red-600 hover:bg-red-100"
               >
-                Cancel
+                 {t("themes.cancel")}
               </button>
             </div>
           </div>
@@ -697,7 +712,7 @@ function ThemeCard({
                 href={`/themes/builder/${layout.id}`}
                 className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
               >
-                <Pencil className="size-3.5" /> Edit
+                 <Pencil className="size-3.5" /> {t("themes.edit")}
               </Link>
             )}
             <button

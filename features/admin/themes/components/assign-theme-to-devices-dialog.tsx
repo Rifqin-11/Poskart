@@ -10,6 +10,7 @@ import {
 import { showErrorToast, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useBooths, useUpdateBooth } from "@/features/admin/devices/use-devices";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import type { LayoutSchemaRow } from "@/features/admin/layout/api";
 
 export function AssignThemeToDevicesDialog({
@@ -21,6 +22,7 @@ export function AssignThemeToDevicesDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { t } = useI18n();
   const { data: devices = [], isLoading: devicesLoading } = useBooths();
   const updateBooth = useUpdateBooth();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
@@ -56,15 +58,18 @@ export function AssignThemeToDevicesDialog({
       );
       toast.success(
         selected.size > 0
-          ? `Theme "${layout.name}" assigned to ${selected.size} device${selected.size > 1 ? "s" : ""}.`
-          : `Theme "${layout.name}" created without device assignment.`,
+          ? t("themes.themeAssigned")
+              .replace("{name}", layout.name)
+              .replace("{count}", String(selected.size))
+              .replace("{devices}", selected.size > 1 ? t("themes.devicesCount") : t("themes.deviceCount"))
+          : t("themes.themeCreatedNoAssignment").replace("{name}", layout.name),
       );
       onDone();
     } catch (error) {
       showErrorToast(
-        "Tidak dapat menerapkan theme",
+        t("themes.activationFailed"),
         error,
-        "Theme sudah dibuat, tetapi belum berhasil diterapkan ke device. Coba lagi.",
+        t("themes.themeApplyFailed"),
       );
     } finally {
       setAssigning(false);
@@ -82,10 +87,10 @@ export function AssignThemeToDevicesDialog({
         <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-4">
           <div>
             <h2 className="text-base font-semibold text-zinc-900">
-              Assign theme to devices
+              {t("themes.assignTitle")}
             </h2>
             <p className="mt-0.5 text-xs text-zinc-500">
-              Theme <span className="font-medium text-zinc-700">{layout.name}</span> sudah dibuat. Pilih kiosk yang akan menggunakannya.
+              {t("themes.assignDesc").replace("{name}", layout.name)}
             </p>
           </div>
           <button
@@ -106,7 +111,7 @@ export function AssignThemeToDevicesDialog({
           ) : devices.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <Monitor className="mb-2 size-8 text-zinc-300" />
-              <p className="text-sm text-zinc-500">No devices registered yet</p>
+             <p className="text-sm text-zinc-500">{t("themes.noDevices")}</p>
             </div>
           ) : (
             <>
@@ -128,7 +133,7 @@ export function AssignThemeToDevicesDialog({
                   )}
                 </span>
                 <span className="text-xs font-semibold text-zinc-600">
-                  {selected.size === devices.length ? "Deselect all" : "Select all"}
+                   {selected.size === devices.length ? t("themes.deselectAll") : t("themes.selectAll")}
                 </span>
                 <Badge variant="secondary" className="ml-auto text-[10px]">
                   {devices.length}
@@ -173,12 +178,12 @@ export function AssignThemeToDevicesDialog({
                         </span>
                         {hasCurrentTheme && (
                           <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
-                            current
+                             {t("themes.current")}
                           </span>
                         )}
                       </span>
                       <span className="mt-0.5 block truncate text-[11px] text-zinc-400">
-                        {device.location} · {device.theme || "no theme assigned"}
+                         {device.location} · {device.theme || t("themes.noTheme")}
                       </span>
                     </span>
                     <DeviceStatusBadge
@@ -198,7 +203,7 @@ export function AssignThemeToDevicesDialog({
             onClick={onClose}
             className="flex-1 rounded-lg border border-zinc-200 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
           >
-            Skip for now
+            {t("themes.skipForNow")}
           </button>
           <button
             type="button"
@@ -208,10 +213,10 @@ export function AssignThemeToDevicesDialog({
           >
             {assigning ? <Loader2 className="size-3.5 animate-spin" /> : <Power className="size-3.5" />}
             {assigning
-              ? "Assigning…"
+              ? t("themes.assigning")
               : selected.size > 0
-                ? `Assign to ${selected.size} device${selected.size > 1 ? "s" : ""}`
-                : "Create without assignment"}
+                ? t("themes.assignTo").replace("{count}", String(selected.size))
+                : t("themes.createWithoutAssignment")}
           </button>
         </div>
       </div>

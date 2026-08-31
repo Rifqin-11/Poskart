@@ -96,6 +96,7 @@ export function FrameCanvasStage({
   return (
     <main
       ref={canvasSurfaceRef}
+      data-frame-builder-tour="canvas"
       className="relative h-full w-full min-w-0 flex-1 touch-none overflow-hidden overscroll-none bg-zinc-100"
       style={{
         cursor: isPanning ? "grabbing" : spaceDown ? "grab" : "default",

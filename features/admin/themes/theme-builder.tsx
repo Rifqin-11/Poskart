@@ -33,7 +33,7 @@ export function ThemeBuilder() {
                 publish();
                 toast.success(t("themeBuilder.publishSuccess"));
               } catch (error) {
-                showErrorToast("Tidak dapat publish theme", error, t("themeBuilder.publishFailed"));
+                showErrorToast("Tidak dapat mempublikasikan tema", error, t("themeBuilder.publishFailed"));
               }
             }}
           >
@@ -54,15 +54,17 @@ export function ThemeBuilder() {
                 <div key={preset.id} className="rounded-lg border border-zinc-100 p-3">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">{preset.name}</div>
-                    <Badge variant={preset.status === "published" ? "success" : "secondary"}>{preset.status}</Badge>
+                    <Badge variant={preset.status === "published" ? "success" : "secondary"}>
+                      {preset.status === "published" ? t("themeBuilder.presetPublished") : t("themeBuilder.presetDraft")}
+                    </Badge>
                   </div>
                   <div className="mt-3 flex gap-2">
                     {Object.values(preset.schema.colors).slice(0, 4).map((color) => (
                       <span key={color} className="size-5 rounded-full border" style={{ background: color }} />
                     ))}
                   </div>
-                  <Button className="mt-3 w-full" variant="outline" size="sm" onClick={() => setSchema(preset.schema)}>
-                    Use preset
+                    <Button className="mt-3 w-full" variant="outline" size="sm" onClick={() => setSchema(preset.schema)}>
+                     {t("themeBuilder.usePreset")}
                   </Button>
                 </div>
               ))}
@@ -71,8 +73,8 @@ export function ThemeBuilder() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Brand controls</CardTitle>
-              <CardDescription>Colors, radius, animation, logo, and texture slots.</CardDescription>
+              <CardTitle>{t("themeBuilder.brandControls")}</CardTitle>
+              <CardDescription>{t("themeBuilder.brandControlsDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {Object.entries(schema.colors).map(([key, value]) => (
@@ -107,8 +109,8 @@ export function ThemeBuilder() {
 
         <Card className="overflow-hidden">
           <CardHeader className="border-b border-zinc-100">
-            <CardTitle>Live preview</CardTitle>
-            <CardDescription>Tablet kiosk and receipt output simulation.</CardDescription>
+              <CardTitle>{t("themeBuilder.livePreview")}</CardTitle>
+              <CardDescription>{t("themeBuilder.livePreviewDesc")}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-8 p-8 lg:grid-cols-[1fr_320px]">
             <div
@@ -127,19 +129,19 @@ export function ThemeBuilder() {
                   borderRadius: schema.radius.button,
                 }}
               >
-                Start session
+                {t("themeBuilder.startSession")}
               </button>
             </div>
             <div className="rounded-sm bg-white p-6 font-mono text-zinc-950 shadow-xl" style={{ borderRadius: schema.radius.receipt }}>
               <div className="text-center text-lg font-bold">POSKART</div>
-              <div className="mt-2 text-center text-xs">PHOTO RECEIPT</div>
+              <div className="mt-2 text-center text-xs">{t("themeBuilder.photoReceipt")}</div>
               <div className="my-5 h-44 rounded bg-zinc-100" />
               <div className="space-y-2 text-xs">
-                <div className="flex justify-between"><span>PACKAGE</span><span>DOUBLE</span></div>
-                <div className="flex justify-between"><span>PRICE</span><span>10K</span></div>
-                <div className="flex justify-between"><span>DOWNLOAD</span><span>QRIS</span></div>
+                <div className="flex justify-between"><span>{t("themeBuilder.package")}</span><span>DOUBLE</span></div>
+                <div className="flex justify-between"><span>{t("themeBuilder.price")}</span><span>10K</span></div>
+                <div className="flex justify-between"><span>{t("themeBuilder.download")}</span><span>QRIS</span></div>
               </div>
-              <div className="mt-5 border-t border-dashed pt-4 text-center text-[10px]">THANK YOU - PK0524</div>
+              <div className="mt-5 border-t border-dashed pt-4 text-center text-[10px]">{t("themeBuilder.thankYou")}</div>
             </div>
           </CardContent>
         </Card>

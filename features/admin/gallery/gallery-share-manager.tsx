@@ -7,6 +7,7 @@ import {
   ExternalLink,
   FolderOpen,
   Images,
+  Info,
   Loader2,
   Pencil,
   Share2,
@@ -33,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import type { SharedGallerySummary } from "@/features/admin/gallery/gallery-share-types";
 import { cn } from "@/lib/utils";
 import {
@@ -426,12 +428,26 @@ function CreateSharedGalleryDialog({
       ) : (
         <div className="space-y-5">
           <div>
-            <label
-              htmlFor="shared-gallery-name"
-              className="text-sm font-medium text-zinc-800"
-            >
-              Gallery name
-            </label>
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="shared-gallery-name"
+                className="text-sm font-medium text-zinc-800"
+              >
+                Gallery name
+              </label>
+              <Tooltip
+                placement="left"
+                label="Kumpulan galeri foto yang bisa dibagikan ke penyelenggara acara atau partner setelah sesi selesai."
+              >
+                <button
+                  type="button"
+                  aria-label="Tentang shared gallery"
+                  className="grid size-6 place-items-center rounded-full border border-zinc-200 bg-white text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]/30"
+                >
+                  <Info className="size-3.5" />
+                </button>
+              </Tooltip>
+            </div>
             <Input
               id="shared-gallery-name"
               value={name}

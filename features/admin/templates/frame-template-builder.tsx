@@ -21,6 +21,7 @@ import { BuilderHeader } from "@/features/builder/shared/builder-header";
 import { BuilderResponsiveWorkspace } from "@/features/builder/shared/builder-responsive-workspace";
 import { BuilderUnsavedDialog } from "@/features/builder/shared/builder-unsaved-dialog";
 import { BuilderZoomControls } from "@/features/builder/shared/builder-zoom-controls";
+import { BuilderGuidedTour } from "@/features/builder/tutorial/builder-guided-tour";
 import { useBuilderCanvasNavigation } from "@/features/builder/shared/use-builder-canvas-navigation";
 import { useBuilderExitGuard } from "@/features/builder/shared/use-builder-exit-guard";
 import { useBuilderResponsiveMode } from "@/features/builder/shared/use-builder-responsive-mode";
@@ -122,6 +123,7 @@ export function FrameTemplateBuilder({
   } | null>(null);
   const [clipboard, setClipboard] = useState<FrameNode | null>(null);
   const [isSavingLayout, setIsSavingLayout] = useState(false);
+  const [frameTutorialOpen, setFrameTutorialOpen] = useState(false);
   const [photoSlotDetectorOpen, setPhotoSlotDetectorOpen] = useState(false);
   const { isPortraitBuilder } = useBuilderResponsiveMode();
   const hydratedKeyRef = useRef<string | null>(null);
@@ -966,6 +968,7 @@ export function FrameTemplateBuilder({
           saveLabel={saveLabel}
           isSaving={isSavingLayout}
           onSave={() => void saveCurrentLayout()}
+          onShowTutorial={() => setFrameTutorialOpen(true)}
           onUndo={undo}
           onRedo={redo}
           canUndo={history.past.length > 0}
@@ -1126,6 +1129,14 @@ export function FrameTemplateBuilder({
         onDiscard={discardAndLeave}
         onSave={() => void saveAndLeave()}
       />
+      {frameTutorialOpen ? (
+        <BuilderGuidedTour
+          open
+          variant="frame"
+          onClose={() => setFrameTutorialOpen(false)}
+          onComplete={() => setFrameTutorialOpen(false)}
+        />
+      ) : null}
       <PhotoSlotDetectorDialog
         open={photoSlotDetectorOpen}
         imageSource={frameBackgroundSource}

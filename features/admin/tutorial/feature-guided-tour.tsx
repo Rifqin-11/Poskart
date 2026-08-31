@@ -52,9 +52,22 @@ export function FeatureGuidedTour({
     if (!open || !step) return;
 
     const updateSpotlight = () => {
-      setSpotlight(
-        findVisibleTarget(step.selectors)?.getBoundingClientRect() ?? null,
-      );
+      const nextSpotlight =
+        findVisibleTarget(step.selectors)?.getBoundingClientRect() ?? null;
+      setSpotlight((current) => {
+        if (!current || !nextSpotlight) {
+          return current === nextSpotlight ? current : nextSpotlight;
+        }
+
+        return current.top === nextSpotlight.top &&
+            current.right === nextSpotlight.right &&
+            current.bottom === nextSpotlight.bottom &&
+            current.left === nextSpotlight.left &&
+            current.width === nextSpotlight.width &&
+            current.height === nextSpotlight.height
+          ? current
+          : nextSpotlight;
+      });
     };
 
     updateSpotlight();

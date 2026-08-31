@@ -6,8 +6,10 @@ import {
   BadgeDollarSign,
   Clock3,
   Download,
+  ExternalLink,
   Hourglass,
   Landmark,
+  MessageCircle,
   Wallet,
 } from "lucide-react";
 import { showErrorToast, toast } from "@/lib/toast";
@@ -36,6 +38,7 @@ import {
 import { PageHeader } from "@/features/admin/_components/page-header";
 import { StatCard } from "@/features/admin/_components/stat-card";
 import { cn } from "@/lib/utils";
+import { businessProfile } from "@/lib/constants/business";
 import {
   formatPayoutCurrency,
   formatPayoutDate,
@@ -398,8 +401,7 @@ export function PayoutDashboard({
                   <TableHead>Gross</TableHead>
                   <TableHead>Fee</TableHead>
                   <TableHead>Net</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead />
+                   <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -430,8 +432,7 @@ export function PayoutDashboard({
                     <TableCell className="font-semibold">
                       {formatPayoutCurrency(invoice.netAmount)}
                     </TableCell>
-                    <TableCell>{invoice.items.length}</TableCell>
-                    <TableCell className="text-right">
+                     <TableCell className="text-right">
                       <Button
                         variant="outline"
                         size="sm"
@@ -445,7 +446,7 @@ export function PayoutDashboard({
                 {invoices.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                       colSpan={7}
                       className="py-8 text-center text-sm text-zinc-500"
                     >
                       No payout requests yet.
@@ -777,47 +778,82 @@ function PayoutInvoiceCard({
   );
 }
 
-function PayoutInvoiceItemCard({
-  item,
-}: {
-  item: PayoutInvoice["items"][number];
-}) {
+function PayoutPaymentProofCard({ invoice }: { invoice: PayoutInvoice }) {
+  const supportMessage = encodeURIComponent(
+    `Halo POSKART Support, saya membutuhkan bantuan untuk withdrawal ${invoice.invoiceNumber}.`,
+  );
+  const supportUrl = `${businessProfile.whatsappUrl}?text=${supportMessage}`;
+
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-zinc-950">
-            {item.booth ?? "-"}
-          </div>
-          <div className="mt-1 text-xs text-zinc-500">
-            {item.packageName ?? "-"}
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-zinc-950">
+            Payment proof
+          </h3>
+          <p className="mt-1 max-w-xl text-xs leading-5 text-zinc-500">
+            Screenshot bukti pembayaran yang diunggah oleh Super Admin setelah
+            withdrawal berhasil diproses.
+          </p>
+        </div>
+        <Badge
+          variant="outline"
+          className={
+            invoice.paymentProofUrl
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-zinc-200 bg-white text-zinc-500"
+          }
+        >
+          {invoice.paymentProofUrl ? "Available" : "Not available yet"}
+        </Badge>
+      </div>
+
+      {invoice.paymentProofUrl ? (
+        <div className="mx-auto mt-4 max-w-md overflow-hidden rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={invoice.paymentProofUrl}
+            alt={`Payment proof for ${invoice.invoiceNumber}`}
+            className="max-h-72 w-full rounded-xl object-contain"
+          />
+        </div>
+      ) : (
+        <div className="mt-4 grid min-h-44 place-items-center rounded-2xl border border-dashed border-zinc-300 bg-white p-6 text-center">
+          <div>
+            <Landmark className="mx-auto size-8 text-zinc-300" />
+            <p className="mt-3 text-sm font-medium text-zinc-600">
+              Bukti pembayaran belum tersedia
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Bukti akan muncul setelah withdrawal diproses oleh Super Admin.
+            </p>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-sm font-semibold text-emerald-700">
-            {formatPayoutCurrency(item.netAmount)}
-          </div>
-          <div className="mt-1 text-xs text-zinc-500">Net</div>
+      )}
+
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-zinc-500">
+          Ada masalah dengan withdrawal ini?
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {invoice.paymentProofUrl ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(invoice.paymentProofUrl!, "_blank", "noopener,noreferrer")}
+            >
+              <ExternalLink className="size-4" />
+              Open proof
+            </Button>
+          ) : null}
+          <Button
+            size="sm"
+            onClick={() => window.open(supportUrl, "_blank", "noopener,noreferrer")}
+          >
+            <MessageCircle className="size-4" />
+            Contact support
+          </Button>
         </div>
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-        <MobileMeta
-          label="Transaction"
-          value={item.transactionId ?? item.ledgerEntryId ?? "-"}
-          mono
-        />
-        <MobileMeta
-          label="Time"
-          value={formatPayoutDate(item.transactionPaidAt)}
-        />
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-zinc-50 p-3 text-xs">
-        <MobileAmount label="Gross" value={item.grossAmount} />
-        <MobileAmount
-          label="Fee"
-          value={item.gatewayFeeAmount + item.platformFeeAmount}
-        />
-        <MobileAmount label="Net" value={item.netAmount} strong />
       </div>
     </div>
   );
@@ -1150,54 +1186,7 @@ function PayoutDetailDialog({
             Duitku fee comes from each QRIS transaction. The POSKART withdrawal
             fee is charged once for this payout request.
           </div>
-          <div className="hidden overflow-x-auto md:block">
-            <Table className="min-w-[760px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Transaction</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Booth</TableHead>
-                  <TableHead>Package</TableHead>
-                  <TableHead>Gross</TableHead>
-                  <TableHead>Fee</TableHead>
-                  <TableHead>Net</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoice.items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-mono text-xs">
-                      {item.transactionId ?? item.ledgerEntryId ?? "-"}
-                    </TableCell>
-                    <TableCell>
-                      {formatPayoutDate(item.transactionPaidAt)}
-                    </TableCell>
-                    <TableCell>{item.booth ?? "-"}</TableCell>
-                    <TableCell>{item.packageName ?? "-"}</TableCell>
-                    <TableCell>
-                      {formatPayoutCurrency(item.grossAmount)}
-                    </TableCell>
-                    <TableCell>
-                      {formatPayoutCurrency(
-                        item.gatewayFeeAmount + item.platformFeeAmount,
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {formatPayoutCurrency(item.netAmount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="grid gap-3 md:hidden">
-            {invoice.items.map((item) => (
-              <PayoutInvoiceItemCard key={item.id} item={item} />
-            ))}
-            {invoice.items.length === 0 ? (
-              <EmptyMobileCard message="No transaction items in this payout." />
-            ) : null}
-          </div>
+           <PayoutPaymentProofCard invoice={invoice} />
 
           {invoice.status === "pending_approval" && (
             <div className="grid gap-2 pt-2 sm:flex sm:justify-end sm:pt-4">

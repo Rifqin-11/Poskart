@@ -1,10 +1,8 @@
 import Link from "next/link";
 import {
   ArrowUpRight,
-  Building2,
   Mail,
   MessageCircle,
-  Phone,
 } from "lucide-react";
 import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
 import { buttonVariants } from "@/components/ui/button";
@@ -16,7 +14,7 @@ const contacts = [
     value: businessProfile.whatsapp,
     href: businessProfile.whatsappUrl,
     icon: MessageCircle,
-    description: "Respons cepat untuk pertanyaan teknis dan operasional.",
+    description: "Respons cepat untuk pertanyaan teknis dan operasional. Please don't call; kirim pesan melalui WhatsApp agar kami dapat membantu dengan baik.",
     cta: "Chat sekarang",
     color: "bg-emerald-50 text-emerald-700",
   },
@@ -37,15 +35,6 @@ const contacts = [
     description: "Onboarding baru, demo, dan informasi paket langganan.",
     cta: "Hubungi sales",
     color: "bg-violet-50 text-violet-700",
-  },
-  {
-    label: "Phone",
-    value: businessProfile.phone,
-    href: businessProfile.whatsappUrl,
-    icon: Phone,
-    description: "Tersedia pada jam operasional.",
-    cta: "Hubungi",
-    color: "bg-amber-50 text-amber-700",
   },
 ];
 
@@ -81,7 +70,7 @@ export default function ContactPage() {
       {/* Contact cards */}
       <section className="bg-white px-5 py-16 sm:px-8 lg:px-12 lg:py-24">
         <div className="mx-auto max-w-[90rem]">
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {contacts.map((contact) => {
               const Icon = contact.icon;
               return (
@@ -117,6 +106,25 @@ export default function ContactPage() {
                 </div>
               );
             })}
+          </div>
+          <div className="mt-6 flex items-start gap-4 rounded-[24px] border border-blue-100 bg-[#f4f7ff] px-5 py-5 sm:items-center sm:px-6">
+            <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white text-[#00357B] shadow-sm ring-1 ring-blue-100">
+              <MessageCircle className="size-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-950 sm:text-base">
+                Anda akan dilayani oleh manusia langsung.
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-600">
+                Setiap pertanyaan dan kendala ditangani oleh tim POSKART, bukan bot
+                AI. Kami membaca pesan Anda dan membantu mencari solusi yang sesuai
+                dengan kondisi bisnis Anda.
+              </p>
+              <p className="mt-2 text-xs font-medium text-zinc-500">
+                Kirim pesan melalui WhatsApp atau email agar percakapan dan detail
+                masalah dapat kami cek dengan lengkap.
+              </p>
+            </div>
           </div>
         </div>
       </section>

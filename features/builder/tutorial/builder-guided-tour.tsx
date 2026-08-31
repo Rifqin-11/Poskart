@@ -3,80 +3,158 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/i18n-provider";
+import type { DictionaryKey } from "@/lib/i18n/dictionaries";
 
 type TourStep = {
   selector: string;
-  title: string;
-  description: string;
+  titleKey: DictionaryKey;
+  descriptionKey: DictionaryKey;
 };
 
 type Spotlight = Pick<DOMRect, "top" | "right" | "bottom" | "left" | "width" | "height">;
 
-const TOUR_STEPS: TourStep[] = [
+const VISUAL_BUILDER_STEPS: TourStep[] = [
   {
     selector: '[data-builder-tour="pages"]',
-    title: "Select design page",
-    description:
-      "Switch between kiosk flow pages. Pages that are turned off will not be shown to visitors.",
+    titleKey: "builderTour.pagesTitle",
+    descriptionKey: "builderTour.pagesDesc",
+  },
+  {
+    selector: '[data-builder-tour="add"]',
+    titleKey: "builderTour.addTitle",
+    descriptionKey: "builderTour.addDesc",
   },
   {
     selector: '[data-builder-tour="layers"]',
-    title: "Add and arrange layers",
-    description:
-      "Use this panel to add elements, select layers, and reorder their display sequence.",
+    titleKey: "builderTour.layersTitle",
+    descriptionKey: "builderTour.layersDesc",
+  },
+  {
+    selector: '[data-builder-tour="assets"]',
+    titleKey: "builderTour.assetsTitle",
+    descriptionKey: "builderTour.assetsDesc",
   },
   {
     selector: '[data-builder-tour="canvas"]',
-    title: "Edit langsung di canvas",
-    description:
-      "Klik elemen untuk memilihnya, lalu tarik, ubah ukuran, atau gunakan panduan agar posisi tetap rapi.",
+    titleKey: "builderTour.canvasTitle",
+    descriptionKey: "builderTour.canvasDesc",
   },
   {
-    selector: '[data-builder-tour="properties"]',
-    title: "Atur detail elemen",
-    description:
-      "All properties of the selected layer — text, color, size, and behavior — are available here.",
+    selector: '[data-builder-tour="inspector-tabs"]',
+    titleKey: "builderTour.inspectorTitle",
+    descriptionKey: "builderTour.inspectorDesc",
   },
   {
     selector: '[data-builder-tour="save"]',
-    title: "Save theme",
-    description:
-      "Save your changes when done. The builder also auto-saves drafts so your work is never lost.",
+    titleKey: "builderTour.saveThemeTitle",
+    descriptionKey: "builderTour.saveThemeDesc",
   },
   {
     selector: '[data-builder-tour="tutorial"]',
-    title: "Butuh bantuan lagi?",
-    description:
-      "Click Show tutorial at any time from the header to run this guide again.",
+    titleKey: "builderTour.tutorialTitle",
+    descriptionKey: "builderTour.tutorialDesc",
+  },
+];
+
+const FRAME_BUILDER_STEPS: TourStep[] = [
+  {
+    selector: '[data-frame-builder-tour="add"]',
+    titleKey: "builderTour.frameAddTitle",
+    descriptionKey: "builderTour.frameAddDesc",
+  },
+  {
+    selector: '[data-frame-builder-tour="layers"]',
+    titleKey: "builderTour.frameLayersTitle",
+    descriptionKey: "builderTour.frameLayersDesc",
+  },
+  {
+    selector: '[data-frame-builder-tour="canvas"]',
+    titleKey: "builderTour.frameCanvasTitle",
+    descriptionKey: "builderTour.frameCanvasDesc",
+  },
+  {
+    selector: '[data-frame-builder-tour="properties"]',
+    titleKey: "builderTour.framePropertiesTitle",
+    descriptionKey: "builderTour.framePropertiesDesc",
+  },
+  {
+    selector: '[data-frame-builder-tour="tabs"]',
+    titleKey: "builderTour.frameTabsTitle",
+    descriptionKey: "builderTour.frameTabsDesc",
+  },
+  {
+    selector: '[data-builder-tour="save"]',
+    titleKey: "builderTour.saveFrameTitle",
+    descriptionKey: "builderTour.saveFrameDesc",
+  },
+  {
+    selector: '[data-builder-tour="tutorial"]',
+    titleKey: "builderTour.frameTutorialTitle",
+    descriptionKey: "builderTour.frameTutorialDesc",
   },
 ];
 
 function getTarget(selector: string) {
-  const target = document.querySelector<HTMLElement>(selector);
-  if (!target) return null;
-
-  const rect = target.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0 ? target : null;
+  return Array.from(document.querySelectorAll<HTMLElement>(selector)).find(
+    (target) => {
+      const rect = target.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    },
+  ) ?? null;
 }
 
 export function BuilderGuidedTour({
   open,
   onClose,
   onComplete,
+  variant = "visual",
 }: {
   open: boolean;
   onClose: () => void;
   onComplete: () => void;
+  variant?: "visual" | "frame";
 }) {
+  const { t } = useI18n();
+  const translate = (key: DictionaryKey, values: Record<string, string>) =>
+    Object.entries(values).reduce(
+      (text, [name, value]) => text.replace(`{${name}}`, value),
+      t(key),
+    );
+  const tourSteps = useMemo(
+    () =>
+      (variant === "frame" ? FRAME_BUILDER_STEPS : VISUAL_BUILDER_STEPS).map(
+        (tourStep) => ({
+          selector: tourStep.selector,
+          title: t(tourStep.titleKey),
+          description: t(tourStep.descriptionKey),
+        }),
+      ),
+    [t, variant],
+  );
   const [stepIndex, setStepIndex] = useState(0);
   const [spotlight, setSpotlight] = useState<Spotlight | null>(null);
-  const step = TOUR_STEPS[stepIndex];
+  const step = tourSteps[stepIndex] ?? tourSteps[0];
 
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open || !step) return;
 
     const updateSpotlight = () => {
-      setSpotlight(getTarget(step.selector)?.getBoundingClientRect() ?? null);
+      const nextSpotlight = getTarget(step.selector)?.getBoundingClientRect() ?? null;
+      setSpotlight((current) => {
+        if (!current || !nextSpotlight) {
+          return current === nextSpotlight ? current : nextSpotlight;
+        }
+
+        return current.top === nextSpotlight.top &&
+            current.right === nextSpotlight.right &&
+            current.bottom === nextSpotlight.bottom &&
+            current.left === nextSpotlight.left &&
+            current.width === nextSpotlight.width &&
+            current.height === nextSpotlight.height
+          ? current
+          : nextSpotlight;
+      });
     };
 
     updateSpotlight();
@@ -120,12 +198,12 @@ export function BuilderGuidedTour({
     return { left, top, width };
   }, [spotlight]);
 
-  if (!open) return null;
+  if (!open || !step) return null;
 
-  const isLastStep = stepIndex === TOUR_STEPS.length - 1;
+  const isLastStep = stepIndex === tourSteps.length - 1;
 
   return (
-    <div className="fixed inset-0 z-[120]" role="dialog" aria-modal="true" aria-label="Builder tutorial">
+    <div className="fixed inset-0 z-[120]" role="dialog" aria-modal="true" aria-label={`${variant === "frame" ? "Frame builder" : "Builder"} tutorial`}>
       {spotlight ? (
         <div
           aria-hidden="true"
@@ -153,21 +231,27 @@ export function BuilderGuidedTour({
             type="button"
             className="grid size-8 place-items-center rounded-xl text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
             onClick={onClose}
-            aria-label="Skip tutorial"
-            title="Skip tutorial"
+            aria-label={t("builderTour.skipTutorial")}
+            title={t("builderTour.skipTutorial")}
           >
             <X className="size-4" />
           </button>
         </div>
 
         <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#00357B]">
-          Builder tour · {stepIndex + 1} of {TOUR_STEPS.length}
+           {variant === "frame" ? t("builderTour.frameLabel") : t("builderTour.visualLabel")} · {stepIndex + 1} / {tourSteps.length}
         </p>
         <h2 className="mt-2 text-lg font-semibold tracking-tight">{step.title}</h2>
         <p className="mt-2 text-sm leading-6 text-zinc-600">{step.description}</p>
 
-        <div className="mt-5 flex gap-1.5" aria-label={`Step ${stepIndex + 1} of ${TOUR_STEPS.length}`}>
-          {TOUR_STEPS.map((tourStep, index) => (
+        <div
+          className="mt-5 flex gap-1.5"
+          aria-label={translate("builderTour.stepOf", {
+            current: String(stepIndex + 1),
+            total: String(tourSteps.length),
+          })}
+        >
+          {tourSteps.map((tourStep, index) => (
             <span
               key={tourStep.title}
               className={cn(
@@ -184,7 +268,7 @@ export function BuilderGuidedTour({
             className="text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-950"
             onClick={onClose}
           >
-            Skip
+             {t("builderTour.skip")}
           </button>
           <div className="flex gap-2">
             {stepIndex > 0 ? (
@@ -193,7 +277,7 @@ export function BuilderGuidedTour({
                 className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
                 onClick={() => setStepIndex((current) => current - 1)}
               >
-                <ArrowLeft className="size-3.5" /> Back
+                 <ArrowLeft className="size-3.5" /> {t("builderTour.back")}
               </button>
             ) : null}
             <button
@@ -207,7 +291,7 @@ export function BuilderGuidedTour({
                 setStepIndex((current) => current + 1);
               }}
             >
-              {isLastStep ? "Finish" : "Next"}
+              {isLastStep ? t("builderTour.finish") : t("builderTour.next")}
               <ArrowRight className="size-3.5" />
             </button>
           </div>

@@ -45,7 +45,7 @@ export async function createOrganizationAction(formData: FormData) {
 
   return encodedRedirect(
     "success",
-    "/dashboard",
+    "/dashboard?tutorial=1",
     "Workspace berhasil dibuat. Dashboard sedang disiapkan.",
   );
 }

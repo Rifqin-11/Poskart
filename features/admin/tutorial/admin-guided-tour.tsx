@@ -65,7 +65,7 @@ export function AdminGuidedTour({
   onComplete: () => void;
 }) {
   const { t } = useI18n();
-  const tourSteps = getTourSteps(t);
+  const tourSteps = useMemo(() => getTourSteps(t), [t]);
   const [stepIndex, setStepIndex] = useState(0);
   const [spotlight, setSpotlight] = useState<Spotlight | null>(null);
   const step = tourSteps[stepIndex];
@@ -75,7 +75,21 @@ export function AdminGuidedTour({
 
     const updateSpotlight = () => {
       const target = findVisibleTarget(step.selectors);
-      setSpotlight(target?.getBoundingClientRect() ?? null);
+      const nextSpotlight = target?.getBoundingClientRect() ?? null;
+      setSpotlight((current) => {
+        if (!current || !nextSpotlight) {
+          return current === nextSpotlight ? current : nextSpotlight;
+        }
+
+        return current.top === nextSpotlight.top &&
+            current.right === nextSpotlight.right &&
+            current.bottom === nextSpotlight.bottom &&
+            current.left === nextSpotlight.left &&
+            current.width === nextSpotlight.width &&
+            current.height === nextSpotlight.height
+          ? current
+          : nextSpotlight;
+      });
     };
 
     updateSpotlight();

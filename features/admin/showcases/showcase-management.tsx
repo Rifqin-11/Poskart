@@ -8,6 +8,7 @@ import {
   Frame,
   ImagePlus,
   Images,
+  Info,
   Loader2,
   Palette,
   Pencil,
@@ -43,6 +44,7 @@ import {
   uploadShowcaseImage,
 } from "@/lib/services/storage-service";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 import type { LayoutSchemaRow } from "@/features/admin/layout/api";
 import type {
   Showcase,
@@ -200,9 +202,23 @@ export function ShowcaseManagement() {
         description="Create public presentation links with frames, kiosk themes, and uploaded custom categories."
         action={
           !readOnly ? (
-            <Button className="rounded-full" onClick={openCreate}>
-              <Plus className="size-4" /> Create showcase
-            </Button>
+            <div className="flex items-center gap-2">
+              <Tooltip
+                placement="left"
+                label="Tampilkan frame, tema, dan contoh setup kepada partner bisnis lewat satu link publik."
+              >
+                <button
+                  type="button"
+                  aria-label="Tentang showcase"
+                  className="grid size-9 place-items-center rounded-full border border-zinc-200 bg-white text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]/30"
+                >
+                  <Info className="size-4" />
+                </button>
+              </Tooltip>
+              <Button className="rounded-full" onClick={openCreate}>
+                <Plus className="size-4" /> Create showcase
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -606,15 +622,15 @@ function ShowcaseEditorDialog({
                 </p>
               </div>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="shrink-0 border-blue-200 bg-white"
-              disabled={customItems.length >= 40}
-              onClick={addCustomItem}
-            >
-              <Plus className="size-4" /> Add custom item
-            </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0 border-blue-200 bg-white"
+            disabled={customItems.length >= 40}
+            onClick={addCustomItem}
+          >
+            <Plus className="size-4" /> Add custom item
+          </Button>
           </div>
 
           {customItems.length ? (

@@ -485,7 +485,7 @@ export function OrganizationCard({
           icon={<UserRound className="size-4" />}
           title="Team"
           description={t("settings.membersDesc")}
-          className="border-b-0 pb-0"
+          className="border-b-0 pb-0 lg:grid-cols-[180px_minmax(0,1fr)]"
         >
           <div className="space-y-5">
           {canManageTeam && isEditing && (
@@ -502,173 +502,167 @@ export function OrganizationCard({
             </div>
           )}
 
-          <div className="max-w-full overflow-x-auto rounded-2xl border border-zinc-200 bg-white">
-            <Table className={cn(!isEditing && "table-fixed")}>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={!isEditing ? "w-[65%] sm:w-auto" : undefined}>
-                    User Email
-                  </TableHead>
-                  <TableHead className={!isEditing ? "w-[35%] sm:w-auto" : undefined}>
-                    Role
-                  </TableHead>
-                  <TableHead className={!isEditing ? "hidden sm:table-cell" : undefined}>
-                    Joined At
-                  </TableHead>
-                  {canManageTeam && isEditing && <TableHead className="text-right">Action</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {memberRows.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="min-w-0 align-top font-medium sm:align-middle">
-                      <span className="break-all">{member.email}</span>
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+            <div
+              className={cn(
+                "hidden border-b border-zinc-100 bg-zinc-50/70 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400",
+                isEditing && canManageTeam
+                  ? "sm:grid sm:grid-cols-[minmax(0,1fr)_112px_100px_92px] sm:gap-3"
+                  : "sm:grid sm:grid-cols-[minmax(0,1fr)_112px_100px] sm:gap-3",
+              )}
+            >
+              <span>User</span>
+              <span>Role</span>
+              <span>Joined</span>
+              {isEditing && canManageTeam ? <span className="text-right">Actions</span> : null}
+            </div>
+            {memberRows.map((member) => {
+              const canRemove =
+                isOwner ||
+                (isAdmin && member.role !== "owner" && member.role !== "admin");
+              return (
+                <div
+                  key={member.id}
+                  className={cn(
+                    "grid gap-3 border-b border-zinc-100 px-4 py-4 last:border-b-0 sm:items-center",
+                    isEditing && canManageTeam
+                      ? "sm:grid-cols-[minmax(0,1fr)_112px_100px_92px]"
+                      : "sm:grid-cols-[minmax(0,1fr)_112px_100px]",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="min-w-0 truncate text-sm font-semibold text-zinc-900"
+                        title={member.email}
+                      >
+                        {member.email}
+                      </span>
                       {member.email === myEmail ? (
-                        <Badge
-                          variant="secondary"
-                          className="ml-1.5 align-middle text-[10px]"
-                        >
+                        <Badge variant="secondary" className="shrink-0 text-[10px]">
                           You
                         </Badge>
                       ) : null}
-                      {!isEditing ? (
-                        <span className="mt-1 block text-[11px] font-normal text-zinc-400 sm:hidden">
-                          Joined {formatDate(member.created_at)}
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      {isEditing && isOwner && member.email !== myEmail ? (
-                        <Select
-                          className="h-8 w-28 rounded-xl text-xs py-0"
-                          value={member.role}
-                          disabled={updateMemberRole.isPending}
-                          onChange={(e) => {
-                            const newRole = e.target.value;
-                            updateMemberRole.mutate(
-                              { memberId: member.id, role: newRole },
-                              {
-                                onSuccess: () => {
-                                  toast.success(`Role ${member.email} berhasil diubah menjadi ${newRole}`);
-                                },
-                                onError: (err) => {
-                                  showErrorToast(
-                                    "Member role could not be changed",
-                                    err,
-                                    t("settings.changeRoleFailed"),
-                                  );
-                                },
-                              }
-                            );
+                    </div>
+                    <span className="mt-1 block text-[11px] text-zinc-400 sm:hidden">
+                      Joined {formatDate(member.created_at)}
+                    </span>
+                  </div>
+                  <div>
+                    {isEditing && isOwner && member.email !== myEmail ? (
+                      <Select
+                        className="h-8 w-full rounded-xl py-0 text-xs"
+                        value={member.role}
+                        disabled={updateMemberRole.isPending}
+                        onChange={(e) => {
+                          const newRole = e.target.value;
+                          updateMemberRole.mutate(
+                            { memberId: member.id, role: newRole },
+                            {
+                              onSuccess: () =>
+                                toast.success(
+                                  `Role ${member.email} berhasil diubah menjadi ${newRole}`,
+                                ),
+                              onError: (err) =>
+                                showErrorToast(
+                                  "Member role could not be changed",
+                                  err,
+                                  t("settings.changeRoleFailed"),
+                                ),
+                            },
+                          );
+                        }}
+                      >
+                        <option value="admin">admin</option>
+                        <option value="designer">designer</option>
+                        <option value="akuntan">akuntan</option>
+                        <option value="partner">partner</option>
+                      </Select>
+                    ) : (
+                      <Badge
+                        variant={member.role === "admin" ? "warning" : "secondary"}
+                      >
+                        {member.role}
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="hidden text-xs text-zinc-500 sm:block">
+                    {formatDate(member.created_at)}
+                  </span>
+                  {isEditing && canManageTeam ? (
+                    <div className="flex items-center gap-1 sm:justify-end">
+                      {member.email !== myEmail && isOwner && member.profile_id ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-zinc-500 hover:bg-amber-50 hover:text-amber-700"
+                          title="Make owner"
+                          aria-label={`Make ${member.email} owner`}
+                          onClick={() => {
+                            confirmTransfer.confirm({
+                              title: "Transfer Kepemilikan?",
+                              description: `Pindahkan kepemilikan workspace ke ${member.email}? Peran Anda akan diturunkan menjadi Admin.`,
+                              confirmLabel: "Transfer",
+                              onConfirm: () => {
+                                transferOwnership.mutate(member.profile_id!, {
+                                  onSuccess: () =>
+                                    toast.success(t("settings.transferOwnershipSuccess")),
+                                  onError: (err) =>
+                                    showErrorToast(
+                                      "Workspace ownership could not be transferred",
+                                      err,
+                                      t("settings.transferOwnershipFailed"),
+                                    ),
+                                });
+                              },
+                            });
                           }}
                         >
-                          <option value="admin">admin</option>
-                          <option value="designer">designer</option>
-                          <option value="akuntan">akuntan</option>
-                          <option value="partner">partner</option>
-                        </Select>
-                      ) : (
-                        <Badge
-                          variant={
-                            member.role === "admin" ? "warning" : "secondary"
-                          }
+                          <KeyRound className="size-4 text-amber-500" />
+                        </Button>
+                      ) : null}
+                      {member.email !== myEmail && canRemove ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-zinc-500 hover:bg-red-50 hover:text-red-600"
+                          title="Remove member"
+                          aria-label={`Remove ${member.email}`}
+                          onClick={() => {
+                            confirmRemove.confirm({
+                              title: "Remove member?",
+                              description: `Remove ${member.email} from organization?`,
+                              confirmLabel: "Remove",
+                              destructive: true,
+                              onConfirm: () => {
+                                removeMember.mutate(member.id, {
+                                  onSuccess: () => toast.success("Member removed"),
+                                  onError: (err) =>
+                                    showErrorToast(
+                                      "Member could not be removed",
+                                      err,
+                                      "Failed to remove member.",
+                                    ),
+                                });
+                              },
+                            });
+                          }}
                         >
-                          {member.role}
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        "text-zinc-500",
-                        !isEditing && "hidden sm:table-cell",
-                      )}
-                    >
-                      {formatDate(member.created_at)}
-                    </TableCell>
-                    {canManageTeam && isEditing && (
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {member.email !== myEmail && (
-                            <>
-                              {isOwner && member.profile_id && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-                                  onClick={() => {
-                                    confirmTransfer.confirm({
-                                      title: "Transfer Kepemilikan?",
-                                      description: `Pindahkan kepemilikan workspace ke ${member.email}? Peran Anda akan diturunkan menjadi Admin.`,
-                                      confirmLabel: "Transfer",
-                                      onConfirm: () => {
-                                        transferOwnership.mutate(member.profile_id!, {
-                                          onSuccess: () => toast.success(t("settings.transferOwnershipSuccess")),
-                                          onError: (err) =>
-                                            showErrorToast(
-                                              "Workspace ownership could not be transferred",
-                                              err,
-                                              t("settings.transferOwnershipFailed"),
-                                            ),
-                                        });
-                                      },
-                                    });
-                                  }}
-                                >
-                                  <KeyRound className="size-4 mr-1 text-amber-500" />
-                                  Make Owner
-                                </Button>
-                              )}
-
-                              {((isOwner) || (isAdmin && member.role !== "owner" && member.role !== "admin")) && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-zinc-500 hover:bg-red-50 hover:text-red-600"
-                                  onClick={() => {
-                                    confirmRemove.confirm({
-                                      title: "Remove member?",
-                                      description: `Remove ${member.email} from organization?`,
-                                      confirmLabel: "Remove",
-                                      destructive: true,
-                                      onConfirm: () => {
-                                        removeMember.mutate(member.id, {
-                                          onSuccess: () => toast.success("Member removed"),
-                                          onError: (err) =>
-                                            showErrorToast(
-                                              "Member could not be removed",
-                                              err,
-                                              "Failed to remove member.",
-                                            ),
-                                        });
-                                      },
-                                    });
-                                  }}
-                                >
-                                  <Trash2 className="size-4 mr-1" />
-                                  Remove
-                                </Button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-                {!memberRows.length ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="py-8 text-center text-sm text-zinc-500"
-                    >
-                      No members found.
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
+                          <Trash2 className="size-4" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+            {!memberRows.length ? (
+              <div className="px-4 py-8 text-center text-sm text-zinc-500">
+                No members found.
+              </div>
+            ) : null}
           </div>
 
           {canManageTeam && invitationRows.length > 0 && (

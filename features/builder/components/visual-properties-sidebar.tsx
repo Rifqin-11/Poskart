@@ -136,7 +136,7 @@ export function VisualPropertiesSidebar({
           </div>
         ) : null}
 
-        <div className="px-3 pb-2.5">
+        <div className="px-3 pb-2.5" data-builder-tour="inspector-tabs">
           {context === "node" ? (
             <InspectorTabs
               tabs={NODE_TABS}

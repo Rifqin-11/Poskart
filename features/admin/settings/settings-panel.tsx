@@ -616,7 +616,7 @@ export function SettingsPanel({
           open={editOrganizationOpen}
           onOpenChange={(open) => setEditOrganizationOpen(open)}
           title="Edit organization"
-          className="max-w-3xl rounded-3xl"
+          className="max-w-4xl rounded-3xl"
         >
           <div
             className="mb-3 grid gap-1 rounded-full border border-zinc-200 bg-zinc-50 p-1"
