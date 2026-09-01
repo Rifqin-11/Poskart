@@ -111,7 +111,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
               icon={<CreditCard className="size-3.5" />}
               label="Subscription gateway"
               value={GATEWAY_LABELS[configuredGateway]}
-              helper="Set by Super Admin"
+              helper="Set by POSKART"
             />
             <SettingsSummaryItem
               icon={<RefreshCw className="size-3.5" />}
@@ -262,8 +262,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
-                qris_payment_method:
-                  event.target.value === "SP" ? "SP" : "SQ",
+                qris_payment_method: event.target.value === "SP" ? "SP" : "SQ",
               }))
             }
           >
@@ -283,7 +282,7 @@ export function PaymentSettingsCard<T extends SettingsForm>({
             ))}
           </Select>
           <p className="mt-2 text-xs leading-5 text-zinc-500">
-            Subscription checkout follows the Super Admin configuration.
+            Subscription checkout follows the POSKART configuration.
           </p>
         </SettingField>
       </section>

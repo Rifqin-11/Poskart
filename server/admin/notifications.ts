@@ -154,7 +154,7 @@ export async function broadcastAdminNotification(
   const { supabase } = await getAdminContext();
   const role = await getAdminProfileRole();
   if (role !== "admin") {
-    throw new Error("Hanya superadmin yang dapat mengirim notifikasi broadcast.");
+    throw new Error("Hanya POSKART yang dapat mengirim notifikasi broadcast.");
   }
 
   const serviceRoleClient = await getServiceRoleClient();

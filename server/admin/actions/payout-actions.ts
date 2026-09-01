@@ -1146,7 +1146,7 @@ export async function requestPayout(
         audience: "superadmin",
         type: "payout.requested",
         title: "New withdrawal request",
-        body: `${invoiceNumber} is waiting for Super Admin review.`,
+        body: `${invoiceNumber} is waiting for POSKART review.`,
         href: "/superadmin",
         organizationId,
         metadata: {
@@ -1562,7 +1562,7 @@ export async function approveInternalPayoutRequest(
       audience: "superadmin",
       type: "payout.requested",
       title: "Withdrawal request internally approved",
-      body: `${invoice.invoice_number} was approved by the owner/admin and is waiting for Super Admin review.`,
+      body: `${invoice.invoice_number} was approved by the owner/admin and is waiting for POSKART review.`,
       href: "/superadmin",
       organizationId,
       metadata: {

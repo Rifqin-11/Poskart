@@ -720,7 +720,7 @@ export function TransactionsMonitoring({
         action,
       });
       toast.success(
-        `${getTransactionActionLabel(action)} is waiting for Super Admin approval.`,
+        `${getTransactionActionLabel(action)} is waiting for POSKART approval.`,
       );
     } catch (error) {
       showErrorToast(
@@ -801,7 +801,7 @@ export function TransactionsMonitoring({
       });
       const approvalSuffix =
         action === "verify" || action === "refund" || action === "archive"
-          ? " and waiting for Super Admin approval"
+          ? " and waiting for POSKART approval"
           : "";
       toast.success(`${successCount} transactions processed${approvalSuffix}.`);
     }
@@ -1992,7 +1992,7 @@ export function TransactionsMonitoring({
                   <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-zinc-100 pt-3">
                     {transaction.pendingAction ? (
                       <span className="text-xs text-zinc-500">
-                        Waiting for Super Admin approval
+                        Waiting for POSKART approval
                       </span>
                     ) : !transaction.isArchived &&
                       !isReadOnly("transactions") ? (

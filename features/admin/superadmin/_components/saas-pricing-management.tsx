@@ -21,7 +21,7 @@ export function SaasPricingManagement({
       <CardHeader>
         <CardTitle>SaaS Plan Tiers</CardTitle>
         <CardDescription>
-          Subscription plans offered on POSKART signup. Super Admin can edit the
+          Subscription plans offered on POSKART signup. POSKART can edit the
           base monthly rates and device limits.
         </CardDescription>
       </CardHeader>
@@ -33,64 +33,64 @@ export function SaasPricingManagement({
         ) : (
           <>
             <div className="hidden overflow-x-auto rounded-2xl border border-zinc-200 bg-white xl:block">
-            <Table className="min-w-[920px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Plan name</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Base price (IDR)</TableHead>
-                  <TableHead>Included devices</TableHead>
-                  <TableHead>Add. device price (monthly)</TableHead>
-                  <TableHead>Visibility</TableHead>
-                  <TableHead className="w-10"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subscriptionPlans.map((plan) => (
-                  <TableRow key={plan.id}>
-                    <TableCell className="font-semibold text-zinc-900">
-                      {plan.name}
-                    </TableCell>
-                    <TableCell>
-                      {plan.durationMonths} month
-                      {plan.durationMonths > 1 ? "s" : ""}
-                    </TableCell>
-                    <TableCell>{formatCurrency(plan.basePrice)}</TableCell>
-                    <TableCell>
-                      {plan.includedDevices} device
-                      {plan.includedDevices > 1 ? "s" : ""}
-                    </TableCell>
-                    <TableCell>
-                      {formatCurrency(plan.additionalDevicePriceMonthly)}
-                    </TableCell>
-                    <TableCell>
-                      {plan.isPublic ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
-                          <Globe className="size-3" />
-                          Public
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-400">
-                          <EyeOff className="size-3" />
-                          Private
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => onEditPlan(plan)}
-                      >
-                        <Edit className="size-3.5" />
-                        <span className="sr-only">Edit plan</span>
-                      </Button>
-                    </TableCell>
+              <Table className="min-w-[920px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Plan name</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead>Base price (IDR)</TableHead>
+                    <TableHead>Included devices</TableHead>
+                    <TableHead>Add. device price (monthly)</TableHead>
+                    <TableHead>Visibility</TableHead>
+                    <TableHead className="w-10"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {subscriptionPlans.map((plan) => (
+                    <TableRow key={plan.id}>
+                      <TableCell className="font-semibold text-zinc-900">
+                        {plan.name}
+                      </TableCell>
+                      <TableCell>
+                        {plan.durationMonths} month
+                        {plan.durationMonths > 1 ? "s" : ""}
+                      </TableCell>
+                      <TableCell>{formatCurrency(plan.basePrice)}</TableCell>
+                      <TableCell>
+                        {plan.includedDevices} device
+                        {plan.includedDevices > 1 ? "s" : ""}
+                      </TableCell>
+                      <TableCell>
+                        {formatCurrency(plan.additionalDevicePriceMonthly)}
+                      </TableCell>
+                      <TableCell>
+                        {plan.isPublic ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+                            <Globe className="size-3" />
+                            Public
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-400">
+                            <EyeOff className="size-3" />
+                            Private
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => onEditPlan(plan)}
+                        >
+                          <Edit className="size-3.5" />
+                          <span className="sr-only">Edit plan</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
             <div className="grid gap-3 xl:hidden">
               {subscriptionPlans.map((plan) => (
@@ -154,8 +154,8 @@ export function SaasPricingManagement({
           <div>
             Billing updates: Customers are billed in cycles depending on their
             selected plan duration. Editing these configurations only affects
-            new subscription purchases or manual renewals; active subscriptions will
-            retain their original pricing terms.
+            new subscription purchases or manual renewals; active subscriptions
+            will retain their original pricing terms.
           </div>
         </div>
       </CardContent>

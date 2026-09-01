@@ -108,7 +108,7 @@ export function PaymentGatewayManagement() {
       <CardHeader>
         <CardTitle>Subscription Payment Gateway</CardTitle>
         <CardDescription>
-          Super Admin controls which payment gateway appears on the subscription
+          POSKART controls which payment gateway appears on the subscription
           checkout page.
         </CardDescription>
       </CardHeader>
@@ -173,8 +173,9 @@ export function PaymentGatewayManagement() {
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm leading-6 text-zinc-600">
-          Payout fees, deduction methods, and minimum withdrawal requests are managed
-          from <span className="font-medium text-zinc-950">Requests</span> →{" "}
+          Payout fees, deduction methods, and minimum withdrawal requests are
+          managed from{" "}
+          <span className="font-medium text-zinc-950">Requests</span> →{" "}
           <span className="font-medium text-zinc-950">Payout / Withdraw</span>.
         </div>
 

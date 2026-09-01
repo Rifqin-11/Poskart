@@ -1016,7 +1016,7 @@ export async function requestTransactionAction({
     audience: "superadmin",
     type: `transaction.${normalizedAction}.requested`,
     title: `${actionLabel(normalizedAction)} transaksi`,
-    body: `${transaction.id} menunggu approval Super Admin.`,
+    body: `${transaction.id} menunggu approval POSKART.`,
     href: "/superadmin",
     organizationId: transaction.organization_id,
     metadata: {
@@ -1177,7 +1177,7 @@ export async function unmarkTransactionAsTesting(
 async function requireSuperAdmin() {
   const context = await getAdminContext();
   if (!(await isSuperAdminProfile(context.supabase, context.user.id))) {
-    throw new Error("Hanya superadmin yang bisa review request transaksi.");
+    throw new Error("Hanya POSKART yang bisa review request transaksi.");
   }
   return context;
 }

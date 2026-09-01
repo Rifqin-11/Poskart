@@ -649,9 +649,9 @@ function PayoutSettingsSummary({ summary }: { summary: PayoutSummary }) {
             </CardDescription>
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm leading-6 text-zinc-600">
-            Gateway fee follows the global rate configured by Super Admin for
-            each QRIS transaction. Platform fee is the one-time POSKART
-            withdrawal fee applied when a payout request is created.
+            Gateway fee follows the global rate configured by POSKART for each
+            QRIS transaction. Platform fee is the one-time POSKART withdrawal
+            fee applied when a payout request is created.
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <PayoutRuleStat
@@ -788,11 +788,9 @@ function PayoutPaymentProofCard({ invoice }: { invoice: PayoutInvoice }) {
     <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-zinc-950">
-            Payment proof
-          </h3>
+          <h3 className="text-sm font-semibold text-zinc-950">Payment proof</h3>
           <p className="mt-1 max-w-xl text-xs leading-5 text-zinc-500">
-            Screenshot bukti pembayaran yang diunggah oleh Super Admin setelah
+            Screenshot bukti pembayaran yang diunggah oleh Poskart setelah
             withdrawal berhasil diproses.
           </p>
         </div>
@@ -825,7 +823,7 @@ function PayoutPaymentProofCard({ invoice }: { invoice: PayoutInvoice }) {
               Bukti pembayaran belum tersedia
             </p>
             <p className="mt-1 text-xs text-zinc-500">
-              Bukti akan muncul setelah withdrawal diproses oleh Super Admin.
+              Bukti akan muncul setelah withdrawal diproses oleh POSKART.
             </p>
           </div>
         </div>
@@ -840,7 +838,13 @@ function PayoutPaymentProofCard({ invoice }: { invoice: PayoutInvoice }) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(invoice.paymentProofUrl!, "_blank", "noopener,noreferrer")}
+              onClick={() =>
+                window.open(
+                  invoice.paymentProofUrl!,
+                  "_blank",
+                  "noopener,noreferrer",
+                )
+              }
             >
               <ExternalLink className="size-4" />
               Open proof
@@ -848,7 +852,9 @@ function PayoutPaymentProofCard({ invoice }: { invoice: PayoutInvoice }) {
           ) : null}
           <Button
             size="sm"
-            onClick={() => window.open(supportUrl, "_blank", "noopener,noreferrer")}
+            onClick={() =>
+              window.open(supportUrl, "_blank", "noopener,noreferrer")
+            }
           >
             <MessageCircle className="size-4" />
             Contact support

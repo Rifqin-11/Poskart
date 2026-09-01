@@ -869,7 +869,10 @@ function PayoutReviewContent({
   return (
     <div className="space-y-5">
       <div className="grid gap-3 md:grid-cols-5">
-        <Metric label="Gross" value={formatPayoutCurrency(invoice.grossAmount)} />
+        <Metric
+          label="Gross"
+          value={formatPayoutCurrency(invoice.grossAmount)}
+        />
         <Metric
           label="Gateway fee"
           value={formatPayoutCurrency(invoice.gatewayFeeAmount)}
@@ -888,9 +891,9 @@ function PayoutReviewContent({
         />
       </div>
       <div className="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-900">
-        Gateway fee follows the Super Admin configuration captured when this
-        payout was created. Platform fee is the POSKART withdrawal fee charged
-        once for this payout.
+        Gateway fee follows the POSKART configuration captured when this payout
+        was created. Platform fee is the POSKART withdrawal fee charged once for
+        this payout.
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
@@ -921,7 +924,8 @@ function PayoutReviewContent({
                 Transfer proof
               </div>
               <div className="mt-1 text-xs text-zinc-500">
-                JPG, PNG, or WebP. Maximum 8 MB, automatically compressed to WebP.
+                JPG, PNG, or WebP. Maximum 8 MB, automatically compressed to
+                WebP.
               </div>
             </div>
             <ImageIcon className="size-5 text-zinc-400" />
@@ -951,7 +955,9 @@ function PayoutReviewContent({
               className="hidden"
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              disabled={uploadingProof || isPending || invoice.status === "paid"}
+              disabled={
+                uploadingProof || isPending || invoice.status === "paid"
+              }
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = "";
@@ -1024,7 +1030,9 @@ function PayoutReviewContent({
                 <TableCell className="font-mono text-xs">
                   {item.transactionId ?? item.ledgerEntryId ?? "-"}
                 </TableCell>
-                <TableCell>{formatPayoutDate(item.transactionPaidAt)}</TableCell>
+                <TableCell>
+                  {formatPayoutDate(item.transactionPaidAt)}
+                </TableCell>
                 <TableCell>{item.booth ?? "-"}</TableCell>
                 <TableCell>{formatPayoutCurrency(item.grossAmount)}</TableCell>
                 <TableCell>
@@ -1068,7 +1076,8 @@ function PayoutReviewContent({
       <div className="grid gap-2 border-t border-zinc-100 pt-4 sm:flex sm:flex-wrap sm:justify-end">
         {!canMarkPaid && invoice.status !== "paid" ? (
           <div className="self-center text-xs text-zinc-500 sm:mr-auto">
-            Add a transfer reference and upload proof before marking this payout as paid.
+            Add a transfer reference and upload proof before marking this payout
+            as paid.
           </div>
         ) : null}
         <Button variant="outline" onClick={onClose}>

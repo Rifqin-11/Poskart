@@ -645,7 +645,7 @@ export function TenantManagement() {
         <div className="space-y-4">
           <SuperAdminBackHeader
             title="Requests"
-            description="Review operational requests that need super admin approval."
+            description="Review operational requests that need POSKART approval."
             onBack={() => setActiveSection("overview")}
           />
           <Tabs defaultValue="payout-invoices">
