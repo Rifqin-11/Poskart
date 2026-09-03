@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useState } from "react";
 import { showErrorToast, toast } from "@/lib/toast";
 import {
+  AlertTriangle,
   Check,
   Copy,
   Layers,
   Palette,
   Lightbulb,
   Loader2,
-  MoreVertical,
   Monitor,
   Pencil,
   Power,
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/device-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
 import { ThemeThumbnail } from "@/features/admin/themes/theme-thumbnail";
 import {
   useLayoutSchemas,
@@ -565,7 +566,6 @@ function ThemeCard({
   const { t } = useI18n();
   const { isReadOnly } = usePermission();
   const isActive = layout.is_active;
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const nodeCount = Object.values(layout.schema?.pages ?? {}).reduce(
     (sum, pageNodes) => sum + (Array.isArray(pageNodes) ? pageNodes.length : 0),
@@ -612,65 +612,16 @@ function ThemeCard({
             </p>
           </div>
 
-          {/* Menu */}
+          {/* Delete button */}
           {!isReadOnly("themes") && (
-            <div className="relative shrink-0">
-              <button
-                onClick={() => setMenuOpen((o) => !o)}
-                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
-              >
-                <MoreVertical className="size-4" />
-              </button>
-              {menuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setMenuOpen(false)}
-                  />
-                  <div className="absolute right-0 top-7 z-20 min-w-[140px] rounded-lg border border-zinc-200 bg-white py-1 shadow-lg">
-                    <Link
-                      href={`/themes/builder/${layout.id}`}
-                      onClick={() => setMenuOpen(false)}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
-                    >
-                       <Pencil className="size-3.5" /> {t("themes.edit")}
-                    </Link>
-                    {!isActive && (
-                      <button
-                        onClick={() => {
-                          setMenuOpen(false);
-                          onAssign();
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
-                      >
-                         <Monitor className="size-3.5 text-emerald-600" /> {t("themes.assign")}
-                      </button>
-                    )}
-                    {isActive && (
-                      <button
-                        onClick={() => {
-                          setMenuOpen(false);
-                          onDeactivate();
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50"
-                      >
-                        <PowerOff className="size-3.5 text-orange-500" />{" "}
-                         {t("themes.deactivate")}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onRequestDelete();
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
-                    >
-                       <Trash2 className="size-3.5" /> {t("themes.deleteThis")}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={onRequestDelete}
+              className="rounded-md p-1 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
+              aria-label={t("themes.deleteThis")}
+            >
+              <Trash2 className="size-4" />
+            </button>
           )}
         </div>
 
@@ -684,63 +635,83 @@ function ThemeCard({
           </Badge>
         </div>
 
-        {/* Delete confirmation inline */}
-        {confirmingDelete ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-              <p className="mb-2 font-medium">{t("themes.deleteThis")}</p>
-            <div className="flex gap-2">
-              <button
-                onClick={onConfirmDelete}
-                disabled={isLoading}
-                className="flex-1 rounded-md bg-red-600 py-1 font-semibold text-white hover:bg-red-500 disabled:opacity-50"
-              >
-                 {isLoading ? t("themes.deleting") : t("themes.yesDelete")}
-              </button>
-              <button
-                onClick={onCancelDelete}
-                className="flex-1 rounded-md border border-red-200 py-1 text-red-600 hover:bg-red-100"
-              >
-                 {t("themes.cancel")}
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* Main actions */
-          <div className="mt-auto grid grid-cols-2 gap-2">
-            {!isReadOnly("themes") && (
-              <Link
-                href={`/themes/builder/${layout.id}`}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
-              >
-                 <Pencil className="size-3.5" /> {t("themes.edit")}
-              </Link>
-            )}
-            <button
-              onClick={isActive ? onDeactivate : onAssign}
-              disabled={isLoading || isReadOnly("themes")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors disabled:opacity-50",
-                isReadOnly("themes") && "col-span-2",
-                isActive
-                  ? "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-                  : "bg-zinc-900 text-white hover:bg-zinc-700",
-              )}
+        {/* Main actions */}
+        <div className="mt-auto grid grid-cols-2 gap-2">
+          {!isReadOnly("themes") && (
+            <Link
+              href={`/themes/builder/${layout.id}`}
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
             >
-              {isLoading ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : isActive ? (
-                <>
-                  <PowerOff className="size-3.5" /> {t("themes.deactivate")}
-                </>
-              ) : (
-                <>
-                  <Monitor className="size-3.5" /> {t("themes.assign")}
-                </>
-              )}
-            </button>
-          </div>
-        )}
+               <Pencil className="size-3.5" /> {t("themes.edit")}
+            </Link>
+          )}
+          <button
+            onClick={isActive ? onDeactivate : onAssign}
+            disabled={isLoading || isReadOnly("themes")}
+            className={cn(
+              "flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors disabled:opacity-50",
+              isReadOnly("themes") && "col-span-2",
+              isActive
+                ? "border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                : "bg-zinc-900 text-white hover:bg-zinc-700",
+            )}
+          >
+            {isLoading ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : isActive ? (
+              <>
+                <PowerOff className="size-3.5" /> {t("themes.deactivate")}
+              </>
+            ) : (
+              <>
+                <Monitor className="size-3.5" /> {t("themes.assign")}
+              </>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={confirmingDelete}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) onRequestDelete();
+          else onCancelDelete();
+        }}
+        title={t("themes.deleteThis")}
+        className="max-w-md rounded-2xl"
+        overlayClassName="z-[90]"
+      >
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50/80 p-4">
+            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-red-600" />
+            <p className="text-sm leading-6 text-red-900">
+              {t("themes.deleteDesc").replace("{name}", layout.name)}
+            </p>
+          </div>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              disabled={isLoading}
+              onClick={onCancelDelete}
+            >
+              {t("themes.cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="rounded-xl"
+              disabled={isLoading}
+              onClick={onConfirmDelete}
+            >
+              <Trash2 className="size-4" />
+              {isLoading ? t("themes.deleting") : t("themes.yesDelete")}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </Card>
   );
 }
