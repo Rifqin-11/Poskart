@@ -11,6 +11,7 @@ import { showErrorToast, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useBooths, useUpdateBooth } from "@/features/admin/devices/use-devices";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { useScrollLock } from "@/lib/hooks/use-scroll-lock";
 import type { LayoutSchemaRow } from "@/features/admin/layout/api";
 
 export function AssignThemeToDevicesDialog({
@@ -23,6 +24,7 @@ export function AssignThemeToDevicesDialog({
   onDone: () => void;
 }) {
   const { t } = useI18n();
+  useScrollLock(true);
   const { data: devices = [], isLoading: devicesLoading } = useBooths();
   const updateBooth = useUpdateBooth();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());

@@ -47,6 +47,7 @@ import type { LayoutSchemaRow } from "@/features/admin/layout/api";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useI18n } from "@/lib/i18n/i18n-provider";
+import { useScrollLock } from "@/lib/hooks/use-scroll-lock";
 import { THEME_BRAINSTORM_PROMPT } from "@/features/admin/themes/theme-brainstorm-prompt";
 import { GalleryBrandingPage } from "@/features/admin/themes/components/gallery-branding-page";
 
@@ -62,6 +63,7 @@ function AssignDevicesModal({
   onDone: () => void;
 }) {
   const { t } = useI18n();
+  useScrollLock(true);
 
   const translate = (key: Parameters<typeof t>[0], values: Record<string, string>) =>
     Object.entries(values).reduce(

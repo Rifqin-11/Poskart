@@ -31,7 +31,7 @@ import {
   WalletCards,
   MessageSquareMore,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
 import { useTenantDetails } from "@/features/admin/organization/use-organization";
 import {
@@ -450,10 +450,18 @@ export function AdminShell({
   const unreadNotifications = notifications.filter((n) => !n.readAt);
   const hasUnread = unreadNotifications.length > 0;
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Reset the inner scroll container to the top whenever the route changes,
+  // since the app shell (not the document) is now the scroll container.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [pathname]);
+
   return (
     <div
       className={cn(
-        "min-h-screen",
+        "flex h-dvh flex-col overflow-hidden",
         builderFullView ? "bg-zinc-50" : "bg-[#f5f6f8]",
       )}
     >
@@ -474,8 +482,10 @@ export function AdminShell({
       )}
 
       <div
+        ref={scrollRef}
+        data-admin-scroll
         className={cn(
-          "transition-[padding] duration-300 ease-out",
+          "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain transition-[padding] duration-300 ease-out",
           isStandalone ? "lg:pl-0" : "lg:pl-[17.25rem] xl:pl-[18.75rem]",
           aiChatOpen && !isStandalone && "xl:pr-[27rem]",
         )}
@@ -854,7 +864,7 @@ export function AdminShell({
             <ArrowLeft className="size-4" />
           </Button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-6">
           {aiMessages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-center">
               <div className="max-w-xs">

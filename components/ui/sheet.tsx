@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useScrollLock } from "@/lib/hooks/use-scroll-lock";
 
 export function Sheet({
   open,
@@ -20,6 +21,8 @@ export function Sheet({
   className?: string;
   style?: CSSProperties;
 }) {
+  useScrollLock(open);
+
   if (!open) return null;
 
   return (

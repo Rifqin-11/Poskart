@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useScrollLock } from "@/lib/hooks/use-scroll-lock";
 
 export function Dialog({
   open,
@@ -21,6 +22,8 @@ export function Dialog({
   overlayClassName?: string;
   headerAction?: React.ReactNode;
 }) {
+  useScrollLock(open);
+
   if (!open) return null;
 
   return (

@@ -47,6 +47,7 @@ import {
   type OrganizationFeatureKey,
 } from "@/lib/organization-features";
 import { cn } from "@/lib/utils";
+import { useScrollLock } from "@/lib/hooks/use-scroll-lock";
 
 type SearchItem = {
   key: string;
@@ -265,6 +266,8 @@ export function CommandSearch({
   );
   const hasActiveSubscription =
     isSuperAdmin || Boolean(subscription?.isActive);
+
+  useScrollLock(open);
 
   const visiblePages = useMemo(
     () =>
