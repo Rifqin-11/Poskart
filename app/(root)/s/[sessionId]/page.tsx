@@ -16,6 +16,7 @@ import { getSessionMusicEmbed } from "@/lib/gallery/session-music";
 import { resolveGallerySessionBranding } from "@/server/public/gallery-branding";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { GalleryMusicPlayer } from "@/features/public/gallery/gallery-music-player";
+import { GalleryDownloadLink } from "@/features/public/gallery/gallery-download-link";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -177,17 +178,21 @@ export default async function SharedGalleryPage({
             Simpan foto dengan frame atau unduh setiap foto original dari sesi
             POSKART ini.
           </p>
-          <div className="mx-auto mt-4 flex justify-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-600/20">
+           <div className="mx-auto mt-4 flex justify-center">
+             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-600/20">
               <span className="relative flex size-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full size-1.5 bg-amber-500"></span>
               </span>
               Tautan ini aktif selama {expiryDurationLabel} (sampai{" "}
-              {formattedExpiryDate})
-            </span>
-          </div>
-        </section>
+               {formattedExpiryDate})
+             </span>
+           </div>
+           <p className="mx-auto mt-3 max-w-lg text-xs leading-5 text-zinc-500">
+             Pengguna iPhone akan melihat menu berbagi. Pilih Save Image atau
+             Save Video agar file tersimpan di Photos.
+           </p>
+         </section>
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
            <section className="gallery-card rounded-[28px] border border-black/10 p-3 shadow-xl shadow-black/5 md:p-5 grid gap-6">
@@ -220,13 +225,13 @@ export default async function SharedGalleryPage({
                   >
                     Lihat Animasi
                   </Link>
-                  <a
-                    href={`/s/${encodeURIComponent(sessionId)}/download/${framedLivePhoto.id}`}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
-                  >
-                    <ArrowDownToLine className="size-4" />
-                    Download Live Photo
-                  </a>
+                   <GalleryDownloadLink
+                     href={`/s/${encodeURIComponent(sessionId)}/download/${framedLivePhoto.id}`}
+                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+                   >
+                     <ArrowDownToLine className="size-4" />
+                     Download Live Photo
+                   </GalleryDownloadLink>
                 </div>
               </div>
             )}
@@ -271,13 +276,13 @@ export default async function SharedGalleryPage({
                   >
                     Lihat Foto
                   </Link>
-                  <a
-                    href={`/s/${encodeURIComponent(sessionId)}/download/${framedStatic.id}`}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
-                  >
-                    <ArrowDownToLine className="size-4" />
-                    Download Foto
-                  </a>
+                   <GalleryDownloadLink
+                     href={`/s/${encodeURIComponent(sessionId)}/download/${framedStatic.id}`}
+                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+                   >
+                     <ArrowDownToLine className="size-4" />
+                     Download Foto
+                   </GalleryDownloadLink>
                 </div>
               </div>
             )}
@@ -328,13 +333,13 @@ export default async function SharedGalleryPage({
                     </p>
                   </div>
                 </Link>
-                <a
+                <GalleryDownloadLink
                   href={`/s/${encodeURIComponent(sessionId)}/download/${gif.id}`}
                   aria-label="Download GIF"
                   className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 transition-colors hover:bg-zinc-950 hover:text-white"
                 >
                   <Download className="size-4" />
-                </a>
+                </GalleryDownloadLink>
               </div>
             )}
 
@@ -366,13 +371,13 @@ export default async function SharedGalleryPage({
                         </p>
                       </div>
                     </Link>
-                    <a
+                    <GalleryDownloadLink
                       href={`/s/${encodeURIComponent(sessionId)}/download/${photo.id}`}
                       aria-label={`Download foto original ${index + 1}`}
                       className="grid size-10 shrink-0 place-items-center rounded-xl bg-zinc-100 transition-colors hover:bg-zinc-950 hover:text-white"
                     >
                       <Download className="size-4" />
-                    </a>
+                    </GalleryDownloadLink>
                   </div>
                 ))}
               </div>
@@ -424,13 +429,13 @@ export default async function SharedGalleryPage({
           </Link>
 
           {/* Download button in top-right corner */}
-          <a
+          <GalleryDownloadLink
             href={`/s/${encodeURIComponent(sessionId)}/download/${selectedPhoto.id}`}
             className="absolute right-6 top-6 flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 shadow transition-all duration-200 hover:bg-zinc-100 hover:scale-[1.02]"
           >
             <Download className="size-4" />
             Download
-          </a>
+          </GalleryDownloadLink>
 
           {/* Centered photo or Live Photo preview */}
           <div className="relative max-h-[80vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl">
