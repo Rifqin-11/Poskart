@@ -34,6 +34,10 @@ export function useUpdateOrganizationFeatures() {
         (current: Awaited<ReturnType<typeof organizationApi.getMyOrganizationDetails>> | undefined) =>
           current ? { ...current, features } : current,
       );
+      // The Super Admin organization table uses a separate query. Invalidate it
+      // here so a feature changed from the organization settings is reflected
+      // immediately when that table is already open in the same browser.
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.organizations });
       queryClient.invalidateQueries({
         queryKey: adminQueryKeys.organizationDetails,
       });

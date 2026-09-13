@@ -13,6 +13,9 @@ export function useTenants() {
   return useQuery<Organization[], Error>({
     queryKey: adminQueryKeys.organizations,
     queryFn: superadminApi.getOrganizations,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 

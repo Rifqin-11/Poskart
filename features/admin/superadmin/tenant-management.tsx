@@ -66,7 +66,10 @@ import { DeviceErrorLogManagement } from "./_components/device-error-log-managem
 import { SystemErrorLogManagement } from "./_components/system-error-log-management";
 import { NotificationManagement } from "./_components/notification-management";
 import { ProductFeedbackManagement } from "./_components/product-feedback-management";
-import { DEFAULT_ORGANIZATION_FEATURES } from "@/lib/organization-features";
+import {
+  DEFAULT_ORGANIZATION_FEATURES,
+  normalizeOrganizationFeatures,
+} from "@/lib/organization-features";
 import { getEffectiveSubscriptionStatus, isSubscriptionActive } from "@/lib/subscription-policy";
 
 type AdminUserProfile = {
@@ -362,7 +365,7 @@ export function TenantManagement() {
                           <TableHead>Devices</TableHead>
                           <TableHead>Users</TableHead>
                           <TableHead>Collection</TableHead>
-                          <TableHead>Enabled Features</TableHead>
+                      <TableHead>Feature Access</TableHead>
                           <TableHead>Renewal / Expiration</TableHead>
                           <TableHead />
                         </TableRow>
@@ -466,7 +469,7 @@ export function TenantManagement() {
                         </div>
                         <div className="mt-4 border-t border-zinc-100 pt-3">
                           <div className="mb-2 text-xs font-medium text-zinc-500">
-                            Enabled features
+                             Feature access
                           </div>
                           <OrganizationFeatureBadges
                             organization={organization}
@@ -1254,13 +1257,15 @@ function OrganizationFeatureBadges({
 }: {
   organization: Organization;
 }) {
+  const features = normalizeOrganizationFeatures(organization.features);
+
   return (
     <div className="flex flex-wrap gap-1.5">
-      {organization.features?.posKasir ? (
+      {features.posKasir ? (
         <Badge variant="outline">POS Kasir</Badge>
       ) : null}
       <Badge variant="outline">Keuangan</Badge>
-      {!organization.features?.posKasir ? (
+      {!features.posKasir ? (
         <span className="text-xs text-zinc-400">SaaS default</span>
       ) : null}
     </div>
