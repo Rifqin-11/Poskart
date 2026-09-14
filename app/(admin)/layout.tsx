@@ -5,7 +5,9 @@ import { adminQueryKeys } from "@/features/admin/query-keys";
 import { getQueryClient } from "@/lib/query-client.server";
 import { getAdminBootstrap } from "@/server/admin/bootstrap";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
+import { getOptionalAdminContext } from "@/server/admin/context";
 
 export default async function AdminLayout({
   children,
@@ -13,6 +15,10 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   await connection();
+
+  if (!(await getOptionalAdminContext())) {
+    redirect("/login");
+  }
 
   const bootstrap = await getAdminBootstrap();
   const queryClient = getQueryClient();

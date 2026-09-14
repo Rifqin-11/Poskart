@@ -10,21 +10,23 @@ export type OrganizationRole =
   | "akuntan"
   | "partner";
 
-const getCachedAdminContext = cache(async () => {
+const getCachedOptionalAdminContext = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
-
-  return { supabase, user };
+  return user ? { supabase, user } : null;
 });
 
+export async function getOptionalAdminContext() {
+  return getCachedOptionalAdminContext();
+}
+
 export async function getAdminContext() {
-  return getCachedAdminContext();
+  const context = await getCachedOptionalAdminContext();
+  if (!context) throw new Error("Not authenticated");
+  return context;
 }
 
 const getCachedAdminMembership = cache(async () => {

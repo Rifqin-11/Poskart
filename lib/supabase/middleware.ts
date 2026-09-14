@@ -57,6 +57,11 @@ export async function updateSession(request: NextRequest) {
     "/devices",
     "/analytics",
     "/settings",
+    "/gallery",
+    "/invoices",
+    "/feedback",
+    "/trial",
+    "/vouchers",
   ];
   const authRoutes = ["/login", "/register"];
   const subscriptionRoutes = [
