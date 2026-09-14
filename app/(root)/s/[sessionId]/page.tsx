@@ -17,6 +17,8 @@ import { resolveGallerySessionBranding } from "@/server/public/gallery-branding"
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { GalleryMusicPlayer } from "@/features/public/gallery/gallery-music-player";
 import { GalleryDownloadLink } from "@/features/public/gallery/gallery-download-link";
+import { GalleryLinkCard } from "@/features/public/gallery/gallery-link-card";
+import { getPublicGalleryUrl } from "@/lib/gallery/urls";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -86,6 +88,7 @@ export default async function SharedGalleryPage({
     return <ExpiredGalleryPage formattedExpiryDate={formattedExpiryDate} />;
   }
 
+  const galleryUrl = getPublicGalleryUrl(sessionId);
   const { branding } = await resolveGallerySessionBranding(supabase, session);
 
   const { data: photos } = await supabase
@@ -390,7 +393,8 @@ export default async function SharedGalleryPage({
                 </div>
               )
             )}
-          </aside>
+           <GalleryLinkCard galleryUrl={galleryUrl} />
+           </aside>
         </div>
 
          <footer className="gallery-footer mt-10 overflow-hidden">
