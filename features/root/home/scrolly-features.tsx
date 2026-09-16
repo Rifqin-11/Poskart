@@ -29,10 +29,18 @@ const stories = landingContent.stories.map((story, index) => ({
   icon: storyIcons[index],
 }));
 
+const sceneEntrances = [
+  { x: 34, y: 0, scale: 0.96, rotate: -1.2 },
+  { x: 0, y: 28, scale: 1.02, rotate: 0 },
+  { x: -30, y: 0, scale: 0.965, rotate: 1.1 },
+  { x: 0, y: -24, scale: 0.94, rotate: 0 },
+] as const;
+
 export function ScrollyFeatures() {
   const rootRef = useRef<HTMLElement>(null);
   const storyRefs = useRef<(HTMLElement | null)[]>([]);
   const mediaRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const previousStoryRef = useRef(0);
   const [activeStory, setActiveStory] = useState(0);
 
   useLayoutEffect(() => {
@@ -77,18 +85,54 @@ export function ScrollyFeatures() {
       });
 
       function activate(index: number) {
+        if (index === previousStoryRef.current) return;
+
+        const previous = mediaRefs.current[previousStoryRef.current];
+        const next = mediaRefs.current[index];
+        const entrance = sceneEntrances[index];
+
         setActiveStory(index);
-        mediaRefs.current.forEach((item, mediaIndex) => {
-          if (!item) return;
-          gsap.to(item, {
-            autoAlpha: mediaIndex === index ? 1 : 0,
-            y: mediaIndex === index ? 0 : 24,
-            scale: mediaIndex === index ? 1 : 0.96,
-            duration: 0.55,
-            ease: "power3.out",
+
+        const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+        if (previous) {
+          timeline.to(previous, {
+            autoAlpha: 0,
+            y: index > previousStoryRef.current ? -20 : 20,
+            scale: 0.975,
+            duration: 0.32,
             overwrite: true,
-          });
-        });
+          }, 0);
+        }
+        if (next) {
+          timeline.fromTo(
+            next,
+            {
+              autoAlpha: 0,
+              x: entrance.x,
+              y: entrance.y,
+              scale: entrance.scale,
+              rotate: entrance.rotate,
+              clipPath: index === 1
+                ? "inset(0 0 100% 0 round 28px)"
+                : index === 3
+                  ? "inset(12% 12% 12% 12% round 28px)"
+                  : "inset(0% 0% 0% 0% round 28px)",
+            },
+            {
+              autoAlpha: 1,
+              x: 0,
+              y: 0,
+              scale: 1,
+              rotate: 0,
+              clipPath: "inset(0% 0% 0% 0% round 28px)",
+              duration: 0.72,
+              overwrite: true,
+            },
+            0.08,
+          );
+        }
+
+        previousStoryRef.current = index;
       }
 
       return () => matchMedia.revert();
@@ -104,6 +148,37 @@ export function ScrollyFeatures() {
       className="relative scroll-mt-[72px] bg-white text-zinc-950"
     >
       <div className="mx-auto max-w-[90rem] px-5 pb-20 pt-4 sm:px-8 lg:px-12 lg:pb-28 lg:pt-8">
+        <div className="border-b border-blue-100 pb-10 pt-12 lg:pb-14">
+          <p className="max-w-3xl text-3xl font-black leading-[1.02] tracking-[-0.04em] sm:text-5xl">
+            Dari booth dinyalakan sampai foto diterima.
+          </p>
+          <p className="mt-4 max-w-xl text-base leading-7 text-zinc-600">
+            Empat tahap yang menghubungkan aplikasi booth, perangkat, dan Admin Web.
+          </p>
+          <nav aria-label="Tahap alur aplikasi booth" className="mt-8 grid grid-cols-4 gap-2">
+            {stories.map((story, index) => (
+              <button
+                key={story.number}
+                type="button"
+                aria-current={activeStory === index ? "step" : undefined}
+                onClick={() => storyRefs.current[index]?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                className="group text-left"
+              >
+                <span className={cn(
+                  "block h-1 origin-left transition-[background-color,transform] duration-500",
+                  activeStory === index ? "scale-x-100 bg-[#00357B]" : "scale-x-[0.45] bg-blue-100 group-hover:scale-x-75",
+                )} />
+                <span className={cn(
+                  "mt-2 hidden text-xs font-semibold transition-colors sm:block",
+                  activeStory === index ? "text-[#00357B]" : "text-zinc-400",
+                )}>
+                  {story.number} {story.eyebrow}
+                </span>
+              </button>
+            ))}
+          </nav>
+        </div>
+
         <div className="relative lg:grid lg:grid-cols-[0.82fr_1.18fr] lg:gap-16">
           <div className="lg:py-[18vh]">
             {stories.map((story, index) => {
@@ -114,7 +189,10 @@ export function ScrollyFeatures() {
                   ref={(element) => {
                     storyRefs.current[index] = element;
                   }}
-                  className="flex min-h-0 flex-col justify-center border-b border-blue-100 py-16 lg:min-h-[70vh] lg:py-20"
+                  className={cn(
+                    "flex min-h-0 flex-col justify-center border-b border-blue-100 py-16 transition-opacity duration-500 lg:min-h-[70vh] lg:py-20",
+                    activeStory === index ? "opacity-100" : "lg:opacity-40",
+                  )}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#00357B]">
@@ -151,7 +229,7 @@ export function ScrollyFeatures() {
           </div>
 
           <div className="sticky top-24 hidden h-[calc(100vh-7rem)] items-center self-start lg:flex">
-            <div className="relative h-[70vh] rounded-4xl w-full overflow-hidden border border-blue-200/70 bg-[linear-gradient(145deg,#00357B_0%,#014EB4_58%,#082952_100%)] shadow-[0_24px_70px_rgba(0,53,123,0.2)]">
+            <div className="relative h-[70vh] w-full overflow-hidden rounded-[28px] border border-blue-200/70 bg-[linear-gradient(145deg,#00357B_0%,#014EB4_58%,#082952_100%)] shadow-[0_24px_70px_rgba(0,53,123,0.2)]">
               <div className="absolute inset-x-5 top-5 z-10 flex items-center justify-between gap-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-300 xl:inset-x-7 xl:top-7 xl:text-xs">
                 <span className="min-w-0 truncate">Alur aplikasi booth</span>
                 <span>{String(activeStory + 1).padStart(2, "0")} / {String(stories.length).padStart(2, "0")}</span>

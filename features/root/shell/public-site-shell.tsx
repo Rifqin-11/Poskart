@@ -7,13 +7,16 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { PublicMobileNav } from "@/features/root/shell/public-mobile-nav";
 
-const navLinks = [
+const navLinks: Array<{
+  href: string;
+  label: string;
+  external?: boolean;
+}> = [
   { href: "/#features", label: "Fitur" },
-  { href: "/#platform", label: "Produk" },
   { href: "/#workflow", label: "Cara kerja" },
   { href: "/#pricing", label: "Harga" },
-  { href: "https://docs.poskart.my.id", label: "Docs", external: true },
   { href: "/contact", label: "Contact" },
+  { href: "/download", label: "Download" },
 ];
 
 export async function PublicHeader({

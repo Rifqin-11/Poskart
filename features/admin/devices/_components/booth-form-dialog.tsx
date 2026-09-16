@@ -290,7 +290,7 @@ export function BoothFormDialog({
     const selections =
       mode === "paid"
         ? paidSelections
-        : eventSelection
+        : mode === "event" && eventSelection
           ? [eventSelection]
           : [];
     setForm({
@@ -343,19 +343,6 @@ export function BoothFormDialog({
           setFormError(null);
           if (!form.name.trim() || !form.location.trim()) {
             showFormError("Name and location are required", "general");
-            return;
-          }
-          if (!sessionMode) {
-            showFormError("Choose Pricing or Event access", "general");
-            return;
-          }
-          if (form.pricingProfiles.length === 0) {
-            showFormError(
-              sessionMode === "event"
-                ? "Choose one active event"
-                : "Choose at least one paid package",
-              "general",
-            );
             return;
           }
           if (
@@ -565,7 +552,7 @@ export function BoothFormDialog({
                         Session access
                       </h3>
                       <p className="mt-1 text-xs leading-5 text-zinc-500">
-                        Choose one simple flow for visitors on this device.
+                        Optionally choose a visitor access flow for this device.
                       </p>
                     </div>
                   </div>
@@ -585,7 +572,9 @@ export function BoothFormDialog({
                     icon={CreditCard}
                     selected={sessionMode === "paid"}
                     disabled={readOnly || paidProducts.length === 0}
-                    onClick={() => selectSessionMode("paid")}
+                    onClick={() =>
+                      selectSessionMode(sessionMode === "paid" ? "" : "paid")
+                    }
                   />
                   <SessionModeButton
                     title="Event"
@@ -599,7 +588,9 @@ export function BoothFormDialog({
                           (product) => product.active && !isEventExpired(product),
                         ))
                     }
-                    onClick={() => selectSessionMode("event")}
+                    onClick={() =>
+                      selectSessionMode(sessionMode === "event" ? "" : "event")
+                    }
                   />
                 </div>
 
@@ -648,7 +639,8 @@ export function BoothFormDialog({
                   />
                 ) : (
                   <p className="mt-3 rounded-xl border border-dashed border-zinc-200 bg-white px-3 py-4 text-xs text-zinc-500">
-                    Select a session type to configure visitor access.
+                    Optional. Leave empty to let visitors start directly from
+                    frame selection without choosing a package.
                   </p>
                 )}
               </section>
@@ -667,7 +659,8 @@ export function BoothFormDialog({
                   </h3>
                   <p className="mt-1 text-xs leading-5 text-zinc-500">
                     Control voucher payment availability for this device.
-                    Changes apply after the kiosk&apos;s next sync.
+                    Leave both disabled for direct sessions when Session access
+                    is also empty. Changes apply after the kiosk&apos;s next sync.
                   </p>
                 </div>
               </div>

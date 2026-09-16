@@ -818,9 +818,7 @@ async function assertPricingAssignmentModes(
   const normalizedAssignments = assignments
     .map((assignment) => assignment.trim())
     .filter(Boolean);
-  if (normalizedAssignments.length === 0) {
-    throw new Error("Assign a paid package or one active event to the device.");
-  }
+  if (normalizedAssignments.length === 0) return;
 
   const { data, error } = await supabase
     .from("pricing_products")

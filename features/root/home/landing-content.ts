@@ -15,16 +15,24 @@ export const landingAssets = {
     src: "/Admin/Settings.png",
     alt: "Halaman pengaturan POSKART",
   },
+  Pairing: {
+    src: "/Admin/DevicesPair.png",
+    alt: "Halaman pengaturan POSKART",
+  },
   showcase: {
     src: "/Admin/Showcase.png",
     alt: "Halaman pengelolaan showcase POSKART",
   },
   boothApp: {
-    src: "/POSKART Photobooth.png",
+    src: "/App/Camera.png",
     alt: "Aplikasi Flutter POSKART yang berjalan di perangkat booth",
   },
   customerDelivery: {
     src: "/iPhone 13 Pro.png",
+    alt: "Pengalaman pengunjung membuka hasil foto dari ponsel",
+  },
+  AppSettings: {
+    src: "/App/Settings.png",
     alt: "Pengalaman pengunjung membuka hasil foto dari ponsel",
   },
 } as const;
@@ -99,7 +107,7 @@ export const landingContent = {
       description:
         "Hubungkan device, pilih konfigurasi event, lalu atur kamera dan printer dari aplikasi Flutter POSKART.",
       points: ["Pairing device", "Pengaturan kamera dan printer", "Konfigurasi khusus per booth"],
-      asset: landingAssets.boothApp,
+      asset: landingAssets.Pairing,
     },
     {
       number: "02",

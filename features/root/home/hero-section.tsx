@@ -184,6 +184,65 @@ function WorkspacePreview({
   onPrevious: () => void;
   preview: (typeof heroWorkspacePreviews)[number];
 }) {
+  const previewContentRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const previousPreviewRef = useRef(activePreview);
+  const hasAnimatedPreviewRef = useRef(false);
+
+  useLayoutEffect(() => {
+    const currentContent = previewContentRefs.current[activePreview];
+    const previousContent = previewContentRefs.current[previousPreviewRef.current];
+    if (!currentContent) return;
+
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (reduceMotion) {
+      gsap.set(previewContentRefs.current, { autoAlpha: 0 });
+      gsap.set(currentContent, { autoAlpha: 1 });
+      previousPreviewRef.current = activePreview;
+      return;
+    }
+
+    if (!hasAnimatedPreviewRef.current) {
+      gsap.set(previewContentRefs.current, { autoAlpha: 0 });
+      gsap.set(currentContent, { autoAlpha: 1 });
+      hasAnimatedPreviewRef.current = true;
+      previousPreviewRef.current = activePreview;
+      return;
+    }
+
+    const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+
+    if (previousContent && previousContent !== currentContent) {
+      timeline.to(
+        previousContent,
+        { autoAlpha: 0, y: -8, scale: 1.01, duration: 0.32 },
+        0,
+      );
+    }
+
+    timeline.fromTo(
+      currentContent,
+      { autoAlpha: 0, y: 16, scale: 0.985, filter: "blur(6px)" },
+      {
+        autoAlpha: 1,
+        y: 0,
+        scale: 1,
+        filter: "blur(0px)",
+        duration: 0.58,
+        clearProps: "transform,filter",
+      },
+      0.08,
+    );
+
+    previousPreviewRef.current = activePreview;
+
+    return () => {
+      timeline.kill();
+    };
+  }, [activePreview]);
+
   return (
     <div
       aria-label="Preview workspace POSKART"
@@ -212,8 +271,8 @@ function WorkspacePreview({
             onClick={() => onChangePreview(index)}
             className={
               activePreview === index
-                ? "relative shrink-0 rounded-lg bg-white px-3 py-2.5 text-left text-xs font-semibold text-[#00357B] shadow-sm before:absolute before:inset-y-2 before:-left-1 before:w-0.5 before:bg-[#00357B] lg:w-full"
-                : "relative shrink-0 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-zinc-500 transition-colors hover:bg-white/70 hover:text-zinc-900 lg:w-full"
+                ? "relative shrink-0 rounded-lg bg-white px-3 py-2.5 text-left text-xs font-semibold text-[#00357B] shadow-sm transition-[background-color,color,box-shadow] duration-300 before:absolute before:inset-y-2 before:-left-1 before:w-0.5 before:bg-[#00357B] lg:w-full"
+                : "relative shrink-0 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-zinc-500 transition-[background-color,color,box-shadow] duration-300 hover:bg-white/70 hover:text-zinc-900 lg:w-full"
             }
           >
             <span className="mr-2 inline-block size-2 rounded-full bg-[#00357B]/40 align-middle" />
@@ -241,7 +300,7 @@ function WorkspacePreview({
             <ChevronRight className="size-4" />
           </button>
           <RotateCw className="ml-1 size-3.5" />
-          <span className="ml-2 min-w-0 truncate rounded-md bg-blue-50/70 px-3 py-1.5 text-[10px] text-zinc-500">
+          <span className="ml-2 min-w-0 truncate rounded-md bg-blue-50/70 px-3 py-1.5 text-[10px] text-zinc-500 transition-colors duration-300">
             {preview.url}
           </span>
           <span className="ml-auto hidden text-[10px] font-medium text-zinc-400 sm:block">
@@ -249,24 +308,34 @@ function WorkspacePreview({
           </span>
         </div>
         <div className="relative aspect-[16/9] overflow-hidden rounded-lg border border-blue-100 bg-[#f7f9ff]">
-          <Image
-            key={preview.id}
-            src={preview.image.src}
-            alt={preview.image.alt}
-            width={1600}
-            height={1100}
-            sizes="(max-width: 1023px) 95vw, 75vw"
-            priority={activePreview === 0}
-            className="h-full w-full object-cover object-top transition-opacity duration-300"
-          />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/95 via-white/60 to-transparent px-5 pb-4 pt-14 sm:px-8 sm:pb-7">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00357B]">
-              {preview.label}
-            </p>
-            <p className="mt-1 max-w-lg text-sm font-medium text-zinc-700 sm:text-base">
-              {preview.description}
-            </p>
-          </div>
+          {heroWorkspacePreviews.map((item, index) => (
+            <div
+              key={item.id}
+              ref={(element) => {
+                previewContentRefs.current[index] = element;
+              }}
+              aria-hidden={activePreview !== index}
+              className="invisible absolute inset-0 opacity-0 will-change-transform first:visible first:opacity-100"
+            >
+              <Image
+                src={item.image.src}
+                alt={item.image.alt}
+                width={1600}
+                height={1100}
+                sizes="(max-width: 1023px) 95vw, 75vw"
+                priority={index === 0}
+                className="h-full w-full object-cover object-top"
+              />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/95 via-white/60 to-transparent px-5 pb-4 pt-14 sm:px-8 sm:pb-7">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00357B]">
+                  {item.label}
+                </p>
+                <p className="mt-1 max-w-lg text-sm font-medium text-zinc-700 sm:text-base">
+                  {item.description}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
