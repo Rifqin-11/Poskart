@@ -4,7 +4,7 @@ export type OrganizationFeatureAccess = Record<OrganizationFeatureKey, boolean>;
 
 export const DEFAULT_ORGANIZATION_FEATURES: OrganizationFeatureAccess = {
   posKasir: false,
-  showcase: false,
+  showcase: true,
 };
 
 export const ORGANIZATION_FEATURE_LABELS: Record<OrganizationFeatureKey, string> = {

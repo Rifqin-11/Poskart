@@ -1,12 +1,22 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDown, ArrowUpRight, Download, MoveDownRight } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  RotateCw,
+} from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { LatestAppRelease } from "@/features/root/home/api";
+import {
+  heroWorkspacePreviews,
+  landingContent,
+} from "@/features/root/home/landing-content";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -16,263 +26,249 @@ export function HeroSection({
   latestRelease: LatestAppRelease | null;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
+  const [activePreview, setActivePreview] = useState(0);
+  const preview = heroWorkspacePreviews[activePreview];
 
   useLayoutEffect(() => {
     if (!sectionRef.current) return;
 
     const context = gsap.context(() => {
-      const reduceMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-      const isMobile = window.matchMedia("(max-width: 639px)").matches;
+      const media = gsap.matchMedia();
 
-      gsap.set("[data-hero-panel]", {
-        autoAlpha: 1,
-        y: 0,
-        yPercent: isMobile ? 0 : 100,
-      });
+      media.add(
+        {
+          reduced: "(prefers-reduced-motion: reduce)",
+        },
+        ({ conditions }) => {
+          const { reduced } = conditions as {
+            reduced: boolean;
+          };
 
-      if (reduceMotion) {
-        gsap.set("[data-hero-reveal]", { opacity: 1, y: 0 });
-        gsap.set("[data-hero-panel]", { yPercent: 0 });
-        gsap.set(sectionRef.current, { minHeight: "100svh" });
-        return;
-      }
+          gsap.set("[data-hero-copy]", {
+            autoAlpha: reduced ? 1 : 0,
+            y: reduced ? 0 : 24,
+            filter: reduced ? "blur(0px)" : "blur(10px)",
+          });
+          gsap.set("[data-hero-workspace]", {
+            autoAlpha: reduced ? 1 : 0,
+            y: reduced ? 0 : 56,
+            scale: reduced ? 1 : 0.97,
+          });
+          gsap.set("[data-hero-scroll-note]", {
+            autoAlpha: reduced ? 1 : 0,
+            y: reduced ? 0 : 12,
+          });
 
-      gsap
-        .timeline({ defaults: { ease: "power3.out" } })
-        .fromTo(
-          "[data-hero-line]",
-          { yPercent: 105 },
-          { yPercent: 0, duration: 0.9, stagger: 0.08 },
-        )
-        .fromTo(
-          "[data-hero-reveal]",
-          { opacity: 0, y: 24 },
-          { opacity: 1, y: 0, duration: 0.65, stagger: 0.08 },
-          "-=0.45",
-        )
-        .fromTo(
-          "[data-hero-product]",
-          { y: 80, rotate: 2 },
-          { y: 0, rotate: 0, duration: 1 },
-          "-=0.55",
-        );
+          if (reduced) return;
 
-      gsap
-        .timeline({
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top top",
-            end: "bottom bottom",
-            scrub: 0.8,
-            invalidateOnRefresh: true,
-          },
-        })
-        .to(
-          "[data-hero-panel]",
-          { yPercent: 0, duration: 0.24, ease: "power2.out" },
-          0.12,
-        )
-        .to(
-          "[data-hero-line]",
-          { opacity: 0, y: -80, stagger: 0.025, duration: 0.7, ease: "none" },
-          0.3,
-        )
-        .to(
-          "[data-hero-reveal]",
-          { opacity: 0, y: -34, duration: 0.7, ease: "none" },
-          0.3,
-        )
-        .to(
-          "[data-hero-product-scroll]",
-          {
-            opacity: 0.08,
-            y: -150,
-            scale: 0.9,
-            duration: 0.7,
-            ease: "none",
-          },
-          0.3,
-        )
-        .to(
-          "[data-hero-accent]",
-          {
-            opacity: 0,
-            y: -48,
-            rotate: 16,
-            duration: 0.7,
-            ease: "none",
-          },
-          0.3,
-        )
-        .to(
-          "[data-hero-panel]",
-          {
-            left: 0,
-            right: 0,
-            height: "100%",
-            borderRadius: 0,
-            duration: 0.64,
-            ease: "none",
-          },
-          0.36,
-        )
-        .to(
-          "[data-hero-panel-content]",
-          {
-            y: () => (window.innerWidth < 640 ? 88 : 110),
-            duration: 0.64,
-            ease: "none",
-          },
-          0.36,
-        )
-        .to(
-          "[data-hero-scroll]",
-          { opacity: 0, y: 16, duration: 0.24, ease: "none" },
-          0.12,
-        );
+          gsap
+            .timeline({ defaults: { ease: "power3.out" } })
+            .to("[data-hero-copy]", {
+              autoAlpha: 1,
+              y: 0,
+              filter: "blur(0px)",
+              duration: 0.75,
+              stagger: 0.08,
+            })
+            .to(
+              "[data-hero-workspace]",
+              { autoAlpha: 1, y: 0, scale: 1, duration: 0.95 },
+              "-=0.35",
+            )
+            .to(
+              "[data-hero-scroll-note]",
+              { autoAlpha: 1, y: 0, duration: 0.45 },
+              "-=0.35",
+            );
+
+        },
+      );
+
+      return () => media.revert();
     }, sectionRef);
 
     return () => context.revert();
   }, []);
 
+  function changePreview(direction: number) {
+    setActivePreview((current) =>
+      (current + direction + heroWorkspacePreviews.length) %
+      heroWorkspacePreviews.length,
+    );
+  }
+
   return (
     <section
       ref={sectionRef}
-      className="hero-gradient-poskart relative isolate min-h-[145svh] text-zinc-950 sm:min-h-[175svh]"
+      className="hero-gradient-poskart relative isolate overflow-hidden border-b border-blue-100 text-zinc-950"
     >
-      <div className="sticky top-0 h-screen overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-5 top-24 bottom-20 border-x border-t border-blue-950/10 sm:inset-x-8 lg:inset-x-12" />
+      <div className="relative min-h-[100dvh] overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-5 top-24 bottom-8 border-x border-t border-blue-950/10 sm:inset-x-8 lg:inset-x-12" />
 
-        <div className="relative mx-auto h-full max-w-[90rem] px-5 pt-28 sm:px-8 sm:pt-32 lg:px-12">
-          <div
-            data-hero-reveal
-            className="flex items-center justify-between gap-4"
-          >
+        <div className="relative mx-auto max-w-[90rem] px-5 pb-16 pt-28 sm:px-8 sm:pt-32 lg:px-12 lg:pb-20">
+          <div data-hero-copy className="mx-auto max-w-[78rem]">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#00357B]">
-              The operating system for modern photobooths
+              {landingContent.hero.eyebrow}
             </p>
-            <p className="hidden text-xs text-zinc-600 md:block">
-              Built for Android kiosk · Managed from the web
-            </p>
-          </div>
-
-          <div className="relative mt-8 lg:mt-6">
-            <div
-              data-hero-accent
-              className="absolute -left-2 top-0 z-10 hidden text-[7rem] font-black leading-none text-[#C9364A]/20 sm:block lg:-left-5 lg:text-[9rem]"
-              aria-hidden="true"
-            >
-              #
-            </div>
-
-            <h1 className="relative z-[1] text-center text-[2.45rem] font-black uppercase leading-[0.82] tracking-normal min-[375px]:text-[2.75rem] sm:text-[6rem] lg:text-[7rem] xl:text-[9rem]">
-              <span className="block overflow-hidden">
-                <span data-hero-line className="block">
-                  POSKART
-                </span>
-              </span>
-              <span className="block overflow-hidden">
-                <span data-hero-line className="block">
-                  PHOTOBOOTH
-                </span>
-              </span>
-              <span className="block overflow-hidden">
-                <span data-hero-line className="block">
-                  OS
-                </span>
-              </span>
-            </h1>
-
-            <MoveDownRight
-              data-hero-accent
-              className="absolute right-[5%] top-[32%] z-10 hidden size-28 stroke-[2.5] text-[#014EB4]/45 sm:block lg:size-40"
-              aria-hidden="true"
-            />
-
-            <div
-              data-hero-product-scroll
-              className="relative z-10 mx-auto -mt-16 w-full max-w-5xl sm:-mt-28 lg:-mt-44"
-            >
-              <div data-hero-product>
-                <Image
-                  src="/Poskart hero.png"
-                  alt="POSKART dashboard, visual builder, and device management across desktop, tablet, and mobile"
-                  width={1920}
-                  height={1080}
-                  priority
-                  className="h-auto w-full object-contain drop-shadow-[0_32px_35px_rgba(0,0,0,0.28)]"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          data-hero-panel
-          className="invisible absolute inset-x-5 bottom-0 z-20 h-[390px] overflow-hidden rounded-t-[28px] border border-b-0 border-blue-100 bg-white text-zinc-950 opacity-0 shadow-[0_-20px_60px_rgba(0,53,123,0.1)] sm:inset-x-8 sm:h-[250px] lg:inset-x-12 lg:h-[180px]"
-        >
-          <div
-            data-hero-panel-content
-            className="mx-auto h-full max-w-[90rem] px-5 py-6 sm:px-8 lg:px-10 lg:py-8"
-          >
-            <div className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr] lg:items-start">
-              <div>
-                <p className="max-w-2xl text-lg font-medium leading-7 sm:text-xl">
-                  Design the booth, take payments, sync devices, print, and
-                  deliver every memory from one connected workspace.
+            <div className="mt-5">
+              <h1 className="whitespace-nowrap text-[clamp(1.85rem,5.8vw,5.25rem)] font-black uppercase leading-[0.9] tracking-[-0.05em]">
+                Photobooth Sesuai
+                <br />
+                <span className="text-[#00357B]">Brand Anda</span>
+              </h1>
+              <div className="mt-7 max-w-lg">
+                <p className="text-base leading-7 text-zinc-600 sm:text-lg">
+                  {landingContent.hero.description}
                 </p>
-                <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                  <span className="border border-blue-100 bg-blue-50/40 px-3 py-2 text-[#00357B]">
-                    Visual builder
-                  </span>
-                  <span className="border border-blue-100 bg-blue-50/40 px-3 py-2 text-[#00357B]">
-                    Offline kiosk
-                  </span>
-                  <span className="border border-blue-100 bg-blue-50/40 px-3 py-2 text-[#00357B]">
-                    QRIS + print
-                  </span>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href="/register"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#00357B] px-5 text-sm font-bold text-white transition-[background-color,transform] duration-200 hover:bg-[#014EB4] active:translate-y-px"
+                  >
+                    Coba gratis 14 hari <ArrowRight className="size-4" />
+                  </Link>
+                  <Link
+                    href="#features"
+                    className="inline-flex h-11 items-center justify-center rounded-xl border border-[#00357B]/20 bg-white/65 px-5 text-sm font-bold text-[#00357B] transition-[background-color,transform] duration-200 hover:bg-white active:translate-y-px"
+                  >
+                    Lihat fitur
+                  </Link>
                 </div>
               </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-                <Link
-                  href="/download"
-                  className="inline-flex h-12 items-center justify-center gap-2 bg-[#00357B] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#014EB4]"
-                >
-                  <Download className="size-4" />
-                  Download {latestRelease?.version ?? "App"}
-                </Link>
-                <Link
-                  href="/#pricing"
-                  className="inline-flex h-12 items-center justify-center gap-2 border border-blue-200 bg-white px-5 text-sm font-semibold text-[#00357B] transition-colors hover:border-[#00357B] hover:bg-blue-50"
-                >
-                  View pricing <ArrowUpRight className="size-4" />
-                </Link>
-              </div>
-            </div>
-
-            <div className="mt-16 grid gap-8 border-t border-blue-100 pt-10 sm:mt-20 lg:mt-28 lg:grid-cols-[0.7fr_1.3fr] lg:items-end">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                Scroll the booth journey
-              </p>
-              <h2 className="max-w-4xl text-4xl font-black uppercase leading-[0.92] tracking-normal sm:text-6xl lg:text-7xl">
-                One connected flow from idea to printed memory.
-              </h2>
             </div>
           </div>
-        </div>
 
-        <a
-          data-hero-scroll
-          href="#features"
-          aria-label="Explore the POSKART workflow"
-          className="absolute bottom-8 right-8 z-30 hidden size-12 items-center justify-center rounded-full border border-blue-100 bg-white/75 text-[#00357B] shadow-lg shadow-blue-950/10 backdrop-blur-xl transition-transform hover:translate-y-1 lg:flex"
-        >
-          <ArrowDown className="size-5" />
-        </a>
+          <div
+            data-hero-workspace
+            className="relative z-10 mx-auto mt-12 w-[calc(100%+2rem)] max-w-[86rem] sm:mt-16 lg:mt-14 lg:w-[120%]"
+          >
+            <WorkspacePreview
+              activePreview={activePreview}
+              latestRelease={latestRelease}
+              onChangePreview={setActivePreview}
+              onNext={() => changePreview(1)}
+              onPrevious={() => changePreview(-1)}
+              preview={preview}
+            />
+          </div>
+
+          <div
+            data-hero-scroll-note
+            className="relative z-30 mx-auto mt-8 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500"
+          >
+            <ArrowDown className="size-4 text-[#00357B]" />
+            Scroll untuk melihat fitur
+          </div>
+        </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[clamp(14rem,30vw,26rem)] bg-gradient-to-b from-transparent via-white/75 to-white"
+        />
       </div>
     </section>
+  );
+}
+
+function WorkspacePreview({
+  activePreview,
+  latestRelease,
+  onChangePreview,
+  onNext,
+  onPrevious,
+  preview,
+}: {
+  activePreview: number;
+  latestRelease: LatestAppRelease | null;
+  onChangePreview: (index: number) => void;
+  onNext: () => void;
+  onPrevious: () => void;
+  preview: (typeof heroWorkspacePreviews)[number];
+}) {
+  return (
+    <div
+      aria-label="Preview workspace POSKART"
+      className="relative grid overflow-hidden rounded-2xl border border-blue-200/80 bg-[#e9eef7] shadow-[0_26px_65px_rgba(0,53,123,0.18)] lg:grid-cols-[15rem_minmax(0,1fr)]"
+    >
+      <nav
+        aria-label="Bagian software POSKART"
+        className="order-2 flex gap-1 overflow-x-auto border-t border-blue-200 bg-[#dfe7f3] p-2 lg:order-1 lg:min-h-[31rem] lg:flex-col lg:gap-2 lg:border-r lg:border-t-0 lg:p-4"
+      >
+        <div className="hidden items-center gap-1.5 px-2 pb-3 lg:flex">
+          <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+          <span className="size-2.5 rounded-full bg-[#febc2e]" />
+          <span className="size-2.5 rounded-full bg-[#28c840]" />
+        </div>
+        <div className="mb-1 hidden truncate rounded-lg border border-blue-200 bg-white/65 px-3 py-2 text-xs text-zinc-500 lg:block">
+          poskart.my.id
+        </div>
+        <p className="hidden px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500 lg:block">
+          POSKART software
+        </p>
+        {heroWorkspacePreviews.map((item, index) => (
+          <button
+            key={item.id}
+            type="button"
+            aria-current={activePreview === index ? "page" : undefined}
+            onClick={() => onChangePreview(index)}
+            className={
+              activePreview === index
+                ? "relative shrink-0 rounded-lg bg-white px-3 py-2.5 text-left text-xs font-semibold text-[#00357B] shadow-sm before:absolute before:inset-y-2 before:-left-1 before:w-0.5 before:bg-[#00357B] lg:w-full"
+                : "relative shrink-0 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-zinc-500 transition-colors hover:bg-white/70 hover:text-zinc-900 lg:w-full"
+            }
+          >
+            <span className="mr-2 inline-block size-2 rounded-full bg-[#00357B]/40 align-middle" />
+            {item.label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="order-1 min-w-0 bg-white/65 p-2 lg:order-2 lg:p-3">
+        <div className="flex h-9 items-center gap-2 border-b border-blue-100 px-3 text-xs text-zinc-400">
+          <button
+            type="button"
+            aria-label="Preview sebelumnya"
+            onClick={onPrevious}
+            className="rounded p-1 transition-colors hover:bg-blue-50 hover:text-[#00357B]"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label="Preview berikutnya"
+            onClick={onNext}
+            className="rounded p-1 transition-colors hover:bg-blue-50 hover:text-[#00357B]"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+          <RotateCw className="ml-1 size-3.5" />
+          <span className="ml-2 min-w-0 truncate rounded-md bg-blue-50/70 px-3 py-1.5 text-[10px] text-zinc-500">
+            {preview.url}
+          </span>
+          <span className="ml-auto hidden text-[10px] font-medium text-zinc-400 sm:block">
+            {latestRelease ? `v${latestRelease.version}` : "POSKART"}
+          </span>
+        </div>
+        <div className="relative aspect-[16/9] overflow-hidden rounded-lg border border-blue-100 bg-[#f7f9ff]">
+          <Image
+            key={preview.id}
+            src={preview.image.src}
+            alt={preview.image.alt}
+            width={1600}
+            height={1100}
+            sizes="(max-width: 1023px) 95vw, 75vw"
+            priority={activePreview === 0}
+            className="h-full w-full object-cover object-top transition-opacity duration-300"
+          />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/95 via-white/60 to-transparent px-5 pb-4 pt-14 sm:px-8 sm:pb-7">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00357B]">
+              {preview.label}
+            </p>
+            <p className="mt-1 max-w-lg text-sm font-medium text-zinc-700 sm:text-base">
+              {preview.description}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

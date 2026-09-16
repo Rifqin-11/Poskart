@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "POSKART Photobooth",
-  description: "SaaS dashboard and visual builder for POSKART photobooth kiosks.",
+  title: "POSKART | Software receipt photobooth",
+  description:
+    "Kelola receipt photobooth dari satu dashboard. Custom tampilan, QRIS dan cash, antrean, monitoring multi-booth, dan Showcase.",
 };
 
 export default function RootLayout({
@@ -25,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="id"
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >

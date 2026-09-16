@@ -5,12 +5,13 @@ import { buttonVariants } from "@/components/ui/button";
 import { businessProfile } from "@/lib/constants/business";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
+import { PublicMobileNav } from "@/features/root/shell/public-mobile-nav";
 
 const navLinks = [
-  { href: "/#features", label: "Features" },
-  { href: "/#platform", label: "Platform" },
-  { href: "/#workflow", label: "Workflow" },
-  { href: "/#pricing", label: "Pricing" },
+  { href: "/#features", label: "Fitur" },
+  { href: "/#platform", label: "Produk" },
+  { href: "/#workflow", label: "Cara kerja" },
+  { href: "/#pricing", label: "Harga" },
   { href: "https://docs.poskart.my.id", label: "Docs", external: true },
   { href: "/contact", label: "Contact" },
 ];
@@ -120,6 +121,7 @@ export async function PublicHeader({
           )}
         </nav>
 
+        <div className="flex items-center gap-2">
         {userEmail ? (
           <div className="flex items-center gap-3">
             <Link
@@ -143,19 +145,29 @@ export async function PublicHeader({
             </Link>
           </div>
         ) : (
-          <Link
-            href="/login"
-            className={buttonVariants({
-              size: "sm",
-              className: isLanding
-                ? "rounded-full bg-[#00357B] px-5 text-white hover:bg-[#014EB4]"
-                : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
-            })}
-          >
-            Login
-            <ArrowRight className="size-3.5" />
-          </Link>
+          <div className="hidden items-center gap-3 lg:flex">
+            <Link
+              href="/login"
+              className="text-sm font-medium text-zinc-600 transition-colors hover:text-[#00357B]"
+            >
+              Masuk
+            </Link>
+            <Link
+              href="/register"
+              className={buttonVariants({
+                size: "sm",
+                className: isLanding
+                  ? "rounded-full bg-[#00357B] px-5 text-white hover:bg-[#014EB4]"
+                  : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
+              })}
+            >
+              Coba gratis
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
         )}
+        <PublicMobileNav links={navLinks} authenticated={Boolean(userEmail)} />
+        </div>
       </div>
     </header>
   );

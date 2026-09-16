@@ -6,6 +6,7 @@ import { HeroSection } from "@/features/root/home/hero-section";
 import { ScrollyFeatures } from "@/features/root/home/scrolly-features";
 import {
   LandingCTA,
+  LandingFAQ,
   ProductShowcase,
   WorkflowBand,
 } from "@/features/root/home/landing-sections";
@@ -68,11 +69,11 @@ export function HomePage({
                     <span className="size-1.5 rounded-full bg-[#F5A3AE]" />
                     Mulai tanpa kartu kredit
                   </p>
-                  <h2 className="mt-1 max-w-2xl text-lg font-semibold leading-7 tracking-tight sm:text-xl">
-                    Coba gratis 14 hari — tidak perlu kartu kredit
+                   <h2 className="mt-1 max-w-2xl text-lg font-semibold leading-7 tracking-tight sm:text-xl">
+                     Mulai dengan trial 14 hari tanpa kartu kredit
                   </h2>
                   <p className="mt-1.5 max-w-2xl text-xs leading-5 text-blue-100 sm:text-sm">
-                    1 device · Theme builder · QRIS · Gallery · Data tidak dihapus setelah berakhir
+                     1 device · Custom tampilan · QRIS dan cash · Showcase termasuk semua paket
                   </p>
                 </div>
               </div>
@@ -82,7 +83,7 @@ export function HomePage({
                   href="/register"
                   className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-5 text-sm font-bold text-[#00357B] transition-[background-color,transform] duration-200 hover:bg-blue-50 active:translate-y-px"
                 >
-                  Mulai trial gratis <span className="ml-2 text-base">→</span>
+                   Coba gratis 14 hari <span className="ml-2 text-base">→</span>
                 </a>
                 <span className="text-center text-[11px] text-blue-200 sm:px-1 lg:text-right">
                   Siap dalam beberapa menit
@@ -94,6 +95,7 @@ export function HomePage({
           <PricingCards plans={plans} />
         </div>
       </section>
+      <LandingFAQ />
       <LandingCTA planLabel={planLabel} />
       <PublicFooter className="border-t border-blue-100" />
     </main>

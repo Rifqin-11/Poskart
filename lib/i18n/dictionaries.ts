@@ -300,7 +300,7 @@ export const dictionaries = {
     "templates.addTemplate": "Add Frame",
     "templates.frameCategories": "Frame categories",
     "templates.noTemplates": "No Frame yet",
-    "templates.noTemplatesDesc": "Create your first frame for the Flutter app.",
+    "templates.noTemplatesDesc": "Create your first frame for the Poskart app.",
     "vouchers.tourCampaignTitle": "Voucher campaign",
     "vouchers.tourCampaignDesc":
       "Every campaign stores voucher codes and its allocations. Vouchers are only available for devices that receive an allocation.",

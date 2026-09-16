@@ -4,66 +4,30 @@ import { useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   Check,
-  CloudUpload,
   CreditCard,
   LayoutTemplate,
   MonitorSmartphone,
+  MonitorCheck,
   Printer,
+  ListOrdered,
+  Share2,
   WifiOff,
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { cn } from "@/lib/utils";
+import { landingContent } from "@/features/root/home/landing-content";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const stories = [
-  {
-    number: "01",
-    eyebrow: "Design",
-    title: "Build every booth screen without touching app code.",
-    description:
-      "Arrange landing, payment, frame picker, camera, preview, and thank-you screens in a visual builder. Publish a complete experience to the right kiosk.",
-    points: [
-      "Drag-and-drop canvas",
-      "Frame template builder",
-      "Per-device publishing",
-    ],
-    image: "/iPad Pro 11.png",
-    imageAlt: "POSKART visual builder shown on a tablet",
-    icon: LayoutTemplate,
-  },
-  {
-    number: "02",
-    eyebrow: "Operate",
-    title: "Keep the booth moving, even when the connection does not.",
-    description:
-      "Kiosk assets stay cached locally, sessions keep running offline, and pending media uploads retry when connectivity returns. Operators stay focused on guests.",
-    points: [
-      "Offline-ready assets",
-      "QRIS and voucher modes",
-      "Reliable print queue",
-    ],
-    image: "/POSKART Photobooth.png",
-    imageAlt: "POSKART operations dashboard",
-    icon: MonitorSmartphone,
-  },
-  {
-    number: "03",
-    eyebrow: "Deliver",
-    title: "Turn every finished session into a trackable delivery.",
-    description:
-      "Upload framed and original photos, create a customer download link, and monitor the transaction, gallery, device, and payout trail from one dashboard.",
-    points: [
-      "Cloud gallery",
-      "QR and email delivery",
-      "Transaction visibility",
-    ],
-    image: "/iPhone 13 Pro.png",
-    imageAlt: "POSKART mobile device dashboard",
-    icon: CloudUpload,
-  },
-] as const;
+const storyIcons = [LayoutTemplate, MonitorSmartphone, MonitorCheck, Share2] as const;
+
+const stories = landingContent.stories.map((story, index) => ({
+  ...story,
+  image: story.asset.src,
+  imageAlt: story.asset.alt,
+  icon: storyIcons[index],
+}));
 
 export function ScrollyFeatures() {
   const rootRef = useRef<HTMLElement>(null);
@@ -150,15 +114,15 @@ export function ScrollyFeatures() {
                   ref={(element) => {
                     storyRefs.current[index] = element;
                   }}
-                  className="flex min-h-0 flex-col justify-center border-b border-blue-100 py-16 lg:min-h-[82vh] lg:py-24"
+                  className="flex min-h-0 flex-col justify-center border-b border-blue-100 py-16 lg:min-h-[70vh] lg:py-20"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[#00357B]">
+                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#00357B]">
                       {story.number} / {story.eyebrow}
                     </span>
                     <Icon className="size-5 text-[#C9364A]" />
                   </div>
-                  <h3 className="mt-8 text-3xl font-bold leading-tight tracking-normal sm:text-4xl">
+                  <h3 className="mt-7 text-3xl font-bold leading-tight tracking-[-0.025em] sm:text-4xl">
                     {story.title}
                   </h3>
                   <p className="mt-5 max-w-xl text-base leading-8 text-zinc-600">
@@ -189,8 +153,8 @@ export function ScrollyFeatures() {
           <div className="sticky top-24 hidden h-[calc(100vh-7rem)] items-center self-start lg:flex">
             <div className="relative h-[70vh] rounded-4xl w-full overflow-hidden border border-blue-200/70 bg-[linear-gradient(145deg,#00357B_0%,#014EB4_58%,#082952_100%)] shadow-[0_24px_70px_rgba(0,53,123,0.2)]">
               <div className="absolute inset-x-5 top-5 z-10 flex items-center justify-between gap-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-300 xl:inset-x-7 xl:top-7 xl:text-xs">
-                <span className="min-w-0 truncate">POSKART system</span>
-                <span>{String(activeStory + 1).padStart(2, "0")} / 03</span>
+                <span className="min-w-0 truncate">Alur aplikasi booth</span>
+                <span>{String(activeStory + 1).padStart(2, "0")} / {String(stories.length).padStart(2, "0")}</span>
               </div>
 
               {stories.map((story, index) => (
@@ -237,10 +201,10 @@ export function ScrollyFeatures() {
       <div className="border-y border-blue-100 bg-[#f8faff]">
         <div className="mx-auto grid max-w-[90rem] divide-y divide-blue-100 px-5 sm:px-8 md:grid-cols-4 md:divide-x md:divide-y-0 lg:px-12">
           {[
-            { icon: WifiOff, label: "Offline-ready kiosk" },
-            { icon: CreditCard, label: "QRIS and vouchers" },
-            { icon: Printer, label: "Protected print flow" },
-            { icon: CloudUpload, label: "Cloud delivery" },
+            { icon: CreditCard, label: "QRIS dan cash" },
+            { icon: ListOrdered, label: "Antrean pengunjung" },
+            { icon: Printer, label: "Print flow terpantau" },
+            { icon: WifiOff, label: "Booth tetap siap berjalan" },
           ].map(({ icon: Icon, label }) => (
             <div key={label} className="flex items-center gap-3 py-5 md:px-5">
               <Icon className="size-4 text-[#00357B]" />
