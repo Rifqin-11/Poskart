@@ -32,11 +32,11 @@ const sizes = {
 
 const variants = {
   primary:
-    "border border-transparent text-white [background:linear-gradient(#014EB4,#014EB4)_padding-box,linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(255,255,255,0.3)_55%,rgba(255,255,255,0.68)_100%)_border-box] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-2px_8px_rgba(0,40,100,0.3),0_10px_24px_rgba(1,78,180,0.3)] hover:[background:linear-gradient(#00357B,#00357B)_padding-box,linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(255,255,255,0.3)_55%,rgba(255,255,255,0.68)_100%)_border-box]",
+    "border border-t-transparent border-b-white/60 bg-[#014EB4] text-white shadow-[0_10px_24px_rgba(1,78,180,0.3)] hover:bg-[#00357B]",
   secondary:
     "border border-black/5 bg-[#E9EBEF] text-[#1F2937] shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_10px_rgba(15,23,42,0.08)] hover:bg-[#DDE1E6]",
   outlineLight:
-    "border border-white/50 bg-white/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_20px_rgba(0,30,80,0.2)] backdrop-blur-md hover:bg-white/20",
+    "border border-t-transparent border-b-white/60 bg-white/10 text-white backdrop-blur-md hover:bg-white/20",
 };
 
 export function LandingButton({

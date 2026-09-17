@@ -228,7 +228,7 @@ export function HeroSection() {
         <div className="relative">
           {/* Full-width blue banner reaching the corners of the container */}
           <div className="relative overflow-hidden rounded-[28px] border border-white/40 bg-[radial-gradient(120%_130%_at_20%_20%,#5FA8FF_0%,#1F6FD0_52%,#014EB4_100%)] px-6 py-12 shadow-[0_28px_70px_rgba(0,53,123,0.22)] sm:rounded-[36px] sm:px-10 sm:py-16 lg:px-16 lg:py-20">
-            <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-4">
+            <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-4">
               {/* Left: Copy */}
               <div ref={copyRef} className="relative z-30 text-white">
                 <p data-hero-copy className="text-xs font-semibold uppercase tracking-[0.2em] text-white/75">
@@ -240,13 +240,23 @@ export function HeroSection() {
                 <p data-hero-copy className="mt-5 max-w-lg text-base leading-7 text-white/85 sm:text-lg">
                   Kelola tampilan, transaksi, perangkat, dan hasil foto dari satu sistem POSKART.
                 </p>
-                <div data-hero-copy className="mt-8 flex flex-wrap items-center gap-3">
-                  <LandingButton variant="primary" size="lg" asChild>
+                <div data-hero-copy className="mt-8 flex items-center gap-3">
+                  <LandingButton
+                    variant="primary"
+                    size="lg"
+                    asChild
+                    className="h-12 flex-1 rounded-xl px-3 text-sm sm:h-14 sm:flex-none sm:rounded-2xl sm:px-8 sm:text-base"
+                  >
                     <Link href="/register">
                       Coba gratis <ArrowRight className="size-4" />
                     </Link>
                   </LandingButton>
-                  <LandingButton variant="outlineLight" size="lg" asChild>
+                  <LandingButton
+                    variant="outlineLight"
+                    size="lg"
+                    asChild
+                    className="h-12 flex-1 rounded-xl px-3 text-sm sm:h-14 sm:flex-none sm:rounded-2xl sm:px-8 sm:text-base"
+                  >
                     <Link href="#workflow">
                       Lihat cara kerja <ArrowRight className="size-4" />
                     </Link>
@@ -267,8 +277,8 @@ export function HeroSection() {
                 <div className="aspect-[10/7]" />
               </div>
 
-              {/* Mobile visual stack */}
-              <div ref={mobileVisualRef} className="flex flex-col items-center gap-5 lg:hidden">
+              {/* Mobile visual */}
+              <div ref={mobileVisualRef} className="relative lg:hidden">
                 <Image
                   src={landingAssets.hero.src}
                   alt="Dashboard admin POSKART untuk mengelola operasional photobooth"
@@ -277,16 +287,6 @@ export function HeroSection() {
                   className="h-auto w-full rounded-[20px] border border-white/60 object-cover shadow-2xl"
                   priority
                 />
-                <div className="flex items-start justify-center gap-4">
-                  <Image
-                    src={landingAssets.boothApp.src}
-                    alt="Aplikasi booth POSKART yang berjalan di tablet Android"
-                    width={800}
-                    height={500}
-                    className="h-auto w-[62%] rounded-[16px] border border-white/60 object-cover shadow-xl"
-                  />
-                  <ReceiptMockup />
-                </div>
               </div>
             </div>
           </div>
