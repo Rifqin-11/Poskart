@@ -76,7 +76,10 @@ export function PublicHeaderActions({
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard"
-            className={buttonVariants({ size: "sm", className: primaryClass })}
+            className={cn(
+              buttonVariants({ size: "sm", className: primaryClass }),
+              "hidden lg:inline-flex",
+            )}
           >
             Dashboard
             <ArrowRight className="size-3.5" />
