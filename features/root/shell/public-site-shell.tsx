@@ -1,17 +1,11 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { Avatar } from "@/components/ui/avatar";
-import { buttonVariants } from "@/components/ui/button";
 import { businessProfile } from "@/lib/constants/business";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
-import { PublicMobileNav } from "@/features/root/shell/public-mobile-nav";
+import { PublicHeaderActions } from "@/features/root/shell/public-header-actions";
+import type { PublicNavLink } from "@/features/root/shell/public-mobile-nav";
 
-const navLinks: Array<{
-  href: string;
-  label: string;
-  external?: boolean;
-}> = [
+const navLinks: PublicNavLink[] = [
   { href: "/#features", label: "Fitur" },
   { href: "/#workflow", label: "Cara kerja" },
   { href: "/#pricing", label: "Harga" },
@@ -19,19 +13,19 @@ const navLinks: Array<{
   { href: "/download", label: "Download" },
 ];
 
-export async function PublicHeader({
+export function PublicHeader({
   variant = "default",
+  userEmail,
 }: {
   variant?: "default" | "landing";
+  /**
+   * When a route already resolved the session on the server, pass it here and
+   * the header renders it directly. When omitted (the statically prerendered
+   * landing page), the actions component asks for the session from the browser
+   * after hydration instead.
+   */
+  userEmail?: string | null;
 }) {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  const userEmail =
-    typeof data?.claims?.email === "string" ? data.claims.email : null;
-  const initials = userEmail
-    ? userEmail.split("@")[0].slice(0, 2).toUpperCase()
-    : "PK";
-
   const isLanding = variant === "landing";
 
   return (
@@ -60,7 +54,7 @@ export async function PublicHeader({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/Logo Poskart.png"
+              src="/logo-mark.webp"
               alt="POSKART Logo"
               className="size-7 object-contain"
             />
@@ -124,53 +118,12 @@ export async function PublicHeader({
           )}
         </nav>
 
-        <div className="flex items-center gap-2">
-        {userEmail ? (
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard"
-              className={buttonVariants({
-                size: "sm",
-                className: isLanding
-                  ? "rounded-full bg-[#00357B] px-5 text-white hover:bg-[#014EB4]"
-                  : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
-              })}
-            >
-              Dashboard
-              <ArrowRight className="size-3.5" />
-            </Link>
-            <Link
-              href="/dashboard"
-              aria-label={`Open dashboard as ${userEmail}`}
-              title={userEmail}
-            >
-              <Avatar name={initials} />
-            </Link>
-          </div>
-        ) : (
-          <div className="hidden items-center gap-3 lg:flex">
-            <Link
-              href="/login"
-              className="text-sm font-medium text-zinc-600 transition-colors hover:text-[#00357B]"
-            >
-              Masuk
-            </Link>
-            <Link
-              href="/register"
-              className={buttonVariants({
-                size: "sm",
-                className: isLanding
-                  ? "rounded-full bg-[#00357B] px-5 text-white hover:bg-[#014EB4]"
-                  : "rounded-full bg-zinc-950 px-5 text-white hover:bg-zinc-800",
-              })}
-            >
-              Coba gratis
-              <ArrowRight className="size-3.5" />
-            </Link>
-          </div>
-        )}
-        <PublicMobileNav links={navLinks} authenticated={Boolean(userEmail)} />
-        </div>
+        <PublicHeaderActions
+          isLanding={isLanding}
+          links={navLinks}
+          initialEmail={userEmail ?? null}
+          resolveSession={userEmail === undefined}
+        />
       </div>
     </header>
   );
@@ -184,6 +137,26 @@ export function PublicPageShell({ children }: { children: React.ReactNode }) {
       <PublicFooter />
     </main>
   );
+}
+
+/**
+ * Header variant for pages that resolve the session on the server.
+ *
+ * Only use this on routes that are already dynamic. The statically prerendered
+ * landing page must use the plain `PublicHeader`, which resolves the session
+ * from the browser after hydration instead.
+ */
+export async function PublicHeaderWithSession({
+  variant = "landing",
+}: {
+  variant?: "default" | "landing";
+}) {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const userEmail =
+    typeof data?.claims?.email === "string" ? data.claims.email : null;
+
+  return <PublicHeader variant={variant} userEmail={userEmail} />;
 }
 
 export function PublicFooter({ className }: { className?: string }) {
@@ -203,7 +176,7 @@ export function PublicFooter({ className }: { className?: string }) {
             <div className="mb-3 flex items-center gap-2.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/Logo Poskart.png"
+                src="/logo-mark.webp"
                 alt="POSKART Logo"
                 className="size-6 object-contain"
               />

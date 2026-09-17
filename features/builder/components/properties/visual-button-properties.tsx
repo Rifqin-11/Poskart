@@ -24,22 +24,32 @@ export function VisualButtonProperties({
 }: {
   selectedNode: BuilderNode;
   uploading: boolean;
-  onImageUpload: (file: File) => Promise<void>;
+  onImageUpload: (file: File) => Promise<string>;
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
   section?: "content" | "style" | "advanced";
 }) {
   // content: semantic role + page role (behavior/action bindings)
   if (section === "content") {
     return (
-      <PanelSection
-        title="Button"
-        icon={<PaintBucket className="size-3.5 text-zinc-500" />}
-      >
-        <ButtonSemanticRole
-          selectedNode={selectedNode}
-          updateNodeProps={updateNodeProps}
-        />
-      </PanelSection>
+      <>
+        <PanelSection
+          title="Button"
+          icon={<PaintBucket className="size-3.5 text-zinc-500" />}
+        >
+          <ButtonSemanticRole
+            selectedNode={selectedNode}
+            updateNodeProps={updateNodeProps}
+          />
+        </PanelSection>
+        {isCameraTakePhotoButton(selectedNode) ? (
+          <AdaptiveTakePhotoProperties
+            selectedNode={selectedNode}
+            uploading={uploading}
+            onImageUpload={onImageUpload}
+            updateNodeProps={updateNodeProps}
+          />
+        ) : null}
+      </>
     );
   }
 
@@ -84,8 +94,143 @@ export function VisualButtonProperties({
     );
   }
 
-  // advanced: nothing button-specific — node info shown by parent panel
   return null;
+}
+
+function isCameraTakePhotoButton(selectedNode: BuilderNode) {
+  return (
+    selectedNode.page === "camera" &&
+    ["camera.take_photo", "camera.capture_or_continue"].includes(
+      readString(selectedNode.props.semanticRole, ""),
+    )
+  );
+}
+
+function AdaptiveTakePhotoProperties({
+  selectedNode,
+  uploading,
+  onImageUpload,
+  updateNodeProps,
+}: {
+  selectedNode: BuilderNode;
+  uploading: boolean;
+  onImageUpload: (file: File) => Promise<string>;
+  updateNodeProps: (id: string, props: Record<string, unknown>) => void;
+}) {
+  const enabled =
+    selectedNode.props.semanticRole === "camera.capture_or_continue";
+  const beforeImage = readString(selectedNode.props.src, "");
+  const completeImage = readString(selectedNode.props.completedSrc, "");
+
+  const setEnabled = (value: boolean) => {
+    updateNodeProps(selectedNode.id, {
+      semanticRole: value ? "camera.capture_or_continue" : "camera.take_photo",
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-3 rounded-lg border border-blue-100 bg-blue-50/50 p-2.5">
+        <div>
+          <div className="text-xs font-semibold text-zinc-800">Tombol adaptif</div>
+          <p className="mt-1 text-[10px] leading-4 text-zinc-500">
+            Satu tombol mengambil foto, lalu lanjut ke preview setelah semua foto lengkap.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          onClick={() => setEnabled(!enabled)}
+          className={cn(
+            "relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors",
+            enabled ? "bg-[#00357B]" : "bg-zinc-300",
+          )}
+        >
+          <span className={cn(
+            "absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform",
+            enabled ? "translate-x-4" : "translate-x-0.5",
+          )} />
+        </button>
+      </div>
+
+      {enabled ? (
+        <>
+          <StateImageField
+            label="Sebelum foto lengkap"
+            value={beforeImage}
+            placeholder="Gambar Take Photo / Click"
+            uploading={uploading}
+            onUpload={onImageUpload}
+            onChange={(value) => updateNodeProps(selectedNode.id, { src: value })}
+            onClear={() => updateNodeProps(selectedNode.id, { src: null })}
+            onUploaded={(url) => updateNodeProps(selectedNode.id, { src: url })}
+          />
+          <StateImageField
+            label="Setelah foto lengkap"
+            value={completeImage}
+            placeholder="Gambar Next / Finish"
+            uploading={uploading}
+            onUpload={onImageUpload}
+            onChange={(value) => updateNodeProps(selectedNode.id, { completedSrc: value })}
+            onClear={() => updateNodeProps(selectedNode.id, { completedSrc: null })}
+            onUploaded={(url) => updateNodeProps(selectedNode.id, { completedSrc: url })}
+          />
+        </>
+      ) : (
+        <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50 p-2 text-[10px] leading-4 text-zinc-500">
+          Aktifkan untuk mengganti gambar tombol dan aksi menjadi Lanjut ke Preview setelah semua foto selesai.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StateImageField({
+  label,
+  value,
+  placeholder,
+  uploading,
+  onUpload,
+  onChange,
+  onClear,
+  onUploaded,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  uploading: boolean;
+  onUpload: (file: File) => Promise<string>;
+  onChange: (value: string) => void;
+  onClear: () => void;
+  onUploaded?: (url: string) => void;
+}) {
+  return (
+    <div className="rounded-md border border-zinc-200 bg-zinc-50 p-2 text-xs">
+      <div className="mb-1.5 font-semibold text-zinc-600">{label}</div>
+      {value ? (
+        <div className="mb-2 flex items-center gap-2 rounded border border-zinc-200 bg-white p-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={value} alt={label} className="h-8 w-12 rounded border border-zinc-100 object-contain" />
+          <span className="flex-1 truncate text-[10px] text-zinc-400">Image loaded</span>
+          <button type="button" onClick={onClear} className="text-sm font-bold text-zinc-400 hover:text-red-500">x</button>
+        </div>
+      ) : null}
+      <Input className="mt-0.5 bg-white" value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+      <ImageUploadDropzone
+        compact
+        className="mt-2"
+        accept={BUILDER_IMAGE_ACCEPT}
+        label="Upload image"
+        helperText="Drag and drop, atau pilih file"
+        disabled={uploading}
+        onUpload={async (file) => {
+          const url = await onUpload(file);
+           onUploaded?.(url);
+        }}
+      />
+    </div>
+  );
 }
 
 function ButtonImageDesign({
@@ -96,7 +241,7 @@ function ButtonImageDesign({
 }: {
   selectedNode: BuilderNode;
   uploading: boolean;
-  onImageUpload: (file: File) => Promise<void>;
+  onImageUpload: (file: File) => Promise<string>;
   updateNodeProps: (id: string, props: Record<string, unknown>) => void;
 }) {
   const src = readString(selectedNode.props.src, "");
@@ -144,7 +289,10 @@ function ButtonImageDesign({
         label="Drop button image"
         helperText="Drag and drop, or click to browse"
         disabled={uploading}
-        onUpload={onImageUpload}
+        onUpload={async (file) => {
+          const url = await onImageUpload(file);
+          updateNodeProps(selectedNode.id, { src: url });
+        }}
       />
     </div>
   );

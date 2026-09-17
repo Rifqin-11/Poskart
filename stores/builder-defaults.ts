@@ -116,6 +116,19 @@ export function createDefaultBuilderNodeProps(type: BuilderNode["type"]) {
     };
   }
 
+  if (type === "flow-progress") {
+    return {
+      isShared: true,
+      variant: "segments",
+      activeColor: "#18181B",
+      inactiveColor: "#D4D4D8",
+      showLabel: false,
+      labelFormat: "{current} / {total}",
+      progressHeight: 8,
+      gap: 6,
+    };
+  }
+
   if (type === "camera-timer") {
     return {
       content: "3",

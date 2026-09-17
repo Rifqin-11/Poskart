@@ -17,6 +17,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { cn } from "@/lib/utils";
 import { landingContent } from "@/features/root/home/landing-content";
+import { useNearViewport } from "@/features/root/home/use-near-viewport";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -43,7 +44,13 @@ export function ScrollyFeatures() {
   const previousStoryRef = useRef(0);
   const [activeStory, setActiveStory] = useState(0);
 
+  // Scrollytelling sits below the fold. Its GSAP timelines and ScrollTrigger
+  // geometry reads are deferred until the section is nearly in view so they
+  // never run during the hero's LCP window.
+  const nearViewport = useNearViewport(rootRef);
+
   useLayoutEffect(() => {
+    if (!nearViewport) return;
     if (!rootRef.current) return;
 
     const context = gsap.context(() => {
@@ -139,7 +146,7 @@ export function ScrollyFeatures() {
     }, rootRef);
 
     return () => context.revert();
-  }, []);
+  }, [nearViewport]);
 
   return (
     <section

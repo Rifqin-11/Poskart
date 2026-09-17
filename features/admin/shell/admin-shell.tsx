@@ -248,7 +248,7 @@ function SidebarContent({
         <div className="grid size-10 place-items-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200/70">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/Logo Poskart.png"
+            src="/logo-mark.webp"
             alt="POSKART Logo"
             className="size-7 object-contain"
           />
@@ -503,7 +503,7 @@ export function AdminShell({
                   <div className="grid size-6 place-items-center overflow-hidden rounded-lg bg-white ring-1 ring-zinc-200/80">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src="/Logo Poskart.png"
+                      src="/logo-mark.webp"
                       alt="POSKART Logo"
                       className="size-4 object-contain"
                     />

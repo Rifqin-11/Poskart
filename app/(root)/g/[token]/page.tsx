@@ -140,7 +140,7 @@ export default async function PublicSharedGalleryPage({
             <span className="grid size-10 place-items-center overflow-hidden rounded-xl border border-zinc-200 bg-white">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/Logo Poskart.png"
+                src="/logo-mark.webp"
                 alt="POSKART"
                 className="size-8 object-contain"
               />

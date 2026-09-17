@@ -30,6 +30,7 @@ const OVERLAY_REAL_RENDER_TYPES = new Set<BuilderNode["type"]>([
   "camera-timer",
   "camera-shot-counter",
   "camera-flash",
+  "flow-progress",
 ]);
 
 /** Parse #RRGGBB into [r,g,b]; returns null for malformed input. */
@@ -203,6 +204,7 @@ export function NodeRenderer({
   onEditCommit,
   onEditCancel,
   onStartEdit,
+  flowProgress,
 }: {
   node: BuilderNode;
   editing?: boolean;
@@ -211,6 +213,7 @@ export function NodeRenderer({
   onEditCommit?: () => void;
   onEditCancel?: () => void;
   onStartEdit?: () => void;
+  flowProgress?: { current: number; total: number };
 }) {
   const canvas = useBuilderStore((state) => state.canvas);
   const isOverlayMode = !!canvas.overlayMode;
@@ -220,14 +223,23 @@ export function NodeRenderer({
     node.type === "button" &&
     readString((node.props.semanticRole as string | undefined) ?? "", "") ===
       "camera.continue";
+  const isAdaptiveCapture =
+    node.type === "button" &&
+    readString(node.props.semanticRole, "") === "camera.capture_or_continue";
 
   // A node with an uploaded image renders that image (real preview) instead of
   // the overlay hotspot — for every button role plus image/background-decoration.
-  const hasImage = readString(node.props.src, "") !== "";
+  const hasImage =
+    readString(node.props.src, "") !== "" ||
+    (isAdaptiveCapture && readString(node.props.completedSrc, "") !== "");
 
   // Default font size scales with canvas (ref 1080px → 30px ≈ 2.8%; min 14px)
   const scaledDefaultFontSize = Math.max(14, Math.round(canvas.width * 0.028));
   const fontSize = readNumber(node.props.fontSize, scaledDefaultFontSize);
+
+  if (node.type === "flow-progress") {
+    return <FlowProgressPreview node={node} progress={flowProgress} />;
+  }
 
   // Overlay mode keeps generic controls as hotspots, while visual preview slots
   // and image-backed nodes still render their real content so the builder
@@ -315,6 +327,7 @@ export function NodeRenderer({
     const reverseOrder = iconPos === "right" || iconPos === "bottom";
 
     const src = readString(node.props.src, "");
+    const completedSrc = readString(node.props.completedSrc, "");
 
     // Flash toggle: render "Flash on / Flash off" text label instead of hotspot
     if (role === "camera.flash_toggle") {
@@ -334,7 +347,7 @@ export function NodeRenderer({
       );
     }
 
-    if (src) {
+    if (src || (isAdaptiveCapture && completedSrc)) {
       return (
         <div
           className="relative h-full w-full overflow-hidden"
@@ -347,7 +360,7 @@ export function NodeRenderer({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={src}
+            src={src || completedSrc}
             alt={label}
             className="h-full w-full object-fill pointer-events-none select-none"
           />
@@ -1311,6 +1324,96 @@ export function NodeRenderer({
       }}
     >
       {readString(node.props.content, readString(node.props.label, node.type))}
+    </div>
+  );
+}
+
+function FlowProgressPreview({
+  node,
+  progress,
+}: {
+  node: BuilderNode;
+  progress?: { current: number; total: number };
+}) {
+  const variant = readString(node.props.variant, "segments");
+  const current = Math.max(1, progress?.current ?? 1);
+  const total = Math.max(current, progress?.total ?? 5);
+  const activeColor = readString(node.props.activeColor, "#18181B");
+  const inactiveColor = readString(node.props.inactiveColor, "#D4D4D8");
+  const height = Math.max(3, readNumber(node.props.progressHeight, 8));
+  const gap = Math.max(2, readNumber(node.props.gap, 6));
+  const label = readString(node.props.labelFormat, "{current} / {total}")
+    .replace("{current}", String(current))
+    .replace("{total}", String(total));
+
+  if (variant === "number") {
+    return (
+      <div
+        className="flex h-full w-full items-center justify-center font-mono text-sm font-bold"
+        style={{ color: activeColor }}
+      >
+        {label}
+      </div>
+    );
+  }
+
+  if (variant === "bar") {
+    return (
+      <div className="flex h-full w-full items-center gap-3">
+        <div
+          className="h-full flex-1 overflow-hidden rounded-full"
+          style={{ background: inactiveColor }}
+        >
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${(current / total) * 100}%`,
+              background: activeColor,
+            }}
+          />
+        </div>
+        {node.props.showLabel === true ? (
+          <span className="shrink-0 text-xs font-bold" style={{ color: activeColor }}>
+            {label}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (variant === "dots") {
+    return (
+      <div className="flex h-full w-full items-center justify-center" style={{ gap }}>
+        {Array.from({ length: total }, (_, index) => (
+          <span
+            key={index}
+            className="block rounded-full"
+            style={{
+              width: height,
+              height: height,
+              background: index < current ? activeColor : inactiveColor,
+              opacity: index === current - 1 ? 1 : 0.8,
+            }}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full w-full items-center" style={{ gap }}>
+      {Array.from({ length: total }, (_, index) => (
+        <span
+          key={index}
+          className="block rounded-full"
+          style={{
+            height,
+            flex: index === current - 1 ? 3 : 1,
+            minWidth: height,
+            background: index < current ? activeColor : inactiveColor,
+          }}
+        />
+      ))}
     </div>
   );
 }

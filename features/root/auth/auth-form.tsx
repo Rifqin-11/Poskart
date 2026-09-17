@@ -47,7 +47,7 @@ export function AuthForm({
           <Link href="/" className="auth-brand">
             <span className="auth-brand__mark">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/Logo Poskart.png" alt="" className="size-8 object-contain" />
+              <img src="/logo-mark.webp" alt="" className="size-8 object-contain" />
             </span>
             <span>
               <strong>POSKART</strong>
@@ -63,7 +63,7 @@ export function AuthForm({
             <div className="auth-mobile-brand">
               <span className="auth-brand__mark">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/Logo Poskart.png" alt="POSKART" className="size-8 object-contain" />
+                <img src="/logo-mark.webp" alt="POSKART" className="size-8 object-contain" />
               </span>
               <strong>POSKART</strong>
             </div>

@@ -14,7 +14,7 @@ export type GalleryBranding = {
 
 export const DEFAULT_GALLERY_BRANDING: GalleryBranding = {
   brandName: "POSKART",
-  logoUrl: "/Logo Poskart.png",
+  logoUrl: "/logo-mark.webp",
   subtitle: "Receipt Photobooth",
   footerText: "POSKART",
 };

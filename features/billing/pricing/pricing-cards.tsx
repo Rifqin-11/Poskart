@@ -39,15 +39,24 @@ export function PricingCards({
     [activeDuration, visiblePlans],
   );
 
+  const hasMountedRef = useRef(false);
   useEffect(() => {
-    const activeTab =
-      durationTabsRef.current?.querySelector<HTMLElement>(
-        '[aria-selected="true"]',
-      );
-    activeTab?.scrollIntoView({
+    // Never scroll on first render: `scrollIntoView` on a below-the-fold
+    // element forces a document-level scroll and layout recalculation while
+    // other sections are still initialising.
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    const container = durationTabsRef.current;
+    const activeTab = container?.querySelector<HTMLElement>(
+      '[aria-selected="true"]',
+    );
+    if (!container || !activeTab) return;
+    // Only the tab strip scrolls horizontally.
+    container.scrollTo({
+      left: activeTab.offsetLeft - (container.clientWidth - activeTab.clientWidth) / 2,
       behavior: "smooth",
-      block: "nearest",
-      inline: "center",
     });
   }, [activeDuration]);
 

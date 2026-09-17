@@ -58,7 +58,11 @@ export function SortableLayer({ node }: { node: BuilderNode }) {
               {node.id === "page-background" ? "Page background" : component?.label ?? node.type}
             </span>
             <span className={cn("block truncate text-[9px]", isSelected ? "text-[#5c7fa5]" : "text-zinc-400")}>
-              {node.id === "page-background" ? "Canvas base" : node.id}
+              {node.id === "page-background"
+                ? "Canvas base"
+                : node.props.isShared === true
+                  ? "Global · every page"
+                  : node.id}
             </span>
           </span>
         </div>

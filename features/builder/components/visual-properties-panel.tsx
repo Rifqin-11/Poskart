@@ -26,6 +26,7 @@ import {
 import { useBuilderStore } from "@/stores/builder-store";
 import type { InspectorTab } from "@/features/builder/components/visual-properties-primitives";
 import type { BuilderNode } from "@/types/builder";
+import { FlowProgressProperties } from "@/features/builder/components/properties/visual-flow-progress-properties";
 
 const NON_GENERIC_APPEARANCE_TYPES = new Set([
   // these have their own color/style properties — no generic Appearance section needed
@@ -55,10 +56,12 @@ export function PropertiesPanel({
   selectedNode,
   onStartEdit,
   activeTab,
+  flowProgress,
 }: {
   selectedNode?: BuilderNode;
   onStartEdit: (node: BuilderNode) => void;
   activeTab: InspectorTab;
+  flowProgress?: { current: number; total: number };
 }) {
   const updateNode = useBuilderStore((state) => state.updateNode);
   const updateNodeProps = useBuilderStore((state) => state.updateNodeProps);
@@ -69,14 +72,14 @@ export function PropertiesPanel({
     useState<BuilderMediaUploadStatus | null>(null);
 
   const handleImageUpload = async (file: File) => {
-    if (!selectedNode) return;
+    if (!selectedNode) throw new Error("No node selected");
     const validationError = getBuilderImageValidationError(file);
     if (validationError) throw new Error(validationError);
     setMediaUploadStatus(null);
     setUploading(true);
     try {
       const image = await uploadBuilderImage(file);
-      updateNodeProps(selectedNode.id, { src: image.url });
+      return image.url;
     } finally {
       setUploading(false);
     }
@@ -147,9 +150,18 @@ export function PropertiesPanel({
           <VisualButtonProperties
             selectedNode={selectedNode}
             uploading={uploading}
-            onImageUpload={handleImageUpload}
+            onImageUpload={async (file) => {
+              return handleImageUpload(file);
+            }}
             updateNodeProps={updateNodeProps}
             section="content"
+          />
+        )}
+        {selectedNode.type === "flow-progress" && (
+          <FlowProgressProperties
+            selectedNode={selectedNode}
+            updateNodeProps={updateNodeProps}
+            flowProgress={flowProgress}
           />
         )}
         {mediaNode && (
@@ -224,9 +236,18 @@ export function PropertiesPanel({
           <VisualButtonProperties
             selectedNode={selectedNode}
             uploading={uploading}
-            onImageUpload={handleImageUpload}
+            onImageUpload={async (file) => {
+              return handleImageUpload(file);
+            }}
             updateNodeProps={updateNodeProps}
             section="style"
+          />
+        )}
+        {selectedNode.type === "flow-progress" && (
+          <FlowProgressProperties
+            selectedNode={selectedNode}
+            updateNodeProps={updateNodeProps}
+            flowProgress={flowProgress}
           />
         )}
         {mediaNode && (
@@ -314,7 +335,9 @@ export function PropertiesPanel({
           <VisualButtonProperties
             selectedNode={selectedNode}
             uploading={uploading}
-            onImageUpload={handleImageUpload}
+            onImageUpload={async (file) => {
+              return handleImageUpload(file);
+            }}
             updateNodeProps={updateNodeProps}
             section="advanced"
           />

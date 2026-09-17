@@ -11,84 +11,22 @@ import {
   RotateCw,
 } from "lucide-react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import type { LatestAppRelease } from "@/features/root/home/api";
 import {
   heroWorkspacePreviews,
   landingContent,
 } from "@/features/root/home/landing-content";
 
-gsap.registerPlugin(ScrollTrigger);
-
-export function HeroSection({
-  latestRelease,
-}: {
-  latestRelease: LatestAppRelease | null;
-}) {
-  const sectionRef = useRef<HTMLElement>(null);
+/**
+ * Hero LCP note: this section must never start hidden.
+ *
+ * The first workspace screenshot and the headline are the Largest Contentful
+ * Paint candidates. Fading, blurring, or hiding them during hydration forces
+ * the browser to repaint the largest element and pushes LCP out by more than a
+ * second. Motion is therefore limited to short, user-triggered crossfades.
+ */
+export function HeroSection({ releaseSlot }: { releaseSlot?: React.ReactNode }) {
   const [activePreview, setActivePreview] = useState(0);
   const preview = heroWorkspacePreviews[activePreview];
-
-  useLayoutEffect(() => {
-    if (!sectionRef.current) return;
-
-    const context = gsap.context(() => {
-      const media = gsap.matchMedia();
-
-      media.add(
-        {
-          reduced: "(prefers-reduced-motion: reduce)",
-        },
-        ({ conditions }) => {
-          const { reduced } = conditions as {
-            reduced: boolean;
-          };
-
-          gsap.set("[data-hero-copy]", {
-            autoAlpha: reduced ? 1 : 0,
-            y: reduced ? 0 : 24,
-            filter: reduced ? "blur(0px)" : "blur(10px)",
-          });
-          gsap.set("[data-hero-workspace]", {
-            autoAlpha: reduced ? 1 : 0,
-            y: reduced ? 0 : 56,
-            scale: reduced ? 1 : 0.97,
-          });
-          gsap.set("[data-hero-scroll-note]", {
-            autoAlpha: reduced ? 1 : 0,
-            y: reduced ? 0 : 12,
-          });
-
-          if (reduced) return;
-
-          gsap
-            .timeline({ defaults: { ease: "power3.out" } })
-            .to("[data-hero-copy]", {
-              autoAlpha: 1,
-              y: 0,
-              filter: "blur(0px)",
-              duration: 0.75,
-              stagger: 0.08,
-            })
-            .to(
-              "[data-hero-workspace]",
-              { autoAlpha: 1, y: 0, scale: 1, duration: 0.95 },
-              "-=0.35",
-            )
-            .to(
-              "[data-hero-scroll-note]",
-              { autoAlpha: 1, y: 0, duration: 0.45 },
-              "-=0.35",
-            );
-
-        },
-      );
-
-      return () => media.revert();
-    }, sectionRef);
-
-    return () => context.revert();
-  }, []);
 
   function changePreview(direction: number) {
     setActivePreview((current) =>
@@ -98,15 +36,12 @@ export function HeroSection({
   }
 
   return (
-    <section
-      ref={sectionRef}
-      className="hero-gradient-poskart relative isolate overflow-hidden border-b border-blue-100 text-zinc-950"
-    >
+    <section className="hero-gradient-poskart relative isolate overflow-hidden border-b border-blue-100 text-zinc-950">
       <div className="relative min-h-[100dvh] overflow-hidden">
         <div className="pointer-events-none absolute inset-x-5 top-24 bottom-8 border-x border-t border-blue-950/10 sm:inset-x-8 lg:inset-x-12" />
 
         <div className="relative mx-auto max-w-[90rem] px-5 pb-16 pt-28 sm:px-8 sm:pt-32 lg:px-12 lg:pb-20">
-          <div data-hero-copy className="mx-auto max-w-[78rem]">
+          <div className="mx-auto max-w-[78rem]">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#00357B]">
               {landingContent.hero.eyebrow}
             </p>
@@ -138,13 +73,10 @@ export function HeroSection({
             </div>
           </div>
 
-          <div
-            data-hero-workspace
-            className="relative z-10 mx-auto mt-12 w-[calc(100%+2rem)] max-w-[86rem] sm:mt-16 lg:mt-14 lg:w-[120%]"
-          >
+          <div className="relative z-10 mx-auto mt-12 w-[calc(100%+2rem)] max-w-[86rem] sm:mt-16 lg:mt-14 lg:w-[120%]">
             <WorkspacePreview
               activePreview={activePreview}
-              latestRelease={latestRelease}
+              releaseSlot={releaseSlot}
               onChangePreview={setActivePreview}
               onNext={() => changePreview(1)}
               onPrevious={() => changePreview(-1)}
@@ -152,10 +84,7 @@ export function HeroSection({
             />
           </div>
 
-          <div
-            data-hero-scroll-note
-            className="relative z-30 mx-auto mt-8 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500"
-          >
+          <div className="relative z-30 mx-auto mt-8 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
             <ArrowDown className="size-4 text-[#00357B]" />
             Scroll untuk melihat fitur
           </div>
@@ -171,75 +100,51 @@ export function HeroSection({
 
 function WorkspacePreview({
   activePreview,
-  latestRelease,
+  releaseSlot,
   onChangePreview,
   onNext,
   onPrevious,
   preview,
 }: {
   activePreview: number;
-  latestRelease: LatestAppRelease | null;
+  releaseSlot?: React.ReactNode;
   onChangePreview: (index: number) => void;
   onNext: () => void;
   onPrevious: () => void;
   preview: (typeof heroWorkspacePreviews)[number];
 }) {
-  const previewContentRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const previousPreviewRef = useRef(activePreview);
-  const hasAnimatedPreviewRef = useRef(false);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const hasInteractedRef = useRef(false);
+  const [prefetchId, setPrefetchId] = useState<string | null>(null);
+  const prefetchedPreview = heroWorkspacePreviews.find(
+    (item) => item.id === prefetchId && item.id !== preview.id,
+  );
 
   useLayoutEffect(() => {
-    const currentContent = previewContentRefs.current[activePreview];
-    const previousContent = previewContentRefs.current[previousPreviewRef.current];
-    if (!currentContent) return;
-
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    if (reduceMotion) {
-      gsap.set(previewContentRefs.current, { autoAlpha: 0 });
-      gsap.set(currentContent, { autoAlpha: 1 });
-      previousPreviewRef.current = activePreview;
+    // Skip the first render: the initial screenshot must stay visible so it can
+    // paint immediately as the LCP element.
+    if (!hasInteractedRef.current) {
+      hasInteractedRef.current = true;
       return;
     }
+    const stage = stageRef.current;
+    if (!stage) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    if (!hasAnimatedPreviewRef.current) {
-      gsap.set(previewContentRefs.current, { autoAlpha: 0 });
-      gsap.set(currentContent, { autoAlpha: 1 });
-      hasAnimatedPreviewRef.current = true;
-      previousPreviewRef.current = activePreview;
-      return;
-    }
-
-    const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
-
-    if (previousContent && previousContent !== currentContent) {
-      timeline.to(
-        previousContent,
-        { autoAlpha: 0, y: -8, scale: 1.01, duration: 0.32 },
-        0,
-      );
-    }
-
-    timeline.fromTo(
-      currentContent,
-      { autoAlpha: 0, y: 16, scale: 0.985, filter: "blur(6px)" },
+    const animation = gsap.fromTo(
+      stage,
+      { opacity: 0.35, y: 10 },
       {
-        autoAlpha: 1,
+        opacity: 1,
         y: 0,
-        scale: 1,
-        filter: "blur(0px)",
-        duration: 0.58,
-        clearProps: "transform,filter",
+        duration: 0.4,
+        ease: "power2.out",
+        clearProps: "transform",
       },
-      0.08,
     );
 
-    previousPreviewRef.current = activePreview;
-
     return () => {
-      timeline.kill();
+      animation.kill();
     };
   }, [activePreview]);
 
@@ -269,6 +174,8 @@ function WorkspacePreview({
             type="button"
             aria-current={activePreview === index ? "page" : undefined}
             onClick={() => onChangePreview(index)}
+            onPointerEnter={() => setPrefetchId(item.id)}
+            onFocus={() => setPrefetchId(item.id)}
             className={
               activePreview === index
                 ? "relative shrink-0 rounded-lg bg-white px-3 py-2.5 text-left text-xs font-semibold text-[#00357B] shadow-sm transition-[background-color,color,box-shadow] duration-300 before:absolute before:inset-y-2 before:-left-1 before:w-0.5 before:bg-[#00357B] lg:w-full"
@@ -303,39 +210,54 @@ function WorkspacePreview({
           <span className="ml-2 min-w-0 truncate rounded-md bg-blue-50/70 px-3 py-1.5 text-[10px] text-zinc-500 transition-colors duration-300">
             {preview.url}
           </span>
-          <span className="ml-auto hidden text-[10px] font-medium text-zinc-400 sm:block">
-            {latestRelease ? `v${latestRelease.version}` : "POSKART"}
-          </span>
+          {releaseSlot}
         </div>
-        <div className="relative aspect-[16/9] overflow-hidden rounded-lg border border-blue-100 bg-[#f7f9ff]">
-          {heroWorkspacePreviews.map((item, index) => (
+        <div
+          ref={stageRef}
+          className="relative aspect-[16/9] overflow-hidden rounded-lg border border-blue-100 bg-[#f7f9ff]"
+        >
+          {/*
+            Only the active screenshot is mounted. Previously all five images
+            shared the same above-the-fold geometry, which pushed the browser to
+            fetch several large PNGs at once and delayed the real LCP request.
+          */}
+          <Image
+            key={preview.id}
+            src={preview.image.src}
+            alt={preview.image.alt}
+            width={1600}
+            height={900}
+            sizes="(max-width: 1023px) 92vw, 1150px"
+            preload={activePreview === 0}
+            className="h-full w-full object-cover object-top"
+          />
+          {/*
+            Warm the next screenshot only after the visitor shows intent
+            (hover or keyboard focus), so the initial load stays light.
+          */}
+          {prefetchedPreview ? (
             <div
-              key={item.id}
-              ref={(element) => {
-                previewContentRefs.current[index] = element;
-              }}
-              aria-hidden={activePreview !== index}
-              className="invisible absolute inset-0 opacity-0 will-change-transform first:visible first:opacity-100"
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 -z-10 opacity-0"
             >
               <Image
-                src={item.image.src}
-                alt={item.image.alt}
+                src={prefetchedPreview.image.src}
+                alt=""
                 width={1600}
-                height={1100}
-                sizes="(max-width: 1023px) 95vw, 75vw"
-                priority={index === 0}
+                height={900}
+                sizes="(max-width: 1023px) 92vw, 1150px"
                 className="h-full w-full object-cover object-top"
               />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/95 via-white/60 to-transparent px-5 pb-4 pt-14 sm:px-8 sm:pb-7">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00357B]">
-                  {item.label}
-                </p>
-                <p className="mt-1 max-w-lg text-sm font-medium text-zinc-700 sm:text-base">
-                  {item.description}
-                </p>
-              </div>
             </div>
-          ))}
+          ) : null}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/95 via-white/60 to-transparent px-5 pb-4 pt-14 sm:px-8 sm:pb-7">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00357B]">
+              {preview.label}
+            </p>
+            <p className="mt-1 max-w-lg text-sm font-medium text-zinc-700 sm:text-base">
+              {preview.description}
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -1,39 +1,46 @@
+/**
+ * Landing assets point at pre-sized WebP derivatives in /public/landing.
+ *
+ * The original PNG exports are 3000px-wide screenshots (~0.3–1.6 MB each).
+ * Serving them directly cost roughly 3.8 MB of transfer; the WebP set is
+ * ~220 KB in total. Regenerate with: `node scripts/optimize-landing-images.mjs`.
+ */
 export const landingAssets = {
   hero: {
-    src: "/Admin/Dashboard.png",
+    src: "/landing/dashboard.webp",
     alt: "Dashboard admin POSKART untuk mengelola operasional photobooth",
   },
   builder: {
-    src: "/Admin/Frames.png",
+    src: "/landing/frames.webp",
     alt: "Halaman pengelolaan frame photobooth POSKART",
   },
   operations: {
-    src: "/Admin/Queue.png",
+    src: "/landing/queue.webp",
     alt: "Halaman antrean sesi photobooth POSKART",
   },
   delivery: {
-    src: "/Admin/Settings.png",
+    src: "/landing/settings.webp",
     alt: "Halaman pengaturan POSKART",
   },
   Pairing: {
-    src: "/Admin/DevicesPair.png",
-    alt: "Halaman pengaturan POSKART",
+    src: "/landing/pairing.webp",
+    alt: "Halaman pairing device POSKART",
   },
   showcase: {
-    src: "/Admin/Showcase.png",
+    src: "/landing/showcase.webp",
     alt: "Halaman pengelolaan showcase POSKART",
   },
   boothApp: {
-    src: "/App/Camera.png",
+    src: "/landing/booth-camera.webp",
     alt: "Aplikasi Flutter POSKART yang berjalan di perangkat booth",
   },
   customerDelivery: {
-    src: "/iPhone 13 Pro.png",
-    alt: "Pengalaman pengunjung membuka hasil foto dari ponsel",
+    src: "/landing/booth-settings.webp",
+    alt: "Pengaturan aplikasi booth POSKART",
   },
   AppSettings: {
-    src: "/App/Settings.png",
-    alt: "Pengalaman pengunjung membuka hasil foto dari ponsel",
+    src: "/landing/booth-settings.webp",
+    alt: "Pengaturan aplikasi booth POSKART",
   },
 } as const;
 
@@ -59,7 +66,7 @@ export const heroWorkspacePreviews = [
     label: "Monitoring Booth",
     url: "poskart.my.id/devices",
     image: {
-      src: "/Admin/Devices.png",
+      src: "/landing/devices.webp",
       alt: "Halaman monitoring device photobooth POSKART",
     },
     description:
@@ -97,7 +104,7 @@ export const landingContent = {
     eyebrow: "Software receipt photobooth",
     title: "Photobooth sesuai brand Anda.",
     description:
-      "Sesuaikan layar booth, frame, dan halaman download. Kelola operasionalnya dari satu dashboard.",
+      "Perbarui tema dan frame dari Admin Web. Booth tetap melayani pengunjung tanpa menghentikan operasional.",
   },
   stories: [
     {
@@ -126,7 +133,7 @@ export const landingContent = {
         "Pantau koneksi aplikasi, versi, lokasi, serta kondisi perangkat dari Admin Web ketika event sedang berjalan.",
       points: ["Status aplikasi Flutter", "Kondisi device dan printer", "Kontrol dan sinkronisasi jarak jauh"],
       asset: {
-        src: "/Admin/Devices.png",
+        src: "/landing/devices.webp",
         alt: "Admin Web POSKART untuk memantau aplikasi dan perangkat booth",
       },
     },

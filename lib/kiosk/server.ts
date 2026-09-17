@@ -126,6 +126,7 @@ function buildLayoutPreviewSchema(rawSchema: unknown): LayoutSchema | null {
   return {
     version: 1,
     canvas: schema.canvas,
+    sharedNodes: schema.sharedNodes ?? [],
     pages: Object.fromEntries(
       builderPages.map((page) => [
         page,

@@ -56,7 +56,7 @@ export default async function SharedGalleryPage({
           <span className="grid size-16 place-items-center overflow-hidden rounded-2xl bg-zinc-50 border border-black/5 mx-auto animate-pulse">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/Logo Poskart.png"
+              src="/logo-mark.webp"
               alt="POSKART Logo"
               className="size-10 object-contain"
             />
@@ -466,7 +466,7 @@ function ExpiredGalleryPage({
       <span className="grid size-16 place-items-center overflow-hidden rounded-2xl border border-black/5 bg-zinc-50">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/Logo Poskart.png"
+          src="/logo-mark.webp"
           alt="POSKART Logo"
           className="size-10 object-contain"
         />

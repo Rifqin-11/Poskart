@@ -5,7 +5,7 @@ import { ArrowLeft, MessageCircle } from "lucide-react";
 import { DownloadAppCard } from "@/features/root/download/download-app-card";
 import {
   PublicFooter,
-  PublicHeader,
+  PublicHeaderWithSession,
 } from "@/features/root/shell/public-site-shell";
 import { businessProfile } from "@/lib/constants/business";
 import {
@@ -44,7 +44,7 @@ export default async function DownloadPage() {
 
   return (
     <main className="min-h-screen overflow-clip bg-[#f7f9ff] text-zinc-950">
-      <PublicHeader variant="landing" />
+      <PublicHeaderWithSession variant="landing" />
 
       <section className="relative isolate px-5 pb-8 pt-28 sm:px-8 sm:pb-12 sm:pt-32 lg:px-12 lg:pb-14">
         <div

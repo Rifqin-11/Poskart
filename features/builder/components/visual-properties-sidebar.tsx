@@ -44,11 +44,13 @@ export function VisualPropertiesSidebar({
   selectedNode,
   schema,
   onStartEdit,
+  flowProgress,
   embedded = false,
 }: {
   selectedNode?: BuilderNode;
   schema: LayoutSchema;
   onStartEdit: (node: BuilderNode) => void;
+  flowProgress?: { current: number; total: number };
   embedded?: boolean;
 }) {
   const [nodeTab, setNodeTab] = useState<InspectorTab>("content");
@@ -160,6 +162,7 @@ export function VisualPropertiesSidebar({
               selectedNode={selectedNode}
               onStartEdit={onStartEdit}
               activeTab={nodeTab}
+              flowProgress={flowProgress}
             />
           ) : (
             <CanvasControls activeTab={canvasTab} />

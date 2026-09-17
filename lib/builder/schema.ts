@@ -45,6 +45,7 @@ const overlaySchemaComponentTypes = new Set<BuilderComponentType>([
   "camera-timer",
   "camera-shot-counter",
   "camera-flash",
+  "flow-progress",
 ]);
 
 export function isDeprecatedBuilderNode(node: BuilderNode): boolean {
@@ -59,13 +60,17 @@ export function buildLayoutSchema(
   canvas: BuilderCanvas,
   nodes: BuilderNode[],
 ): LayoutSchema {
+  const sharedNodes = nodes.filter((node) => node.props.isShared === true);
   return sanitizeLayoutSchema({
     version: 1,
     canvas,
+    sharedNodes,
     pages: Object.fromEntries(
       builderPages.map((page) => [
         page,
-        nodes.filter((node) => node.page === page),
+        nodes.filter(
+          (node) => node.page === page && node.props.isShared !== true,
+        ),
       ]),
     ) as LayoutSchema["pages"],
   });
@@ -80,6 +85,10 @@ export function sanitizeLayoutSchema(schema: LayoutSchema): LayoutSchema {
   return {
     version: 1,
     canvas: schema.canvas,
+    sharedNodes: (schema.sharedNodes ?? []).filter((node) => {
+      if (isDeprecatedBuilderNode(node)) return false;
+      return isOverlaySchemaNode(node);
+    }),
     pages: Object.fromEntries(
       builderPages.map((page) => [
         page,

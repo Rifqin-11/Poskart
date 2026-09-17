@@ -6,7 +6,7 @@ import { Menu, X } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type NavLink = {
+export type PublicNavLink = {
   href: string;
   label: string;
   external?: boolean;
@@ -16,7 +16,7 @@ export function PublicMobileNav({
   links,
   authenticated = false,
 }: {
-  links: NavLink[];
+  links: PublicNavLink[];
   authenticated?: boolean;
 }) {
   const [open, setOpen] = useState(false);

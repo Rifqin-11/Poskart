@@ -31,6 +31,7 @@ export type BuilderComponentType =
   | "camera-timer" // Live capture countdown number (text-only) on camera page
   | "camera-shot-counter" // Live "Foto X dari Y" counter (text-only) on camera page
   | "camera-flash" // Flash on/off toggle button on camera page
+  | "flow-progress" // Global progress indicator rendered on each enabled page
   | "background"; // Payment QRIS countdown shown on the payment page
 
 export type BuilderNode = {
@@ -101,6 +102,8 @@ export type LayoutSchema = {
   version: 1;
   canvas: BuilderCanvas;
   pages: Record<BuilderPage, BuilderNode[]>;
+  /** Optional singleton nodes rendered on every enabled flow page. */
+  sharedNodes?: BuilderNode[];
   /** Optional public gallery branding override for sessions using this theme. */
   galleryBranding?: GalleryBrandingOverrides;
 };

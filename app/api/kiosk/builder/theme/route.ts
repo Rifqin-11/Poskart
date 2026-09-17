@@ -1,5 +1,6 @@
 import { sanitizeLayoutSchema } from "@/lib/builder/schema";
 import {
+  getAdaptiveTakePhotoValidationError,
   formatMissingRequiredBuilderElements,
   getMissingRequiredBuilderElements,
 } from "@/lib/builder/required-elements";
@@ -43,6 +44,13 @@ export async function POST(request: Request) {
           error: `Pastikan elemen wajib berikut tersedia dan terlihat sebelum menyimpan. ${formatMissingRequiredBuilderElements(missingElements)}`,
           code: "BUILDER_REQUIRED_ELEMENTS_MISSING",
         },
+        { status: 400 },
+      );
+    }
+    const adaptiveError = getAdaptiveTakePhotoValidationError(body.schema);
+    if (adaptiveError) {
+      return jsonOk(
+        { error: adaptiveError, code: "BUILDER_ADAPTIVE_BUTTON_INVALID" },
         { status: 400 },
       );
     }

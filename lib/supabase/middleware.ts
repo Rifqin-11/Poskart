@@ -4,11 +4,39 @@ import { isSuperAdminProfile } from "@/lib/auth/admin";
 import { normalizeOrganizationFeatures } from "@/lib/organization-features";
 import { isSubscriptionActive } from "@/lib/subscription-policy";
 
+/**
+ * Routes that never read or write the visitor session.
+ *
+ * Skipping them avoids a Supabase `getClaims()` round trip before the response
+ * is produced, which directly delays TTFB and LCP discovery on the landing
+ * page. Session refresh still happens on every authenticated route.
+ */
+const publicRoutePrefixes = [
+  "/about",
+  "/contact",
+  "/download",
+  "/terms",
+  "/privacy",
+  "/refund-policy",
+  "/s",
+];
+
+function isPublicRoute(pathname: string) {
+  if (pathname === "/") return true;
+  return publicRoutePrefixes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
+
 export async function updateSession(request: NextRequest) {
   if (request.nextUrl.pathname === "/" && request.nextUrl.searchParams.has("code")) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/callback";
     return NextResponse.redirect(url);
+  }
+
+  if (isPublicRoute(request.nextUrl.pathname) && !request.headers.has("next-action")) {
+    return NextResponse.next({ request });
   }
 
   let supabaseResponse = NextResponse.next({

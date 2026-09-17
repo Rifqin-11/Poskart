@@ -19,6 +19,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { cn } from "@/lib/utils";
 import { landingAssets } from "@/features/root/home/landing-content";
+import { useNearViewport } from "@/features/root/home/use-near-viewport";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -37,7 +38,7 @@ const productPreviews: Record<
   admin: {
     label: "Admin Web",
     description:
-      "Kelola brand, device, transaksi, dan operasional semua booth dari browser.",
+      "Ubah tema, frame, dan konfigurasi dari browser tanpa menghentikan sesi di booth.",
     image: landingAssets.hero.src,
     imageAlt: landingAssets.hero.alt,
     icon: MonitorCheck,
@@ -45,7 +46,7 @@ const productPreviews: Record<
   booth: {
     label: "Aplikasi Booth",
     description:
-      "Aplikasi Flutter untuk menjalankan pembayaran, kamera, preview, dan cetak di lokasi.",
+      "Aplikasi Flutter tetap menjalankan pembayaran, kamera, preview, dan cetak di lokasi.",
     image: landingAssets.boothApp.src,
     imageAlt: landingAssets.boothApp.alt,
     icon: MonitorCog,
@@ -53,7 +54,7 @@ const productPreviews: Record<
   settings: {
     label: "Settings Aplikasi",
     description:
-      "Atur kamera, printer, koneksi, dan perilaku booth langsung dari aplikasi Flutter.",
+      "Pengaturan perangkat tetap tersedia di booth, sementara perubahan brand dikelola dari Admin Web.",
     image: landingAssets.AppSettings.src,
     imageAlt: "Placeholder screenshot pengaturan aplikasi Flutter POSKART",
     icon: Settings2,
@@ -61,9 +62,9 @@ const productPreviews: Record<
 };
 
 const proofPoints = [
-  { value: "Admin Web", label: "untuk pengelolaan bisnis" },
-  { value: "Poskart App", label: "untuk operasional booth" },
-  { value: "1 sistem", label: "data dan device tersinkron" },
+  { value: "Di belakang layar", label: "tema dan frame bisa diperbarui" },
+  { value: "Di lokasi", label: "booth tetap melayani pengunjung" },
+  { value: "Tersinkron", label: "perubahan siap dipakai saat sesi berikutnya" },
 ];
 
 export function ProductShowcase() {
@@ -74,6 +75,7 @@ export function ProductShowcase() {
   const preview = productPreviews[activePreview];
   const previewKeys = Object.keys(productPreviews) as ProductPreviewKey[];
   const activePreviewIndex = previewKeys.indexOf(activePreview);
+  const nearViewport = useNearViewport(sectionRef);
 
   useLayoutEffect(() => {
     const current = previewRefs.current[activePreviewIndex];
@@ -112,6 +114,7 @@ export function ProductShowcase() {
   }, [activePreviewIndex]);
 
   useLayoutEffect(() => {
+    if (!nearViewport) return;
     if (!sectionRef.current) return;
     const context = gsap.context(() => {
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -127,7 +130,7 @@ export function ProductShowcase() {
       });
     }, sectionRef);
     return () => context.revert();
-  }, []);
+  }, [nearViewport]);
 
   return (
     <section ref={sectionRef} id="platform" className="scroll-mt-[72px] bg-white">
@@ -137,10 +140,10 @@ export function ProductShowcase() {
             Lihat software-nya
           </p>
           <h2 className="mt-4 text-4xl font-black leading-[0.96] tracking-[-0.04em] text-zinc-950 sm:text-6xl">
-            Dua aplikasi, satu operasional yang terhubung.
+            Update dari belakang layar. Booth tetap berjalan.
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-600 sm:text-lg">
-            Admin Web mengelola bisnisnya. Aplikasi Flutter menjalankan booth dan pengaturan perangkat di lokasi.
+            Admin Web mengatur tema, frame, dan konfigurasi. Aplikasi booth fokus melayani pengunjung tanpa perlu mengganggu operasional.
           </p>
         </div>
 
@@ -185,7 +188,7 @@ export function ProductShowcase() {
               })}
             </div>
             <p className="hidden max-w-xs py-7 text-sm leading-6 text-zinc-500 lg:block">
-              Pilih permukaan produk untuk melihat peran masing-masing dalam satu alur POSKART.
+              Admin Web adalah ruang kontrol. Aplikasi booth adalah ruang kerja operator.
             </p>
           </div>
 
@@ -227,6 +230,16 @@ export function ProductShowcase() {
             <p className="mt-4 max-w-2xl px-1 text-sm leading-6 text-zinc-600">
               {preview.description}
             </p>
+            <div className="mt-6 flex items-center gap-3 rounded-2xl border border-[#00357B]/10 bg-white/70 px-4 py-3 text-sm text-zinc-600">
+              <span className="relative flex size-2.5 shrink-0">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+                <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <span>
+                <strong className="font-semibold text-zinc-900">Booth tetap online.</strong>{" "}
+                Perubahan dari Admin Web tersinkron tanpa menghentikan sesi yang sedang berjalan.
+              </span>
+            </div>
           </div>
         </div>
 
@@ -247,25 +260,27 @@ const businessPaths = [
   {
     icon: ScanLine,
     title: "Mulai dari booth pertama",
-    description: "Siapkan tampilan, pembayaran, dan alur sesi tanpa menambah kompleksitas yang belum Anda perlukan.",
+    description: "Siapkan tampilan dan alur sesi dari Admin Web, lalu biarkan aplikasi booth menjalankan event di lokasi.",
   },
   {
     icon: ArrowRight,
-    title: "Beralih dari aplikasi lama",
-    description: "Lihat software lebih dulu, uji alur kerja, lalu pindah saat Anda sudah yakin POSKART cocok.",
+    title: "Ubah tampilan tanpa turun ke booth",
+    description: "Perbarui tema atau frame dari balik layar. Operator tidak perlu menghentikan aplikasi untuk menerima perubahan.",
   },
   {
     icon: Building2,
     title: "Berkembang ke banyak booth",
-    description: "Tambahkan device dan tetap pantau status booth dari satu workspace saat event semakin banyak.",
+    description: "Atur banyak device dari satu workspace dan pertahankan setiap booth tetap siap melayani pengunjung.",
   },
 ] as const;
 
 export function WorkflowBand() {
   const sectionRef = useRef<HTMLElement>(null);
   const cardRefs = useRef<(HTMLElement | null)[]>([]);
+  const nearViewport = useNearViewport(sectionRef);
 
   useLayoutEffect(() => {
+    if (!nearViewport) return;
     if (!sectionRef.current) return;
 
     const context = gsap.context(() => {
@@ -317,17 +332,17 @@ export function WorkflowBand() {
     }, sectionRef);
 
     return () => context.revert();
-  }, []);
+  }, [nearViewport]);
 
   return (
     <section ref={sectionRef} id="workflow" className="scroll-mt-[72px] overflow-hidden bg-[#eef4ff] text-zinc-950">
       <div className="mx-auto max-w-[90rem] px-5 py-20 sm:px-8 lg:px-12 lg:py-24">
         <div data-workflow-heading className="max-w-3xl">
           <h2 className="text-4xl font-black leading-[0.96] tracking-[-0.04em] sm:text-6xl">
-            POSKART mengikuti tahap bisnis Anda.
+            Kendali di web. Operasional di booth.
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-600 sm:text-lg">
-            Mulai dengan sederhana, pertahankan brand Anda, dan tambah kapasitas ketika booth mulai bertambah.
+            Pisahkan pekerjaan pengelola dan operator, sehingga update dapat dilakukan tanpa mengganggu pengunjung yang sedang dilayani.
           </p>
         </div>
 
@@ -349,9 +364,9 @@ export function WorkflowBand() {
         </div>
 
         <div data-workflow-proofs className="mt-12 flex flex-wrap gap-x-6 gap-y-3 border-t border-[#00357B]/20 pt-6 text-sm font-medium text-[#00357B]">
-          <span data-workflow-proof className="flex items-center gap-2"><Users className="size-4" />Antrean pengunjung lebih teratur</span>
-          <span data-workflow-proof className="flex items-center gap-2"><CreditCard className="size-4" />QRIS dan cash tercatat</span>
-          <span data-workflow-proof className="flex items-center gap-2"><Share2 className="size-4" />Showcase siap dibagikan</span>
+          <span data-workflow-proof className="flex items-center gap-2"><Users className="size-4" />Operator fokus ke pengunjung</span>
+          <span data-workflow-proof className="flex items-center gap-2"><CreditCard className="size-4" />Tema dan frame bisa diubah jarak jauh</span>
+          <span data-workflow-proof className="flex items-center gap-2"><Share2 className="size-4" />Booth tetap berjalan saat update</span>
         </div>
       </div>
     </section>
@@ -388,8 +403,10 @@ const commonQuestions = [
 
 export function LandingFAQ() {
   const sectionRef = useRef<HTMLElement>(null);
+  const nearViewport = useNearViewport(sectionRef);
 
   useLayoutEffect(() => {
+    if (!nearViewport) return;
     if (!sectionRef.current) return;
     const context = gsap.context(() => {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -411,7 +428,7 @@ export function LandingFAQ() {
       });
     }, sectionRef);
     return () => context.revert();
-  }, []);
+  }, [nearViewport]);
 
   return (
     <section ref={sectionRef} id="faq" className="scroll-mt-[72px] overflow-hidden bg-white">

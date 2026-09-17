@@ -69,6 +69,7 @@ export function VisualCanvasStage({
   onEditCommit,
   onEditCancel,
   onStartEdit,
+  flowProgress,
 }: {
   tourTarget?: string;
   canvasRef: RefObject<HTMLDivElement | null>;
@@ -116,6 +117,7 @@ export function VisualCanvasStage({
   onEditCommit: () => void;
   onEditCancel: () => void;
   onStartEdit: (node: BuilderNode) => void;
+  flowProgress: { current: number; total: number };
 }) {
   const shouldShowSelectionOutline = (node: BuilderNode) =>
     selectedId === node.id &&
@@ -304,6 +306,7 @@ export function VisualCanvasStage({
                     onEditCommit={onEditCommit}
                     onEditCancel={onEditCancel}
                     onStartEdit={() => onStartEdit(node)}
+                    flowProgress={flowProgress}
                   />
                 </Rnd>
               ) : null,

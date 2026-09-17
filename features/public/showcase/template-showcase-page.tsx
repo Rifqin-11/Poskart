@@ -10,7 +10,10 @@ import {
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { ThemeThumbnail } from "@/features/admin/themes/theme-thumbnail";
-import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
+import {
+  PublicFooter,
+  PublicHeaderWithSession,
+} from "@/features/root/shell/public-site-shell";
 import { FrameShowcasePreview } from "@/features/public/showcase/frame-showcase-preview";
 import { businessProfile } from "@/lib/constants/business";
 import { ShowcaseHeroCarousel } from "@/features/public/showcase/showcase-hero-carousel";
@@ -55,7 +58,7 @@ export function TemplateShowcasePage({
 
   return (
     <main className="min-h-[100dvh] overflow-clip bg-[#f7f9ff] text-zinc-950">
-      <PublicHeader variant="landing" />
+      <PublicHeaderWithSession variant="landing" />
 
       <section className="hero-gradient-poskart border-b border-blue-100 px-5 pb-16 pt-28 sm:px-8 sm:pb-20 sm:pt-32 lg:px-12">
         <div className="mx-auto grid min-h-[calc(100dvh-8rem)] max-w-[90rem] items-center gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:gap-16">

@@ -54,7 +54,9 @@ import { AssignThemeToDevicesDialog } from "@/features/admin/themes/components/a
 import type { LayoutSchemaRow } from "@/features/admin/layout/api";
 import { bakeLayoutSchemaColorKeyAssets } from "@/features/builder/utils/bake-color-key-assets";
 import { normalizeAssetReferences } from "@/lib/assets/asset-url";
+import { flowProgressForPage } from "@/lib/builder/flow-progress";
 import {
+  getAdaptiveTakePhotoValidationError,
   getMissingRequiredBuilderElements,
   REQUIRED_ELEMENT_PAGE_LABELS,
 } from "@/lib/builder/required-elements";
@@ -262,6 +264,11 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
     autoSaveSchema(currentSchema);
     setLastAutoSave(new Date().toISOString());
     if (!validateRequiredElements(currentSchema)) return false;
+    const adaptiveError = getAdaptiveTakePhotoValidationError(currentSchema);
+    if (adaptiveError) {
+      toast.error("Tema belum dapat disimpan", { description: adaptiveError });
+      return false;
+    }
 
     if (currentThemeId && currentThemeName) {
       setIsSaving(true);
@@ -596,7 +603,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   // ── end Zoom/Pan + BoxSelect ──────────────────────────────
 
   const visibleNodes = nodes
-    .filter((node) => node.page === activePage)
+    .filter((node) => node.page === activePage || node.props.isShared === true)
     .filter((node) => !(isOverlayMode && node.type === "text"))
     .sort((a, b) => a.zIndex - b.zIndex);
 
@@ -604,7 +611,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
     const pageBg = canvas.pageBackgrounds?.[activePage];
     const hasBg = pageBg?.image || pageBg?.video;
     const pageNodes = nodes
-      .filter((node) => node.page === activePage)
+      .filter((node) => node.page === activePage || node.props.isShared === true)
       .filter((node) => !(isOverlayMode && node.type === "text"));
 
     if (hasBg) {
@@ -629,6 +636,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
   }, [nodes, activePage, canvas, isOverlayMode]);
 
   const selectedNode = nodes.find((node) => node.id === selectedId);
+  const flowProgress = flowProgressForPage({ canvas }, activePage);
   const contextNode = contextMenu?.nodeId
     ? nodes.find((node) => node.id === contextMenu.nodeId)
     : undefined;
@@ -1000,6 +1008,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
             selectedNode={selectedNode}
             schema={schema()}
             onStartEdit={startTextEdit}
+            flowProgress={flowProgress}
           />
         }
         canvas={
@@ -1043,6 +1052,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
             onEditCommit={commitTextEdit}
             onEditCancel={cancelTextEdit}
             onStartEdit={startTextEdit}
+            flowProgress={flowProgress}
           />
         }
         zoomControls={
@@ -1091,6 +1101,7 @@ export function VisualBuilder({ initialThemeId }: { initialThemeId?: string }) {
             selectedNode={selectedNode}
             schema={schema()}
             onStartEdit={startTextEdit}
+            flowProgress={flowProgress}
           />
         }
       />

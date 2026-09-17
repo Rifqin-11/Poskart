@@ -14,7 +14,7 @@ export default function NotFound() {
                   <div className="grid size-11 place-items-center rounded-2xl border border-zinc-200 bg-white shadow-sm">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src="/Logo Poskart.png"
+                      src="/logo-mark.webp"
                       alt="POSKART Logo"
                       className="size-7 object-contain"
                     />

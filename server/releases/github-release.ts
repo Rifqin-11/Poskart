@@ -46,7 +46,9 @@ export async function getLatestAppRelease(): Promise<LatestAppRelease | null> {
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
       },
-      cache: "no-store",
+      // The release version only changes when a new APK is published, so an
+      // hour of caching keeps the landing page off the GitHub critical path.
+      next: { revalidate: 3600, tags: ["latest-app-release"] },
     });
     if (!response.ok) return null;
 

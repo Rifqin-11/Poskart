@@ -1,11 +1,12 @@
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 
 import {
   PRICING_PLAN_ORDER,
   pricingPlans,
   type PricingPlan,
 } from "@/lib/constants/business";
-import { createClient } from "@/lib/supabase/server";
 import { formatCurrency } from "@/lib/utils";
 
 type SubscriptionPlanRow = {
@@ -18,10 +19,24 @@ type SubscriptionPlanRow = {
   is_public: boolean;
 };
 
-export async function getPublicSubscriptionPricingPlans(
-  supabaseClient?: SupabaseClient,
-): Promise<PricingPlan[]> {
-  const supabase = supabaseClient ?? (await createClient());
+/**
+ * Cookie-less Supabase client for public, non-personalized reads.
+ *
+ * The session-aware client from `lib/supabase/server` calls `cookies()`, which
+ * forces the whole route into dynamic rendering. Public pricing is identical
+ * for every visitor, so it is read with the anon key and cached instead — that
+ * lets the landing page be prerendered and served from the CDN.
+ */
+function createPublicReadClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+}
+
+async function loadPublicSubscriptionPricingPlans(): Promise<PricingPlan[]> {
+  const supabase = createPublicReadClient();
   const { data, error } = await supabase
     .from("subscription_plans")
     .select(
@@ -44,6 +59,43 @@ export async function getPublicSubscriptionPricingPlans(
     .map(mapDbPlanToPricingPlan);
 
   return mapped;
+}
+
+const cachedPublicSubscriptionPricingPlans = unstable_cache(
+  loadPublicSubscriptionPricingPlans,
+  ["public-subscription-pricing-plans"],
+  { revalidate: 600, tags: ["public-subscription-pricing-plans"] },
+);
+
+/**
+ * Public pricing plans. Cached for 10 minutes; callers may pass an explicit
+ * Supabase client (admin/checkout flows) to bypass the cache.
+ */
+export async function getPublicSubscriptionPricingPlans(
+  supabaseClient?: SupabaseClient,
+): Promise<PricingPlan[]> {
+  if (supabaseClient) {
+    const { data, error } = await supabaseClient
+      .from("subscription_plans")
+      .select(
+        "id,name,duration_months,base_price,included_devices,additional_device_price_monthly,is_public",
+      )
+      .in("id", PRICING_PLAN_ORDER)
+      .eq("is_public", true)
+      .order("duration_months", { ascending: true });
+
+    if (error || !data?.length) return pricingPlans;
+
+    return (data as SubscriptionPlanRow[])
+      .sort(
+        (left, right) =>
+          PRICING_PLAN_ORDER.indexOf(left.id) -
+          PRICING_PLAN_ORDER.indexOf(right.id),
+      )
+      .map(mapDbPlanToPricingPlan);
+  }
+
+  return cachedPublicSubscriptionPricingPlans();
 }
 
 function mapDbPlanToPricingPlan(row: SubscriptionPlanRow): PricingPlan {

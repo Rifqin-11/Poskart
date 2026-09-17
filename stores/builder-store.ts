@@ -272,6 +272,12 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     ),
   addNode: (type) =>
     set((state) => {
+      if (type === "flow-progress") {
+        const existing = state.nodes.find(
+          (node) => node.props.isShared === true && node.type === type,
+        );
+        if (existing) return { selectedId: existing.id, selectedIds: [existing.id] };
+      }
       const id = `node-${Date.now()}`;
       const isAspectLocked =
         type === "qr" ||
@@ -283,6 +289,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       const defaultWidth =
         type === "text"
           ? 220
+          : type === "flow-progress"
+            ? 260
           : type === "return-countdown"
             ? 320
             : type === "preview-media-toggle"
@@ -298,6 +306,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       const defaultHeight =
         type === "text"
           ? 54
+          : type === "flow-progress"
+            ? 28
           : type === "return-countdown"
             ? 72
             : type === "preview-media-toggle"
@@ -313,7 +323,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       const node: BuilderNode = {
         id,
         type,
-        page: state.activePage,
+        page: type === "flow-progress" ? "landing" : state.activePage,
         x: 110,
         y: 120,
         width: defaultWidth,
@@ -327,7 +337,11 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
             0,
             state.canvas.pageBackgrounds?.[state.activePage]?.zIndex ?? 0,
             ...state.nodes
-              .filter((item) => item.page === state.activePage)
+              .filter((item) =>
+                type === "flow-progress"
+                  ? item.props.isShared === true
+                  : item.page === state.activePage,
+              )
               .map((item) => item.zIndex),
           ) + 1,
         lockAspect: isAspectLocked,
@@ -342,6 +356,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     set((state) => {
       const source = state.nodes.find((node) => node.id === id);
       if (!source) return state;
+      // Shared singletons such as Flow Progress must stay unique.
+      if (source.props.isShared === true) return state;
       const clone = {
         ...source,
         id: `${source.id}-copy-${Date.now()}`,
@@ -428,7 +444,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     // builder page receives a renderable URL.
     const schema = normalizeAssetReferences(rawSchema) as LayoutSchema;
     return set({
-      nodes: builderPages
+      nodes: [
+        ...(schema.sharedNodes ?? []).map((node) => ({
+          ...node,
+          page: "landing" as BuilderPage,
+          props: { ...node.props, isShared: true },
+        })),
+        ...builderPages
         .flatMap((page) => {
           const pageNodes = schema.pages[page] ?? [];
           // Seed navigation actions added after an existing Tutorial theme was
@@ -450,8 +472,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
             return [...pageNodes, ...missingDefaults];
           }
           return pageNodes;
-        })
-        .filter((node) => !isDeprecatedBuilderNode(node)),
+        }),
+      ].filter((node) => !isDeprecatedBuilderNode(node)),
       canvas: {
         ...defaultBuilderCanvas,
         ...schema.canvas,
@@ -484,7 +506,11 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     set((state) => ({
       ...pushHistory(state, {
         nodes: [
-          ...state.nodes.filter((n) => n.page !== page),
+          // Shared singletons are not owned by a single page, so a page reset
+          // must never delete them.
+          ...state.nodes.filter(
+            (n) => n.page !== page || n.props.isShared === true,
+          ),
           ...initialBuilderNodes.filter((n) => n.page === page),
         ],
       }),

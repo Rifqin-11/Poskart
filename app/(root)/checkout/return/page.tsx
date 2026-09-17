@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { CheckCircle2, Clock3, XCircle } from "lucide-react";
 
-import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
+import {
+  PublicFooter,
+  PublicHeaderWithSession,
+} from "@/features/root/shell/public-site-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -40,7 +43,7 @@ export default async function CheckoutReturnPage({
 
   return (
     <main className="min-h-screen bg-white text-zinc-950">
-      <PublicHeader />
+      <PublicHeaderWithSession variant="default" />
       <section className="mx-auto flex min-h-[70vh] max-w-3xl flex-col justify-center px-4 py-12 sm:px-6 lg:px-8">
         <div className="rounded-lg border border-zinc-200 bg-white p-8 shadow-sm">
           <div className="mb-5 grid size-12 place-items-center rounded-lg bg-zinc-100">

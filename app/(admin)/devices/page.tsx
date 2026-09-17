@@ -1,4 +1,5 @@
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import "@/features/admin/devices/booth-map.css";
 import { BoothManagement } from "@/features/admin/devices";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { getQueryClient } from "@/lib/query-client.server";

@@ -16,6 +16,7 @@ import {
   Timer,
   Hash,
   Zap,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import type { BuilderComponentType, BuilderPage } from "@/types/builder";
@@ -56,6 +57,11 @@ export const SEMANTIC_ROLES: {
   {
     value: "camera.take_photo",
     label: "Take Photo (Shutter)",
+    screen: "camera",
+  },
+  {
+    value: "camera.capture_or_continue",
+    label: "Adaptive Take Photo -> Preview",
     screen: "camera",
   },
   {
@@ -139,6 +145,7 @@ export const COMPONENT_META: Record<
   "camera-timer": { label: "Capture Delay", icon: Timer },
   "camera-shot-counter": { label: "Shot Counter", icon: Hash },
   "camera-flash": { label: "Flash Toggle", icon: Zap },
+  "flow-progress": { label: "Flow Progress", icon: ListChecks },
   background: { label: "Page Background", icon: ImageIcon },
 };
 
@@ -148,14 +155,16 @@ export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
     "text",
     "image",
     "button",
+    "flow-progress",
   ],
-  tutorial: ["text", "image", "button"],
+  tutorial: ["text", "image", "button", "flow-progress"],
   template: [
     "text",
     "image",
     "button",
     "template-preview",
     "template-list",
+    "flow-progress",
   ],
   camera: [
     "text",
@@ -166,6 +175,7 @@ export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
     "camera-shot-counter",
     "camera-flash",
     "button",
+    "flow-progress",
   ],
   preview: [
     "text",
@@ -174,6 +184,7 @@ export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
     "qr",
     "frame-preview",
     "preview-media-toggle",
+    "flow-progress",
   ],
   thanks: [
     "text",
@@ -182,6 +193,7 @@ export const PAGE_COMPONENTS: Record<BuilderPage, BuilderComponentType[]> = {
     "qr",
     "frame-preview",
     "return-countdown",
+    "flow-progress",
   ],
 };
 
@@ -192,6 +204,7 @@ export const PAGE_ROLES: Record<BuilderPage | "generic", string[]> = {
   template: ["template.select", "template.continue", "template.back"],
   camera: [
     "camera.take_photo",
+    "camera.capture_or_continue",
     "camera.continue",
     "camera.retake",
     "camera.photo_result",
