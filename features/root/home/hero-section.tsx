@@ -1,274 +1,342 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowDown,
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-  RotateCw,
-} from "lucide-react";
+import { ArrowDown, ArrowRight } from "lucide-react";
 import gsap from "gsap";
-import {
-  heroWorkspacePreviews,
-  landingContent,
-} from "@/features/root/home/landing-content";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { LandingButton } from "@/components/ui/landing-button";
+import { landingAssets } from "@/features/root/home/landing-content";
+
+gsap.registerPlugin(ScrollTrigger);
 
 /**
- * Hero LCP note: this section must never start hidden.
+ * Pure HTML/CSS mockup of a printed receipt photo booth strip.
  *
- * The first workspace screenshot and the headline are the Largest Contentful
- * Paint candidates. Fading, blurring, or hiding them during hydration forces
- * the browser to repaint the largest element and pushes LCP out by more than a
- * second. Motion is therefore limited to short, user-triggered crossfades.
+ * No image asset is used: the paper, perforation, grain, photo frames, and
+ * footer are all drawn with CSS so the receipt scales cleanly and never
+ * blocks the hero's LCP screenshot.
  */
-export function HeroSection({ releaseSlot }: { releaseSlot?: React.ReactNode }) {
-  const [activePreview, setActivePreview] = useState(0);
-  const preview = heroWorkspacePreviews[activePreview];
+function ReceiptMockup() {
+  return (
+    <div className="w-[168px] rotate-[-5deg] sm:w-[184px]">
+      {/* Paper */}
+      <div className="relative overflow-hidden rounded-[6px] bg-white shadow-[0_26px_50px_rgba(0,30,80,0.35)]">
+        {/* Subtle paper grain */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.35] [background-image:repeating-linear-gradient(0deg,rgba(0,0,0,0.045)_0px,rgba(0,0,0,0.045)_1px,transparent_1px,transparent_4px)]"
+        />
 
-  function changePreview(direction: number) {
-    setActivePreview((current) =>
-      (current + direction + heroWorkspacePreviews.length) %
-      heroWorkspacePreviews.length,
-    );
-  }
+        {/* Perforated top edge */}
+        <div
+          aria-hidden="true"
+          className="h-2 w-full [background-image:radial-gradient(circle_at_4px_0,transparent_3px,#ffffff_3px)] [background-size:8px_8px]"
+        />
+
+        <div className="relative px-4 pb-4 pt-2 font-mono text-zinc-700">
+          {/* Header */}
+          <p className="text-center text-[10px] font-bold tracking-[0.22em] text-zinc-900">
+            POSKART
+          </p>
+          <p className="mt-1 text-center text-[8px] tracking-[0.18em] text-zinc-500">
+            RECEIPT PHOTOBOOTH
+          </p>
+
+          <div className="my-2.5 border-t border-dashed border-zinc-300" />
+
+          {/* Meta rows */}
+          <div className="space-y-1 text-[8px] leading-4">
+            <div className="flex justify-between">
+              <span className="text-zinc-500">DATE</span>
+              <span>17.09.2026</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-500">TIME</span>
+              <span>19:42 WIB</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-500">BOOTH</span>
+              <span>#02</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-zinc-500">ORDER</span>
+              <span>#00142</span>
+            </div>
+          </div>
+
+          <div className="my-2.5 border-t border-dashed border-zinc-300" />
+
+          {/* Photo strip: two CSS-drawn frames */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="relative aspect-[3/4] overflow-hidden rounded-[4px] bg-[linear-gradient(150deg,#dbeafe_0%,#93c5fd_55%,#60a5fa_100%)]">
+              <div className="absolute inset-x-1 bottom-1 h-1.5 rounded-full bg-white/50" />
+              <div className="absolute left-1/2 top-1/2 size-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/60" />
+            </div>
+            <div className="relative aspect-[3/4] overflow-hidden rounded-[4px] bg-[linear-gradient(210deg,#bfdbfe_0%,#7dd3fc_50%,#38bdf8_100%)]">
+              <div className="absolute inset-x-1 bottom-1 h-1.5 rounded-full bg-white/50" />
+              <div className="absolute left-1/2 top-1/2 size-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/60" />
+            </div>
+          </div>
+
+          <div className="my-2.5 border-t border-dashed border-zinc-300" />
+
+          {/* Footer */}
+          <p className="text-center text-[8px] tracking-[0.2em] text-zinc-500">
+            THANK YOU
+          </p>
+
+          {/* CSS QR placeholder */}
+          <div className="mx-auto mt-2 grid size-9 grid-cols-5 gap-px">
+            {QR_CELLS.map((filled, index) => (
+              <span
+                key={index}
+                className={filled ? "bg-zinc-800" : "bg-zinc-200"}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Perforated bottom edge */}
+        <div
+          aria-hidden="true"
+          className="h-2 w-full [background-image:radial-gradient(circle_at_4px_8px,transparent_3px,#ffffff_3px)] [background-size:8px_8px]"
+        />
+      </div>
+    </div>
+  );
+}
+
+/* Aggregate operational figures shown under the hero CTAs. */
+const heroStats = [
+  { value: "1000+", label: "prints" },
+  { value: "700+", label: "sessions" },
+  { value: "99%", label: "qris berhasil" },
+  { value: "97%", label: "session berhasil" },
+] as const;
+
+/* Fixed pseudo-random pattern for the CSS QR square. */
+const QR_CELLS = [
+  1, 1, 1, 0, 1,
+  1, 0, 0, 1, 1,
+  0, 1, 1, 0, 1,
+  1, 1, 0, 1, 0,
+  1, 0, 1, 1, 1,
+];
+
+export function HeroSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const copyRef = useRef<HTMLDivElement>(null);
+  const desktopVisualRef = useRef<HTMLDivElement>(null);
+  const mobileVisualRef = useRef<HTMLDivElement>(null);
+  const statsRef = useRef<HTMLDListElement>(null);
+
+  useLayoutEffect(() => {
+    if (!sectionRef.current) return;
+
+    const context = gsap.context(() => {
+      const media = gsap.matchMedia();
+
+      /*
+       * Never return `media.revert()` from these callbacks: a matchMedia context
+       * already reverts everything it created when the query stops matching, and
+       * calling revert() from inside its own cleanup recurses until the stack
+       * overflows.
+       */
+      media.add("(prefers-reduced-motion: no-preference)", () => {
+        const copyItems = copyRef.current?.querySelectorAll("[data-hero-copy]");
+
+        if (copyItems?.length) {
+          gsap.from(copyItems, {
+            y: 16,
+            duration: 0.7,
+            stagger: 0.08,
+            ease: "power3.out",
+            delay: 0.12,
+            clearProps: "transform",
+          });
+        }
+
+        if (statsRef.current) {
+          gsap.from(statsRef.current.children, {
+            y: 14,
+            duration: 0.6,
+            stagger: 0.07,
+            ease: "power3.out",
+            delay: 0.4,
+            clearProps: "transform",
+          });
+        }
+      });
+
+      media.add("(min-width: 1024px) and (prefers-reduced-motion: no-preference)", () => {
+        if (!desktopVisualRef.current) return;
+
+        const layers = desktopVisualRef.current.querySelectorAll("[data-hero-layer]");
+        gsap.from(layers, {
+          y: 22,
+          duration: 0.85,
+          stagger: 0.1,
+          ease: "power3.out",
+          delay: 0.2,
+        });
+
+        gsap.to(copyRef.current, {
+          y: -24,
+          opacity: 0.82,
+          ease: "none",
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: "top top",
+            end: "bottom top",
+            scrub: 0.7,
+          },
+        });
+        gsap.to(desktopVisualRef.current, {
+          y: -44,
+          ease: "none",
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: "top top",
+            end: "bottom top",
+            scrub: 0.9,
+          },
+        });
+      });
+
+      media.add("(max-width: 1023px) and (prefers-reduced-motion: no-preference)", () => {
+        if (!mobileVisualRef.current) return;
+        gsap.from(mobileVisualRef.current.children, {
+          y: 14,
+          duration: 0.7,
+          stagger: 0.1,
+          ease: "power3.out",
+          delay: 0.16,
+          clearProps: "transform",
+        });
+      });
+    }, sectionRef);
+
+    return () => context.revert();
+  }, []);
 
   return (
-    <section className="hero-gradient-poskart relative isolate overflow-hidden border-b border-blue-100 text-zinc-950">
-      <div className="relative min-h-[100dvh] overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-5 top-24 bottom-8 border-x border-t border-blue-950/10 sm:inset-x-8 lg:inset-x-12" />
-
-        <div className="relative mx-auto max-w-[90rem] px-5 pb-16 pt-28 sm:px-8 sm:pt-32 lg:px-12 lg:pb-20">
-          <div className="mx-auto max-w-[78rem]">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#00357B]">
-              {landingContent.hero.eyebrow}
-            </p>
-            <div className="mt-5">
-              <h1 className="text-[clamp(1.85rem,5.8vw,5.25rem)] font-black leading-[0.9] tracking-[-0.05em]">
-                {landingContent.hero.title}
-              </h1>
-              <div className="mt-7 max-w-lg">
-                <p className="text-base leading-7 text-zinc-600 sm:text-lg">
-                  {landingContent.hero.description}
+    <section ref={sectionRef} className="flex min-h-[100dvh] items-center bg-[#F7F8FA] px-3 py-24 sm:px-6 sm:py-28 lg:px-10 lg:py-32">
+      <div className="mx-auto w-full max-w-[90rem]">
+        {/* Banner and its overlapping screenshots share one positioning context. */}
+        <div className="relative">
+          {/* Full-width blue banner reaching the corners of the container */}
+          <div className="relative overflow-hidden rounded-[28px] border border-white/40 bg-[radial-gradient(120%_130%_at_20%_20%,#5FA8FF_0%,#1F6FD0_52%,#014EB4_100%)] px-6 py-12 shadow-[0_28px_70px_rgba(0,53,123,0.22)] sm:rounded-[36px] sm:px-10 sm:py-16 lg:px-16 lg:py-20">
+            <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-4">
+              {/* Left: Copy */}
+              <div ref={copyRef} className="relative z-30 text-white">
+                <p data-hero-copy className="text-xs font-semibold uppercase tracking-[0.2em] text-white/75">
+                  Poskart Receipt Photobooth
                 </p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Link
-                    href="/register"
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#00357B] px-5 text-sm font-bold text-white transition-[background-color,transform] duration-200 hover:bg-[#014EB4] active:translate-y-px"
-                  >
-                    Coba gratis 14 hari <ArrowRight className="size-4" />
-                  </Link>
-                  <Link
-                    href="#features"
-                    className="inline-flex h-11 items-center justify-center rounded-xl border border-[#00357B]/20 bg-white/65 px-5 text-sm font-bold text-[#00357B] transition-[background-color,transform] duration-200 hover:bg-white active:translate-y-px"
-                  >
-                    Lihat fitur
-                  </Link>
+                <h1 data-hero-copy className="mt-5 max-w-xl text-[clamp(2rem,4.6vw,3.5rem)] font-black leading-[1.04] tracking-tight text-white">
+                  Receipt Photobooth App untuk bisnis Anda.
+                </h1>
+                <p data-hero-copy className="mt-5 max-w-lg text-base leading-7 text-white/85 sm:text-lg">
+                  Kelola tampilan, transaksi, perangkat, dan hasil foto dari satu sistem POSKART.
+                </p>
+                <div data-hero-copy className="mt-8 flex flex-wrap items-center gap-3">
+                  <LandingButton variant="primary" size="lg" asChild>
+                    <Link href="/register">
+                      Coba gratis <ArrowRight className="size-4" />
+                    </Link>
+                  </LandingButton>
+                  <LandingButton variant="outlineLight" size="lg" asChild>
+                    <Link href="#workflow">
+                      Lihat cara kerja <ArrowRight className="size-4" />
+                    </Link>
+                  </LandingButton>
                 </div>
+                <Link
+                  href="#features"
+                  data-hero-copy
+                  className="group mt-6 inline-flex items-center gap-2 text-sm font-semibold text-white/80 transition-colors hover:text-white"
+                >
+                  Find Out More
+                  <ArrowDown className="size-4 transition-transform duration-200 group-hover:translate-y-1" />
+                </Link>
+              </div>
 
-                {/* Qualification Row */}
-                <div className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-2">
-                  <span className="text-xs font-medium text-zinc-600">Android 10+ recommended</span>
-                  <span className="hidden sm:inline sm:text-zinc-400">|</span>
-                  <span className="text-xs font-medium text-zinc-600">Offline photo & print</span>
-                  <span className="hidden sm:inline sm:text-zinc-400">|</span>
-                  <span className="text-xs font-medium text-zinc-600">QRIS saat online</span>
-                  <span className="hidden sm:inline sm:text-zinc-400">|</span>
-                  <span className="text-xs font-medium text-zinc-600">Multi-device monitoring</span>
+              {/* Right: screenshot slot inside the grid (desktop) */}
+              <div className="relative hidden lg:block">
+                <div className="aspect-[10/7]" />
+              </div>
+
+              {/* Mobile visual stack */}
+              <div ref={mobileVisualRef} className="flex flex-col items-center gap-5 lg:hidden">
+                <Image
+                  src={landingAssets.hero.src}
+                  alt="Dashboard admin POSKART untuk mengelola operasional photobooth"
+                  width={800}
+                  height={500}
+                  className="h-auto w-full rounded-[20px] border border-white/60 object-cover shadow-2xl"
+                  priority
+                />
+                <div className="flex items-start justify-center gap-4">
+                  <Image
+                    src={landingAssets.boothApp.src}
+                    alt="Aplikasi booth POSKART yang berjalan di tablet Android"
+                    width={800}
+                    height={500}
+                    className="h-auto w-[62%] rounded-[16px] border border-white/60 object-cover shadow-xl"
+                  />
+                  <ReceiptMockup />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="relative z-10 mx-auto mt-12 w-[calc(100%+2rem)] max-w-[86rem] sm:mt-16 lg:mt-14 lg:w-[120%]">
-            <WorkspacePreview
-              activePreview={activePreview}
-              releaseSlot={releaseSlot}
-              onChangePreview={setActivePreview}
-              onNext={() => changePreview(1)}
-              onPrevious={() => changePreview(-1)}
-              preview={preview}
-            />
-          </div>
-
-          <div className="relative z-30 mx-auto mt-8 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-            <ArrowDown className="size-4 text-[#00357B]" />
-            Lihat cara kerja POSKART
+          {/* Desktop screenshots: overlap the banner and may cross its right edge */}
+          <div ref={desktopVisualRef} className="pointer-events-none absolute right-[-2%] top-1/2 hidden w-[52%] max-w-[44rem] -translate-y-1/2 lg:block">
+            <div className="relative aspect-[10/7]">
+              <div data-hero-layer className="absolute left-0 top-0 w-[84%] rotate-[-1.5deg]">
+                <Image
+                  src={landingAssets.hero.src}
+                  alt="Dashboard admin POSKART untuk mengelola operasional photobooth"
+                  width={640}
+                  height={400}
+                  className="h-auto w-full rounded-[22px] border border-white/70 object-cover shadow-[0_30px_60px_rgba(0,30,80,0.35)]"
+                  priority
+                />
+              </div>
+              <div data-hero-layer className="absolute bottom-0 right-0 w-[60%] rotate-[1.25deg]">
+                <Image
+                  src={landingAssets.boothApp.src}
+                  alt="Aplikasi booth POSKART yang berjalan di tablet Android"
+                  width={520}
+                  height={380}
+                  className="h-auto w-full rounded-[20px] border border-white/70 object-cover shadow-[0_26px_52px_rgba(0,30,80,0.38)]"
+                />
+              </div>
+              <div data-hero-layer className="absolute -bottom-14 left-[10%] z-20 sm:-bottom-30 sm:left-[15%]">
+                <ReceiptMockup />
+              </div>
+            </div>
           </div>
         </div>
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[clamp(14rem,30vw,26rem)] bg-gradient-to-b from-transparent via-white/75 to-white"
-        />
+
+        {/* Aggregate figures sit below the banner, not inside it. */}
+        <dl
+          ref={statsRef}
+          className="mt-20 grid max-w-3xl grid-cols-2 gap-x-8 gap-y-6 border-t border-zinc-200 px-6 pt-7 sm:mt-24 sm:grid-cols-4 sm:px-10 lg:mt-36 lg:px-16"
+        >
+          {heroStats.map((stat) => (
+            <div key={stat.label} className="flex flex-col-reverse">
+              <dt className="mt-1.5 text-xs font-medium leading-4 text-zinc-500">
+                {stat.label}
+              </dt>
+              <dd className="font-mono text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
+                {stat.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </section>
-  );
-}
-
-function WorkspacePreview({
-  activePreview,
-  releaseSlot,
-  onChangePreview,
-  onNext,
-  onPrevious,
-  preview,
-}: {
-  activePreview: number;
-  releaseSlot?: React.ReactNode;
-  onChangePreview: (index: number) => void;
-  onNext: () => void;
-  onPrevious: () => void;
-  preview: (typeof heroWorkspacePreviews)[number];
-}) {
-  const stageRef = useRef<HTMLDivElement>(null);
-  const hasInteractedRef = useRef(false);
-  const [prefetchId, setPrefetchId] = useState<string | null>(null);
-  const prefetchedPreview = heroWorkspacePreviews.find(
-    (item) => item.id === prefetchId && item.id !== preview.id,
-  );
-
-  useLayoutEffect(() => {
-    // Skip the first render: the initial screenshot must stay visible so it can
-    // paint immediately as the LCP element.
-    if (!hasInteractedRef.current) {
-      hasInteractedRef.current = true;
-      return;
-    }
-    const stage = stageRef.current;
-    if (!stage) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    const animation = gsap.fromTo(
-      stage,
-      { opacity: 0.35, y: 10 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.4,
-        ease: "power2.out",
-        clearProps: "transform",
-      },
-    );
-
-    return () => {
-      animation.kill();
-    };
-  }, [activePreview]);
-
-  return (
-    <div
-      aria-label="Preview workspace POSKART"
-      className="relative grid overflow-hidden rounded-2xl border border-blue-200/80 bg-[#e9eef7] shadow-[0_26px_65px_rgba(0,53,123,0.18)] lg:grid-cols-[15rem_minmax(0,1fr)]"
-    >
-      <nav
-        aria-label="Bagian software POSKART"
-        className="order-2 flex gap-1 overflow-x-auto border-t border-blue-200 bg-[#dfe7f3] p-2 lg:order-1 lg:min-h-[31rem] lg:flex-col lg:gap-2 lg:border-r lg:border-t-0 lg:p-4"
-      >
-        <div className="hidden items-center gap-1.5 px-2 pb-3 lg:flex">
-          <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-          <span className="size-2.5 rounded-full bg-[#febc2e]" />
-          <span className="size-2.5 rounded-full bg-[#28c840]" />
-        </div>
-        <div className="mb-1 hidden truncate rounded-lg border border-blue-200 bg-white/65 px-3 py-2 text-xs text-zinc-500 lg:block">
-          poskart.my.id
-        </div>
-        <p className="hidden px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500 lg:block">
-          POSKART software
-        </p>
-        {heroWorkspacePreviews.map((item, index) => (
-          <button
-            key={item.id}
-            type="button"
-            aria-current={activePreview === index ? "page" : undefined}
-            onClick={() => onChangePreview(index)}
-            onPointerEnter={() => setPrefetchId(item.id)}
-            onFocus={() => setPrefetchId(item.id)}
-            className={
-              activePreview === index
-                ? "relative shrink-0 rounded-lg bg-white px-3 py-2.5 text-left text-xs font-semibold text-[#00357B] shadow-sm transition-[background-color,color,box-shadow] duration-300 before:absolute before:inset-y-2 before:-left-1 before:w-0.5 before:bg-[#00357B] lg:w-full"
-                : "relative shrink-0 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-zinc-500 transition-[background-color,color,box-shadow] duration-300 hover:bg-white/70 hover:text-zinc-900 lg:w-full"
-            }
-          >
-            <span className="mr-2 inline-block size-2 rounded-full bg-[#00357B]/40 align-middle" />
-            {item.label}
-          </button>
-        ))}
-      </nav>
-
-      <div className="order-1 min-w-0 bg-white/65 p-2 lg:order-2 lg:p-3">
-        <div className="flex h-9 items-center gap-2 border-b border-blue-100 px-3 text-xs text-zinc-400">
-          <button
-            type="button"
-            aria-label="Preview sebelumnya"
-            onClick={onPrevious}
-            className="rounded p-1 transition-colors hover:bg-blue-50 hover:text-[#00357B]"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="Preview berikutnya"
-            onClick={onNext}
-            className="rounded p-1 transition-colors hover:bg-blue-50 hover:text-[#00357B]"
-          >
-            <ChevronRight className="size-4" />
-          </button>
-          <RotateCw className="ml-1 size-3.5" />
-          <span className="ml-2 min-w-0 truncate rounded-md bg-blue-50/70 px-3 py-1.5 text-[10px] text-zinc-500 transition-colors duration-300">
-            {preview.url}
-          </span>
-          {releaseSlot}
-        </div>
-        <div
-          ref={stageRef}
-          className="relative aspect-[16/9] overflow-hidden rounded-lg border border-blue-100 bg-[#f7f9ff]"
-        >
-          {/*
-            Only the active screenshot is mounted. Previously all five images
-            shared the same above-the-fold geometry, which pushed the browser to
-            fetch several large PNGs at once and delayed the real LCP request.
-          */}
-          <Image
-            key={preview.id}
-            src={preview.image.src}
-            alt={preview.image.alt}
-            width={1600}
-            height={900}
-            sizes="(max-width: 1023px) 92vw, 1150px"
-            preload={activePreview === 0}
-            className="h-full w-full object-cover object-top"
-          />
-          {/*
-            Warm the next screenshot only after the visitor shows intent
-            (hover or keyboard focus), so the initial load stays light.
-          */}
-          {prefetchedPreview ? (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 -z-10 opacity-0"
-            >
-              <Image
-                src={prefetchedPreview.image.src}
-                alt=""
-                width={1600}
-                height={900}
-                sizes="(max-width: 1023px) 92vw, 1150px"
-                className="h-full w-full object-cover object-top"
-              />
-            </div>
-          ) : null}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/95 via-white/60 to-transparent px-5 pb-4 pt-14 sm:px-8 sm:pb-7">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00357B]">
-              {preview.label}
-            </p>
-            <p className="mt-1 max-w-lg text-sm font-medium text-zinc-700 sm:text-base">
-              {preview.description}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

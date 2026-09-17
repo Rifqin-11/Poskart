@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { HomePage } from "@/features/root/home/home-page";
 import { HomePricing } from "@/features/root/home/home-pricing";
-import { HomeReleaseLabel } from "@/features/root/home/home-release-label";
 import { PoskartStructuredData } from "@/app/structured-data";
 
 export const metadata: Metadata = {
@@ -12,24 +11,19 @@ export const metadata: Metadata = {
 };
 
 /**
- * The hero must not wait on pricing or release data.
+ * The hero must not wait on pricing data.
  *
- * Every static section renders immediately, while the version label and the
- * pricing block stream in behind Suspense boundaries. That keeps TTFB low and
- * lets the browser discover the LCP screenshot as early as possible.
+ * Every static section renders immediately, while the pricing block streams in
+ * behind a Suspense boundary. That keeps TTFB low and lets the browser discover
+ * the LCP screenshot as early as possible.
  */
 export default function Page() {
   return (
     <>
       {/* Structured Data for SEO */}
       <PoskartStructuredData />
-      
+
       <HomePage
-        releaseSlot={
-          <Suspense fallback={<VersionPlaceholder />}>
-            <HomeReleaseLabel />
-          </Suspense>
-        }
         pricingSlot={
           <Suspense fallback={<PricingSkeleton />}>
             <HomePricing />
@@ -40,28 +34,20 @@ export default function Page() {
   );
 }
 
-function VersionPlaceholder() {
-  return (
-    <span className="ml-auto hidden text-[10px] font-medium text-zinc-400 sm:block">
-      POSKART
-    </span>
-  );
-}
-
 function PricingSkeleton() {
   return (
     <section
       id="pricing"
       aria-hidden="true"
-      className="scroll-mt-24 border-y border-blue-100 bg-[#f7f9ff]"
+      className="scroll-mt-24 bg-white py-12 sm:py-16 lg:py-16"
     >
-      <div className="mx-auto max-w-[90rem] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
-        <div className="h-40 animate-pulse rounded-[28px] bg-[#00357B]/10" />
+      <div className="mx-auto max-w-[90rem] px-5 lg:px-12">
+        <div className="h-20 animate-pulse rounded-2xl bg-zinc-100" />
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {[0, 1, 2].map((index) => (
             <div
               key={index}
-              className="min-h-[420px] animate-pulse rounded-[28px] border border-blue-100 bg-white"
+              className="min-h-[280px] animate-pulse rounded-2xl border border-zinc-200 bg-white"
             />
           ))}
         </div>

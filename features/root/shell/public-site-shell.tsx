@@ -160,7 +160,19 @@ export async function PublicHeaderWithSession({
   return <PublicHeader variant={variant} userEmail={userEmail} />;
 }
 
-export function PublicFooter({ className }: { className?: string }) {
+export function PublicFooter({
+  className,
+  variant = "default",
+}: {
+  className?: string;
+  /**
+   * `home` renders the footer as a rounded white sheet that rises over the
+   * homepage CTA backdrop. Every other page keeps the flush default footer.
+   */
+  variant?: "default" | "home";
+}) {
+  const isHome = variant === "home";
+
   const legalLinks = [
     { href: "https://docs.poskart.my.id", label: "Docs", external: true },
     { href: "/terms", label: "Terms of Service" },
@@ -169,9 +181,23 @@ export function PublicFooter({ className }: { className?: string }) {
   ];
 
   return (
-    <footer className={cn("overflow-hidden bg-white", className)}>
-      <div className="section-divider" />
-      <div className="mx-auto flex min-h-[300px] max-w-7xl flex-col px-4 py-8 sm:min-h-[360px] sm:px-6 lg:min-h-[384px] lg:px-8">
+    <footer
+      className={cn(
+        "overflow-hidden bg-white",
+        isHome &&
+          "relative z-10 rounded-t-[32px] shadow-[0_-24px_70px_rgba(15,23,42,0.14)] sm:rounded-t-[48px]",
+        className,
+      )}
+    >
+      {isHome ? null : <div className="section-divider" />}
+      <div
+        className={cn(
+          "mx-auto flex w-full flex-col px-4 py-8 sm:px-6 lg:px-8",
+          isHome
+            ? "min-h-[300px] max-w-6xl pt-8 sm:min-h-[320px] sm:pt-9 lg:min-h-[340px] lg:pt-10"
+            : "max-w-7xl min-h-[300px] sm:min-h-[360px] lg:min-h-[384px]",
+        )}
+      >
         <div className="flex flex-col gap-6 text-sm text-zinc-500 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="mb-3 flex items-center gap-2.5">
@@ -226,10 +252,20 @@ export function PublicFooter({ className }: { className?: string }) {
           </div>
         </div>
 
-        <div className="mt-auto w-full select-none overflow-hidden pt-16 sm:pt-20">
+        <div
+          className={cn(
+            "mt-auto w-full select-none overflow-hidden",
+            isHome ? "pt-6 sm:pt-7" : "pt-16 sm:pt-20",
+          )}
+        >
           <div
             aria-hidden="true"
-            className="text-center font-sans text-7xl font-black uppercase leading-[0.78] tracking-normal text-[#f4f4f5] sm:text-9xl sm:leading-[0.74] lg:text-[11rem] xl:text-[14rem]"
+            className={cn(
+              "text-center font-sans font-black uppercase leading-[0.78] tracking-normal text-[#f4f4f5]",
+              isHome
+                ? "text-7xl sm:text-9xl sm:leading-[0.74] lg:text-[11rem] xl:text-[13rem]"
+                : "text-7xl sm:text-9xl sm:leading-[0.74] lg:text-[11rem] xl:text-[14rem]",
+            )}
           >
             POSKART
           </div>

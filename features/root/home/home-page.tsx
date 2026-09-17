@@ -3,10 +3,13 @@ import {
   PublicHeader,
 } from "@/features/root/shell/public-site-shell";
 import { HeroSection } from "@/features/root/home/hero-section";
-import { ScrollyFeatures } from "@/features/root/home/scrolly-features";
-import { LandingCTA, LandingFAQ } from "@/features/root/home/landing-sections";
-import { CompatibilitySection } from "@/features/root/home/compatibility-section";
+import { GettingStartedSection } from "@/features/root/home/getting-started-section";
+import { PlatformSection } from "@/features/root/home/platform-section";
+import { AdvantagesSection } from "@/features/root/home/advantages-section";
 import { OfflineSection } from "@/features/root/home/offline-section";
+import { ProductFeaturesSection } from "@/features/root/home/product-features-section";
+import { HomeClosingSequence } from "@/features/root/home/home-closing-sequence";
+import { LandingCTA, LandingFAQ } from "@/features/root/home/landing-sections";
 
 /**
  * Server-rendered landing shell.
@@ -17,23 +20,25 @@ import { OfflineSection } from "@/features/root/home/offline-section";
  * data fetching of its own.
  */
 export function HomePage({
-  releaseSlot,
   pricingSlot,
 }: {
-  releaseSlot?: React.ReactNode;
   pricingSlot: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen overflow-clip bg-[#f7f9ff] text-zinc-950">
+    <main className="min-h-screen overflow-x-clip bg-[#F7F8FA] text-zinc-950">
       <PublicHeader variant="landing" />
-      <HeroSection releaseSlot={releaseSlot} />
-      <ScrollyFeatures />
-      <CompatibilitySection />
+      <HeroSection />
+      <GettingStartedSection />
+      <PlatformSection />
+      <AdvantagesSection />
       <OfflineSection />
+      <ProductFeaturesSection />
       {pricingSlot}
       <LandingFAQ />
-      <LandingCTA planLabel={null} />
-      <PublicFooter className="border-t border-blue-100" />
+      <HomeClosingSequence
+        cta={<LandingCTA />}
+        footer={<PublicFooter variant="home" />}
+      />
     </main>
   );
 }
