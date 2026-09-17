@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -7,6 +8,15 @@ import {
 import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { businessProfile } from "@/lib/constants/business";
+
+export const metadata: Metadata = {
+  title: "Kontak POSKART | Dukungan Receipt Photobooth App",
+  description:
+    "Hubungi tim POSKART untuk pertanyaan teknis, onboarding, setup printer, QRIS, dan konsultasi receipt photobooth app.",
+  alternates: {
+    canonical: "/contact",
+  },
+};
 
 const contacts = [
   {

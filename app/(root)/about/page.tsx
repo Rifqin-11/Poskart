@@ -1,6 +1,16 @@
+import type { Metadata } from "next";
 import { Building2, Camera, MonitorSmartphone, ShieldCheck } from "lucide-react";
 import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
 import { businessProfile } from "@/lib/constants/business";
+
+export const metadata: Metadata = {
+  title: "Tentang POSKART | Receipt Photobooth App Indonesia",
+  description:
+    "POSKART adalah receipt photobooth app Indonesia untuk mengelola booth, transaksi QRIS, template, dan media asset dari satu dashboard.",
+  alternates: {
+    canonical: "/about",
+  },
+};
 
 const points = [
   {

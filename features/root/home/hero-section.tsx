@@ -46,10 +46,8 @@ export function HeroSection({ releaseSlot }: { releaseSlot?: React.ReactNode }) 
               {landingContent.hero.eyebrow}
             </p>
             <div className="mt-5">
-              <h1 className="whitespace-nowrap text-[clamp(1.85rem,5.8vw,5.25rem)] font-black uppercase leading-[0.9] tracking-[-0.05em]">
-                Photobooth Sesuai
-                <br />
-                <span className="text-[#00357B]">Brand Anda</span>
+              <h1 className="text-[clamp(1.85rem,5.8vw,5.25rem)] font-black leading-[0.9] tracking-[-0.05em]">
+                {landingContent.hero.title}
               </h1>
               <div className="mt-7 max-w-lg">
                 <p className="text-base leading-7 text-zinc-600 sm:text-lg">
@@ -69,6 +67,17 @@ export function HeroSection({ releaseSlot }: { releaseSlot?: React.ReactNode }) 
                     Lihat fitur
                   </Link>
                 </div>
+
+                {/* Qualification Row */}
+                <div className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-2">
+                  <span className="text-xs font-medium text-zinc-600">Android 10+ recommended</span>
+                  <span className="hidden sm:inline sm:text-zinc-400">|</span>
+                  <span className="text-xs font-medium text-zinc-600">Offline photo & print</span>
+                  <span className="hidden sm:inline sm:text-zinc-400">|</span>
+                  <span className="text-xs font-medium text-zinc-600">QRIS saat online</span>
+                  <span className="hidden sm:inline sm:text-zinc-400">|</span>
+                  <span className="text-xs font-medium text-zinc-600">Multi-device monitoring</span>
+                </div>
               </div>
             </div>
           </div>
@@ -86,7 +95,7 @@ export function HeroSection({ releaseSlot }: { releaseSlot?: React.ReactNode }) 
 
           <div className="relative z-30 mx-auto mt-8 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
             <ArrowDown className="size-4 text-[#00357B]" />
-            Scroll untuk melihat fitur
+            Lihat cara kerja POSKART
           </div>
         </div>
         <div

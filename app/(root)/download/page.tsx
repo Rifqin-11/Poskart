@@ -14,9 +14,12 @@ import {
 } from "@/server/releases/github-release";
 
 export const metadata: Metadata = {
-  title: "Download POSKART Kiosk",
+  title: "Download Receipt Photobooth App Android | POSKART",
   description:
-    "Download aplikasi POSKART Kiosk terbaru untuk tablet Android dan lanjutkan proses pairing device.",
+    "Download aplikasi receipt photobooth POSKART untuk tablet Android. Pasang, pairing device, dan mulai jalankan sesi photobooth.",
+  alternates: {
+    canonical: "/download",
+  },
 };
 
 function formatFileSize(bytes: number) {

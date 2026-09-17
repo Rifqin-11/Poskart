@@ -4,12 +4,9 @@ import {
 } from "@/features/root/shell/public-site-shell";
 import { HeroSection } from "@/features/root/home/hero-section";
 import { ScrollyFeatures } from "@/features/root/home/scrolly-features";
-import {
-  LandingCTA,
-  LandingFAQ,
-  ProductShowcase,
-  WorkflowBand,
-} from "@/features/root/home/landing-sections";
+import { LandingCTA, LandingFAQ } from "@/features/root/home/landing-sections";
+import { CompatibilitySection } from "@/features/root/home/compatibility-section";
+import { OfflineSection } from "@/features/root/home/offline-section";
 
 /**
  * Server-rendered landing shell.
@@ -31,8 +28,8 @@ export function HomePage({
       <PublicHeader variant="landing" />
       <HeroSection releaseSlot={releaseSlot} />
       <ScrollyFeatures />
-      <ProductShowcase />
-      <WorkflowBand />
+      <CompatibilitySection />
+      <OfflineSection />
       {pricingSlot}
       <LandingFAQ />
       <LandingCTA planLabel={null} />

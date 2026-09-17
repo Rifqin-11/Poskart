@@ -8,9 +8,10 @@ import type { PublicNavLink } from "@/features/root/shell/public-mobile-nav";
 const navLinks: PublicNavLink[] = [
   { href: "/#features", label: "Fitur" },
   { href: "/#workflow", label: "Cara kerja" },
+  { href: "/#compatibility", label: "Perangkat" },
   { href: "/#pricing", label: "Harga" },
-  { href: "/contact", label: "Contact" },
   { href: "/download", label: "Download" },
+  { href: "/contact", label: "Kontak" },
 ];
 
 export function PublicHeader({

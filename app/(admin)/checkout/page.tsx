@@ -1,5 +1,14 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CheckoutContent } from "@/features/billing/checkout/checkout-content";
+
+export const metadata: Metadata = {
+  title: "Checkout | POSKART",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/server";
 import { getDuitkuConfig } from "@/server/payments/duitku";

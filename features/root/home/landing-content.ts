@@ -48,14 +48,14 @@ export const heroWorkspacePreviews = [
   {
     id: "dashboard",
     label: "Dashboard",
-    url: "poskart.my.id/dashboard",
+    url: "www.poskart.my.id/dashboard",
     image: landingAssets.hero,
     description: "Kelola operasional receipt photobooth dari satu workspace.",
   },
   {
     id: "builder",
     label: "Visual Builder",
-    url: "poskart.my.id/builder",
+    url: "www.poskart.my.id/builder",
     image: landingAssets.builder,
     description:
       "Atur layar booth, frame, dan alur pengalaman tanpa mengubah kode.",
@@ -64,7 +64,7 @@ export const heroWorkspacePreviews = [
   {
     id: "monitoring",
     label: "Monitoring Booth",
-    url: "poskart.my.id/devices",
+    url: "www.poskart.my.id/devices",
     image: {
       src: "/landing/devices.webp",
       alt: "Halaman monitoring device photobooth POSKART",
@@ -75,7 +75,7 @@ export const heroWorkspacePreviews = [
   {
     id: "download",
     label: "Halaman Download",
-    url: "poskart.my.id/galery",
+    url: "www.poskart.my.id/gallery",
     image: landingAssets.delivery,
     description:
       "Buat halaman download yang tetap membawa identitas brand Anda.",
@@ -83,7 +83,7 @@ export const heroWorkspacePreviews = [
   {
     id: "showcase",
     label: "Showcase",
-    url: "poskart.my.id/showcase",
+    url: "www.poskart.my.id/showcase",
     image: landingAssets.showcase,
     description:
       "Bagikan pilihan visual booth kepada cafe dan calon partner event.",
@@ -101,10 +101,10 @@ export const landingPlaceholderNotes = {
 
 export const landingContent = {
   hero: {
-    eyebrow: "Software receipt photobooth",
-    title: "Photobooth sesuai brand Anda.",
+    eyebrow: "Receipt Photobooth App Indonesia",
+    title: "Receipt Photobooth App untuk Bisnis Anda.",
     description:
-      "Perbarui tema dan frame dari Admin Web. Booth tetap melayani pengunjung tanpa menghentikan operasional.",
+      "Kelola tampilan, transaksi, perangkat, dan hasil foto dari Admin Web. Jalankan setiap sesi melalui aplikasi booth Android POSKART.",
   },
   stories: [
     {

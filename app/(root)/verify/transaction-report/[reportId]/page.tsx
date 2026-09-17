@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ReportPdfVerifier } from "@/features/public/transaction-report/report-pdf-verifier";
@@ -5,6 +6,14 @@ import { formatCurrency, formatWibDateTime } from "@/lib/utils";
 import { getTransactionReportVerification } from "@/server/admin/transaction-report-verification";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Verifikasi Laporan | POSKART",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function TransactionReportVerificationPage({
   params,

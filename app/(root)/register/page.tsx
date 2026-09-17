@@ -1,6 +1,15 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/features/root/auth/auth-form";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "Daftar | POSKART",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function RegisterPage({
   searchParams,

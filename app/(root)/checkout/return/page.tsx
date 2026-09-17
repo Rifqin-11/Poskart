@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, Clock3, XCircle } from "lucide-react";
 
@@ -7,6 +8,14 @@ import {
 } from "@/features/root/shell/public-site-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+export const metadata: Metadata = {
+  title: "Status Pembayaran | POSKART",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function CheckoutReturnPage({
   searchParams,

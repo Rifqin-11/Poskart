@@ -1,7 +1,15 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { HomePage } from "@/features/root/home/home-page";
 import { HomePricing } from "@/features/root/home/home-pricing";
 import { HomeReleaseLabel } from "@/features/root/home/home-release-label";
+import { PoskartStructuredData } from "@/app/structured-data";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+};
 
 /**
  * The hero must not wait on pricing or release data.
@@ -12,18 +20,23 @@ import { HomeReleaseLabel } from "@/features/root/home/home-release-label";
  */
 export default function Page() {
   return (
-    <HomePage
-      releaseSlot={
-        <Suspense fallback={<VersionPlaceholder />}>
-          <HomeReleaseLabel />
-        </Suspense>
-      }
-      pricingSlot={
-        <Suspense fallback={<PricingSkeleton />}>
-          <HomePricing />
-        </Suspense>
-      }
-    />
+    <>
+      {/* Structured Data for SEO */}
+      <PoskartStructuredData />
+      
+      <HomePage
+        releaseSlot={
+          <Suspense fallback={<VersionPlaceholder />}>
+            <HomeReleaseLabel />
+          </Suspense>
+        }
+        pricingSlot={
+          <Suspense fallback={<PricingSkeleton />}>
+            <HomePricing />
+          </Suspense>
+        }
+      />
+    </>
   );
 }
 
