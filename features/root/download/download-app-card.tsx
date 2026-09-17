@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Smartphone,
 } from "lucide-react";
+import { LandingButton } from "@/components/ui/landing-button";
 
 type DownloadState = "preparing" | "started" | "unavailable";
 
@@ -132,10 +133,11 @@ export function DownloadAppCard({
           </div>
 
           {downloadUrl ? (
-            <button
-              type="button"
+            <LandingButton
+              variant="primary"
+              size="md"
+              className="mt-5 h-12 w-full rounded-xl text-sm"
               onClick={startDownload}
-              className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#00357B] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#014EB4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B] focus-visible:ring-offset-2"
             >
               {isStarted ? (
                 <RotateCcw className="size-4" />
@@ -143,17 +145,19 @@ export function DownloadAppCard({
                 <Download className="size-4" />
               )}
               {isStarted ? "Ulangi download" : "Download sekarang"}
-            </button>
+            </LandingButton>
           ) : (
-            <a
-              href={releaseUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#00357B] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#014EB4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B] focus-visible:ring-offset-2"
+            <LandingButton
+              variant="primary"
+              size="md"
+              className="mt-5 h-12 w-full rounded-xl text-sm"
+              asChild
             >
-              Buka halaman rilis
-              <ExternalLink className="size-4" />
-            </a>
+              <a href={releaseUrl} target="_blank" rel="noreferrer">
+                Buka halaman rilis
+                <ExternalLink className="size-4" />
+              </a>
+            </LandingButton>
           )}
 
           <p className="mt-3 text-center text-xs leading-5 text-zinc-400">

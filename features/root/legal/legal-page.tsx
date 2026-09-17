@@ -118,7 +118,7 @@ export function LegalPage({
         </div>
       </section>
 
-      <PublicFooter variant="home" />
+      <PublicFooter className="border-t border-blue-100" />
     </main>
   );
 }
