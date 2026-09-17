@@ -492,7 +492,7 @@ export function AdminShell({
       >
         {/* Checkout Header — standalone header with Back button & Icon */}
         {isCheckoutPage ? (
-          <header className="sticky top-4 z-30 mx-auto max-w-6xl mt-4 px-3 sm:px-5 lg:px-6">
+          <header className="sticky top-4 z-30 mx-auto mt-4 w-full max-w-[90rem] px-3 sm:px-8 lg:px-12">
             <div className="flex h-16 items-center justify-between rounded-[1.75rem] border border-white/75 bg-white/75 px-4 shadow-lg shadow-zinc-950/[0.035] backdrop-blur-2xl backdrop-saturate-150 sm:px-5">
               <Link
                 href="/dashboard"

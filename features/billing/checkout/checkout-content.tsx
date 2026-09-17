@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
 import { CreditCard, Minus, Plus, ReceiptText } from "lucide-react";
 import { createSubscriptionOrderAction } from "@/app/(admin)/checkout/actions";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { LandingButton } from "@/components/ui/landing-button";
 import {
   businessProfile,
   calculateSubscriptionTotal,
@@ -498,10 +498,11 @@ export function CheckoutContent({
           Secure payment via {selectedGatewayLabel}
         </p>
 
-        <Button
+        <LandingButton
           type="submit"
-          className="mt-4 w-full bg-[#00357B] hover:bg-[#002a63]"
+          variant="primary"
           size="lg"
+          className="mt-4 h-14 w-full rounded-2xl"
           disabled={isPending || waitingForDuitkuScript}
         >
           {isPending
@@ -510,16 +511,15 @@ export function CheckoutContent({
               ? "Loading secure payment..."
               : `Continue to ${paymentGateway === "midtrans" ? "Midtrans" : "Duitku"}`}
           <CreditCard className="size-4" />
-        </Button>
-        <Link
-          href="/#pricing"
-          className={buttonVariants({
-            variant: "outline",
-            className: "mt-2 w-full",
-          })}
+        </LandingButton>
+        <LandingButton
+          variant="secondary"
+          size="lg"
+          className="mt-2 h-14 w-full rounded-2xl"
+          asChild
         >
-          Change plan
-        </Link>
+          <Link href="/#pricing">Change plan</Link>
+        </LandingButton>
 
         <p className="mt-4 text-xs leading-5 text-zinc-500">
           By continuing, customer agrees to POSKART{" "}
