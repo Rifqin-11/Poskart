@@ -19,32 +19,36 @@ export function LegalPage({
   sections: LegalSection[];
 }) {
   return (
-    <main className="min-h-dvh overflow-clip bg-[#f7f9ff] text-zinc-950">
+    <main className="min-h-dvh overflow-x-clip bg-[#F7F8FA] text-zinc-950">
       <PublicHeader variant="landing" />
 
       {/* Hero */}
-      <section className="hero-gradient-poskart border-b border-blue-100 px-5 pb-16 pt-28 sm:px-8 sm:pb-20 sm:pt-32 lg:px-12">
-        <div className="mx-auto max-w-[90rem]">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#00357B]">
-            <FileText className="size-3.5" />
-            Legal
+      <section className="bg-[#F7F8FA] px-3 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-28 lg:px-10 lg:pb-24">
+        <div className="mx-auto w-full max-w-[90rem]">
+          <div className="relative overflow-hidden rounded-[28px] border border-white/40 bg-[radial-gradient(120%_130%_at_20%_20%,#5FA8FF_0%,#1F6FD0_52%,#014EB4_100%)] px-6 py-12 text-white shadow-[0_28px_70px_rgba(0,53,123,0.22)] sm:rounded-[36px] sm:px-10 sm:py-16 lg:px-16 lg:py-20">
+            <div className="relative z-10 max-w-3xl">
+              <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/75">
+                <FileText className="size-3.5" />
+                Legal
+              </div>
+              <h1 className="mt-5 max-w-2xl text-[clamp(2rem,4.6vw,3.5rem)] font-black leading-[1.04] tracking-tight">
+                {title}
+              </h1>
+              <p className="mt-5 max-w-xl text-base leading-7 text-white/85 sm:text-lg">
+                {description}
+              </p>
+              <p className="mt-4 text-xs text-white/60">
+                Last updated: May 24, 2026
+              </p>
+            </div>
           </div>
-          <h1 className="mt-5 max-w-3xl text-4xl font-black uppercase leading-[0.9] tracking-tight text-zinc-950 sm:text-5xl lg:text-6xl">
-            {title}
-          </h1>
-          <p className="mt-6 max-w-xl text-base leading-7 text-zinc-600">
-            {description}
-          </p>
-          <p className="mt-4 text-xs text-zinc-400">
-            Last updated: May 24, 2026
-          </p>
         </div>
       </section>
 
       {/* Sections */}
-      <section className="bg-white px-5 py-16 sm:px-8 lg:px-12 lg:py-24">
+      <section className="bg-white px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
         <div className="mx-auto max-w-[90rem]">
-          <div className="grid gap-8 lg:grid-cols-[0.38fr_1fr] lg:gap-14">
+          <div className="grid gap-10 lg:grid-cols-[0.38fr_1fr] lg:gap-14">
             {/* Sticky nav */}
             <div className="hidden lg:block">
               <div className="sticky top-28 space-y-1">
@@ -55,7 +59,7 @@ export function LegalPage({
                   <a
                     key={section.title}
                     href={`#${section.title.toLowerCase().replace(/\s+/g, "-")}`}
-                    className="block rounded-xl px-3 py-2 text-sm text-zinc-500 transition hover:bg-blue-50 hover:text-[#00357B]"
+                    className="block border-l-2 border-transparent px-3 py-2 text-sm text-zinc-500 transition hover:border-[#014EB4] hover:bg-[#F7F8FA] hover:text-[#00357B]"
                   >
                     {section.title}
                   </a>
@@ -64,19 +68,17 @@ export function LegalPage({
             </div>
 
             {/* Content */}
-            <div className="space-y-4">
+            <div className="divide-y divide-zinc-200 border-y border-zinc-200">
               {sections.map((section) => (
                 <article
                   key={section.title}
                   id={section.title.toLowerCase().replace(/\s+/g, "-")}
-                  className="overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-[0_4px_16px_rgba(0,53,123,0.05)]"
+                  className="scroll-mt-28 py-8 first:pt-0 last:pb-0"
                 >
-                  <div className="border-b border-blue-50 bg-[#f7f9ff] px-6 py-4">
-                    <h2 className="text-sm font-semibold text-zinc-950">
-                      {section.title}
-                    </h2>
-                  </div>
-                  <div className="space-y-3 px-6 py-5 text-sm leading-7 text-zinc-600">
+                  <h2 className="text-xl font-bold tracking-tight text-zinc-950 sm:text-2xl">
+                    {section.title}
+                  </h2>
+                  <div className="mt-4 space-y-3 text-sm leading-7 text-zinc-600">
                     {section.body.map((paragraph) => (
                       <p key={paragraph}>{paragraph}</p>
                     ))}
@@ -89,32 +91,34 @@ export function LegalPage({
       </section>
 
       {/* CTA */}
-      <section className="cta-gradient-poskart px-5 py-16 text-white sm:px-8 lg:px-12 lg:py-20">
-        <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
-          <div className="max-w-2xl">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              Ada pertanyaan terkait dokumen ini?
-            </h2>
-            <p className="mt-4 text-sm leading-7 text-blue-100 sm:text-base">
-              Hubungi {businessProfile.email} atau {businessProfile.phone} untuk
-              klarifikasi lebih lanjut.
-            </p>
+      <section className="bg-[#F7F8FA] px-3 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-24">
+        <div className="mx-auto w-full max-w-[90rem]">
+          <div className="cta-gradient-poskart flex flex-col items-start justify-between gap-8 rounded-[28px] border border-white/40 px-6 py-16 text-white shadow-[0_30px_80px_rgba(0,53,123,0.24)] sm:rounded-[36px] sm:px-12 sm:py-20 lg:flex-row lg:items-center lg:py-24">
+            <div className="max-w-2xl">
+              <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
+                Ada pertanyaan terkait dokumen ini?
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-blue-100 sm:text-base">
+                Hubungi {businessProfile.email} atau {businessProfile.phone} untuk
+                klarifikasi lebih lanjut.
+              </p>
+            </div>
+            <Link
+              href="/contact"
+              className={buttonVariants({
+                size: "lg",
+                className:
+                  "h-12 rounded-full bg-white px-6 text-[#00357B] hover:bg-blue-50",
+              })}
+            >
+              Hubungi kami
+              <ArrowUpRight className="size-4" />
+            </Link>
           </div>
-          <Link
-            href="/contact"
-            className={buttonVariants({
-              size: "lg",
-              className:
-                "h-12 rounded-full bg-white px-6 text-[#00357B] hover:bg-blue-50",
-            })}
-          >
-            Hubungi kami
-            <ArrowUpRight className="size-4" />
-          </Link>
         </div>
       </section>
 
-      <PublicFooter className="border-t border-blue-100" />
+      <PublicFooter variant="home" />
     </main>
   );
 }

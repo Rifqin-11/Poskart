@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft, MessageCircle } from "lucide-react";
-
 import { DownloadAppCard } from "@/features/root/download/download-app-card";
 import {
   PublicFooter,
   PublicHeaderWithSession,
 } from "@/features/root/shell/public-site-shell";
-import { businessProfile } from "@/lib/constants/business";
 import {
   getLatestAppRelease,
   RELEASES_PAGE_URL,
@@ -46,46 +42,42 @@ export default async function DownloadPage() {
   const latestRelease = await getLatestAppRelease();
 
   return (
-    <main className="min-h-screen overflow-clip bg-[#f7f9ff] text-zinc-950">
+    <main className="min-h-screen overflow-x-clip bg-[#F7F8FA] text-zinc-950">
       <PublicHeaderWithSession variant="landing" />
 
-      <section className="relative isolate px-5 pb-8 pt-28 sm:px-8 sm:pb-12 sm:pt-32 lg:px-12 lg:pb-14">
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-          aria-hidden="true"
-        >
-          <div className="absolute -left-36 top-16 size-96 rounded-full bg-blue-100/65 blur-3xl" />
-          <div className="absolute -right-28 top-72 size-80 rounded-full bg-red-50 blur-3xl" />
-        </div>
-
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-9 max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#00357B]">
-              POSKART for Android
-            </p>
-            <h1 className="mt-4 text-4xl font-black uppercase leading-[0.92] tracking-tight text-zinc-950 sm:text-5xl lg:text-6xl">
-              Siapkan tablet booth Anda.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-600">
-              Download aplikasi POSKART Kiosk terbaru, instal di tablet Android,
-              lalu hubungkan device ke dashboard melalui kode pairing.
-            </p>
+      <section className="bg-[#F7F8FA] px-3 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-28 lg:px-10 lg:pb-24">
+        <div className="mx-auto w-full max-w-[90rem]">
+          <div className="relative overflow-hidden rounded-[28px] border border-white/40 bg-[radial-gradient(120%_130%_at_20%_20%,#5FA8FF_0%,#1F6FD0_52%,#014EB4_100%)] px-6 py-12 shadow-[0_28px_70px_rgba(0,53,123,0.22)] sm:rounded-[36px] sm:px-10 sm:py-16 lg:px-16 lg:py-20">
+            <div className="relative z-10 max-w-3xl text-white">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/75">
+                POSKART for Android
+              </p>
+              <h1 className="mt-5 max-w-2xl text-[clamp(2rem,4.6vw,3.5rem)] font-black leading-[1.04] tracking-tight">
+                Siapkan tablet booth Anda.
+              </h1>
+              <p className="mt-5 max-w-xl text-base leading-7 text-white/85 sm:text-lg">
+                Download aplikasi POSKART Kiosk terbaru, instal di tablet Android,
+                lalu hubungkan device ke dashboard melalui kode pairing.
+              </p>
+            </div>
           </div>
 
-          <DownloadAppCard
-            downloadUrl={latestRelease?.downloadUrl ?? null}
-            fileName={latestRelease?.fileName ?? null}
-            fileSize={
-              latestRelease ? formatFileSize(latestRelease.fileSize) : null
-            }
-            publishedAt={
-              latestRelease
-                ? formatPublishedDate(latestRelease.publishedAt)
-                : null
-            }
-            releaseUrl={RELEASES_PAGE_URL}
-            version={latestRelease?.version ?? null}
-          />
+          <div className="mt-8 lg:mt-10">
+            <DownloadAppCard
+              downloadUrl={latestRelease?.downloadUrl ?? null}
+              fileName={latestRelease?.fileName ?? null}
+              fileSize={
+                latestRelease ? formatFileSize(latestRelease.fileSize) : null
+              }
+              publishedAt={
+                latestRelease
+                  ? formatPublishedDate(latestRelease.publishedAt)
+                  : null
+              }
+              releaseUrl={RELEASES_PAGE_URL}
+              version={latestRelease?.version ?? null}
+            />
+          </div>
         </div>
       </section>
 
