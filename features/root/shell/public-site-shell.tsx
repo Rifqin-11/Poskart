@@ -6,8 +6,8 @@ import { PublicHeaderActions } from "@/features/root/shell/public-header-actions
 import type { PublicNavLink } from "@/features/root/shell/public-mobile-nav";
 
 const navLinks: PublicNavLink[] = [
-  { href: "/#features", label: "Fitur" },
   { href: "/#workflow", label: "Cara kerja" },
+  { href: "/#features", label: "Fitur" },
   { href: "/#compatibility", label: "Perangkat" },
   { href: "/#pricing", label: "Harga" },
   { href: "/download", label: "Download" },
