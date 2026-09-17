@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, FileText } from "lucide-react";
 import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
-import { buttonVariants } from "@/components/ui/button";
+import { LandingButton } from "@/components/ui/landing-button";
 import { businessProfile } from "@/lib/constants/business";
 
 export type LegalSection = {
@@ -93,7 +93,7 @@ export function LegalPage({
       {/* CTA */}
       <section className="bg-[#F7F8FA] px-3 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-24">
         <div className="mx-auto w-full max-w-[90rem]">
-          <div className="cta-gradient-poskart flex flex-col items-start justify-between gap-8 rounded-[28px] border border-white/40 px-6 py-16 text-white shadow-[0_30px_80px_rgba(0,53,123,0.24)] sm:rounded-[36px] sm:px-12 sm:py-20 lg:flex-row lg:items-center lg:py-24">
+          <div className="flex flex-col items-start justify-between gap-8 rounded-[28px] border border-white/40 bg-[radial-gradient(140%_130%_at_50%_-20%,#5FA8FF_0%,#014EB4_50%,#00357B_100%)] px-6 py-16 text-white shadow-[0_30px_80px_rgba(0,53,123,0.24)] sm:rounded-[36px] sm:px-12 sm:py-20 lg:flex-row lg:items-center lg:py-24">
             <div className="max-w-2xl">
               <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
                 Ada pertanyaan terkait dokumen ini?
@@ -103,17 +103,17 @@ export function LegalPage({
                 klarifikasi lebih lanjut.
               </p>
             </div>
-            <Link
-              href="/contact"
-              className={buttonVariants({
-                size: "lg",
-                className:
-                  "h-12 rounded-full bg-white px-6 text-[#00357B] hover:bg-blue-50",
-              })}
+            <LandingButton
+              variant="primary"
+              size="lg"
+              className="h-14 rounded-2xl"
+              asChild
             >
-              Hubungi kami
-              <ArrowUpRight className="size-4" />
-            </Link>
+              <Link href="/contact">
+                Hubungi kami
+                <ArrowUpRight className="size-4" />
+              </Link>
+            </LandingButton>
           </div>
         </div>
       </section>

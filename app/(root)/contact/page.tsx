@@ -6,7 +6,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { PublicFooter, PublicHeader } from "@/features/root/shell/public-site-shell";
-import { buttonVariants } from "@/components/ui/button";
+import { LandingButton } from "@/components/ui/landing-button";
 import { businessProfile } from "@/lib/constants/business";
 
 export const metadata: Metadata = {
@@ -187,7 +187,7 @@ export default function ContactPage() {
       {/* CTA */}
       <section className="bg-[#F7F8FA] px-3 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-24">
         <div className="mx-auto w-full max-w-[90rem]">
-          <div className="cta-gradient-poskart flex flex-col items-start justify-between gap-8 rounded-[28px] border border-white/40 px-6 py-16 text-white shadow-[0_30px_80px_rgba(0,53,123,0.24)] sm:rounded-[36px] sm:px-12 sm:py-20 lg:flex-row lg:items-center lg:py-24">
+          <div className="flex flex-col items-start justify-between gap-8 rounded-[28px] border border-white/40 bg-[radial-gradient(140%_130%_at_50%_-20%,#5FA8FF_0%,#014EB4_50%,#00357B_100%)] px-6 py-16 text-white shadow-[0_30px_80px_rgba(0,53,123,0.24)] sm:rounded-[36px] sm:px-12 sm:py-20 lg:flex-row lg:items-center lg:py-24">
             <div className="max-w-2xl">
               <h2 className="text-3xl font-black tracking-tight sm:text-4xl">
                 Butuh bantuan lebih lanjut?
@@ -197,21 +197,23 @@ export default function ContactPage() {
                 mendiskusikan kebutuhan bisnis photobooth Anda.
               </p>
             </div>
-            <a
-              href={`${businessProfile.whatsappUrl}?text=${encodeURIComponent(
-                "Halo POSKART, saya ingin mendapatkan bantuan terkait platform POSKART.",
-              )}`}
-              target="_blank"
-              rel="noreferrer"
-              className={buttonVariants({
-                size: "lg",
-                className:
-                  "h-12 rounded-full bg-white px-6 text-[#00357B] hover:bg-blue-50",
-              })}
+            <LandingButton
+              variant="primary"
+              size="lg"
+              className="h-14 rounded-2xl"
+              asChild
             >
-              Hubungi via WhatsApp
-              <ArrowUpRight className="size-4" />
-            </a>
+              <a
+                href={`${businessProfile.whatsappUrl}?text=${encodeURIComponent(
+                  "Halo POSKART, saya ingin mendapatkan bantuan terkait platform POSKART.",
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Hubungi via WhatsApp
+                <ArrowUpRight className="size-4" />
+              </a>
+            </LandingButton>
           </div>
         </div>
       </section>
