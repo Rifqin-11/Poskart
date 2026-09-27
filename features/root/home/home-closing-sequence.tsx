@@ -112,7 +112,7 @@ export function HomeClosingSequence({
     <div ref={rootRef} className="home-closing-root relative">
       <div className="home-closing-stage">
         {/* Gradient backdrop and the banner that stays put. */}
-        <div className="home-closing-backdrop relative bg-[linear-gradient(180deg,#FFFFFF_0%,#EDF0F4_50%,#CFD5DD_100%)] px-3 py-16 sm:px-6 sm:py-20">
+        <div className="home-closing-backdrop relative bg-[linear-gradient(180deg,#FFFFFF_0%,#EDF0F4_50%,#CFD5DD_100%)] px-3 py-8 sm:px-6 sm:py-12">
           <div ref={ctaRef} className="w-full will-change-transform">
             <div ref={revealRef}>{cta}</div>
           </div>
