@@ -212,6 +212,7 @@ export default async function SharedGalleryPage({
                 >
                   <GalleryAsset
                     asset={framedLivePhoto}
+                    src={galleryMediaUrl(sessionId, framedLivePhoto.id)}
                     alt={`POSKART ${session.template_name} Live Photo`}
                     className="max-h-[58vh] w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"
                   />
@@ -262,7 +263,7 @@ export default async function SharedGalleryPage({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={framedStatic.secure_url}
+                    src={galleryMediaUrl(sessionId, framedStatic.id)}
                     alt={`POSKART ${session.template_name} Foto`}
                     className="max-h-[58vh] w-full object-contain transition-transform duration-300 group-hover:scale-[1.01]"
                   />
@@ -323,10 +324,11 @@ export default async function SharedGalleryPage({
                   className="flex min-w-0 flex-1 cursor-zoom-in items-center gap-3"
                 >
                   <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
-                    <GalleryAsset
-                      asset={gif}
-                      alt="GIF"
-                      className="size-full object-cover"
+                  <GalleryAsset
+                    asset={gif}
+                    src={galleryMediaUrl(sessionId, gif.id)}
+                    alt="GIF"
+                    className="size-full object-cover"
                     />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -360,7 +362,7 @@ export default async function SharedGalleryPage({
                       <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={photo.secure_url}
+                          src={galleryMediaUrl(sessionId, photo.id)}
                           alt={`Foto original ${index + 1}`}
                           className="size-full object-cover"
                         />
@@ -445,6 +447,7 @@ export default async function SharedGalleryPage({
           <div className="relative max-h-[80vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl">
             <GalleryAsset
               asset={selectedPhoto}
+              src={galleryMediaUrl(sessionId, selectedPhoto.id)}
               alt="Pratinjau Foto"
               className="max-h-[80vh] max-w-[90vw] object-contain"
               controls
@@ -490,15 +493,19 @@ function ExpiredGalleryPage({
 
 function GalleryAsset({
   asset,
+  src,
   alt,
   className,
   controls = false,
 }: {
   asset: { secure_url: string; format?: string | null };
+  src?: string;
   alt: string;
   className?: string;
   controls?: boolean;
 }) {
+  const mediaSrc = src ?? asset.secure_url;
+
   if (isVideoAsset(asset)) {
     return (
       <video
@@ -510,7 +517,7 @@ function GalleryAsset({
         playsInline
         preload="metadata"
       >
-        <source src={asset.secure_url} type="video/mp4" />
+        <source src={mediaSrc} type="video/mp4" />
         {alt}
       </video>
     );
@@ -518,8 +525,12 @@ function GalleryAsset({
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={asset.secure_url} alt={alt} className={className} />
+    <img src={mediaSrc} alt={alt} className={className} />
   );
+}
+
+function galleryMediaUrl(sessionId: string, photoId: string) {
+  return `/s/${encodeURIComponent(sessionId)}/media/${encodeURIComponent(photoId)}`;
 }
 
 function isVideoAsset(asset: { secure_url: string; format?: string | null }) {
