@@ -72,7 +72,6 @@ export async function POST(request: Request) {
       status,
       app_version: body.appVersion?.trim() || device.app_version,
       last_sync: now,
-      updated_at: now,
     };
 
     if (Number.isFinite(body.battery)) {
