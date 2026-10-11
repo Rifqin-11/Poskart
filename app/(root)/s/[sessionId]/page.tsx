@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Download,
   Images,
-  X,
 } from "lucide-react";
 
 import {
@@ -18,6 +17,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { GalleryMusicPlayer } from "@/features/public/gallery/gallery-music-player";
 import { GalleryDownloadLink } from "@/features/public/gallery/gallery-download-link";
 import { GalleryLinkCard } from "@/features/public/gallery/gallery-link-card";
+import { GalleryPhotoViewer } from "@/features/public/gallery/gallery-photo-viewer";
 import { getPublicGalleryUrl } from "@/lib/gallery/urls";
 
 export const dynamic = "force-dynamic";
@@ -147,6 +147,11 @@ export default async function SharedGalleryPage({
       {shouldRefreshWhileProcessing && (
         <ProcessingRefresh refreshUntil={refreshUntil} />
       )}
+      <GalleryPhotoViewer
+        sessionId={sessionId}
+        photos={(photos ?? []).map((photo) => ({ id: photo.id, isVideo: isVideoAsset(photo) }))}
+        initialPhotoId={selectedPhoto?.id}
+      >
       <div className="mx-auto max-w-6xl">
         <div className="flex items-center justify-between border-b border-black/10 pb-5">
           <div className="flex items-center gap-3">
@@ -207,7 +212,7 @@ export default async function SharedGalleryPage({
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                   Live Photo Berbingkai
                 </p>
-                <Link
+                <a data-gallery-preview
                   href={`?view=${framedLivePhoto.id}`}
                   className="block group relative overflow-hidden rounded-xl cursor-zoom-in bg-zinc-100"
                 >
@@ -222,15 +227,15 @@ export default async function SharedGalleryPage({
                       Klik untuk memperbesar
                     </span>
                   </div>
-                </Link>
+                </a>
                 <div className="mt-3 flex gap-3">
-                  <Link
+                  <a data-gallery-preview
                     data-gallery-button
                     href={`?view=${framedLivePhoto.id}`}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-50"
                   >
                     Lihat Animasi
-                  </Link>
+                  </a>
                    <GalleryDownloadLink
                      href={`/s/${encodeURIComponent(sessionId)}/download/${framedLivePhoto.id}`}
                      className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
@@ -259,7 +264,7 @@ export default async function SharedGalleryPage({
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                   Frame Foto (PNG)
                 </p>
-                <Link
+                <a data-gallery-preview
                   href={`?view=${framedStatic.id}`}
                   className="block group relative overflow-hidden rounded-xl cursor-zoom-in bg-zinc-100"
                 >
@@ -274,15 +279,15 @@ export default async function SharedGalleryPage({
                       Klik untuk memperbesar
                     </span>
                   </div>
-                </Link>
+                </a>
                 <div className="mt-3 flex gap-3">
-                  <Link
+                  <a data-gallery-preview
                     data-gallery-button
                     href={`?view=${framedStatic.id}`}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-50"
                   >
                     Lihat Foto
-                  </Link>
+                  </a>
                    <GalleryDownloadLink
                      href={`/s/${encodeURIComponent(sessionId)}/download/${framedStatic.id}`}
                      className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
@@ -322,7 +327,7 @@ export default async function SharedGalleryPage({
 
             {gif && (
               <div className="mt-5 flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/50 p-2.5 transition-colors hover:bg-zinc-50">
-                <Link
+                <a data-gallery-preview
                   href={`?view=${gif.id}`}
                   className="flex min-w-0 flex-1 cursor-zoom-in items-center gap-3"
                 >
@@ -340,7 +345,7 @@ export default async function SharedGalleryPage({
                       Berganti dari foto slot pertama sampai terakhir
                     </p>
                   </div>
-                </Link>
+                </a>
                 <GalleryDownloadLink
                   href={`/s/${encodeURIComponent(sessionId)}/download/${gif.id}`}
                   aria-label="Download GIF"
@@ -358,7 +363,7 @@ export default async function SharedGalleryPage({
                     key={photo.id}
                     className="flex items-center gap-3 rounded-2xl border border-zinc-200 p-2.5 transition-colors hover:bg-zinc-50"
                   >
-                    <Link
+                    <a data-gallery-preview
                       href={`?view=${photo.id}`}
                       className="flex flex-1 items-center gap-3 min-w-0 cursor-zoom-in"
                     >
@@ -378,7 +383,7 @@ export default async function SharedGalleryPage({
                           Resolusi asli dari kamera
                         </p>
                       </div>
-                    </Link>
+                    </a>
                     <GalleryDownloadLink
                       href={`/s/${encodeURIComponent(sessionId)}/download/${photo.id}`}
                       aria-label={`Download foto original ${index + 1}`}
@@ -427,39 +432,7 @@ export default async function SharedGalleryPage({
         </footer>
       </div>
 
-      {selectedPhoto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
-          {/* Close button in top-left corner */}
-          <Link
-            data-gallery-button
-            href={`/s/${encodeURIComponent(sessionId)}`}
-            className="absolute left-6 top-6 grid size-12 place-items-center rounded-full bg-white/10 text-white backdrop-blur transition-all duration-200 hover:bg-white/20 hover:scale-105"
-            aria-label="Tutup"
-          >
-            <X className="size-6" />
-          </Link>
-
-          {/* Download button in top-right corner */}
-          <GalleryDownloadLink
-            href={`/s/${encodeURIComponent(sessionId)}/download/${selectedPhoto.id}`}
-            className="absolute right-6 top-6 flex items-center gap-2 rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
-          >
-            <Download className="size-4" />
-            Download
-          </GalleryDownloadLink>
-
-          {/* Centered photo or Live Photo preview */}
-          <div className="relative max-h-[80vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl">
-            <GalleryAsset
-              asset={selectedPhoto}
-              src={galleryMediaUrl(sessionId, selectedPhoto.id)}
-              alt="Pratinjau Foto"
-              className="max-h-[80vh] max-w-[90vw] object-contain"
-              controls
-            />
-          </div>
-        </div>
-      )}
+      </GalleryPhotoViewer>
     </main>
   );
 }
@@ -579,7 +552,7 @@ function ProcessingRefresh({ refreshUntil }: { refreshUntil: number }) {
   return (
     <script
       dangerouslySetInnerHTML={{
-        __html: `if (Date.now() < ${JSON.stringify(refreshUntil)}) setTimeout(() => window.location.reload(), 30000);`,
+        __html: `if (Date.now() < ${JSON.stringify(refreshUntil)}) setTimeout(function refreshGallery() { if (Date.now() >= ${JSON.stringify(refreshUntil)}) return; if (new URLSearchParams(window.location.search).has('view')) { setTimeout(refreshGallery, 30000); return; } window.location.reload(); }, 30000);`,
       }}
     />
   );
