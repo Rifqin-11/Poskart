@@ -56,7 +56,7 @@ const EMPTY_PRICING: PricingProductInput = {
   extraPrintPrice: 0,
   qrisDownload: true,
   livePhotoEnabled: false,
-  gifEnabled: false,
+  gifEnabled: true,
   active: true,
   accessMode: "paid",
   requiresReprintPassword: true,
@@ -66,7 +66,7 @@ const EMPTY_PRICING: PricingProductInput = {
 
 const EMPTY_EVENT: PricingProductInput = {
   ...EMPTY_PRICING,
-  qrisDownload: false,
+  qrisDownload: true,
   accessMode: "event",
 };
 
@@ -302,9 +302,14 @@ function PricingTableCard({
   const { t } = useI18n();
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
+  const sortedPrice = [...products].sort(
+    (a, b) => Number(b.active) - Number(a.active)
+  )
+
   const totalPages = Math.max(1, Math.ceil(products.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const visibleProducts = products.slice(
+  const visibleProducts = sortedPrice.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
