@@ -149,7 +149,7 @@ export default async function SharedGalleryPage({
       )}
       <div className="mx-auto max-w-6xl">
         <div className="flex items-center justify-between border-b border-black/10 pb-5">
-          <Link href="/" className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <span className="grid size-10 place-items-center overflow-hidden rounded-xl bg-white">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -164,7 +164,7 @@ export default async function SharedGalleryPage({
               </span>
                <span className="block text-xs text-zinc-500">{branding.subtitle}</span>
             </span>
-          </Link>
+          </div>
           <span className="inline-flex items-center gap-2 text-xs font-medium text-zinc-500">
             <CheckCircle2 className="size-4 text-emerald-600" />
             Foto tersimpan aman
