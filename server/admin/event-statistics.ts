@@ -221,9 +221,9 @@ function buildDailySeries(
   printEvents: TransactionPrintEventRow[],
   startOfDay: Date,
 ) {
-  return Array.from({ length: 6 }, (_, index) => {
-    const bucketStart = new Date(startOfDay.getTime() + index * 4 * HOUR_MS);
-    const bucketEnd = new Date(bucketStart.getTime() + 4 * HOUR_MS);
+  return Array.from({ length: 24 }, (_, index) => {
+    const bucketStart = new Date(startOfDay.getTime() + index * HOUR_MS);
+    const bucketEnd = new Date(bucketStart.getTime() + HOUR_MS);
     const bucketRows = rows.filter((row) => {
       const createdAt = new Date(row.created_at).getTime();
       return createdAt >= bucketStart.getTime() && createdAt < bucketEnd.getTime();
@@ -234,7 +234,7 @@ function buildDailySeries(
     });
 
     return {
-      label: `${String(index * 4).padStart(2, "0")}:00`,
+      label: `${String(index).padStart(2, "0")}:00`,
       revenue: sumRevenue(bucketRows),
       sessions: bucketRows.length,
       prints: sumPrintedCopies(bucketPrintEvents),

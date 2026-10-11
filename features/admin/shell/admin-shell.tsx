@@ -6,39 +6,15 @@ import {
   ArrowLeft,
   Bell,
   Bot,
-  Calculator,
-  ChevronDown,
-  CreditCard,
-  Gauge,
-  LayoutTemplate,
-  Images,
-  ListOrdered,
-  LockKeyhole,
   Menu,
-  MonitorSmartphone,
-  Palette,
-  PanelsTopLeft,
-  ReceiptText,
-  Settings,
-  Store,
-  LogOut,
-  Building,
-  BookOpen,
-  CircleHelp,
-  Shield,
-  UserRound,
-  Ticket,
-  WalletCards,
-  MessageSquareMore,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
-import { useTenantDetails } from "@/features/admin/organization/use-organization";
+import { AdminSidebar } from "./admin-sidebar";
+import { AdminAccountMenu } from "./admin-account-menu";
 import {
   useAdminNotifications,
   useMarkAdminNotificationsRead,
 } from "@/features/admin/notifications/use-admin-notifications";
-import { signOutAction } from "@/app/auth/actions";
 import { SubscriptionDialog } from "@/features/billing/subscription/subscription-dialog";
 import { Avatar } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -47,131 +23,14 @@ import { Sheet } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
-import {
-  normalizeOrganizationFeatures,
-  type OrganizationFeatureKey,
-} from "@/lib/organization-features";
 import { useI18n } from "@/lib/i18n/i18n-provider";
-import type { DictionaryKey } from "@/lib/i18n/dictionaries";
 import { AdminGuidedTour } from "@/features/admin/tutorial/admin-guided-tour";
-
-type AdminNavItem = {
-  href: string;
-  labelKey: DictionaryKey;
-  icon: React.ComponentType<{ className?: string }>;
-  requiresSubscription?: boolean;
-  superAdminOnly?: boolean;
-  organizationFeature?: OrganizationFeatureKey;
-};
 
 type AiChatMessage = {
   id: number;
   role: "assistant" | "user";
   content: string;
 };
-
-const navItems: AdminNavItem[] = [
-  { href: "/dashboard", labelKey: "nav.dashboard", icon: Gauge },
-  {
-    href: "/queue",
-    labelKey: "nav.queue",
-    icon: ListOrdered,
-    requiresSubscription: true,
-  },
-  {
-    href: "/finance",
-    labelKey: "nav.money",
-    icon: WalletCards,
-    requiresSubscription: true,
-  },
-  {
-    href: "/pos",
-    labelKey: "nav.pos",
-    icon: Calculator,
-    requiresSubscription: true,
-    organizationFeature: "posKasir",
-  },
-  {
-    href: "/transactions",
-    labelKey: "nav.transactions",
-    icon: Store,
-    requiresSubscription: true,
-  },
-  {
-    href: "/withdraw",
-    labelKey: "nav.withdraw",
-    icon: ReceiptText,
-    requiresSubscription: true,
-  },
-  {
-    href: "/pricing",
-    labelKey: "nav.pricing",
-    icon: CreditCard,
-    requiresSubscription: true,
-  },
-  {
-    href: "/devices",
-    labelKey: "nav.devices",
-    icon: MonitorSmartphone,
-    requiresSubscription: true,
-  },
-  {
-    href: "/themes",
-    labelKey: "nav.themes",
-    icon: Palette,
-    requiresSubscription: true,
-  },
-  {
-    href: "/templates",
-    labelKey: "nav.templates",
-    icon: LayoutTemplate,
-    requiresSubscription: true,
-  },
-  {
-    href: "/showcase",
-    labelKey: "nav.showcase",
-    icon: PanelsTopLeft,
-    requiresSubscription: true,
-    organizationFeature: "showcase",
-  },
-  {
-    href: "/gallery",
-    labelKey: "nav.gallery",
-    icon: Images,
-    requiresSubscription: true,
-  },
-  {
-    href: "/vouchers",
-    labelKey: "nav.vouchers",
-    icon: Ticket,
-    requiresSubscription: true,
-  },
-  {
-    href: "/superadmin",
-    labelKey: "nav.superAdmin",
-    icon: Shield,
-    superAdminOnly: true,
-  },
-  {
-    href: "/settings",
-    labelKey: "nav.settings",
-    icon: Settings,
-    requiresSubscription: true,
-  },
-];
-
-function formatShortExpiry(value?: string | null) {
-  if (!value) return null;
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "2-digit",
-  });
-}
 
 function formatNotificationTime(value: string) {
   const date = new Date(value);
@@ -201,172 +60,6 @@ function formatAccountRole(role?: string | null, isSuperAdmin = false) {
   return labels[role] ?? role;
 }
 
-function SidebarContent({
-  isSuperAdmin = false,
-  onNavigate,
-}: {
-  isSuperAdmin?: boolean;
-  onNavigate?: () => void;
-}) {
-  const pathname = usePathname();
-  const { t } = useI18n();
-
-  const { data: sub, isLoading } = useSubscriptionStatus();
-  const { data: organization, isLoading: isOrganizationLoading } =
-    useTenantDetails();
-  const organizationName = organization?.name ?? "Organization";
-  const expiry =
-    formatShortExpiry(organization?.subscription_expires_at) ??
-    sub?.expiry ??
-    "No expiry";
-
-  const adminMode = isSuperAdmin;
-  const hasActiveSubscription = adminMode || Boolean(sub?.isActive);
-  const organizationFeatures = normalizeOrganizationFeatures(
-    organization?.features,
-  );
-  const filteredNavItems = navItems.filter((item) => {
-    if (item.superAdminOnly && !adminMode) return false;
-    if (
-      item.organizationFeature &&
-      !adminMode &&
-      !organizationFeatures[item.organizationFeature]
-    ) {
-      return false;
-    }
-    return true;
-  });
-
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <Link
-        href="/dashboard"
-        data-admin-tour="brand"
-        className="mb-6 flex items-center gap-3 rounded-2xl px-2 py-1.5 transition-colors hover:bg-white/70"
-        onClick={onNavigate}
-      >
-        <div className="grid size-10 place-items-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200/70">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo-mark.webp"
-            alt="POSKART Logo"
-            className="size-7 object-contain"
-          />
-        </div>
-        <div>
-          <div className="text-sm font-semibold tracking-tight">POSKART</div>
-          <div className="text-xs text-zinc-500">Kiosk operating system</div>
-        </div>
-      </Link>
-
-      <nav
-        data-admin-tour="navigation"
-        className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]"
-      >
-        {filteredNavItems.map((item) => {
-          const Icon = item.icon;
-          const active = pathname === item.href;
-          const locked = Boolean(
-            item.requiresSubscription && !hasActiveSubscription,
-          );
-          if (locked) {
-            return (
-              <Link
-                key={item.href}
-                href={`/settings?tab=organization&subscription=required&next=${encodeURIComponent(item.href)}`}
-                onClick={onNavigate}
-                className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-zinc-400 transition-colors hover:bg-amber-50 hover:text-amber-700"
-                title="Requires an active POSKART subscription"
-              >
-                <Icon className="size-4" />
-                <span className="flex-1">{t(item.labelKey)}</span>
-                <LockKeyhole className="size-3.5" />
-              </Link>
-            );
-          }
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              // Route-level loading UI lets Next.js prefetch only the shared
-              // shell and skeleton for dynamic pages, not their database data.
-              onClick={onNavigate}
-              className={cn(
-                "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-white hover:text-zinc-950 hover:shadow-sm",
-                active &&
-                  "bg-zinc-950 text-white shadow-lg shadow-zinc-950/10 hover:bg-zinc-950 hover:text-white",
-              )}
-            >
-              <Icon className="size-4" />
-              {t(item.labelKey)}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <Link
-        href="/settings?tab=organization"
-        data-admin-tour="organization"
-        onClick={onNavigate}
-        className={cn(
-          "mt-3 shrink-0 rounded-3xl border bg-white/90 p-3.5 shadow-sm shadow-zinc-200/70 transition-colors hover:border-zinc-300 hover:bg-white",
-          hasActiveSubscription
-            ? "border-emerald-200/80"
-            : "border-amber-200/80 bg-amber-50/60",
-          pathname === "/settings" && "border-zinc-950 shadow-zinc-950/10",
-        )}
-      >
-        <div className="flex items-start gap-3">
-          <div
-            className={cn(
-              "grid size-9 shrink-0 place-items-center rounded-2xl",
-              hasActiveSubscription
-                ? "bg-emerald-100 text-emerald-700"
-                : "bg-amber-100 text-amber-700",
-            )}
-          >
-            <Building className="size-4" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
-              {t("common.organization")}
-            </div>
-            {isLoading || isOrganizationLoading ? (
-              <div className="mt-2 h-4 w-28 animate-pulse rounded bg-zinc-100" />
-            ) : (
-              <>
-                <div className="mt-0.5 truncate text-sm font-semibold text-zinc-950">
-                  {organizationName}
-                </div>
-                <div className="mt-1 truncate text-[11px] leading-4 text-zinc-500">
-                  <span
-                    className={cn(
-                      "font-medium",
-                      hasActiveSubscription
-                        ? "text-emerald-700"
-                        : "text-amber-700",
-                    )}
-                  >
-                    {hasActiveSubscription
-                      ? sub?.status === "trialing"
-                        ? "Trial"
-                        : t("common.active")
-                      : t("common.locked")}
-                  </span>
-                  <span className="mx-1.5 text-zinc-300">•</span>
-                  <span>
-                    {t("common.exp")} {expiry}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </Link>
-    </div>
-  );
-}
 
 export function AdminShell({
   children,
@@ -469,11 +162,11 @@ export function AdminShell({
       {!isStandalone && (
         <>
           <aside className="fixed inset-y-4 left-4 hidden w-64 overflow-hidden rounded-[2rem] border border-zinc-200/70 bg-white p-4 shadow-xl shadow-zinc-950/[0.05] lg:block xl:w-72">
-            <SidebarContent isSuperAdmin={isSuperAdmin} />
+            <AdminSidebar isSuperAdmin={isSuperAdmin} />
           </aside>
 
           <Sheet open={open} onOpenChange={setOpen}>
-            <SidebarContent
+            <AdminSidebar
               isSuperAdmin={isSuperAdmin}
               onNavigate={() => setOpen(false)}
             />
@@ -693,131 +386,19 @@ export function AdminShell({
                     </div>
                   ) : null}
                 </div>
-                <div className="relative">
-                  <button
-                    type="button"
-                    data-admin-tour="profile"
-                    className="flex items-center gap-1 rounded-full bg-white/35 p-0.5 transition-colors hover:bg-white/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
-                    onClick={() => {
-                      setNotificationMenuOpen(false);
-                      setAccountMenuOpen((value) => !value);
-                    }}
-                    aria-expanded={accountMenuOpen}
-                    aria-haspopup="menu"
-                    aria-label="Open account menu"
-                  >
-                    <Avatar name={initials} />
-                    <ChevronDown className="size-3.5 text-zinc-500" />
-                  </button>
-                  {accountMenuOpen ? (
-                    <div
-                      role="menu"
-                      className="absolute right-0 top-12 z-50 w-64 rounded-3xl border border-zinc-200/80 bg-white/95 p-2 shadow-2xl shadow-zinc-950/10 backdrop-blur-xl"
-                    >
-                      <div className="border-b border-zinc-100 px-3 py-2.5">
-                        <div className="truncate text-sm font-medium text-zinc-950">
-                          {accountName}
-                        </div>
-                        <div className="mt-0.5 text-xs text-zinc-500">
-                          {accountRole}
-                        </div>
-                      </div>
-                      <div className="py-1">
-                        <div className="px-3 py-2">
-                          <div className="mb-2 text-[11px] font-medium text-zinc-500">
-                            {t("common.language")}
-                          </div>
-                          <div className="grid grid-cols-2 gap-1 rounded-2xl bg-zinc-100 p-1">
-                            <button
-                              type="button"
-                              className={cn(
-                                "rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition-colors",
-                                locale === "en" &&
-                                  "bg-white text-zinc-950 shadow-sm",
-                              )}
-                              onClick={() => setLocale("en")}
-                            >
-                              {t("common.english")}
-                            </button>
-                            <button
-                              type="button"
-                              className={cn(
-                                "rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition-colors",
-                                locale === "id" &&
-                                  "bg-white text-zinc-950 shadow-sm",
-                              )}
-                              onClick={() => setLocale("id")}
-                            >
-                              {t("common.indonesian")}
-                            </button>
-                          </div>
-                        </div>
-                        <Link
-                          href="/settings?tab=organization"
-                          role="menuitem"
-                          className="flex items-center gap-2 rounded-2xl px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
-                          onClick={() => setAccountMenuOpen(false)}
-                        >
-                          <UserRound className="size-4" />
-                          {t("account.preference")}
-                        </Link>
-                        <Link
-                          href="/feedback"
-                          role="menuitem"
-                          className="flex items-center gap-2 rounded-2xl px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
-                          onClick={() => setAccountMenuOpen(false)}
-                        >
-                          <MessageSquareMore className="size-4" />
-                          {t("nav.feedback")}
-                        </Link>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm text-zinc-700 hover:bg-blue-50 hover:text-[#00357B]"
-                          onClick={replayTutorial}
-                        >
-                          <CircleHelp className="size-4" />
-                          View tutorial
-                        </button>
-                        <a
-                          href="https://docs.poskart.my.id"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          role="menuitem"
-                          className="flex items-center gap-2 rounded-2xl px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
-                          onClick={() => setAccountMenuOpen(false)}
-                        >
-                          <BookOpen className="size-4" />
-                          View docs
-                        </a>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
-                          onClick={() => {
-                            setAccountMenuOpen(false);
-                            setSubscriptionDialogOpen(true);
-                          }}
-                        >
-                          <ReceiptText className="size-4" />
-                          {t("account.changeSubscription")}
-                        </button>
-                      </div>
-                      <div className="border-t border-zinc-100 pt-1">
-                        <form action={signOutAction}>
-                          <button
-                            type="submit"
-                            role="menuitem"
-                            className="flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                          >
-                            <LogOut className="size-4" />
-                            {t("account.logout")}
-                          </button>
-                        </form>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
+                <AdminAccountMenu
+                  open={accountMenuOpen}
+                  onToggle={() => { setNotificationMenuOpen(false); setAccountMenuOpen((value) => !value); }}
+                  onClose={() => setAccountMenuOpen(false)}
+                  name={accountName}
+                  role={accountRole}
+                  initials={initials}
+                  locale={locale}
+                  setLocale={setLocale}
+                  t={t}
+                  onReplayTutorial={replayTutorial}
+                  onOpenSubscription={() => { setAccountMenuOpen(false); setSubscriptionDialogOpen(true); }}
+                />
               </div>
             </div>
           </header>
