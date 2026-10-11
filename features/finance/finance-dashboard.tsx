@@ -197,19 +197,27 @@ export function FinanceDashboard({
 
   const filteredEntries = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return scopedEntries.filter(
+    const matches = scopedEntries.filter(
       (entry) =>
         (typeFilter === "all" ||
           (typeFilter === "transfer"
             ? isTransferEntry(entry)
-            : entry.entryType === typeFilter)) &&
+            : !isTransferEntry(entry) && entry.entryType === typeFilter)) &&
         (!query ||
           entry.title.toLowerCase().includes(query) ||
           entry.notes?.toLowerCase().includes(query) ||
           getCategoryLabel(entry.category).toLowerCase().includes(query) ||
           entry.tags.some((tag) => tag.name.toLowerCase().includes(query))),
     );
-  }, [scopedEntries, search, typeFilter]);
+    if (walletFilter !== "all") return matches;
+    const transferGroups = new Set<string>();
+    return matches.filter((entry) => {
+      if (!isTransferEntry(entry) || !entry.transferGroupId) return true;
+      if (transferGroups.has(entry.transferGroupId)) return false;
+      transferGroups.add(entry.transferGroupId);
+      return true;
+    });
+  }, [scopedEntries, search, typeFilter, walletFilter]);
 
   const summary = useMemo(() => {
     const includeTransferFlow = walletFilter !== "all";
@@ -1142,14 +1150,16 @@ export function FinanceDashboard({
                       <div
                         className={cn(
                           "shrink-0 text-right font-semibold",
-                          entry.entryType === "income"
+                          isTransferEntry(entry)
+                            ? "text-zinc-700"
+                            : entry.entryType === "income"
                             ? "text-emerald-700"
                             : "text-red-700",
                         )}
                       >
-                        {entry.entryType === "income" ? "+" : "-"}
+                        {isTransferEntry(entry) ? "" : entry.entryType === "income" ? "+" : "-"}
                         {formatCurrency(
-                          entry.entryType === "income"
+                          !isTransferEntry(entry) && entry.entryType === "income"
                             ? getNetAmount(entry)
                             : entry.amount,
                         )}
@@ -1239,7 +1249,7 @@ export function FinanceDashboard({
                             ) : null}
                             {getCategoryLabel(entry.category)}
                           </div>
-                          {entry.transferDirection ? (
+                          {entry.transferDirection && walletFilter !== "all" ? (
                             <div className="mt-0.5 text-xs text-zinc-500">
                               {entry.transferDirection === "out"
                                 ? "Keluar dari dompet asal"
@@ -1281,14 +1291,16 @@ export function FinanceDashboard({
                         <TableCell
                           className={cn(
                             "text-right font-semibold",
-                            entry.entryType === "income"
+                            isTransferEntry(entry)
+                              ? "text-zinc-700"
+                              : entry.entryType === "income"
                               ? "text-emerald-700"
                               : "text-red-700",
                           )}
                         >
-                          {entry.entryType === "income" ? "+" : "-"}
+                          {isTransferEntry(entry) ? "" : entry.entryType === "income" ? "+" : "-"}
                           {formatCurrency(
-                            entry.entryType === "income"
+                            !isTransferEntry(entry) && entry.entryType === "income"
                               ? getNetAmount(entry)
                               : entry.amount,
                           )}
