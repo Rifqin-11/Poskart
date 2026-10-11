@@ -3,22 +3,22 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4",
+  "poskart-button inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-zinc-950 text-white hover:bg-zinc-800",
-        destructive: "bg-red-600 text-white hover:bg-red-700",
-        outline: "border border-zinc-200 bg-white hover:bg-zinc-50",
-        secondary: "bg-zinc-100 text-zinc-950 hover:bg-zinc-200",
-        ghost: "hover:bg-zinc-100",
-        link: "h-auto text-zinc-950 underline-offset-4 hover:underline",
+        default: "poskart-button-primary bg-zinc-950 text-white hover:bg-zinc-800",
+        destructive: "poskart-button-destructive bg-red-600 text-white hover:bg-red-700",
+        outline: "poskart-button-outline border border-zinc-200 bg-white hover:bg-zinc-50",
+        secondary: "poskart-button-secondary bg-zinc-100 text-zinc-950 hover:bg-zinc-200",
+        ghost: "poskart-button-ghost hover:bg-zinc-100",
+        link: "poskart-button-link h-auto text-zinc-950 underline-offset-4 hover:underline",
       },
       size: {
-        default: "px-4 py-2",
-        sm: "h-8 px-3 text-xs",
-        lg: "h-10 px-5",
-        icon: "h-9 w-9",
+        default: "poskart-button-md px-4 py-2",
+        sm: "poskart-button-sm h-8 px-3 text-xs",
+        lg: "poskart-button-lg h-10 px-5",
+        icon: "poskart-button-icon h-9 w-9",
       },
     },
     defaultVariants: {

@@ -15,5 +15,5 @@ export default async function BuilderLayout({
   }
   await requireOrganizationSubscriptionAccess("/themes/builder/new");
 
-  return <>{children}</>;
+  return <div data-admin-buttons>{children}</div>;
 }

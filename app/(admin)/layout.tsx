@@ -37,7 +37,7 @@ export default async function AdminLayout({
   );
 
   return (
-    <>
+    <div data-admin-buttons>
       <HydrationBoundary state={dehydrate(queryClient)}>
         <AdminPermissionProvider
           role={bootstrap.userRole}
@@ -54,6 +54,6 @@ export default async function AdminLayout({
         </AdminPermissionProvider>
         <PrintQueuePanel />
       </HydrationBoundary>
-    </>
+    </div>
   );
 }

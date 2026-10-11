@@ -141,6 +141,7 @@ export default async function SharedGalleryPage({
 
   return (
     <main
+      data-shared-gallery
       className="gallery-page min-h-screen px-5 py-6 text-zinc-950 md:px-8 md:py-10"
     >
       {shouldRefreshWhileProcessing && (
@@ -224,6 +225,7 @@ export default async function SharedGalleryPage({
                 </Link>
                 <div className="mt-3 flex gap-3">
                   <Link
+                    data-gallery-button
                     href={`?view=${framedLivePhoto.id}`}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-50"
                   >
@@ -275,6 +277,7 @@ export default async function SharedGalleryPage({
                 </Link>
                 <div className="mt-3 flex gap-3">
                   <Link
+                    data-gallery-button
                     href={`?view=${framedStatic.id}`}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-zinc-50"
                   >
@@ -404,6 +407,7 @@ export default async function SharedGalleryPage({
             <div className="flex flex-col gap-4 text-sm text-zinc-500 sm:flex-row sm:items-start sm:justify-between">
                <p>{formatCopyright(branding.brandName)}</p>
               <Link
+                data-gallery-button
                 href="/contact"
                 className="inline-flex h-10 w-fit items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-900 shadow-[0_1px_2px_rgba(24,24,27,0.02)] transition-colors hover:bg-zinc-50"
               >
@@ -427,6 +431,7 @@ export default async function SharedGalleryPage({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
           {/* Close button in top-left corner */}
           <Link
+            data-gallery-button
             href={`/s/${encodeURIComponent(sessionId)}`}
             className="absolute left-6 top-6 grid size-12 place-items-center rounded-full bg-white/10 text-white backdrop-blur transition-all duration-200 hover:bg-white/20 hover:scale-105"
             aria-label="Tutup"
@@ -437,7 +442,7 @@ export default async function SharedGalleryPage({
           {/* Download button in top-right corner */}
           <GalleryDownloadLink
             href={`/s/${encodeURIComponent(sessionId)}/download/${selectedPhoto.id}`}
-            className="absolute right-6 top-6 flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 shadow transition-all duration-200 hover:bg-zinc-100 hover:scale-[1.02]"
+            className="absolute right-6 top-6 flex items-center gap-2 rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
           >
             <Download className="size-4" />
             Download
@@ -465,7 +470,7 @@ function ExpiredGalleryPage({
   formattedExpiryDate: string;
 }) {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-white px-5 py-10 text-center text-zinc-950">
+    <main data-shared-gallery className="flex min-h-screen flex-col items-center justify-center bg-white px-5 py-10 text-center text-zinc-950">
       <span className="grid size-16 place-items-center overflow-hidden rounded-2xl border border-black/5 bg-zinc-50">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -482,6 +487,7 @@ function ExpiredGalleryPage({
         bantuan akses ulang, silakan hubungi tim POSKART.
       </p>
       <Link
+        data-gallery-button
         href="/contact"
         className="mt-8 inline-flex h-11 items-center justify-center rounded-full bg-zinc-950 px-5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
       >

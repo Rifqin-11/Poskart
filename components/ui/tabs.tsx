@@ -77,6 +77,7 @@ export function TabsTrigger({
     <button
       type="button"
       data-tab-value={value}
+      data-tab-active={selected ? "true" : "false"}
       onClick={() => context?.setValue(value)}
       className={cn(
         "inline-flex h-7 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-3 text-xs font-medium text-zinc-500 transition-colors",

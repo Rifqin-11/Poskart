@@ -538,6 +538,7 @@ export function SettingsPanel({
                   key={tab.id}
                   type="button"
                   data-settings-tab={tab.id}
+                  data-settings-tab-active={active ? "true" : "false"}
                   onClick={() => {
                     if (!disabled) setActiveTab(tab.id);
                   }}
@@ -545,8 +546,8 @@ export function SettingsPanel({
                   className={cn(
                     "flex min-w-[150px] flex-1 shrink-0 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]/20",
                     active
-                      ? "bg-white text-zinc-950 shadow-sm hover:bg-white"
-                      : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",
+                      ? "bg-[#014EB4] text-white hover:bg-[#00357B]"
+                      : "bg-transparent text-zinc-500 hover:text-zinc-900",
                     disabled &&
                       "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-zinc-500",
                   )}
@@ -616,7 +617,7 @@ export function SettingsPanel({
           open={editOrganizationOpen}
           onOpenChange={(open) => setEditOrganizationOpen(open)}
           title="Edit organization"
-          className="max-w-4xl rounded-3xl"
+          className="min-h-[min(36rem,calc(100dvh-2rem))] max-w-4xl rounded-3xl"
         >
           <div
             className="mb-3 grid gap-1 rounded-full border border-zinc-200 bg-zinc-50 p-1"

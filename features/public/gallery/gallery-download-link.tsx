@@ -66,6 +66,7 @@ export function GalleryDownloadLink({
   return (
     <a
       href={href}
+      data-gallery-button
       className={className}
       aria-label={ariaLabel}
       aria-busy={isSharing}

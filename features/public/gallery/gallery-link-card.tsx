@@ -61,6 +61,7 @@ export function GalleryLinkCard({ galleryUrl }: { galleryUrl: string }) {
 
         <div className="mt-3 flex gap-2">
           <Button
+            data-gallery-button
             type="button"
             className="min-w-0 flex-1 rounded-xl"
             onClick={handleShare}
@@ -69,6 +70,7 @@ export function GalleryLinkCard({ galleryUrl }: { galleryUrl: string }) {
             <span>{copied ? "Link tersalin" : "Share link"}</span>
           </Button>
           <Button
+            data-gallery-button
             type="button"
             variant="outline"
             size="icon"

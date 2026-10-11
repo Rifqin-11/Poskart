@@ -1,5 +1,82 @@
 @import "tailwindcss";
 
+/* LandingButton's construction, scoped to authenticated admin/builder routes.
+   :has also covers portalled dialogs without styling public/auth buttons.
+   Background/text utilities retain each button's existing semantic colors. */
+  body:has([data-admin-buttons]) .poskart-button {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    transition-property: background-color, filter, transform, box-shadow;
+    transition-duration: 200ms;
+  }
+
+  /* Keep admin's compact size scale; borrow only the landing surface treatment. */
+  body:has([data-admin-buttons]) .poskart-button-md:not(.poskart-button-link) {
+    height: 2.25rem;
+    padding-inline: 1rem;
+    font-size: 0.875rem;
+    border-radius: 0.75rem;
+  }
+
+  body:has([data-admin-buttons]) .poskart-button-sm:not(.poskart-button-link) {
+    height: 2rem;
+    padding-inline: 0.75rem;
+    font-size: 0.75rem;
+    border-radius: 0.75rem;
+  }
+
+  body:has([data-admin-buttons]) .poskart-button-lg:not(.poskart-button-link) {
+    height: 2.5rem;
+    padding-inline: 1.25rem;
+    font-size: 0.875rem;
+    border-radius: 0.75rem;
+  }
+
+  body:has([data-admin-buttons]) .poskart-button-icon {
+    height: 2.25rem;
+    width: 2.25rem;
+    border-radius: 0.75rem;
+  }
+
+  body:has([data-admin-buttons]) .poskart-button:not(.poskart-button-ghost):not(.poskart-button-link)::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: radial-gradient(140% 80% at 50% 0%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 55%);
+  }
+
+  body:has([data-admin-buttons]) .poskart-button-primary,
+  body:has([data-admin-buttons]) .poskart-button-destructive {
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-top-color: transparent;
+    border-left-color: transparent;
+    border-right-color: transparent;
+    box-shadow: 0 10px 24px rgba(9, 9, 11, 0.3);
+  }
+
+  body:has([data-admin-buttons]) .poskart-button-secondary,
+  body:has([data-admin-buttons]) .poskart-button-outline {
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 4px 10px rgba(15, 23, 42, 0.08);
+  }
+
+  body:has([data-admin-buttons]) .poskart-button:focus-visible {
+    outline: 2px solid #09090b;
+    outline-offset: 2px;
+  }
+
+  body:has([data-admin-buttons]) .poskart-button:disabled {
+    opacity: 0.6;
+  }
+
+  body:has([data-admin-buttons]) .poskart-button:not(:disabled):active {
+    transform: translateY(1px);
+  }
 :root {
   --background: #f5f6f8;
   --foreground: #171717;
@@ -7,6 +84,186 @@
   --muted-foreground: #71717a;
   --border: #e4e4e7;
   --ring: #d4d4d8;
+}
+
+/* Custom admin actions and navigation share LandingButton's surface treatment.
+   Keep their existing dimensions/layout (tabs, icon controls, and table actions)
+   and do not apply button decoration to switches or combobox inputs. */
+body:has([data-admin-buttons]) button:not([data-sonner-toaster] *):not(.poskart-button):not([role="switch"]):not([role="checkbox"]):not([role="combobox"]),
+body:has([data-admin-buttons]) [data-admin-tour="navigation"] a.bg-zinc-950 {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 4px 10px rgba(15, 23, 42, 0.08);
+  transition-property: background-color, filter, transform, box-shadow;
+  transition-duration: 200ms;
+}
+
+body:has([data-admin-buttons]) button:not([data-sonner-toaster] *):not(.poskart-button):not([role="switch"]):not([role="checkbox"]):not([role="combobox"])::before,
+body:has([data-admin-buttons]) [data-admin-tour="navigation"] a.bg-zinc-950::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(140% 80% at 50% 0%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 55%);
+}
+
+body:has([data-admin-buttons]) button:not([data-sonner-toaster] *):not(.poskart-button):is(.bg-zinc-950, .bg-zinc-900, .bg-black),
+body:has([data-admin-buttons]) [data-admin-tour="navigation"] a.bg-zinc-950 {
+  border-color: transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 24px rgba(9, 9, 11, 0.3);
+}
+
+body:has([data-admin-buttons]) button:not([data-sonner-toaster] *):not(.poskart-button):not([role="switch"]):not([role="checkbox"]):not([role="combobox"]):not(:disabled):active,
+body:has([data-admin-buttons]) [data-admin-tour="navigation"] a.bg-zinc-950:active {
+  transform: translateY(1px);
+}
+
+body:has([data-admin-buttons]) button:not([data-sonner-toaster] *):not(.poskart-button):focus-visible,
+body:has([data-admin-buttons]) [data-admin-tour="navigation"] a.bg-zinc-950:focus-visible {
+  outline: 2px solid #09090b;
+  outline-offset: 2px;
+}
+
+/* Tabs retain their original quiet inactive state and pill shape. */
+body:has([data-admin-buttons]) button[data-tab-value] {
+  border-radius: 9999px;
+}
+
+body:has([data-admin-buttons]) button[data-tab-active="false"] {
+  border: 0;
+  box-shadow: none;
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
+body:has([data-admin-buttons]) button[data-tab-active="false"]::before {
+  content: none;
+}
+
+[data-shared-gallery] [data-gallery-button] {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 4px 10px rgba(15, 23, 42, 0.08);
+  transition-property: background-color, filter, transform, box-shadow;
+  transition-duration: 200ms;
+}
+
+[data-shared-gallery] [data-gallery-button].absolute {
+  position: absolute;
+}
+
+[data-shared-gallery] [data-gallery-button]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(140% 80% at 50% 0%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 55%);
+}
+
+[data-shared-gallery] [data-gallery-button].bg-zinc-950 {
+  border-color: transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 24px rgba(9, 9, 11, 0.3);
+}
+
+[data-shared-gallery] [data-gallery-button]:active {
+  transform: translateY(1px);
+}
+
+[data-shared-gallery] [data-gallery-button]:focus-visible {
+  outline: 2px solid #09090b;
+  outline-offset: 2px;
+}
+
+[data-shared-gallery] [data-gallery-button][aria-busy="true"] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+body:has([data-admin-buttons]) button[data-settings-tab] {
+  border-radius: 9999px;
+}
+
+body:has([data-admin-buttons]) button[data-settings-tab-active="true"] {
+  border-color: transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 24px rgba(1, 78, 180, 0.3);
+}
+
+body:has([data-admin-buttons]) button[data-settings-tab-active="false"] {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
+body:has([data-admin-buttons]) button[data-settings-tab-active="false"]::before {
+  content: none;
+}
+
+/* Preserve positioned controls such as the profile-photo camera badge. */
+body:has([data-admin-buttons]) button.absolute:not([data-sonner-toaster] *) {
+  position: absolute;
+}
+
+body:has([data-admin-buttons]) button.fixed:not([data-sonner-toaster] *) {
+  position: fixed;
+}
+
+body:has([data-admin-buttons]) button.sticky:not([data-sonner-toaster] *) {
+  position: sticky;
+}
+
+body:has([data-admin-buttons]) button[aria-label="Change profile photo"] {
+  border-radius: 9999px;
+}
+
+/* Unified pill tabs across admin pages and builder inspectors. */
+body:has([data-admin-buttons]) button:is([data-tab-value], [data-settings-tab], [role="tab"]) {
+  border-radius: 9999px;
+}
+
+body:has([data-admin-buttons]) button:is([data-tab-active="true"], [data-settings-tab-active="true"], [role="tab"][aria-selected="true"]) {
+  background: #014eb4;
+  color: white;
+  border: 1px solid transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 24px rgba(1, 78, 180, 0.3);
+}
+
+body:has([data-admin-buttons]) button:is([data-tab-active="true"], [data-settings-tab-active="true"], [role="tab"][aria-selected="true"]):hover {
+  background: #00357b;
+}
+
+body:has([data-admin-buttons]) button:is([data-tab-active="false"], [data-settings-tab-active="false"], [role="tab"][aria-selected="false"]) {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: #71717a;
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
+body:has([data-admin-buttons]) button:is([data-tab-active="false"], [data-settings-tab-active="false"], [role="tab"][aria-selected="false"])::before {
+  content: none;
+}
+
+body:has([data-admin-buttons]) [role="tablist"] {
+  border-radius: 9999px;
 }
 
 @theme inline {
