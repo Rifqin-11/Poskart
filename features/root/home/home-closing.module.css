@@ -1,0 +1,11 @@
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  /*
+   * The card travels in normal flow until its bottom rests 200px above the
+   * viewport bottom, then sticks. The footer follows right after the backdrop,
+   * so continued scrolling slides it over the stuck card with no animation.
+   */
+  .root[data-active="true"] { height: auto; background: white; }
+  .root[data-active="true"] .stage { position: relative; top: auto; height: calc(var(--closing-card-h) + 64px + var(--closing-travel)); background: linear-gradient(180deg, #ffffff 0%, #edf0f4 50%, #cfd5dd 100%); }
+  .root[data-active="true"] .backdrop { position: sticky; inset: auto; top: var(--closing-top); padding: 2rem 2.5rem; background: transparent; }
+  .root[data-active="true"] .footer { position: relative; inset: auto; transform: none; z-index: 10; margin-top: calc(-1 * (var(--closing-overlap) + 32px)); }
+}

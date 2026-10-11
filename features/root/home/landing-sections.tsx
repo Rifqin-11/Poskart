@@ -45,7 +45,7 @@ const commonQuestions = [
 export function LandingFAQ() {
   return (
     <section id="faq" className="scroll-mt-[72px] overflow-hidden bg-white">
-      <div className="mx-auto grid max-w-[90rem] gap-10 px-5 py-20 sm:px-8 lg:grid-cols-[0.7fr_1.3fr] lg:px-12 lg:py-24">
+      <div className="mx-auto grid max-w-[90rem] gap-10 px-5 pb-8 pt-20 sm:px-8 lg:grid-cols-[0.7fr_1.3fr] lg:px-12 lg:pb-10 lg:pt-24">
         <div>
           <h2 className="max-w-md text-4xl font-black leading-[0.96] tracking-tight sm:text-5xl">
             Sebelum mulai
@@ -56,8 +56,22 @@ export function LandingFAQ() {
         </div>
         <div className="divide-y divide-zinc-200 border-t border-zinc-200">
           {commonQuestions.map(({ question, answer }, index) => (
-            <details key={question} open={index === 0}>
-              <summary className="list-none cursor-pointer py-5 text-base font-semibold text-zinc-900 transition-colors hover:text-[#014EB4]">
+            <details key={question} open={index === 0}
+              onMouseEnter={event => {
+                if (window.matchMedia("(min-width: 1024px) and (hover: hover) and (pointer: fine)").matches) event.currentTarget.open = true;
+              }}
+              onMouseLeave={event => {
+                if (window.matchMedia("(min-width: 1024px) and (hover: hover) and (pointer: fine)").matches) event.currentTarget.open = false;
+              }}>
+              <summary
+                onClick={event => {
+                  if (event.detail > 0 && window.matchMedia("(min-width: 1024px) and (hover: hover) and (pointer: fine)").matches) {
+                    event.preventDefault();
+                    const details = event.currentTarget.parentElement;
+                    if (details instanceof HTMLDetailsElement) details.open = true;
+                  }
+                }}
+                className="list-none cursor-pointer py-5 text-base font-semibold text-zinc-900 transition-colors hover:text-[#014EB4]">
                 {question}
               </summary>
               <p className="max-w-2xl pb-5 pr-10 text-sm leading-6 text-zinc-600">

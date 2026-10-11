@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import styles from "./home-closing.module.css";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -11,19 +12,14 @@ gsap.registerPlugin(ScrollTrigger);
  *
  * Desktop
  * -------
- * The stage is one viewport tall and `position: sticky`, and the root reserves
- * extra scroll height equal to the measured footer height. So the CTA appears
- * to stop at the top of the screen, and the remaining scroll is spent sliding
- * the white footer sheet up from below until it settles over the lower part of
- * the banner.
+ * The CTA scrolls below the FAQ, then sticks with its bottom 200px above the
+ * viewport edge. The normal-flow footer approaches and covers one quarter of
+ * the card before the sticky container releases. No transforms or pin swaps.
  *
- * The layout switch lives in `app/globals.css` behind `data-active`, so:
+ * The layout switch lives in `home-closing.module.css` behind `data-active`, so:
  * - before hydration (and if JS fails) the footer stays in normal flow;
  * - under `prefers-reduced-motion` the footer also stays in normal flow;
- * - only when the scroll timeline is actually wired does the stage pin.
- *
- * Sticky is used instead of a GSAP pin so the document height never changes,
- * which keeps fast scrolling and mid-visit refreshes stable.
+ * - only when the scroll timeline is wired is the desktop spacing enabled.
  *
  * Mobile
  * ------
@@ -59,7 +55,6 @@ export function HomeClosingSequence({
        */
       media.add("(prefers-reduced-motion: no-preference)", () => {
         gsap.from(reveal, {
-          y: 26,
           opacity: 0,
           duration: 0.7,
           ease: "power3.out",
@@ -72,35 +67,28 @@ export function HomeClosingSequence({
       });
 
       media.add("(min-width: 1024px) and (prefers-reduced-motion: no-preference)", () => {
-        // Reserve exactly as much scroll as the footer needs to travel, and keep
-        // that measurement in sync when the viewport or footer content changes.
-        const syncHeight = () => {
-          root.style.setProperty("--home-footer-height", `${footer.offsetHeight}px`);
-        };
-
-        syncHeight();
-        gsap.set(footer, { yPercent: 100 });
         root.dataset.active = "true";
-        ScrollTrigger.addEventListener("refreshInit", syncHeight);
-        ScrollTrigger.refresh();
-
-        const timeline = gsap.timeline({
-          scrollTrigger: {
-            trigger: root,
-            start: "top top",
-            end: "bottom bottom",
-            scrub: 0.5,
-            invalidateOnRefresh: true,
-          },
-        });
-
-        timeline.to(cta, { y: -26, ease: "none" }, 0);
-        timeline.to(footer, { yPercent: 0, ease: "none" }, 0);
-
+        const backdrop = cta.parentElement;
+        if (!backdrop) return;
+        const syncLayout = () => {
+          root.style.setProperty("--closing-card-h", `${cta.offsetHeight}px`);
+          root.style.setProperty("--closing-overlap", `${cta.offsetHeight * .25}px`);
+          root.style.setProperty("--closing-travel", `${280 + cta.offsetHeight * .25}px`);
+          root.style.setProperty("--closing-top", `${Math.max(96, window.innerHeight - cta.offsetHeight - 232)}px`);
+        };
+        syncLayout();
+        ScrollTrigger.addEventListener("refreshInit", syncLayout);
+        const observer = new ResizeObserver(syncLayout);
+        observer.observe(cta);
+        window.addEventListener("resize", syncLayout);
+        const refreshFrame = requestAnimationFrame(() => ScrollTrigger.refresh());
         return () => {
-          ScrollTrigger.removeEventListener("refreshInit", syncHeight);
+          cancelAnimationFrame(refreshFrame);
+          ScrollTrigger.removeEventListener("refreshInit", syncLayout);
+          observer.disconnect();
+          window.removeEventListener("resize", syncLayout);
           delete root.dataset.active;
-          root.style.removeProperty("--home-footer-height");
+          ["--closing-card-h", "--closing-overlap", "--closing-travel", "--closing-top"].forEach(property => root.style.removeProperty(property));
         };
       });
     }, root);
@@ -109,23 +97,22 @@ export function HomeClosingSequence({
   }, []);
 
   return (
-    <div ref={rootRef} className="home-closing-root relative">
-      <div className="home-closing-stage">
+    <div ref={rootRef} className={`home-closing-root relative ${styles.root}`}>
+      <div className={`home-closing-stage ${styles.stage}`}>
         {/* Gradient backdrop and the banner that stays put. */}
-        <div className="home-closing-backdrop relative bg-[linear-gradient(180deg,#FFFFFF_0%,#EDF0F4_50%,#CFD5DD_100%)] px-3 py-8 sm:px-6 sm:py-12">
+        <div className={`home-closing-backdrop relative bg-[linear-gradient(180deg,#FFFFFF_0%,#EDF0F4_50%,#CFD5DD_100%)] px-3 py-4 sm:px-6 sm:py-6 ${styles.backdrop}`}>
           <div ref={ctaRef} className="w-full will-change-transform">
             <div ref={revealRef}>{cta}</div>
           </div>
         </div>
-
+      </div>
         {/* Footer sheet that rises from below on scroll. */}
         <div
           ref={footerRef}
-          className="home-closing-footer relative z-10 -mt-24 will-change-transform sm:-mt-32"
+          className={`home-closing-footer relative z-10 -mt-24 will-change-transform sm:-mt-32 ${styles.footer}`}
         >
           {footer}
         </div>
-      </div>
     </div>
   );
 }
