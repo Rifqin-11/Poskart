@@ -98,10 +98,10 @@ export function GalleryPhotoViewer({
       {children}
       {selectedPhoto && (
         <div role="dialog" aria-modal="true" aria-label="Pratinjau foto" className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
-          <button ref={closeRef} type="button" data-gallery-button onClick={close} className="absolute left-6 top-6 grid size-12 place-items-center rounded-full bg-white/10 text-white backdrop-blur transition-colors hover:bg-white/20" aria-label="Tutup">
+          <button ref={closeRef} type="button" data-gallery-button onClick={close} className="gallery-preview-button absolute left-6 top-6 grid size-12 place-items-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20" aria-label="Tutup">
             <X className="size-6" />
           </button>
-          <GalleryDownloadLink href={`${baseUrl}/download/${selectedPhoto.id}`} className="absolute right-6 top-6 flex items-center gap-2 rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800">
+          <GalleryDownloadLink href={`${baseUrl}/download/${selectedPhoto.id}`} className="gallery-preview-button absolute right-6 top-6 flex items-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:bg-white/20">
             <Download className="size-4" />Download
           </GalleryDownloadLink>
           <div className="relative max-h-[80vh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl">

@@ -183,6 +183,17 @@ body:has([data-admin-buttons]) button[data-tab-active="false"]::before {
   transform: translateY(1px);
 }
 
+/* Match LandingButton outlineLight on the dark photo viewer. */
+[data-shared-gallery] .gallery-preview-button[data-gallery-button] {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-top-color: transparent;
+  box-shadow: none;
+}
+
+[data-shared-gallery] .gallery-preview-button[data-gallery-button]::before {
+  background: radial-gradient(140% 80% at 50% 0%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 55%);
+}
+
 [data-shared-gallery] [data-gallery-button]:focus-visible {
   outline: 2px solid #09090b;
   outline-offset: 2px;
