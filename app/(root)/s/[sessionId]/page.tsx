@@ -18,6 +18,7 @@ import { GalleryMusicPlayer } from "@/features/public/gallery/gallery-music-play
 import { GalleryDownloadLink } from "@/features/public/gallery/gallery-download-link";
 import { GalleryLinkCard } from "@/features/public/gallery/gallery-link-card";
 import { GalleryPhotoViewer } from "@/features/public/gallery/gallery-photo-viewer";
+import { GalleryUnboxing, GalleryUnboxingReplay } from "@/features/public/gallery/gallery-unboxing";
 import { getPublicGalleryUrl } from "@/lib/gallery/urls";
 
 export const dynamic = "force-dynamic";
@@ -147,6 +148,16 @@ export default async function SharedGalleryPage({
       {shouldRefreshWhileProcessing && (
         <ProcessingRefresh refreshUntil={refreshUntil} />
       )}
+      <GalleryUnboxing
+        sessionId={sessionId}
+        brandName={branding.brandName}
+        logoUrl={branding.logoUrl}
+        subtitle={branding.subtitle}
+        enabled={!selectedPhoto}
+        loading={!framedStatic}
+        autoOpen={!selectedPhoto}
+        photoUrl={framedStatic ? galleryMediaUrl(sessionId, framedStatic.id) : undefined}
+      >
       <GalleryPhotoViewer
         sessionId={sessionId}
         photos={(photos ?? []).map((photo) => ({ id: photo.id, isVideo: isVideoAsset(photo) }))}
@@ -403,7 +414,8 @@ export default async function SharedGalleryPage({
                 </div>
               )
             )}
-           <GalleryLinkCard galleryUrl={galleryUrl} />
+            <GalleryLinkCard galleryUrl={galleryUrl} />
+            <GalleryUnboxingReplay />
            </aside>
         </div>
 
@@ -433,6 +445,7 @@ export default async function SharedGalleryPage({
       </div>
 
       </GalleryPhotoViewer>
+      </GalleryUnboxing>
     </main>
   );
 }
@@ -552,7 +565,7 @@ function ProcessingRefresh({ refreshUntil }: { refreshUntil: number }) {
   return (
     <script
       dangerouslySetInnerHTML={{
-        __html: `if (Date.now() < ${JSON.stringify(refreshUntil)}) setTimeout(function refreshGallery() { if (Date.now() >= ${JSON.stringify(refreshUntil)}) return; if (new URLSearchParams(window.location.search).has('view')) { setTimeout(refreshGallery, 30000); return; } window.location.reload(); }, 30000);`,
+        __html: `if (Date.now() < ${JSON.stringify(refreshUntil)}) setTimeout(function refreshGallery() { if (Date.now() >= ${JSON.stringify(refreshUntil)}) return; if (document.documentElement.dataset.galleryUnboxing === 'active' || new URLSearchParams(window.location.search).has('view')) { setTimeout(refreshGallery, 30000); return; } window.location.reload(); }, 30000);`,
       }}
     />
   );
