@@ -165,7 +165,7 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
             paint(Math.max(0, Math.min(1, (drag.current.start - event.clientX) / (drag.current.width * .8))));
           }}
           onPointerUp={event => release(event)} onPointerCancel={event => release(event, true)}>
-          <span className={styles.tearGuide}><ArrowLeft size={18} strokeWidth={2.5} aria-hidden="true" /><span>Tarik ke kiri untuk membuka</span></span><span className={styles.notch}><ArrowLeft size={22} strokeWidth={2.5} aria-hidden="true" /></span>
+          <span className={styles.tearGuide} aria-hidden="true"><ArrowLeft size={22} strokeWidth={2.5} /></span><span className={styles.notch}><ArrowLeft size={22} strokeWidth={2.5} aria-hidden="true" /></span>
         </button>
       </div>
        <div className={styles.actions}>
