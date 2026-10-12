@@ -16,8 +16,9 @@
 .body img,.seal img,.intact img,.tear img { width: 100%; height: 100%; object-fit: fill; }
 .seal { transform-origin: left 7.5%; }
 .handle { position: absolute; top: 24%; left: 0; width: 100%; height: 60px; color: #18181b; touch-action: none; user-select: none; cursor: grab; background: transparent; border: 0; }
-.tearGuide { position: absolute; top: -20px; right: 4px; display: flex; align-items: center; gap: 7px; font-size: 10px; letter-spacing: .03em; color: #dbe4f7; text-shadow: 0 1px 2px #02061780; }
-.notch { position: absolute; top: 26px; right: -7px; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #18181b; color: white; box-shadow: 0 2px 8px #52525b25; }
+.tearGuide { position: absolute; top: -26px; right: 4px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid #d4d4d8; border-radius: 999px; background: #fafafa; font-size: 12px; font-weight: 600; white-space: nowrap; color: #18181b; box-shadow: 0 2px 8px #02061715; }
+.tearGuide svg { flex-shrink: 0; }
+.notch { position: absolute; top: 26px; right: -10px; width: 36px; height: 36px; display: grid; place-items: center; border: 2px solid #fafafa; border-radius: 50%; background: #014eb4; color: white; box-shadow: 0 2px 8px #02061733; }
 .handle:hover .notch { background: #014eb4; }
 .handle:active { cursor: grabbing; }
 .handle:disabled { opacity: 0; pointer-events: none; }
@@ -40,6 +41,9 @@
 .header button:focus-visible,.handle:focus-visible,.actions button:focus-visible { outline: 3px solid #014eb4; outline-offset: 4px; }
 .actions button:active { transform: scale(.98); }
 @media (prefers-reduced-motion: no-preference) {
+  .handle:not(:disabled) .tearGuide svg,.handle:not(:disabled) .notch svg { animation: pullLeft 1.6s ease-in-out infinite; }
+  .handle:active .tearGuide svg,.handle:active .notch svg { animation-play-state: paused; }
+  @keyframes pullLeft { 0%, 100% { transform: translateX(3px); } 45%, 60% { transform: translateX(-5px); } }
   .overlay[data-revealed="true"] .actions { animation: revealActions .45s ease-out both; }
   @keyframes revealActions { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 }

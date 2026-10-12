@@ -145,7 +145,7 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
         <div className={styles.brand}><img src={logoUrl} alt={`${brandName} logo`} /><div><strong>{brandName}</strong><span>{subtitle}</span></div></div>
          {!loading && <button ref={skip} onClick={revealed ? enterGallery : finish}>{revealed ? "Lihat semua foto" : "Langsung lihat foto"} <ArrowRight size={16} /></button>}
        </div>
-       <div className={styles.intro}><h1 id="unboxing-title">{loading ? "Momen Anda sedang disiapkan." : revealed ? "Momen Anda, untuk disimpan." : "Kenangan Anda sudah siap."}</h1><p>{loading ? "Foto sedang diunggah. Paket akan bisa dibuka setelah selesai." : revealed ? "Simpan senyumnya. Bagikan ceritanya." : "Tarik seal dari kanan ke kiri untuk membuka paket."}</p></div>
+        <div className={styles.intro}><h1 id="unboxing-title">{loading ? "Foto Anda sedang disiapkan." : revealed ? "Foto Anda sudah siap." : "Foto Anda sudah siap."}</h1><p>{loading ? "Foto sedang diunggah. Paket akan bisa dibuka setelah selesai." : revealed ? "Lihat dan unduh semua foto dari sesi Anda." : "Tarik seal dari kanan ke kiri untuk membuka paket."}</p></div>
       <div ref={pouch} className={styles.pouch}>
         <div ref={photo} className={styles.photo}>{photoUrl && <img src={photoUrl} alt="Foto hasil sesi Anda" onError={finish} />}</div>
         <div ref={body} className={styles.body}><img src="/landing/gallery-pouch-navy-body.webp" alt="" draggable={false} onError={finish} /></div>
@@ -165,11 +165,11 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
             paint(Math.max(0, Math.min(1, (drag.current.start - event.clientX) / (drag.current.width * .8))));
           }}
           onPointerUp={event => release(event)} onPointerCancel={event => release(event, true)}>
-          <span className={styles.tearGuide}><ArrowLeft size={14} /><span>tarik untuk membuka</span></span><span className={styles.notch}><ArrowLeft size={16} /></span>
+          <span className={styles.tearGuide}><ArrowLeft size={18} strokeWidth={2.5} aria-hidden="true" /><span>Tarik ke kiri untuk membuka</span></span><span className={styles.notch}><ArrowLeft size={22} strokeWidth={2.5} aria-hidden="true" /></span>
         </button>
       </div>
        <div className={styles.actions}>
-         {loading ? <><p className={styles.loadingState} aria-live="polite"><span /> Foto sedang diunggah…</p><small>Halaman ini akan memperbarui otomatis saat foto siap.</small></> : revealed ? <><p className={styles.success}><CheckCircle2 size={14} /> Foto Anda sudah siap</p><button data-gallery-button className={styles.viewAll} onClick={enterGallery}>Lihat semua foto <ArrowRight size={17} /></button><small>Foto original, Live Photo, dan pilihan download ada di dalam.</small></> : <><p aria-live="polite">{opening ? "Membuka kenangan Anda…" : "Atau buka dengan satu ketukan."}</p><button onClick={open} disabled={opening}><PackageOpen size={17} /> Buka paket</button></>}
+          {loading ? <><p className={styles.loadingState} aria-live="polite"><span /> Foto sedang diunggah…</p><small>Halaman ini akan memperbarui otomatis saat foto siap.</small></> : revealed ? <><p className={styles.success}><CheckCircle2 size={14} /> Foto Anda sudah siap</p><button data-gallery-button className={styles.viewAll} onClick={enterGallery}>Lihat semua foto <ArrowRight size={17} /></button><small>Foto original, Live Photo, dan pilihan download ada di dalam.</small></> : <><p aria-live="polite">{opening ? "Membuka paket foto…" : "Atau buka dengan satu ketukan."}</p><button onClick={open} disabled={opening}><PackageOpen size={17} /> Buka paket</button></>}
       </div>
     </div>}
   </UnboxingContext.Provider>;
