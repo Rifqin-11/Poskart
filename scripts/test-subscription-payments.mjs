@@ -226,6 +226,49 @@ test("payment checks cannot access orders outside the authenticated organization
   assert.equal(gatewayChecked, false);
 });
 
+test("payment listing previews three rows and reports more history", async () => {
+  const calls = [];
+  const rows = [0, 1, 2].map((index) => ({ ...order, merchant_order_id: `ORDER-${index}`, created_at: `2026-10-1${index}T00:00:00Z` }));
+  const makeRoute = () => {
+    const builder = {
+      select(_cols, options) { calls.push(["select", options]); return this; },
+      eq() { return this; }, not() { return this; },
+      order() { return this; }, limit(value) { calls.push(["limit", value]); return this; },
+      then(resolve) { return Promise.resolve({ data: rows, count: 42, error: null }).then(resolve); },
+    };
+    const membershipBuilder = {
+      select() { return this; }, eq() { return this; }, limit() { return this; },
+      async maybeSingle() { return { data: { organization_id: "org-1", role: "owner" }, error: null }; },
+    };
+    return loadTs("app/api/subscription/payments/route.ts", {
+      "next/server": { NextResponse: { json: (body, options) => Response.json(body, options) } },
+      "@/lib/supabase/server": { createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { id: "user-1" } }, error: null }) }, from: () => membershipBuilder }) },
+      "@/lib/supabase/admin": { createSupabaseAdminClient: () => ({ from: () => builder }) },
+      "@/server/subscription/payment-reconciliation": { expireSubscriptionPayments: async () => {}, SubscriptionPaymentBusyError: class extends Error {}, subscriptionPaymentColumns: "x" },
+    });
+  };
+
+  const get = async (query) => {
+    calls.length = 0;
+    const request = new Request(`https://poskart.test/api/subscription/payments${query}`);
+    request.nextUrl = new URL(request.url);
+    const response = await makeRoute().GET(request);
+    return response.json();
+  };
+
+  const preview = await get("");
+  assert.ok(calls.some(([name, value]) => name === "limit" && value === 3), "preview requests only three rows");
+  assert.ok(calls.some(([name, options]) => name === "select" && options?.count === "exact"), "listing asks for an exact count");
+  assert.equal(preview.orders.length, 3);
+  assert.equal(preview.total, 42);
+  assert.equal(preview.hasMore, true);
+  assert.equal("profile_id" in preview.orders[0], false, "internal profile_id is not leaked to the client");
+
+  const all = await get("?all=true");
+  assert.ok(calls.some(([name, value]) => name === "limit" && value >= 42), "show-all requests the full history");
+  assert.equal(all.hasMore, false);
+});
+
 test("payment expiry hides resume links and support includes Order ID and proof instructions", () => {
   const expired = { ...order, payment_expires_at: new Date(Date.now() - 1).toISOString() };
   assert.equal(types.isSubscriptionPaymentOpen(expired), false);
@@ -393,10 +436,12 @@ test("history has no check, resume or cancel actions for closed payments", () =>
   for (const status of ["failed", "cancelled", "paid"]) {
     const payment = { ...order, status };
     const state = { orders: [payment], now: Date.now(), isLoading: false, isFetching: false, error: null,
+      hasMore: false, total: 1, showAll: false, showMore: () => {}, showLess: () => {},
       checkErrors: {}, check: { isPending: false, variables: null, error: null }, cancel: { isPending: false, variables: null, error: null } };
     const ui = loadTs("features/billing/subscription/subscription-payments-panel.tsx", {
       "next/link": ({ children, href }) => createElement("a", { href }, children),
       "@/components/ui/button": { Button: ({ children }) => createElement("button", {}, children), buttonVariants: () => "" },
+      "@/components/ui/badge": { Badge: ({ children }) => createElement("span", {}, children) },
       "@/lib/utils": { formatCurrency: (amount) => `Rp${amount}` },
       "./payment-types": types,
       "./payment-actions": { CancelPaymentButton: () => createElement("button", {}, "Batalkan pembayaran"), PaymentDeadline: () => null, PaymentClosedNotice: () => createElement("p", {}, "Kirim bukti pembayaran") },
@@ -405,9 +450,43 @@ test("history has no check, resume or cancel actions for closed payments", () =>
     const html = renderToStaticMarkup(createElement(ui.SubscriptionPaymentsPanel));
     assert.doesNotMatch(html, />Cek status</);
     assert.doesNotMatch(html, /Lanjutkan pembayaran|Batalkan pembayaran/);
-    assert.match(html, /<details>/);
+    assert.match(html, /Riwayat pembayaran/);
     if (status !== "paid") assert.match(html, /Hubungi admin/);
   }
+});
+
+test("payment panel previews three rows and loads the rest from the database on demand", () => {
+  const render = (state) => {
+    const ui = loadTs("features/billing/subscription/subscription-payments-panel.tsx", {
+      "next/link": ({ children, href }) => createElement("a", { href }, children),
+      "@/components/ui/button": { Button: ({ children }) => createElement("button", {}, children), buttonVariants: () => "" },
+      "@/components/ui/badge": { Badge: ({ children }) => createElement("span", {}, children) },
+      "@/lib/utils": { formatCurrency: (amount) => `Rp${amount}` },
+      "./payment-types": types,
+      "./payment-actions": { CancelPaymentButton: () => null, PaymentDeadline: () => null, PaymentClosedNotice: () => createElement("p", {}, "Kirim bukti pembayaran") },
+      "./use-subscription-payments": { useSubscriptionPayments: () => state },
+    });
+    return renderToStaticMarkup(createElement(ui.SubscriptionPaymentsPanel));
+  };
+  const history = [0, 1, 2].map((index) => ({ ...order, merchant_order_id: `ORDER-${index}`, status: "paid", created_at: `2026-10-1${index}T00:00:00Z` }));
+  const base = { orders: history, now: Date.now(), isLoading: false, isFetching: false, error: null,
+    checkErrors: {}, check: { isPending: false, variables: null, error: null }, cancel: { isPending: false, variables: null, error: null } };
+
+  // Preview: only the newest rows are on screen, plus a button to fetch the rest.
+  const preview = render({ ...base, hasMore: true, total: 42, showAll: false, showMore: () => {}, showLess: () => {} });
+  assert.equal((preview.match(/Lihat pembayaran/g) ?? []).length, 3);
+  assert.match(preview, /Tampilkan semua \(42\)/);
+  assert.match(preview, /3 terbaru/);
+
+  // Expanded: the fetched rows are shown and the button collapses back.
+  const expanded = render({ ...base, hasMore: false, total: 42, showAll: true, showMore: () => {}, showLess: () => {} });
+  assert.match(expanded, /Menampilkan 3 terakhir/);
+  assert.match(expanded, /Tampilkan lebih sedikit/);
+  assert.doesNotMatch(expanded, /Tampilkan semua/);
+
+  // A short history has no toggle at all.
+  const short = render({ ...base, hasMore: false, total: 3, showAll: false, showMore: () => {}, showLess: () => {} });
+  assert.doesNotMatch(short, /Tampilkan semua|Tampilkan lebih sedikit/);
 });
 
 test("SQL transaction: idempotency, additive renewals, rollback and service-role-only access", {

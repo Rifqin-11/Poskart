@@ -6,6 +6,15 @@ import type { SubscriptionPayment } from "@/features/billing/subscription/paymen
 
 const privateHeaders = { "Cache-Control": "private, no-store" };
 
+export const DEFAULT_PAYMENT_PAGE_SIZE = 3;
+export const MAX_PAYMENT_PAGE_SIZE = 200;
+
+function readPaymentLimit(value: string | null) {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!Number.isFinite(parsed)) return DEFAULT_PAYMENT_PAGE_SIZE;
+  return Math.min(Math.max(parsed, 1), MAX_PAYMENT_PAGE_SIZE);
+}
+
 async function getPaymentScope() {
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -37,20 +46,23 @@ export async function GET(request: NextRequest) {
   try {
     const scope = await getPaymentScope();
     if (!scope) return NextResponse.json({ message: "Masuk untuk melihat pembayaran Anda." }, { status: 401, headers: privateHeaders });
-    if (!scope.organizationId) return NextResponse.json({ orders: [] }, { headers: privateHeaders });
+    if (!scope.organizationId) return NextResponse.json({ orders: [], hasMore: false, total: 0 }, { headers: privateHeaders });
     const orderId = request.nextUrl.searchParams.get("order");
+    const all = request.nextUrl.searchParams.get("all") === "true";
+    const limit = all ? MAX_PAYMENT_PAGE_SIZE : readPaymentLimit(request.nextUrl.searchParams.get("limit"));
     const supabase = createSupabaseAdminClient();
     await expireSubscriptionPayments(supabase, scope.organizationId);
     let query = supabase.from("subscription_orders")
-      .select(`${subscriptionPaymentColumns},profile_id`)
+      .select(`${subscriptionPaymentColumns},profile_id`, { count: "exact" })
       .eq("organization_id", scope.organizationId)
       .not("merchant_order_id", "is", null)
       .order("created_at", { ascending: false })
-      .limit(30);
+      .limit(limit);
     if (orderId) query = query.eq("merchant_order_id", orderId);
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) throw new Error(error.message);
-    return NextResponse.json({ orders: (data ?? []).map((order) => visiblePayment(order as PaymentRow, scope)) }, { headers: privateHeaders });
+    const total = count ?? (data?.length ?? 0);
+    return NextResponse.json({ orders: (data ?? []).map((order) => visiblePayment(order as PaymentRow, scope)), hasMore: !orderId && !all && total > (data?.length ?? 0), total }, { headers: privateHeaders });
   } catch (error) {
     console.error("Unable to load subscription payments", error);
     return NextResponse.json({ message: "Riwayat pembayaran belum dapat dimuat. Silakan coba lagi." }, { status: 500, headers: privateHeaders });
