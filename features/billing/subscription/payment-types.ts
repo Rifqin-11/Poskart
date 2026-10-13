@@ -40,6 +40,15 @@ export function getSubscriptionPaymentLabel(order: SubscriptionPayment, now = Da
     ? "Pembayaran kedaluwarsa" : subscriptionPaymentLabels[order.status];
 }
 
+export type SubscriptionPaymentTone = "success" | "warning" | "destructive" | "secondary";
+
+export function getSubscriptionPaymentTone(order: SubscriptionPayment, now = Date.now()): SubscriptionPaymentTone {
+  if (order.status === "paid") return "success";
+  if (order.status === "failed") return "destructive";
+  if (order.status === "cancelled") return "secondary";
+  return isSubscriptionPaymentOpen(order, now) ? "warning" : "secondary";
+}
+
 export function getSubscriptionPaymentUrl(order: SubscriptionPayment, now = Date.now()) {
   if (!isSubscriptionPaymentOpen(order, now) || !order.payment_url) return null;
   try {

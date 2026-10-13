@@ -14,12 +14,12 @@ order lookup to their organization before using the service client.
 
 ## Behavior
 
-- Settings → Langganan shows the plan summary plus recent payment history,
-  pending notices, manual checks, order details, and links to resume the
-  original invoice. Settings → Organization keeps a short subscription summary
-  that links to the Langganan tab.
+- Settings → Organization shows the plan summary, a payment panel with pending
+  notices, manual checks, order details, and links to resume the original
+  invoice. The payment panel first loads only the newest three rows; a
+  "Tampilkan semua" button fetches the full history from the database on demand.
 - Pending invoices are valid for 15 minutes, with a countdown. Paid/failed/
-  cancelled/expired orders leave the active list and remain in collapsed history.
+  cancelled/expired orders leave the active list and remain in the history list.
   Failed/expired/cancelled orders have no check, pay, or cancel actions; support
   links include the Order ID and instructions to attach payment proof.
 - Expiry is checked in the database when listing/checking payments and before
@@ -33,8 +33,8 @@ order lookup to their organization before using the service client.
   Closing an invoice never cancels the current subscription and is not a refund.
 - Invalid JSON, HTML/login redirects, and native network/parser errors receive
   readable retry/login messages rather than raw browser errors.
-- The dashboard has a small link to the Langganan tab when payment is pending.
-- The return page and the Langganan tab check the latest pending payments every
+- The dashboard has a small link to Organization when payment is pending.
+- The return page and Organization check the latest pending payments every
   15 seconds while visible. Gateway calls have a database-backed per-order
   cooldown to prevent duplicate requests across tabs.
 - Gateway outages retain the current status and display a retry message.
@@ -62,5 +62,5 @@ database. Install `@electric-sql/pglite` outside the repository, then set
 Without that variable, only the SQL integration test is skipped.
 
 Before production rollout, test a sandbox payment from each enabled gateway:
-pending → paid, closing/reopening the popup, checking from the Langganan tab,
-gateway timeout, and a repeated callback after a successful manual check.
+pending → paid, closing/reopening the popup, checking from Organization, gateway
+timeout, and a repeated callback after a successful manual check.

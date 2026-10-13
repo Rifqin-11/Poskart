@@ -7,10 +7,22 @@ import { toast } from "@/lib/toast";
 import { isSubscriptionPaymentOpen, type SubscriptionPayment } from "./payment-types";
 import { requestSubscriptionPayment, SubscriptionPaymentRequestError } from "./payment-request";
 
+// The panel renders only the newest few payments until the customer asks to
+// see everything, so the first request stays small and fast to load.
+const PAYMENT_PREVIEW_LIMIT = 3;
+
 type PaymentQueryResult = {
   orders: SubscriptionPayment[];
+  hasMore: boolean;
+  total: number;
   checkErrors: Record<string, string>;
   newlyPaidIds: string[];
+};
+
+type PaymentQueryResponse = {
+  orders: SubscriptionPayment[];
+  hasMore?: boolean;
+  total?: number;
 };
 
 async function updatePayment(orderId: string, action: "check" | "cancel", signal?: AbortSignal): Promise<SubscriptionPayment> {
@@ -31,13 +43,18 @@ export function useSubscriptionPayments(orderId?: string, autoCheck = true) {
   const previousStatuses = useRef(new Map<string, string>());
   const notifiedPayments = useRef(new Set<string>());
   const [now, setNow] = useState(() => Date.now());
+  const [showAll, setShowAll] = useState(false);
   const query = useQuery<PaymentQueryResult, SubscriptionPaymentRequestError>({
-    queryKey: ["subscription-payments", orderId ?? "organization", autoCheck],
+    queryKey: ["subscription-payments", orderId ?? "organization", autoCheck, showAll],
     queryFn: async ({ signal }) => {
-      const params = orderId ? `?order=${encodeURIComponent(orderId)}` : "";
-      const { orders } = await requestSubscriptionPayment<{ orders: SubscriptionPayment[] }>(`/api/subscription/payments${params}`, { signal });
+      const params = new URLSearchParams();
+      if (orderId) params.set("order", orderId);
+      else if (showAll) params.set("all", "true");
+      else params.set("limit", String(PAYMENT_PREVIEW_LIMIT));
+      const qs = params.toString();
+      const { orders, hasMore, total } = await requestSubscriptionPayment<PaymentQueryResponse>(`/api/subscription/payments${qs ? `?${qs}` : ""}`, { signal });
       if (!Array.isArray(orders)) throw new SubscriptionPaymentRequestError("Riwayat pembayaran belum dapat dimuat. Silakan coba lagi.", 502);
-      const result: PaymentQueryResult = { orders, checkErrors: {}, newlyPaidIds: [] };
+      const result: PaymentQueryResult = { orders, hasMore: Boolean(hasMore), total: total ?? orders.length, checkErrors: {}, newlyPaidIds: [] };
       if (autoCheck) {
         const pending = orders.filter((order) => isSubscriptionPaymentOpen(order)).slice(0, 5);
         await Promise.all(pending.map(async (order) => {
@@ -120,5 +137,17 @@ export function useSubscriptionPayments(orderId?: string, autoCheck = true) {
     onError: (error) => toast.error(error.message),
   });
 
-  return { ...query, orders: query.data?.orders ?? [], checkErrors: query.data?.checkErrors ?? {}, check, cancel, now };
+  return {
+    ...query,
+    orders: query.data?.orders ?? [],
+    hasMore: query.data?.hasMore ?? false,
+    total: query.data?.total ?? 0,
+    showAll,
+    showMore: () => setShowAll(true),
+    showLess: () => setShowAll(false),
+    checkErrors: query.data?.checkErrors ?? {},
+    check,
+    cancel,
+    now,
+  };
 }

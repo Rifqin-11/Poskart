@@ -409,7 +409,7 @@ export function DashboardOverview() {
                   </Link>
                 </>
               ) : (
-                <Link href="/settings?tab=billing&subscription=required" className={buttonVariants()}>
+                <Link href="/settings?tab=organization&subscription=required" className={buttonVariants()}>
                   <Plus className="size-4" />
                   Activate subscription
                 </Link>
@@ -497,7 +497,7 @@ export function DashboardOverview() {
                     Hubungkan tablet Android ke dashboard untuk memantau status, baterai, dan transaksi secara real-time.
                   </p>
                   <Link
-                    href={canUseOperatingTools ? "/devices" : "/settings?tab=billing&subscription=required"}
+                    href={canUseOperatingTools ? "/devices" : "/settings?tab=organization&subscription=required"}
                     className={buttonVariants({ size: "sm", className: "mt-5 rounded-full bg-[#00357B] hover:bg-[#014EB4]" })}
                   >
                     {canUseOperatingTools ? "Tambah device" : "Aktifkan langganan"}
@@ -555,7 +555,7 @@ export function DashboardOverview() {
               <EmptyPanelState
                 title="No transactions yet"
                 description="QRIS payment activity and failed payment monitoring appear here after the first booth session."
-                href={canUseOperatingTools ? "/devices" : "/settings?tab=billing&subscription=required"}
+                href={canUseOperatingTools ? "/devices" : "/settings?tab=organization&subscription=required"}
                 action={canUseOperatingTools ? "Connect device" : "Activate subscription"}
               />
             )}

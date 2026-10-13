@@ -8,7 +8,6 @@ import {
   Image as ImageIcon,
   Landmark,
   PencilLine,
-  ReceiptText,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -39,14 +38,12 @@ import { EditProfileDialog } from "./_components/edit-profile-dialog";
 import { OrganizationCard } from "./_components/organization-card";
 import { PaymentSettingsCard } from "./_components/payment-settings-card";
 import { MediaSettingsCard } from "./_components/media-settings-card";
-import { BillingSettingsCard } from "./_components/billing-settings-card";
 
 type SubscriptionGatewayMode = "duitku" | "midtrans" | "both";
 
 const SETTINGS_TABS = [
   { id: "details", label: "My details" },
   { id: "organization", label: "Organization" },
-  { id: "billing", label: "Billing" },
   { id: "payment", label: "Payment" },
   { id: "media", label: "Media & Gallery" },
 ] as const;
@@ -71,11 +68,6 @@ function getSettingsTabs(t: (key: DictionaryKey) => string) {
       id: "organization" as const,
       label: t("settings.tabOrganization"),
       icon: Building2,
-    },
-    {
-      id: "billing" as const,
-      label: t("settings.tabBilling"),
-      icon: ReceiptText,
     },
     {
       id: "payment" as const,
@@ -394,11 +386,7 @@ export function SettingsPanel({
 
   const visibleTabs = getSettingsTabs(t).filter((tab) => {
     if (!isOwnerOrAdmin) {
-      return (
-        tab.id === "details" ||
-        tab.id === "organization" ||
-        tab.id === "billing"
-      );
+      return tab.id === "details" || tab.id === "organization";
     }
     return true;
   });
@@ -442,9 +430,7 @@ export function SettingsPanel({
     setEditMediaOpen(false);
   };
   const visibleActiveTab: SettingsTab = organizationOnly
-    ? activeTab === "billing"
-      ? "billing"
-      : "organization"
+    ? "organization"
     : visibleTabs.some((t) => t.id === activeTab)
       ? activeTab
       : "details";
@@ -545,10 +531,7 @@ export function SettingsPanel({
           >
             {visibleTabs.map((tab) => {
               const active = visibleActiveTab === tab.id;
-              const disabled =
-                organizationOnly &&
-                tab.id !== "organization" &&
-                tab.id !== "billing";
+              const disabled = organizationOnly && tab.id !== "organization";
               const Icon = tab.icon;
               return (
                 <button
@@ -592,13 +575,6 @@ export function SettingsPanel({
               myEmail={account.email}
               subscriptionRequired={subscriptionRequired}
               isEditing={false}
-            />
-          ) : null}
-
-          {visibleActiveTab === "billing" ? (
-            <BillingSettingsCard
-              subscriptionRequired={subscriptionRequired}
-              canManageSubscription={isOwnerOrAdmin}
             />
           ) : null}
 
