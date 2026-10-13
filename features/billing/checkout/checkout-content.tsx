@@ -4,7 +4,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { useSearchParams } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
-import { CalendarPlus, CreditCard, Minus, Plus, ReceiptText } from "lucide-react";
+import { CreditCard, Minus, Plus, ReceiptText } from "lucide-react";
 import { createSubscriptionOrderAction } from "@/app/(admin)/checkout/actions";
 import { LandingButton } from "@/components/ui/landing-button";
 import {
@@ -96,6 +96,7 @@ export function CheckoutContent({
   const [isPending, startTransition] = useTransition();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [duitkuScriptReady, setDuitkuScriptReady] = useState(false);
   const [duitkuScriptFailed, setDuitkuScriptFailed] = useState(false);
   const quote = calculateSubscriptionTotal(plan, deviceCount);
@@ -129,6 +130,8 @@ export function CheckoutContent({
         setCheckoutError(result.message);
         return;
       }
+
+      setCreatedOrderId(result.merchantOrderId);
 
       if (result.gateway === "midtrans") {
         window.location.href = result.paymentUrl;
@@ -169,7 +172,7 @@ export function CheckoutContent({
         },
         closeEvent: () => {
           setCheckoutMessage(
-            "Payment popup closed. Your order is still pending if no payment was completed.",
+            "Jendela pembayaran ditutup. Jika sudah membayar, jangan bayar ulang. Anda dapat mengecek konfirmasi pembayaran dari detail order.",
           );
         },
       });
@@ -224,6 +227,11 @@ export function CheckoutContent({
         {checkoutMessage ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
             {checkoutMessage}
+            {createdOrderId ? (
+              <Link href={`/checkout/return?order=${encodeURIComponent(createdOrderId)}`} className="mt-2 block font-semibold underline underline-offset-4">
+                Cek status pembayaran
+              </Link>
+            ) : null}
           </div>
         ) : null}
 
@@ -517,18 +525,11 @@ export function CheckoutContent({
         </div>
 
         {renewalPreview && renewal ? (
-          <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs leading-5 text-emerald-900">
-            <div className="flex items-center gap-1.5 font-medium">
-              <CalendarPlus aria-hidden="true" className="size-3.5 shrink-0 text-emerald-700" />
-              Langganan Anda masih aktif
-            </div>
-            <p className="mt-1 text-emerald-800">
+          <div className="mt-4 text-xs font-bold leading-5 text-zinc-500">
+            <p>
               Sisa masa aktif tidak hangus. Setelah pembayaran:
             </p>
-            <p className="font-medium tabular-nums">
-              {renewalPreview.remainingDays} hari + {renewal.additionalDays} hari = {renewal.totalDays} hari
-            </p>
-            <p className="mt-1 text-[11px] leading-4 text-emerald-800">
+            <p>
               Perkiraan aktif hingga {formatSubscriptionDate(renewal.expiresAt)} (bulan kalender).
             </p>
           </div>

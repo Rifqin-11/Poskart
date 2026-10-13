@@ -11,7 +11,7 @@ import {
   type DuitkuCallbackPayload,
   verifyDuitkuCallbackSignature,
 } from "@/server/payments/duitku";
-import { activatePaidSubscription } from "@/server/subscription/activation";
+import { reconcileSubscriptionPayment } from "@/server/subscription/payment-reconciliation";
 
 export async function POST(request: NextRequest) {
   const payload = await readDuitkuPayload(request);
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   const { data: order, error: orderError } = await supabase
     .from("subscription_orders")
     .select(
-      "merchant_order_id,email,organization_id,profile_id,plan_id,duration_months,device_count,status",
+      "merchant_order_id,amount,payment_gateway,status",
     )
     .eq("merchant_order_id", payload.merchantOrderId)
     .maybeSingle();
@@ -45,35 +45,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const status = mapDuitkuResultCode(payload.resultCode);
-    // Gate activation on the first paid transition. Gateways can repeat a
-    // successful callback; without this condition each retry could extend a
-    // subscription again after early-renewal became cumulative.
-    const { data: paidTransition, error } = await supabase
-      .from("subscription_orders")
-      .update({
-        status,
-        payment_reference: payload.reference ?? null,
-        gateway_response: payload,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("merchant_order_id", payload.merchantOrderId)
-      .neq("status", "paid")
-      .select("merchant_order_id")
-      .maybeSingle();
-
-    if (error) {
-      return NextResponse.json({ message: error.message }, { status: 500 });
+    if (order.payment_gateway !== "duitku" || Number(payload.amount) !== Number(order.amount)) {
+      return NextResponse.json({ message: "Payment details do not match the subscription order." }, { status: 400 });
     }
-
-    if (status === "paid" && paidTransition) {
-      const activationError = await activatePaidSubscription(supabase, order);
-      if (activationError) {
-        return NextResponse.json(
-          { message: activationError.message },
-          { status: 500 },
-        );
-      }
+    try {
+      await reconcileSubscriptionPayment(supabase, {
+        merchantOrderId: payload.merchantOrderId,
+        status: mapDuitkuResultCode(payload.resultCode),
+        reference: payload.reference,
+        response: payload,
+      });
+    } catch (error) {
+      return NextResponse.json({ message: error instanceof Error ? error.message : "Payment reconciliation failed." }, { status: 500 });
     }
 
     return NextResponse.json({ message: "OK" });

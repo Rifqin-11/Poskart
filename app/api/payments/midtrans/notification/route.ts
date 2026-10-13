@@ -6,7 +6,7 @@ import {
   type MidtransNotificationPayload,
   verifyMidtransNotificationSignature,
 } from "@/server/payments/midtrans";
-import { activatePaidSubscription } from "@/server/subscription/activation";
+import { reconcileSubscriptionPayment } from "@/server/subscription/payment-reconciliation";
 
 export async function POST(request: NextRequest) {
   const payload = (await request
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   const { data: order, error: orderError } = await supabase
     .from("subscription_orders")
     .select(
-      "merchant_order_id,email,organization_id,profile_id,plan_id,duration_months,device_count,status",
+      "merchant_order_id,amount,payment_gateway,status",
     )
     .eq("merchant_order_id", payload.order_id)
     .maybeSingle();
@@ -52,34 +52,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: orderError.message }, { status: 500 });
   }
 
-  // Only the first transition to paid may activate/extend the subscription.
-  // Midtrans can deliver the same success notification more than once.
-  const { data: paidTransition, error } = await supabase
-    .from("subscription_orders")
-    .update({
-      status,
-      payment_reference: payload.transaction_id ?? null,
-      payment_method: payload.payment_type ?? "snap",
-      gateway_response: payload,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("merchant_order_id", payload.order_id)
-    .neq("status", "paid")
-    .select("merchant_order_id")
-    .maybeSingle();
-
-  if (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  if (!order) return NextResponse.json({ message: "OK" });
+  if (order.payment_gateway !== "midtrans" || Number(payload.gross_amount) !== Number(order.amount)) {
+    return NextResponse.json({ message: "Payment details do not match the subscription order." }, { status: 400 });
   }
-
-  if (status === "paid" && order && paidTransition) {
-    const activationError = await activatePaidSubscription(supabase, order);
-    if (activationError) {
-      return NextResponse.json(
-        { message: activationError.message },
-        { status: 500 },
-      );
-    }
+  try {
+    await reconcileSubscriptionPayment(supabase, {
+      merchantOrderId: payload.order_id,
+      status,
+      reference: payload.transaction_id,
+      paymentMethod: payload.payment_type ?? "snap",
+      response: payload,
+    });
+  } catch (error) {
+    return NextResponse.json({ message: error instanceof Error ? error.message : "Payment reconciliation failed." }, { status: 500 });
   }
 
   return NextResponse.json({ message: "OK" });
