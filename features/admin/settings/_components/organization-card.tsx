@@ -10,8 +10,6 @@ import {
   MailPlus,
   Landmark,
   ShieldCheck,
-  Store,
-  Timer,
   Trash2,
   UserRound,
   Copy,
@@ -22,10 +20,11 @@ import {
 } from "lucide-react";
 import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -34,8 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SubscriptionDialog } from "@/features/billing/subscription/subscription-dialog";
-import { SubscriptionPaymentsPanel } from "@/features/billing/subscription/subscription-payments-panel";
 import { AddMemberDialog } from "@/features/admin/organization/_components/add-member-dialog";
 import {
   useDeleteInvitation,
@@ -159,8 +156,6 @@ export function OrganizationCard({
   const [editedName, setEditedName] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [subscriptionDialogOpen, setSubscriptionDialogOpen] =
-    useState(subscriptionRequired);
   const [payoutAccount, setPayoutAccount] = useState<PayoutAccount | null>(
     null,
   );
@@ -183,7 +178,6 @@ export function OrganizationCard({
   const subscriptionStatus = tenant?.subscription_status ?? "free";
   const subscriptionActive = Boolean(tenant?.subscription_is_active);
   const isFreeAccount = !subscriptionActive || subscriptionStatus === "free";
-  const deviceLimit = tenant?.device_limit ?? 1;
   const joinCode = tenant?.join_code ?? "Pending";
   const memberRows = members as OrganizationMemberRow[];
   const invitationRows = invitations as OrganizationInvitationRow[];
@@ -197,7 +191,6 @@ export function OrganizationCard({
   const canManageTeam = isOwner || isAdmin;
   const canEditDetails = isOwner || isAdmin;
   const canViewPayout = isOwner;
-  const canViewSubscription = isOwner;
   const showWorkspace = !isEditing || editSection === "workspace";
   const showPayout = !isEditing || editSection === "payout";
   const showTeam = !isEditing || editSection === "team";
@@ -442,27 +435,13 @@ export function OrganizationCard({
                   </span>
                 }
               />
-              <OrganizationMetric
-                icon={<Store className="size-3.5" />}
-                label="Device limit"
-                value={`${deviceLimit} device${deviceLimit > 1 ? "s" : ""}`}
-              />
-              <OrganizationMetric
-                icon={<Timer className="size-3.5" />}
-                label="Expiry"
-                value={formatDate(tenant?.subscription_expires_at)}
-              />
             </div>
-            {canViewSubscription && (
-              <Button
-                type="button"
-                className="rounded-xl"
-                onClick={() => setSubscriptionDialogOpen(true)}
-              >
-                {isFreeAccount ? "View subscription plans" : "Manage billing"}
-              </Button>
-            )}
-            <SubscriptionPaymentsPanel />
+            <Link
+              href="/settings?tab=billing"
+              className={buttonVariants({ variant: "outline", className: "rounded-xl" })}
+            >
+              Kelola langganan & lihat pembayaran
+            </Link>
           </div>
         </SettingsCard>
       ) : null}
@@ -867,10 +846,6 @@ export function OrganizationCard({
         </SettingsCard>
       ) : null}
 
-      <SubscriptionDialog
-        open={subscriptionDialogOpen}
-        onOpenChange={setSubscriptionDialogOpen}
-      />
       <AddMemberDialog
         open={inviteDialogOpen}
         submitting={inviteUser.isPending}

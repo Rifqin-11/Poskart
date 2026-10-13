@@ -20,8 +20,8 @@ export default async function CheckoutReturnPage({ searchParams }: {
         {orderId ? <CheckoutPaymentStatus orderId={orderId} /> : (
           <div className="rounded-lg border border-zinc-200 p-8">
             <h1 className="text-2xl font-semibold">Pilih pembayaran yang ingin dicek</h1>
-            <p className="mt-3 text-sm text-zinc-600">Buka riwayat pembayaran di Settings → Organization untuk melihat status order Anda.</p>
-            <Link href="/settings?tab=organization#subscription-payments" className="mt-5 inline-block text-sm font-medium underline">Lihat pembayaran</Link>
+            <p className="mt-3 text-sm text-zinc-600">Buka riwayat pembayaran di Settings → Langganan untuk melihat status order Anda.</p>
+            <Link href="/settings?tab=billing" className="mt-5 inline-block text-sm font-medium underline">Lihat pembayaran</Link>
           </div>
         )}
       </section>

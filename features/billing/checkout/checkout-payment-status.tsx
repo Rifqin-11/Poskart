@@ -61,7 +61,7 @@ export function CheckoutPaymentStatus({ orderId }: { orderId: string }) {
         {resumeUrl ? <a href={resumeUrl} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "outline" })}>Lanjutkan pembayaran</a> : null}
         {order && open ? <CancelPaymentButton order={order} disabled={busy} cancelling={payments.cancel.isPending} onCancel={() => payments.cancel.mutate(orderId)} /> : null}
         {order && failed ? <a href={getSubscriptionPaymentSupportUrl(order)} target="_blank" rel="noopener noreferrer" className={buttonVariants()}>Hubungi admin</a> : null}
-        <Link href="/settings?tab=organization#subscription-payments" className={buttonVariants({ variant: "outline" })}>Buka Organization</Link>
+        <Link href="/settings?tab=billing" className={buttonVariants({ variant: "outline" })}>Buka Langganan</Link>
         <Link href="/dashboard" className={buttonVariants({ variant: "ghost" })}>Buka dashboard</Link>
       </div>
       {open && payments.checkErrors[orderId] && order ? <p className="mt-4 text-xs text-zinc-500">Butuh bantuan? <a href={getSubscriptionPaymentSupportUrl(order)} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">Hubungi admin</a> dan lampirkan bukti pembayaran.</p> : null}
