@@ -48,11 +48,16 @@ export async function refreshSubscriptionPayment(
   order: SubscriptionPayment,
   organizationId: string,
   requireFreshCheck = false,
+  allowClosedVerification = false,
 ): Promise<SubscriptionPayment> {
   if (order.status === "paid") return order;
   if (!isSubscriptionPaymentOpen(order)) {
     if (order.status === "pending") {
       await expireSubscriptionPayments(supabase, organizationId);
+      return readSubscriptionPayment(supabase, order.merchant_order_id, organizationId);
+    }
+    if (allowClosedVerification && (order.status === "failed" || order.status === "cancelled")) {
+      await verifySubscriptionPayment(supabase, order);
       return readSubscriptionPayment(supabase, order.merchant_order_id, organizationId);
     }
     return order;

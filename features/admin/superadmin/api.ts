@@ -26,6 +26,19 @@ import {
   getSuperAdminProductFeedback,
   reviewProductFeedback,
 } from "@/server/admin/actions/feedback-actions";
+import {
+  checkSubscriptionPayment,
+  exportSubscriptionPayments,
+  getSubscriptionPaymentDetail,
+  listSubscriptionPayments,
+  overrideSubscriptionPayment,
+  type AdminSubscriptionPaymentFilters,
+  type AdminSubscriptionPayment,
+  type AdminSubscriptionPaymentDetail,
+  type AdminSubscriptionPaymentList,
+  type AdminSubscriptionPaymentStatus,
+  type AdminSubscriptionPaymentOverrideInput,
+} from "@/server/admin/actions/superadmin-subscription-payment-actions";
 
 export const superadminApi = {
   getOrganizations: organizationService.getOrganizations,
@@ -50,6 +63,19 @@ export const superadminApi = {
   revokeTrialByRequestId,
   getSuperAdminProductFeedback,
   reviewProductFeedback,
+  listSubscriptionPayments,
+  getSubscriptionPaymentDetail,
+  checkSubscriptionPayment,
+  overrideSubscriptionPayment,
+  exportSubscriptionPayments,
 };
 
 export type { TenantInput };
+export type {
+  AdminSubscriptionPaymentFilters,
+  AdminSubscriptionPayment,
+  AdminSubscriptionPaymentDetail,
+  AdminSubscriptionPaymentList,
+  AdminSubscriptionPaymentStatus,
+  AdminSubscriptionPaymentOverrideInput,
+};

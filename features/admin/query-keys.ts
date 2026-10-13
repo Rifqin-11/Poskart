@@ -40,6 +40,10 @@ export const adminQueryKeys = {
   subscriptionPlans: ["subscription-plans"] as const,
   subscriptionStatus: ["subscription-status"] as const,
   subscriptionOrders: ["subscription-orders"] as const,
+  superAdminSubscriptionPayments: (filters: Record<string, unknown>) =>
+    ["superadmin-subscription-payments", filters] as const,
+  superAdminSubscriptionPaymentDetail: (id: string) =>
+    ["superadmin-subscription-payment-detail", id] as const,
   profiles: ["profiles"] as const,
   organizationDetails: ["organization-details"] as const,
   organizationPaymentGateway: ["organization-payment-gateway"] as const,
