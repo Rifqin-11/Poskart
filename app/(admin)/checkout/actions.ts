@@ -8,12 +8,15 @@ import {
 import {
   createDuitkuPayment,
   createMerchantOrderId,
+  getDuitkuConfig,
 } from "@/server/payments/duitku";
 import { createMidtransPayment } from "@/server/payments/midtrans";
 import { getPublicSubscriptionPricingPlans } from "@/server/subscription/pricing";
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { refreshSubscriptionPayment, subscriptionPaymentColumns } from "@/server/subscription/payment-reconciliation";
+import { getSubscriptionPaymentUrl, type SubscriptionPayment } from "@/features/billing/subscription/payment-types";
 
 function redirectWithStatus(
   planId: string,
@@ -148,7 +151,6 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     } satisfies SubscriptionCheckoutActionResult;
   }
 
-  const merchantOrderId = createMerchantOrderId();
   const { data: membership } = await supabase
     .from("organization_members")
     .select("organization_id")
@@ -164,6 +166,58 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     } satisfies SubscriptionCheckoutActionResult;
   }
 
+  const siteUrl = await getSiteUrl();
+  const paymentMetadataClient = createSupabaseAdminClient();
+  const { data: existingOrder, error: existingOrderError } = await paymentMetadataClient
+    .from("subscription_orders")
+    .select(`${subscriptionPaymentColumns},payment_reference`)
+    .eq("organization_id", membership.organization_id)
+    .eq("plan_id", plan.id)
+    .eq("device_count", quote.deviceCount)
+    .eq("amount", quote.totalAmount)
+    .eq("payment_gateway", paymentGateway)
+    .eq("status", "pending")
+    .not("payment_url", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existingOrderError) {
+    return { ok: false, message: "Pembayaran sebelumnya belum dapat diperiksa. Coba lagi nanti agar tidak membuat pembayaran ganda.", planId: plan.id } satisfies SubscriptionCheckoutActionResult;
+  }
+  if (existingOrder) {
+    let previousPayment = existingOrder as SubscriptionPayment;
+    try {
+      previousPayment = await refreshSubscriptionPayment(paymentMetadataClient, previousPayment, membership.organization_id);
+    } catch {
+      // A gateway outage is not a reason to issue a second invoice.
+    }
+    if (previousPayment.status === "paid") {
+      return { ok: false, message: "Pembayaran sebelumnya sudah berhasil dan masa aktif telah diperpanjang. Lihat subscription di Settings → Organization.", planId: plan.id } satisfies SubscriptionCheckoutActionResult;
+    }
+    const resumeUrl = getSubscriptionPaymentUrl(previousPayment);
+    if (previousPayment.status === "pending" && resumeUrl) {
+      if (paymentGateway === "midtrans") {
+        return { ok: true, gateway: "midtrans", merchantOrderId: previousPayment.merchant_order_id, paymentUrl: resumeUrl } satisfies SubscriptionCheckoutActionResult;
+      }
+      if (existingOrder.payment_reference) {
+        return {
+          ok: true,
+          gateway: "duitku",
+          merchantOrderId: previousPayment.merchant_order_id,
+          reference: existingOrder.payment_reference,
+          paymentUrl: resumeUrl,
+          popScriptUrl: getDuitkuConfig()?.popScriptUrl ?? "https://app-prod.duitku.com/lib/js/duitku.js",
+          returnUrl: `${siteUrl}/checkout/return?order=${encodeURIComponent(previousPayment.merchant_order_id)}`,
+        } satisfies SubscriptionCheckoutActionResult;
+      }
+      return { ok: false, message: "Masih ada pembayaran yang menunggu konfirmasi. Cek statusnya di Settings → Organization sebelum membuat pembayaran baru.", planId: plan.id } satisfies SubscriptionCheckoutActionResult;
+    }
+    if (previousPayment.status === "pending") {
+      return { ok: false, message: "Masih ada pembayaran yang menunggu konfirmasi. Cek statusnya di Settings → Organization sebelum membuat pembayaran baru.", planId: plan.id } satisfies SubscriptionCheckoutActionResult;
+    }
+  }
+
+  const merchantOrderId = createMerchantOrderId();
   const { error } = await supabase.from("subscription_orders").insert({
     organization_id: membership.organization_id,
     profile_id: user.id,
@@ -194,9 +248,6 @@ export async function createSubscriptionOrderAction(formData: FormData) {
       planId: plan.id,
     } satisfies SubscriptionCheckoutActionResult;
   }
-
-  const siteUrl = await getSiteUrl();
-  const paymentMetadataClient = createSupabaseAdminClient();
 
   try {
     const returnUrl = `${siteUrl}/checkout/return?order=${encodeURIComponent(merchantOrderId)}`;

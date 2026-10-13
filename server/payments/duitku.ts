@@ -384,6 +384,7 @@ export async function checkDuitkuTransactionStatus(
       signature,
     }),
     cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
   });
 
   const raw = (await response.json().catch(() => ({}))) as Record<

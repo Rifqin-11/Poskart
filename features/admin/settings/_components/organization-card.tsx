@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SubscriptionDialog } from "@/features/billing/subscription/subscription-dialog";
+import { SubscriptionPaymentsPanel } from "@/features/billing/subscription/subscription-payments-panel";
 import { AddMemberDialog } from "@/features/admin/organization/_components/add-member-dialog";
 import {
   useDeleteInvitation,
@@ -461,6 +462,7 @@ export function OrganizationCard({
                 {isFreeAccount ? "View subscription plans" : "Manage billing"}
               </Button>
             )}
+            <SubscriptionPaymentsPanel />
           </div>
         </SettingsCard>
       ) : null}

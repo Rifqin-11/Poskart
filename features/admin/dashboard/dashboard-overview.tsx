@@ -57,6 +57,7 @@ import type {
 import { cn, formatCurrency } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { TrialDialog } from "@/features/admin/trial/trial-dialog";
+import { SubscriptionPaymentDashboardNotice } from "@/features/billing/subscription/subscription-payments-panel";
 
 const dashboardInnerCardClass =
   "rounded-3xl border border-zinc-100 bg-white/90 shadow-sm shadow-zinc-200/60 backdrop-blur";
@@ -249,6 +250,7 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-6">
+      <SubscriptionPaymentDashboardNotice />
       {!canUseOperatingTools && subscription?.status !== "trialing" ? (
         trialRequest && !["rejected", "canceled", "activation_expired"].includes(trialRequest.status) ? (
           <div className="flex items-center justify-between gap-6 rounded-3xl border border-zinc-200 bg-white px-6 py-5 shadow-sm">

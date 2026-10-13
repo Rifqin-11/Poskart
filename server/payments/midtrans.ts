@@ -138,9 +138,29 @@ export function verifyMidtransNotificationSignature(payload: MidtransNotificatio
   return timingSafeEqual(expected, signature);
 }
 
+export async function checkMidtransTransactionStatus(orderId: string): Promise<MidtransNotificationPayload> {
+  const config = getMidtransConfig();
+  if (!config) throw new Error("Midtrans belum dikonfigurasi.");
+  const baseUrl = process.env.MIDTRANS_SANDBOX !== "false"
+    ? "https://api.sandbox.midtrans.com" : "https://api.midtrans.com";
+  const response = await fetch(`${baseUrl}/v2/${encodeURIComponent(orderId)}/status`, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${Buffer.from(`${config.serverKey}:`).toString("base64")}`,
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
+  });
+  const raw = await response.json().catch(() => ({})) as MidtransNotificationPayload & Record<string, unknown>;
+  if (!response.ok || !raw.transaction_status || raw.status_code === "404") {
+    throw new Error(getMidtransMessage(raw) || "Status pembayaran Midtrans belum tersedia. Coba lagi nanti.");
+  }
+  return raw;
+}
+
 export function mapMidtransTransactionStatus(payload: MidtransNotificationPayload) {
   if (payload.transaction_status === "settlement") return "paid" as const;
-  if (payload.transaction_status === "capture" && payload.fraud_status !== "challenge") {
+  if (payload.transaction_status === "capture" && payload.fraud_status === "accept") {
     return "paid" as const;
   }
   if (payload.transaction_status === "pending") return "pending" as const;
