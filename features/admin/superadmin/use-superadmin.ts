@@ -8,6 +8,10 @@ import {
 } from "@/features/admin/superadmin/api";
 import type { Organization } from "@/types/organization";
 import type { TrialRequestFilters } from "@/types/trial";
+import type {
+  AdminSubscriptionPaymentFilters,
+  AdminSubscriptionPaymentOverrideInput,
+} from "./api";
 
 export function useTenants() {
   return useQuery<Organization[], Error>({
@@ -142,6 +146,68 @@ export function useReviewProductFeedback() {
       });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.myFeedback });
     },
+  });
+}
+
+export function useSuperAdminSubscriptionPayments(
+  filters: AdminSubscriptionPaymentFilters,
+) {
+  return useQuery({
+    queryKey: adminQueryKeys.superAdminSubscriptionPayments(
+      filters as Record<string, unknown>,
+    ),
+    queryFn: () => superadminApi.listSubscriptionPayments(filters),
+    placeholderData: (previous) => previous,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useSuperAdminSubscriptionPaymentDetail(id: string | null) {
+  return useQuery({
+    queryKey: adminQueryKeys.superAdminSubscriptionPaymentDetail(id ?? ""),
+    queryFn: () => superadminApi.getSubscriptionPaymentDetail(id ?? ""),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCheckSuperAdminSubscriptionPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: superadminApi.checkSubscriptionPayment,
+    onSuccess: (payment) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["superadmin-subscription-payments"],
+      });
+      if (payment?.id) {
+        void queryClient.invalidateQueries({
+          queryKey: adminQueryKeys.superAdminSubscriptionPaymentDetail(payment.id),
+        });
+      }
+    },
+  });
+}
+
+export function useOverrideSuperAdminSubscriptionPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AdminSubscriptionPaymentOverrideInput) =>
+      superadminApi.overrideSubscriptionPayment(input),
+    onSuccess: (payment) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["superadmin-subscription-payments"],
+      });
+      if (payment?.id) {
+        void queryClient.invalidateQueries({
+          queryKey: adminQueryKeys.superAdminSubscriptionPaymentDetail(payment.id),
+        });
+      }
+    },
+  });
+}
+
+export function useExportSuperAdminSubscriptionPayments() {
+  return useMutation({
+    mutationFn: superadminApi.exportSubscriptionPayments,
   });
 }
 

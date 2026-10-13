@@ -498,7 +498,7 @@ test("SQL transaction: idempotency, additive renewals, rollback and service-role
     await db.exec(`
       create role anon; create role authenticated; create role service_role;
       create table organizations (id text primary key);
-      create table profiles (id uuid primary key, email text);
+      create table profiles (id uuid primary key, email text, role text default 'user');
       create table organization_members (organization_id text, profile_id uuid);
       create table subscription_plans (id text primary key);
       create table subscription_orders (
@@ -516,6 +516,7 @@ test("SQL transaction: idempotency, additive renewals, rollback and service-role
       create table admin_notifications (organization_id text, type text);
       insert into organizations values ('org-1');
       insert into subscription_plans values ('starter');
+      insert into profiles values ('00000000-0000-0000-0000-000000000001', 'admin@example.com', 'admin');
       insert into subscriptions values ('org-1', 'starter', 'active', now() + interval '7 days', 1, now());
       insert into admin_notifications values ('org-1', 'subscription_expiry_reminder');
       insert into subscription_orders (merchant_order_id, organization_id, plan_id, duration_months, device_count)
@@ -524,7 +525,9 @@ test("SQL transaction: idempotency, additive renewals, rollback and service-role
     await db.exec(readFileSync(new URL("supabase/migrations/20261013080000_atomic_subscription_payment_reconciliation.sql", root), "utf8"));
     await db.exec(`insert into subscription_orders (merchant_order_id, organization_id, plan_id, duration_months, device_count, created_at)
       values ('SQL-STALE', 'org-1', 'starter', 1, 1, now() - interval '1 day');`);
-    await db.exec(readFileSync(new URL("supabase/migrations/20261013100000_subscription_payment_expiry_and_cancellation.sql", root), "utf8"));
+     await db.exec(readFileSync(new URL("supabase/migrations/20261013100000_subscription_payment_expiry_and_cancellation.sql", root), "utf8"));
+     await db.exec(readFileSync(new URL("supabase/migrations/20261013120000_superadmin_subscription_payment_overrides.sql", root), "utf8"));
+     await db.exec(readFileSync(new URL("supabase/migrations/20261013123000_harden_superadmin_subscription_payment_override.sql", root), "utf8"));
     assert.equal((await db.query("select status, payment_closed_reason from subscription_orders where merchant_order_id = 'SQL-STALE'")).rows[0].payment_closed_reason, "expired");
     const expiry = async () => (await db.query("select current_period_end::text as value from subscriptions where organization_id = 'org-1'")).rows[0].value;
     const initial = await expiry();
@@ -546,8 +549,24 @@ test("SQL transaction: idempotency, additive renewals, rollback and service-role
     await assert.rejects(reconcile("SQL-BAD"));
     assert.equal(await expiry(), secondExpiry);
     assert.equal((await db.query("select status from subscription_orders where merchant_order_id = 'SQL-BAD'")).rows[0].status, "pending");
-    assert.equal((await db.query("select count(*)::int as count from admin_notifications")).rows[0].count, 0);
-    const signature = "reconcile_subscription_payment(text,text,text,text,jsonb,timestamp with time zone)";
+     assert.equal((await db.query("select count(*)::int as count from admin_notifications")).rows[0].count, 0);
+     await db.exec(`insert into subscription_orders (merchant_order_id, organization_id, plan_id, duration_months, device_count)
+       values ('SQL-MANUAL', 'org-1', 'starter', 1, 1), ('SQL-MANUAL-FAIL', 'org-1', 'starter', 1, 1);`);
+     const manualBefore = await expiry();
+     await db.query("select admin_override_subscription_payment((select id from subscription_orders where merchant_order_id = 'SQL-MANUAL'), 'paid', 'Bukti transfer diverifikasi finance', '00000000-0000-0000-0000-000000000001')");
+     const manualAfter = await expiry();
+     assert.equal(manualAfter, (await db.query("select ($1::timestamptz + interval '1 month')::text as value", [manualBefore])).rows[0].value);
+     assert.equal((await db.query("select status from subscription_orders where merchant_order_id = 'SQL-MANUAL'")).rows[0].status, "paid");
+     await db.query("select admin_override_subscription_payment((select id from subscription_orders where merchant_order_id = 'SQL-MANUAL'), 'paid', 'Bukti transfer diverifikasi lagi', '00000000-0000-0000-0000-000000000001')");
+     assert.equal(await expiry(), manualAfter, "repeating a paid override must not renew twice");
+     await db.query("select admin_override_subscription_payment((select id from subscription_orders where merchant_order_id = 'SQL-MANUAL-FAIL'), 'failed', 'Bukti pembayaran tidak valid', '00000000-0000-0000-0000-000000000001')");
+     assert.equal((await db.query("select status from subscription_orders where merchant_order_id = 'SQL-MANUAL-FAIL'")).rows[0].status, "failed");
+     assert.equal((await db.query("select count(*)::int as count from subscription_payment_overrides")).rows[0].count, 3);
+     await assert.rejects(db.query("select admin_override_subscription_payment((select id from subscription_orders where merchant_order_id = 'SQL-MANUAL'), 'failed', 'Tidak boleh menurunkan paid', '00000000-0000-0000-0000-000000000001')"));
+     const overrideSignature = "admin_override_subscription_payment(uuid,text,text,uuid)";
+     assert.equal((await db.query("select has_function_privilege('authenticated', $1, 'EXECUTE') as allowed", [overrideSignature])).rows[0].allowed, false);
+     assert.equal((await db.query("select has_function_privilege('service_role', $1, 'EXECUTE') as allowed", [overrideSignature])).rows[0].allowed, true);
+     const signature = "reconcile_subscription_payment(text,text,text,text,jsonb,timestamp with time zone)";
     assert.equal((await db.query("select has_function_privilege('authenticated', $1, 'EXECUTE') as allowed", [signature])).rows[0].allowed, false);
     assert.equal((await db.query("select has_function_privilege('service_role', $1, 'EXECUTE') as allowed", [signature])).rows[0].allowed, true);
 
