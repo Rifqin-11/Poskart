@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { SUBSCRIPTION_PAYMENT_MINUTES } from "@/features/billing/subscription/payment-types";
 
 import { businessProfile, type PricingPlan } from "@/lib/constants/business";
 
@@ -198,7 +199,7 @@ export async function createDuitkuPayment(
     },
     returnUrl: input.returnUrl,
     callbackUrl: input.callbackUrl,
-    expiryPeriod: 60,
+    expiryPeriod: SUBSCRIPTION_PAYMENT_MINUTES,
   };
 
   if (input.phoneNumber) {
