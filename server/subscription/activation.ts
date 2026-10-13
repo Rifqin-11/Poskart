@@ -97,7 +97,7 @@ async function findOrganizationId(
   return member?.organization_id ?? null;
 }
 
-function addMonths(date: Date, months: number) {
+export function addMonths(date: Date, months: number) {
   const next = new Date(date);
   const day = next.getDate();
 
