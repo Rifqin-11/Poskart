@@ -4,7 +4,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { useSearchParams } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
-import { CreditCard, Minus, Plus, ReceiptText } from "lucide-react";
+import { CalendarPlus, CreditCard, Minus, Plus, ReceiptText } from "lucide-react";
 import { createSubscriptionOrderAction } from "@/app/(admin)/checkout/actions";
 import { LandingButton } from "@/components/ui/landing-button";
 import {
@@ -17,6 +17,25 @@ import { formatCurrency } from "@/lib/utils";
 
 type PaymentGateway = "duitku" | "midtrans";
 type GatewayMode = PaymentGateway | "both";
+export type SubscriptionRenewalPreview = {
+  expiresAt: string;
+  remainingDays: number;
+  plans: Record<string, {
+    additionalDays: number;
+    totalDays: number;
+    expiresAt: string;
+  }>;
+};
+
+function formatSubscriptionDate(value: string) {
+  return new Date(value).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  });
+}
+
 type DuitkuCheckoutResult = {
   resultCode?: string;
   merchantOrderId?: string;
@@ -44,10 +63,12 @@ export function CheckoutContent({
   gatewayMode = "duitku",
   plans = fallbackPricingPlans,
   duitkuPopScriptUrl = "https://app-prod.duitku.com/lib/js/duitku.js",
+  renewalPreview = null,
 }: {
   gatewayMode?: GatewayMode;
   plans?: PricingPlan[];
   duitkuPopScriptUrl?: string;
+  renewalPreview?: SubscriptionRenewalPreview | null;
 }) {
   const searchParams = useSearchParams();
   const selectedPlanId = searchParams.get("plan") ?? "starter-monthly";
@@ -78,6 +99,7 @@ export function CheckoutContent({
   const [duitkuScriptReady, setDuitkuScriptReady] = useState(false);
   const [duitkuScriptFailed, setDuitkuScriptFailed] = useState(false);
   const quote = calculateSubscriptionTotal(plan, deviceCount);
+  const renewal = renewalPreview?.plans[plan.id];
   const selectedGatewayLabel =
     paymentGateway === "midtrans" ? "Midtrans" : "Duitku";
   const plansInSameTier = visiblePlans
@@ -203,6 +225,44 @@ export function CheckoutContent({
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
             {checkoutMessage}
           </div>
+        ) : null}
+
+        {renewalPreview && renewal ? (
+          <section className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50/60 p-5 sm:p-6">
+            <div className="flex items-start gap-3">
+              <CalendarPlus className="mt-0.5 size-5 shrink-0 text-emerald-700" />
+              <div>
+                <h2 className="text-base font-semibold tracking-tight text-emerald-950">
+                  Langganan Anda masih aktif
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-emerald-900/80">
+                  Sisa masa aktif Anda tidak akan direset atau hangus. Setelah pembayaran berhasil,
+                  durasi paket ini akan ditambahkan ke tanggal berakhir langganan saat ini.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-emerald-200/70 bg-white/80 p-4">
+                <p className="text-xs text-emerald-800">Sisa masa aktif</p>
+                <p className="mt-1 text-xl font-semibold text-emerald-950">{renewalPreview.remainingDays} hari</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200/70 bg-white/80 p-4">
+                <p className="text-xs text-emerald-800">Tambahan {plan.durationMonths} bulan</p>
+                <p className="mt-1 text-xl font-semibold text-emerald-950">+{renewal.additionalDays} hari</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-100/70 p-4">
+                <p className="text-xs text-emerald-800">Total setelah pembayaran</p>
+                <p className="mt-1 text-xl font-semibold text-emerald-950">{renewal.totalDays} hari</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-emerald-900/80">
+              Berakhir saat ini: <span className="font-medium">{formatSubscriptionDate(renewalPreview.expiresAt)}</span>.
+              {" "}Perkiraan setelah pembayaran: <span className="font-semibold">{formatSubscriptionDate(renewal.expiresAt)}</span>.
+            </p>
+            <p className="mt-1 text-xs leading-5 text-emerald-800/80">
+              Durasi mengikuti bulan kalender. Perkiraan dihitung saat halaman dibuka; masa aktif akan diperbarui setelah pembayaran berhasil.
+            </p>
+          </section>
         ) : null}
 
         {longerDurationOffers.length > 0 ? (
