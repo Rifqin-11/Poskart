@@ -15,7 +15,7 @@ import { getPublicSubscriptionPricingPlans } from "@/server/subscription/pricing
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { refreshSubscriptionPayment, subscriptionPaymentColumns } from "@/server/subscription/payment-reconciliation";
+import { expireSubscriptionPayments, refreshSubscriptionPayment, subscriptionPaymentColumns } from "@/server/subscription/payment-reconciliation";
 import { getSubscriptionPaymentUrl, type SubscriptionPayment } from "@/features/billing/subscription/payment-types";
 
 function redirectWithStatus(
@@ -168,6 +168,11 @@ export async function createSubscriptionOrderAction(formData: FormData) {
 
   const siteUrl = await getSiteUrl();
   const paymentMetadataClient = createSupabaseAdminClient();
+  try {
+    await expireSubscriptionPayments(paymentMetadataClient, membership.organization_id);
+  } catch {
+    return { ok: false, message: "Pembayaran sebelumnya belum dapat diperiksa. Coba lagi nanti.", planId: plan.id } satisfies SubscriptionCheckoutActionResult;
+  }
   const { data: existingOrder, error: existingOrderError } = await paymentMetadataClient
     .from("subscription_orders")
     .select(`${subscriptionPaymentColumns},payment_reference`)

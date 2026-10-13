@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { SUBSCRIPTION_PAYMENT_MINUTES } from "@/features/billing/subscription/payment-types";
 
 import type { PricingPlan } from "@/lib/constants/business";
 
@@ -85,7 +86,7 @@ export async function createMidtransPayment(
     },
     expiry: {
       unit: "minutes",
-      duration: 60,
+      duration: SUBSCRIPTION_PAYMENT_MINUTES,
     },
   };
 
@@ -158,16 +159,37 @@ export async function checkMidtransTransactionStatus(orderId: string): Promise<M
   return raw;
 }
 
+export async function cancelMidtransTransaction(orderId: string): Promise<MidtransNotificationPayload> {
+  const config = getMidtransConfig();
+  if (!config) throw new Error("Midtrans belum dikonfigurasi.");
+  const baseUrl = process.env.MIDTRANS_SANDBOX !== "false"
+    ? "https://api.sandbox.midtrans.com" : "https://api.midtrans.com";
+  const response = await fetch(`${baseUrl}/v2/${encodeURIComponent(orderId)}/cancel`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${Buffer.from(`${config.serverKey}:`).toString("base64")}`,
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
+  });
+  const raw = await response.json().catch(() => ({})) as MidtransNotificationPayload & Record<string, unknown>;
+  if (!response.ok || raw.transaction_status !== "cancel" || !["200", "202"].includes(raw.status_code ?? "")) {
+    throw new Error(getMidtransMessage(raw) || "Invoice belum dapat dibatalkan di Midtrans.");
+  }
+  return raw;
+}
+
 export function mapMidtransTransactionStatus(payload: MidtransNotificationPayload) {
   if (payload.transaction_status === "settlement") return "paid" as const;
   if (payload.transaction_status === "capture" && payload.fraud_status === "accept") {
     return "paid" as const;
   }
   if (payload.transaction_status === "pending") return "pending" as const;
+  if (payload.transaction_status === "cancel") return "cancelled" as const;
   if (
     payload.transaction_status === "deny" ||
     payload.transaction_status === "expire" ||
-    payload.transaction_status === "cancel" ||
     payload.transaction_status === "failure"
   ) {
     return "failed" as const;
