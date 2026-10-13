@@ -83,7 +83,7 @@ export function SubscriptionPaymentDashboardNotice() {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs leading-5 text-zinc-500" role="status">
       <span className="flex items-center gap-1.5"><Clock3 className="size-3.5" aria-hidden="true" />Pembayaran langganan menunggu konfirmasi.</span>
-      <Link href="/settings?tab=organization#subscription-payments" className="font-medium text-zinc-950 underline underline-offset-4">Cek di Organization</Link>
+      <Link href="/settings?tab=billing" className="font-medium text-zinc-950 underline underline-offset-4">Cek di Langganan</Link>
     </div>
   );
 }
