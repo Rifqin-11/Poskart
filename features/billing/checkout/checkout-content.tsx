@@ -227,44 +227,6 @@ export function CheckoutContent({
           </div>
         ) : null}
 
-        {renewalPreview && renewal ? (
-          <section className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50/60 p-5 sm:p-6">
-            <div className="flex items-start gap-3">
-              <CalendarPlus className="mt-0.5 size-5 shrink-0 text-emerald-700" />
-              <div>
-                <h2 className="text-base font-semibold tracking-tight text-emerald-950">
-                  Langganan Anda masih aktif
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-emerald-900/80">
-                  Sisa masa aktif Anda tidak akan direset atau hangus. Setelah pembayaran berhasil,
-                  durasi paket ini akan ditambahkan ke tanggal berakhir langganan saat ini.
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-emerald-200/70 bg-white/80 p-4">
-                <p className="text-xs text-emerald-800">Sisa masa aktif</p>
-                <p className="mt-1 text-xl font-semibold text-emerald-950">{renewalPreview.remainingDays} hari</p>
-              </div>
-              <div className="rounded-2xl border border-emerald-200/70 bg-white/80 p-4">
-                <p className="text-xs text-emerald-800">Tambahan {plan.durationMonths} bulan</p>
-                <p className="mt-1 text-xl font-semibold text-emerald-950">+{renewal.additionalDays} hari</p>
-              </div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-100/70 p-4">
-                <p className="text-xs text-emerald-800">Total setelah pembayaran</p>
-                <p className="mt-1 text-xl font-semibold text-emerald-950">{renewal.totalDays} hari</p>
-              </div>
-            </div>
-            <p className="mt-4 text-sm leading-6 text-emerald-900/80">
-              Berakhir saat ini: <span className="font-medium">{formatSubscriptionDate(renewalPreview.expiresAt)}</span>.
-              {" "}Perkiraan setelah pembayaran: <span className="font-semibold">{formatSubscriptionDate(renewal.expiresAt)}</span>.
-            </p>
-            <p className="mt-1 text-xs leading-5 text-emerald-800/80">
-              Durasi mengikuti bulan kalender. Perkiraan dihitung saat halaman dibuka; masa aktif akan diperbarui setelah pembayaran berhasil.
-            </p>
-          </section>
-        ) : null}
-
         {longerDurationOffers.length > 0 ? (
           <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 sm:p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -553,6 +515,24 @@ export function CheckoutContent({
             </div>
           </div>
         </div>
+
+        {renewalPreview && renewal ? (
+          <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2.5 text-xs leading-5 text-emerald-900">
+            <div className="flex items-center gap-1.5 font-medium">
+              <CalendarPlus aria-hidden="true" className="size-3.5 shrink-0 text-emerald-700" />
+              Langganan Anda masih aktif
+            </div>
+            <p className="mt-1 text-emerald-800">
+              Sisa masa aktif tidak hangus. Setelah pembayaran:
+            </p>
+            <p className="font-medium tabular-nums">
+              {renewalPreview.remainingDays} hari + {renewal.additionalDays} hari = {renewal.totalDays} hari
+            </p>
+            <p className="mt-1 text-[11px] leading-4 text-emerald-800">
+              Perkiraan aktif hingga {formatSubscriptionDate(renewal.expiresAt)} (bulan kalender).
+            </p>
+          </div>
+        ) : null}
 
         <p className="mt-4 text-xs text-zinc-500">
           Secure payment via {selectedGatewayLabel}
