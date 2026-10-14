@@ -12,7 +12,6 @@ import {
   Settings,
   Shield,
   Store,
-  Ticket,
   WalletCards,
 } from "lucide-react";
 import type { DictionaryKey } from "@/lib/i18n/dictionaries";
@@ -25,6 +24,7 @@ export type AdminNavItem = {
   requiresSubscription?: boolean;
   superAdminOnly?: boolean;
   organizationFeature?: OrganizationFeatureKey;
+  activeHrefs?: string[];
 };
 
 export const adminNavItems: AdminNavItem[] = [
@@ -34,13 +34,12 @@ export const adminNavItems: AdminNavItem[] = [
   { href: "/pos", labelKey: "nav.pos", icon: Calculator, requiresSubscription: true, organizationFeature: "posKasir" },
   { href: "/transactions", labelKey: "nav.transactions", icon: Store, requiresSubscription: true },
   { href: "/withdraw", labelKey: "nav.withdraw", icon: ReceiptText, requiresSubscription: true },
-  { href: "/pricing", labelKey: "nav.pricing", icon: CreditCard, requiresSubscription: true },
+  { href: "/pricing", labelKey: "nav.pricingPromotions", icon: CreditCard, requiresSubscription: true, activeHrefs: ["/pricing", "/vouchers"] },
   { href: "/devices", labelKey: "nav.devices", icon: MonitorSmartphone, requiresSubscription: true },
   { href: "/themes", labelKey: "nav.themes", icon: Palette, requiresSubscription: true },
   { href: "/templates", labelKey: "nav.templates", icon: LayoutTemplate, requiresSubscription: true },
   { href: "/showcase", labelKey: "nav.showcase", icon: PanelsTopLeft, requiresSubscription: true, organizationFeature: "showcase" },
   { href: "/gallery", labelKey: "nav.gallery", icon: Images, requiresSubscription: true },
-  { href: "/vouchers", labelKey: "nav.vouchers", icon: Ticket, requiresSubscription: true },
   { href: "/superadmin", labelKey: "nav.superAdmin", icon: Shield, superAdminOnly: true },
   { href: "/settings", labelKey: "nav.settings", icon: Settings, requiresSubscription: true },
 ];
