@@ -28,7 +28,7 @@ export function AdminSidebar({ isSuperAdmin = false, onNavigate }: { isSuperAdmi
   const organizationFeatures = normalizeOrganizationFeatures(organization?.features);
   const filteredNavItems = adminNavItems.filter((item) => {
     if (item.superAdminOnly && !isSuperAdmin) return false;
-    if (item.organizationFeature && !isSuperAdmin && !organizationFeatures[item.organizationFeature]) return false;
+    if (item.organizationFeature && !organizationFeatures[item.organizationFeature]) return false;
     return true;
   });
 

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   Check,
   CircleHelp,
@@ -42,7 +44,7 @@ import {
   type FeatureTourStep,
 } from "@/features/admin/tutorial/feature-guided-tour";
 import { useFeatureTutorial } from "@/features/admin/tutorial/use-feature-tutorial";
-import { GalleryExperience } from "./gallery-experience";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 
 type GalleryShareContextValue = {
   isSelectionMode: boolean;
@@ -255,11 +257,14 @@ export function useGalleryShareSelection() {
 
 export function GalleryShareHeaderActions() {
   const context = useGalleryShareSelection();
+  const { t } = useI18n();
   if (!context) return null;
 
   return (
     <div className="flex flex-wrap gap-2">
-      <GalleryExperience />
+      <Link href="/experience" className="inline-flex items-center rounded-full px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-950">
+        {t("experience.manage")}
+      </Link>
       <Button variant="outline" onClick={context.showTutorial}>
         <CircleHelp className="size-4" />
         Show tutorial

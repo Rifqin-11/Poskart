@@ -6,16 +6,19 @@ import { Check, Loader2, Mail, PackageOpen, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useI18n } from "@/lib/i18n/i18n-provider";
 import { getGalleryExperience, updateGalleryExperience, type GalleryUnboxingStyle } from "@/server/admin/actions/gallery-experience-actions";
 import { showErrorToast, toast } from "@/lib/toast";
 
 export function GalleryExperience() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ["gallery-experience"],
     queryFn: getGalleryExperience,
-    enabled: open,
     staleTime: 0,
   });
   const update = useMutation({
@@ -28,9 +31,26 @@ export function GalleryExperience() {
   });
 
   return <>
-    <Button type="button" variant="outline" onClick={() => setOpen(true)}>
-      <Sparkles className="size-4" /> Experience
-    </Button>
+    <Card>
+      <CardHeader>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="grid size-12 place-items-center rounded-2xl bg-zinc-100 text-zinc-700"><PackageOpen className="size-6" /></span>
+          <Badge>{t("nav.gallery")}</Badge>
+        </div>
+        <CardTitle>Photo Unboxing</CardTitle>
+        <CardDescription>{t("experience.galleryDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div aria-live="polite" className="text-sm text-zinc-500">
+            {query.isPending ? <span className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Memuat status…</span> : query.isError ? <span role="alert">Status belum dapat dimuat.</span> : <span>{query.data.unboxingEnabled ? `Aktif · ${query.data.unboxingStyle === "envelope" ? "Amplop" : "Packaging"}` : "Nonaktif"}</span>}
+          </div>
+          <Button type="button" variant="outline" onClick={() => setOpen(true)}>
+            <Sparkles className="size-4" /> {t("experience.configure")}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
     <Dialog open={open} onOpenChange={setOpen} title="Gallery Experience" className="max-w-lg">
       <p className="mb-5 text-sm leading-6 text-zinc-500">Atur pengalaman pengunjung saat membuka hasil foto. Berlaku untuk seluruh galeri organisasi, termasuk tautan yang sudah dibagikan.</p>
       {query.isPending ? <div className="flex items-center gap-2 py-5 text-sm text-zinc-500"><Loader2 className="size-4 animate-spin" /> Memuat experience…</div> : query.isError ? <div className="space-y-3"><p role="alert" className="text-sm text-red-600">Experience galeri belum dapat dimuat.</p><Button variant="outline" onClick={() => void query.refetch()}>Coba lagi</Button></div> : <>

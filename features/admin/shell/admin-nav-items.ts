@@ -11,6 +11,7 @@ import {
   ReceiptText,
   Settings,
   Shield,
+  Sparkles,
   Store,
   WalletCards,
 } from "lucide-react";
@@ -39,6 +40,7 @@ export const adminNavItems: AdminNavItem[] = [
   { href: "/themes", labelKey: "nav.themes", icon: Palette, requiresSubscription: true },
   { href: "/templates", labelKey: "nav.templates", icon: LayoutTemplate, requiresSubscription: true },
   { href: "/showcase", labelKey: "nav.showcase", icon: PanelsTopLeft, requiresSubscription: true, organizationFeature: "showcase" },
+  { href: "/experience", labelKey: "nav.experience", icon: Sparkles, requiresSubscription: true },
   { href: "/gallery", labelKey: "nav.gallery", icon: Images, requiresSubscription: true },
   { href: "/superadmin", labelKey: "nav.superAdmin", icon: Shield, superAdminOnly: true },
   { href: "/settings", labelKey: "nav.settings", icon: Settings, requiresSubscription: true },
