@@ -42,6 +42,7 @@ import {
   type FeatureTourStep,
 } from "@/features/admin/tutorial/feature-guided-tour";
 import { useFeatureTutorial } from "@/features/admin/tutorial/use-feature-tutorial";
+import { GalleryExperience } from "./gallery-experience";
 
 type GalleryShareContextValue = {
   isSelectionMode: boolean;
@@ -258,6 +259,7 @@ export function GalleryShareHeaderActions() {
 
   return (
     <div className="flex flex-wrap gap-2">
+      <GalleryExperience />
       <Button variant="outline" onClick={context.showTutorial}>
         <CircleHelp className="size-4" />
         Show tutorial

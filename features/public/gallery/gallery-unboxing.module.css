@@ -1,0 +1,127 @@
+/* Unboxing is a modal above the gallery, below the existing photo viewer layer. */
+.overlay { position: fixed; inset: 0; z-index: 40; background: white; color: #18181b; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); }
+.header { width: 100%; max-width: 1152px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid #18181b1a; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand > img { width: 32px; height: 32px; object-fit: contain; }
+.brand strong { display: block; font-size: 14px; font-weight: 600; letter-spacing: -.02em; }
+.brand span { display: block; font-size: 12px; color: #71717a; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header button { display: flex; gap: 8px; align-items: center; flex-shrink: 0; font-size: 12px; padding: 10px 14px; border: 1px solid #e4e4e7; border-radius: 999px; color: #52525b; transition: background .2s; }
+.header button:hover { text-decoration: underline; }
+.intro { text-align: center; margin: 26px 0 20px; }
+.intro h1 { font-size: clamp(24px,3vw,34px); line-height: 1.15; font-weight: 700; letter-spacing: -.04em; }
+.intro p { font-size: 13px; line-height: 1.6; color: #71717a; margin-top: 10px; }
+.pouch { position: relative; width: min(330px, 70vw, 38dvh); aspect-ratio: .71; flex-shrink: 0; perspective: 900px; margin-top: 14px; }
+.body,.seal,.intact,.tear { position: absolute; inset: 0; pointer-events: none; }
+.tear { clip-path: inset(0 0 0 100%); }
+.body img,.seal img,.intact img,.tear img { width: 100%; height: 100%; object-fit: fill; }
+.seal { transform-origin: left 7.5%; }
+.handle { position: absolute; top: 24%; left: 0; width: 100%; height: 60px; color: #18181b; touch-action: none; user-select: none; cursor: grab; background: transparent; border: 0; }
+.tearGuide { position: absolute; top: -18px; right: 8px; display: grid; place-items: center; color: #014eb4; filter: drop-shadow(0 2px 3px #0206172e); }
+.notch { position: absolute; top: 26px; right: -10px; width: 36px; height: 36px; display: grid; place-items: center; border: 2px solid #fafafa; border-radius: 50%; background: #014eb4; color: white; box-shadow: 0 2px 8px #02061733; }
+.handle:hover .notch { background: #014eb4; }
+.handle:active { cursor: grabbing; }
+.handle:disabled { opacity: 0; pointer-events: none; }
+.photo { position: absolute; width: 66%; top: 19%; left: 17%; max-height: 75%; opacity: 0; transform: scale(.95); background: white; padding: 6px; box-shadow: 0 15px 40px #52525b33; overflow: hidden; }
+.photo img { width: 100%; max-height: 50dvh; object-fit: contain; }
+.actions { text-align: center; margin-top: 24px; min-height: 102px; }
+.actions p { font-size: 12px; color: #71717a; margin-bottom: 12px; }
+.actions button { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #d4d4d8; border-radius: 999px; padding: 10px 18px; background: white; font-size: 13px; }
+.actions button:hover { background: #eef3fa; }
+.actions button:disabled { opacity: .45; cursor: default; }
+.actions .viewAll { background: #18181b; color: white; border-color: #18181b; padding: 13px 22px; font-weight: 600; }
+.actions .viewAll:hover { background: #3f3f46; }
+.actions small { display: block; max-width: 300px; font-size: 11px; color: #71717a; line-height: 1.6; margin: 12px auto 0; }
+.actions .success { display: flex; justify-content: center; align-items: center; gap: 6px; }
+.loadingState { display: flex; justify-content: center; align-items: center; gap: 8px; }
+.loadingState span { width: 12px; height: 12px; border: 2px solid #d4d4d8; border-top-color: #18181b; border-radius: 50%; animation: loadingSpin .8s linear infinite; }
+@keyframes loadingSpin { to { transform: rotate(360deg); } }
+.overlay[data-loading="true"] .pouch { opacity: .82; }
+.overlay[data-loading="true"] .handle { cursor: wait; }
+.header button:focus-visible,.handle:focus-visible,.actions button:focus-visible { outline: 3px solid #014eb4; outline-offset: 4px; }
+.actions button:active { transform: scale(.98); }
+@media (prefers-reduced-motion: no-preference) {
+  .handle:not(:disabled) .tearGuide svg,.handle:not(:disabled) .notch svg { animation: pullLeft 1.6s ease-in-out infinite; }
+  .handle:active .tearGuide svg,.handle:active .notch svg { animation-play-state: paused; }
+  @keyframes pullLeft { 0%, 100% { transform: translateX(3px); } 45%, 60% { transform: translateX(-5px); } }
+  .overlay[data-revealed="true"] .actions { animation: revealActions .45s ease-out both; }
+  @keyframes revealActions { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+}
+@media (max-width: 640px) { .overlay { padding-inline: 18px; } .header { gap: 8px; } .brand { gap: 8px; } .brand span { max-width: 95px; font-size: 10px; } .header button { font-size: 10px; padding: 9px 11px; gap: 5px; } .intro { margin-top: 30px; margin-bottom: 26px; } .intro h1 { font-size: 25px; } .pouch { width: min(300px, 72vw, 36dvh); } }
+.replayBar { margin-top: 16px; display: flex; justify-content: center; }
+.replayBar button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #e4e4e7; border-radius: 999px; padding: 9px 14px; background: white; color: #52525b; font-size: 12px; }
+.replayBar button:hover { background: #f4f4f5; }
+.replayBar button:focus-visible { outline: 3px solid #014eb4; outline-offset: 3px; }
+
+/* Registered paper layers keep the accepted silhouette; only the paper moves.
+   The source is 1145 × 1374, contained in a 2:3 stage (10% vertical padding).
+   Its real top fold is y=282; the flap is cropped to (48,282,1052,470). */
+.envelopeOverlay { scrollbar-gutter: stable both-edges; }
+.envelopePouch { width: min(360px, 74vw, 44dvh); aspect-ratio: 2 / 3; perspective: none; isolation: isolate; overflow: visible; margin-top: 18px; margin-bottom: 32px; }
+.envelopeRear, .envelopePocket, .envelopeFlapLayer { position: absolute; inset: 0; pointer-events: none; }
+.envelopeRear { z-index: 1; }
+.envelopePocket { z-index: 3; filter: drop-shadow(0 8px 6px rgba(62, 45, 24, .2)); }
+.envelopeFlapLayer { z-index: 4; perspective: 1200px; }
+.envelopeRear > img, .envelopePocket > img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.envelopeFlap { position: absolute; left: 4.192%; top: 26.419%; width: 91.878%; height: 27.365%; transform-origin: 50% 0%; transform-style: preserve-3d; }
+.envelopeFlap > img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.envelopeFlapFront { transform: translateZ(.2px); }
+.envelopeFlapInside { transform: rotateX(180deg) translateZ(.2px); filter: brightness(.94); }
+.envelopeCard { z-index: 2; top: 28.4%; left: 11%; width: 78%; height: 40.7%; max-height: none; padding: 7px; opacity: 0; transform: none; background: transparent; border-radius: 2px; box-shadow: 0 8px 22px rgba(50, 29, 13, .18); overflow: hidden; }
+.photoBacking { position: absolute; inset: 0; background: #faf7f2; border-radius: 2px; box-shadow: 0 8px 22px rgba(50, 29, 13, .18); pointer-events: none; }
+.envelopeCard img { position: relative; display: block; width: 100%; height: 100%; max-height: none; object-fit: contain; }
+.waxSeal { position: absolute; z-index: 5; left: 40.262%; top: 45.985%; width: 19.214%; height: 12.81%; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; filter: drop-shadow(0 4px 3px rgba(58, 27, 14, .24)); transition: filter .2s ease; }
+.waxSeal img { display: block; width: 100%; height: 100%; }
+.waxSeal:hover:not(:disabled) { filter: drop-shadow(0 5px 5px rgba(58, 27, 14, .4)); }
+.waxSeal:disabled { cursor: default; pointer-events: none; }
+.header button:focus-visible,.handle:focus-visible,.waxSeal:focus-visible,.actions button:focus-visible { outline: 3px solid #014eb4; outline-offset: 4px; }
+@media (max-width: 640px) { .envelopePouch { width: min(335px, 82vw, 42dvh); margin-top: 28px; margin-bottom: 42px; } .envelopeCard { padding: 6px; } }
+
+/* Once the paper is gone, size the result to the viewport rather than the
+   envelope's small inner pocket. Keep the sealed/opening layer geometry intact. */
+.envelopeOverlay[data-revealed="true"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(160px, 1fr) auto;
+  justify-items: center;
+  align-items: start;
+  gap: 16px;
+}
+.envelopeOverlay[data-revealed="true"] .intro { margin: 0; }
+.envelopeOverlay[data-revealed="true"] .envelopePouch {
+  width: min(640px, 100%);
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  margin: 0;
+  overflow: visible;
+}
+.envelopeOverlay[data-revealed="true"] .envelopeCard {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 22px);
+  overflow: visible;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+.envelopeOverlay[data-revealed="true"] .envelopeCard img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 2px;
+  box-shadow: none;
+}
+.envelopeOverlay[data-revealed="true"] .envelopeRear,
+.envelopeOverlay[data-revealed="true"] .envelopePocket,
+.envelopeOverlay[data-revealed="true"] .envelopeFlapLayer,
+.envelopeOverlay[data-revealed="true"] .waxSeal { visibility: hidden; }
+.envelopeOverlay[data-revealed="true"] .actions { margin: 0; min-height: 0; }
+.envelopeOverlay[data-revealed="true"] .actions small { margin-top: 8px; }
+
+.actions .countdown { margin: 10px 0 0; font-size: 11px; font-variant-numeric: tabular-nums; }
+.countdown strong { color: #52525b; font-weight: 600; }

@@ -18,6 +18,7 @@ import { GalleryMusicPlayer } from "@/features/public/gallery/gallery-music-play
 import { GalleryDownloadLink } from "@/features/public/gallery/gallery-download-link";
 import { GalleryLinkCard } from "@/features/public/gallery/gallery-link-card";
 import { GalleryPhotoViewer } from "@/features/public/gallery/gallery-photo-viewer";
+import { GalleryUnboxing, GalleryUnboxingReplay } from "@/features/public/gallery/gallery-unboxing";
 import { getPublicGalleryUrl } from "@/lib/gallery/urls";
 
 export const dynamic = "force-dynamic";
@@ -90,6 +91,24 @@ export default async function SharedGalleryPage({
 
   const galleryUrl = getPublicGalleryUrl(sessionId);
   const { branding } = await resolveGallerySessionBranding(supabase, session);
+  let organizationExperience: { gallery_unboxing_enabled?: boolean | null; gallery_unboxing_style?: string | null } | null = null;
+  if (session.organization_id) {
+    const fullExperience = await supabase.from("organizations")
+      .select("gallery_unboxing_enabled,gallery_unboxing_style")
+      .eq("id", session.organization_id).maybeSingle();
+    if (!fullExperience.error) {
+      organizationExperience = fullExperience.data;
+    } else {
+      // Older deployments may not have the style column yet. Keep public
+      // galleries available with the original packaging experience.
+      const legacyExperience = await supabase.from("organizations")
+        .select("gallery_unboxing_enabled")
+        .eq("id", session.organization_id).maybeSingle();
+      organizationExperience = legacyExperience.error ? null : legacyExperience.data;
+    }
+  }
+  const unboxingEnabled = organizationExperience?.gallery_unboxing_enabled !== false;
+  const unboxingStyle = organizationExperience?.gallery_unboxing_style === "envelope" ? "envelope" : "packaging";
 
   const { data: photos } = await supabase
     .from("gallery_photos")
@@ -147,6 +166,17 @@ export default async function SharedGalleryPage({
       {shouldRefreshWhileProcessing && (
         <ProcessingRefresh refreshUntil={refreshUntil} />
       )}
+      <GalleryUnboxing
+        sessionId={sessionId}
+        brandName={branding.brandName}
+        logoUrl={branding.logoUrl}
+        subtitle={branding.subtitle}
+        enabled={unboxingEnabled && !selectedPhoto}
+        style={unboxingStyle}
+        loading={!framedStatic}
+        autoOpen={!selectedPhoto}
+        photoUrl={framedStatic ? galleryMediaUrl(sessionId, framedStatic.id) : undefined}
+      >
       <GalleryPhotoViewer
         sessionId={sessionId}
         photos={(photos ?? []).map((photo) => ({ id: photo.id, isVideo: isVideoAsset(photo) }))}
@@ -403,7 +433,8 @@ export default async function SharedGalleryPage({
                 </div>
               )
             )}
-           <GalleryLinkCard galleryUrl={galleryUrl} />
+            <GalleryLinkCard galleryUrl={galleryUrl} />
+            <GalleryUnboxingReplay />
            </aside>
         </div>
 
@@ -433,6 +464,7 @@ export default async function SharedGalleryPage({
       </div>
 
       </GalleryPhotoViewer>
+      </GalleryUnboxing>
     </main>
   );
 }
@@ -552,7 +584,7 @@ function ProcessingRefresh({ refreshUntil }: { refreshUntil: number }) {
   return (
     <script
       dangerouslySetInnerHTML={{
-        __html: `if (Date.now() < ${JSON.stringify(refreshUntil)}) setTimeout(function refreshGallery() { if (Date.now() >= ${JSON.stringify(refreshUntil)}) return; if (new URLSearchParams(window.location.search).has('view')) { setTimeout(refreshGallery, 30000); return; } window.location.reload(); }, 30000);`,
+        __html: `if (Date.now() < ${JSON.stringify(refreshUntil)}) setTimeout(function refreshGallery() { if (Date.now() >= ${JSON.stringify(refreshUntil)}) return; if (document.documentElement.dataset.galleryUnboxing === 'active' || new URLSearchParams(window.location.search).has('view')) { setTimeout(refreshGallery, 30000); return; } window.location.reload(); }, 30000);`,
       }}
     />
   );
