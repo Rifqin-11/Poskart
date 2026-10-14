@@ -1,11 +1,14 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Layered pouch crops and proxied session images use native image elements. */
 
-import { createContext, useContext, useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import gsap from "gsap";
 import { ArrowLeft, ArrowRight, PackageOpen, CheckCircle2, RotateCcw } from "lucide-react";
 import styles from "./gallery-unboxing.module.css";
+import { createEnvelopeOpeningTimeline } from "./envelope-opening-timeline";
+import { createEnvelopeResultTimeline, getContainedPhotoBounds, type EnvelopeResultBounds } from "./envelope-result-timeline";
 
+type GalleryUnboxingStyle = "packaging" | "envelope";
 const UnboxingContext = createContext<{ enabled: boolean; replay: () => void } | null>(null);
 
 export function GalleryUnboxingReplay() {
@@ -14,26 +17,50 @@ export function GalleryUnboxingReplay() {
   return <div className={styles.replayBar}><button data-gallery-button onClick={unboxing.replay}><RotateCcw size={15} /> Ulang unboxing</button></div>;
 }
 
-export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logoUrl, subtitle, enabled, loading = false, autoOpen = true }: {
-  children: ReactNode; sessionId: string; photoUrl?: string; brandName: string; logoUrl: string; subtitle: string; enabled: boolean; loading?: boolean; autoOpen?: boolean;
+export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logoUrl, subtitle, enabled, style = "packaging", loading = false, autoOpen = true }: {
+  children: ReactNode; sessionId: string; photoUrl?: string; brandName: string; logoUrl: string; subtitle: string; enabled: boolean; style?: GalleryUnboxingStyle; loading?: boolean; autoOpen?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
   const [opening, setOpening] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const [resultReady, setResultReady] = useState(false);
+  const [countdown, setCountdown] = useState(5);
   const overlay = useRef<HTMLDivElement>(null);
   const pouch = useRef<HTMLDivElement>(null);
-  const seal = useRef<HTMLDivElement>(null);
+  const seal = useRef<HTMLButtonElement>(null);
+  const packagingSeal = useRef<HTMLDivElement>(null);
   const tear = useRef<HTMLDivElement>(null);
+  const envelopeRear = useRef<HTMLDivElement>(null);
+  const envelopePocket = useRef<HTMLDivElement>(null);
+  const envelopeFlapLayer = useRef<HTMLDivElement>(null);
+  const envelopeFlap = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const intact = useRef<HTMLDivElement>(null);
   const photo = useRef<HTMLDivElement>(null);
+  const photoBacking = useRef<HTMLDivElement>(null);
+  const photoImage = useRef<HTMLImageElement>(null);
+  const resultBounds = useRef<EnvelopeResultBounds | null>(null);
+  const countdownTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const exiting = useRef(false);
   const content = useRef<HTMLDivElement>(null);
   const skip = useRef<HTMLButtonElement>(null);
   const drag = useRef<{ id: number; start: number; width: number } | null>(null);
   const progress = useRef(0);
   const busy = useRef(false);
   const animation = useRef<gsap.core.Timeline | null>(null);
+  const envelopeAnimationContext = useRef<gsap.Context | null>(null);
   const key = `poskart:unboxed:${sessionId}`;
+
+  const clearCountdown = useCallback(() => {
+    countdownTimers.current.forEach(clearTimeout);
+    countdownTimers.current = [];
+  }, []);
+
+  useEffect(() => () => {
+    clearCountdown();
+    animation.current?.kill();
+    envelopeAnimationContext.current?.revert();
+  }, [clearCountdown]);
 
   useEffect(() => {
     if (!enabled || !autoOpen || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -56,12 +83,14 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
     };
   }, [visible]);
 
-  function finish() {
+  const finish = useCallback(() => {
+    clearCountdown();
+    exiting.current = true;
     animation.current?.kill();
     try { sessionStorage.setItem(key, "1"); } catch { /* Continue without persistence. */ }
     setVisible(false);
     requestAnimationFrame(() => content.current?.focus({ preventScroll: true }));
-  }
+  }, [clearCountdown, key]);
 
   function paint(value: number) {
     progress.current = value;
@@ -70,6 +99,50 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
     if (tear.current) tear.current.style.clipPath = `inset(0 0 0 ${(1 - value) * 100}%)`;
   }
 
+  function resetScene() {
+    clearCountdown();
+    resultBounds.current = null;
+    animation.current?.kill();
+    envelopeAnimationContext.current?.revert();
+    envelopeAnimationContext.current = null;
+    progress.current = 0;
+    drag.current = null;
+    paint(0);
+    // After leaving the gallery overlay these refs are unmounted. Replay will
+    // create fresh layers; GSAP cannot reset an array of null targets.
+    if (!pouch.current) return;
+    if (style === "envelope") {
+      gsap.set([seal.current, envelopeRear.current, envelopePocket.current, envelopeFlapLayer.current, envelopeFlap.current, photo.current], { clearProps: "all" });
+      return;
+    }
+    gsap.set([packagingSeal.current, intact.current, tear.current, body.current, photo.current], { clearProps: "all" });
+  }
+
+  function revealResult() {
+    if (style === "envelope" && photoBacking.current) {
+      resultBounds.current = {
+        backing: photoBacking.current.getBoundingClientRect(),
+        image: photoImage.current ? getContainedPhotoBounds(photoImage.current) : undefined,
+      };
+    }
+    try { sessionStorage.setItem(key, "1"); } catch { /* Continue without persistence. */ }
+    setRevealed(true);
+    if (style !== "envelope") setResultReady(true);
+    skip.current?.focus({ preventScroll: true });
+  }
+
+  useLayoutEffect(() => {
+    if (!visible || !revealed || style !== "envelope" || !photoBacking.current || !resultBounds.current) return;
+    const backing = photoBacking.current;
+    const before = resultBounds.current;
+    const context = gsap.context(() => {
+      animation.current = createEnvelopeResultTimeline(backing, photoImage.current, before, () => {
+        if (!exiting.current) setResultReady(true);
+      }, window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    }, pouch);
+    return () => context.revert();
+  }, [visible, revealed, style]);
+
   function open() {
     if (busy.current || loading) return;
     busy.current = true;
@@ -77,43 +150,75 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
     setOpening(true);
     const driver = { value: progress.current };
     animation.current?.kill();
-    if (photo.current) photo.current.style.opacity = "1";
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      paint(1);
-      gsap.set([intact.current, body.current, seal.current, tear.current], { opacity: 0 });
-      gsap.set(photo.current, { opacity: 1, scale: 1.22, yPercent: -8 });
-      setRevealed(true);
+    if (style !== "envelope" && photo.current) photo.current.style.opacity = "1";
+    if (style === "envelope") {
+      const layers = {
+        seal: seal.current,
+        flap: envelopeFlap.current,
+        flapLayer: envelopeFlapLayer.current,
+        rear: envelopeRear.current,
+        pocket: envelopePocket.current,
+        photo: photo.current,
+      };
+      const { seal: waxSeal, flap, flapLayer, rear, pocket, photo: card } = layers;
+      if (!waxSeal || !flap || !flapLayer || !rear || !pocket || !card) {
+        busy.current = false;
+        setOpening(false);
+        return;
+      }
+      envelopeAnimationContext.current?.revert();
+      envelopeAnimationContext.current = gsap.context(() => {
+        animation.current = createEnvelopeOpeningTimeline({ seal: waxSeal, flap, flapLayer, rear, pocket, photo: card }, revealResult, window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+      }, pouch);
       return;
     }
-    animation.current = gsap.timeline({ onComplete: () => {
-      try { sessionStorage.setItem(key, "1"); } catch { /* Continue without persistence. */ }
-      setRevealed(true);
-    } })
-      .to(driver, { value: 1, duration: .25, onUpdate: () => paint(driver.value), ease: "power2.out" })
-      // Swap the intact pouch for the split layers; the torn edges now show.
-      .set([intact.current, tear.current], { opacity: 0 }, .25)
-      .to(body.current, { y: () => (pouch.current?.offsetHeight ?? 450) * 1.05, duration: .85, ease: "power2.inOut" }, .4)
-      .to(photo.current, { yPercent: -8, scale: 1.22, rotation: -2, duration: .7, ease: "power3.out" }, 1.0)
-      .to(seal.current, { y: () => -(pouch.current?.offsetHeight ?? 450) * .34, rotation: -2, opacity: 0, duration: .7, ease: "power3.inOut" }, 1.0)
-      .to(body.current, { opacity: 0, duration: .25 }, 1.25);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        paint(1);
+        gsap.set([intact.current, tear.current], { opacity: 0 });
+        gsap.set([body.current, packagingSeal.current], { opacity: 0 });
+        gsap.set(photo.current, { opacity: 1, yPercent: -10, scale: 1.04 });
+        revealResult();
+        return;
+      }
+      animation.current = gsap.timeline({ onComplete: revealResult })
+        .to(driver, { value: 1, duration: .45, onUpdate: () => paint(driver.value), ease: "power2.out" })
+        .to(intact.current, { opacity: 0, duration: .22 }, .2)
+        .to(tear.current, { opacity: 0, duration: .2 }, .22)
+        .to(packagingSeal.current, { opacity: 0, duration: .35 }, .58)
+        .to(photo.current, { yPercent: -10, scale: 1.04, duration: .65, ease: "power3.out" }, .45)
+        .to(body.current, { opacity: 0, duration: .25 }, .85);
+      return;
   }
 
-  function enterGallery() {
+  const enterGallery = useCallback(() => {
+    if (exiting.current) return;
+    exiting.current = true;
+    clearCountdown();
     animation.current?.kill();
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { finish(); return; }
     animation.current = gsap.timeline({ onComplete: finish })
-      .to(photo.current, { scale: 1.28, opacity: 0, duration: .3, ease: "power2.in" })
+      .to(photo.current, { ...(style === "envelope" ? {} : { scale: 1.28 }), opacity: 0, duration: .3, ease: "power2.in" })
       .to(overlay.current, { opacity: 0, duration: .35 }, .12);
-  }
+  }, [clearCountdown, finish, style]);
+
+  useEffect(() => {
+    if (!visible || !resultReady || loading) return;
+    countdownTimers.current = [1, 2, 3, 4, 5].map(second => setTimeout(() => {
+      if (second === 5) enterGallery();
+      else setCountdown(5 - second);
+    }, second * 1000));
+    return clearCountdown;
+  }, [visible, resultReady, loading, enterGallery, clearCountdown]);
 
   function replay() {
     if (loading) return;
-    animation.current?.kill();
-    progress.current = 0;
+    resetScene();
     busy.current = false;
-    drag.current = null;
+    exiting.current = false;
     setOpening(false);
     setRevealed(false);
+    setResultReady(false);
+    setCountdown(5);
     setVisible(true);
   }
 
@@ -130,7 +235,7 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
     <div ref={content} tabIndex={-1} inert={visible} aria-hidden={visible || undefined}>
       {children}
     </div>
-    {visible && <div ref={overlay} data-revealed={revealed} data-loading={loading} className={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="unboxing-title"
+    {visible && <div ref={overlay} data-revealed={revealed} data-result-ready={resultReady} data-loading={loading} className={`${styles.overlay} ${style === "envelope" ? styles.envelopeOverlay : ""}`} role="dialog" aria-modal="true" aria-labelledby="unboxing-title"
       onKeyDown={event => {
         if (event.key === "Escape") { event.preventDefault(); finish(); }
         if (event.key === "Tab") {
@@ -145,11 +250,22 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
         <div className={styles.brand}><img src={logoUrl} alt={`${brandName} logo`} /><div><strong>{brandName}</strong><span>{subtitle}</span></div></div>
          {!loading && <button ref={skip} onClick={revealed ? enterGallery : finish}>{revealed ? "Lihat semua foto" : "Langsung lihat foto"} <ArrowRight size={16} /></button>}
        </div>
-        <div className={styles.intro}><h1 id="unboxing-title">{loading ? "Foto Anda sedang disiapkan." : revealed ? "Foto Anda sudah siap." : "Foto Anda sudah siap."}</h1><p>{loading ? "Foto sedang diunggah. Paket akan bisa dibuka setelah selesai." : revealed ? "Lihat dan unduh semua foto dari sesi Anda." : "Tarik seal dari kanan ke kiri untuk membuka paket."}</p></div>
-      <div ref={pouch} className={styles.pouch}>
+        <div className={styles.intro}><h1 id="unboxing-title">{loading ? "Foto Anda sedang disiapkan." : revealed ? "Foto Anda sudah siap." : "Foto Anda sudah siap."}</h1><p>{loading ? "Foto sedang diunggah. Paket akan bisa dibuka setelah selesai." : revealed ? "Lihat dan unduh semua foto dari sesi Anda." : style === "envelope" ? "Klik segel lilin di tengah amplop untuk membukanya." : "Tarik seal dari kanan ke kiri untuk membuka paket."}</p></div>
+       {style === "envelope" ? <div ref={pouch} className={`${styles.pouch} ${styles.envelopePouch}`}>
+         <div ref={envelopeRear} className={styles.envelopeRear} aria-hidden="true"><img src="/landing/gallery-envelope-inside.webp" alt="" draggable={false} onError={finish} /></div>
+         <div ref={photo} className={`${styles.photo} ${styles.envelopeCard}`}><div ref={photoBacking} className={styles.photoBacking} aria-hidden="true" />{photoUrl && <img ref={photoImage} src={photoUrl} alt="Foto hasil sesi Anda" onError={finish} />}</div>
+         <div ref={envelopePocket} className={styles.envelopePocket} aria-hidden="true"><img src="/landing/gallery-envelope-pocket.webp" alt="" draggable={false} onError={finish} /></div>
+         <div ref={envelopeFlapLayer} className={styles.envelopeFlapLayer} aria-hidden="true">
+           <div ref={envelopeFlap} className={styles.envelopeFlap}>
+             <img className={styles.envelopeFlapFront} src="/landing/gallery-envelope-flap.webp" alt="" draggable={false} onError={finish} />
+             <img className={styles.envelopeFlapInside} src="/landing/gallery-envelope-flap-inside.webp" alt="" draggable={false} onError={finish} />
+           </div>
+         </div>
+         <button ref={seal} type="button" className={styles.waxSeal} aria-label="Klik segel lilin untuk membuka amplop" disabled={opening || loading} onClick={open}><img src="/landing/gallery-envelope-wax.webp" alt="" draggable={false} onError={finish} /></button>
+       </div> : <div ref={pouch} className={styles.pouch}>
         <div ref={photo} className={styles.photo}>{photoUrl && <img src={photoUrl} alt="Foto hasil sesi Anda" onError={finish} />}</div>
         <div ref={body} className={styles.body}><img src="/landing/gallery-pouch-navy-body.webp" alt="" draggable={false} onError={finish} /></div>
-        <div ref={seal} className={styles.seal}><img src="/landing/gallery-pouch-navy-top.webp" alt="" draggable={false} onError={finish} /></div>
+        <div ref={packagingSeal} className={styles.seal}><img src="/landing/gallery-pouch-navy-top.webp" alt="" draggable={false} onError={finish} /></div>
         <div ref={intact} className={styles.intact}><img src="/landing/gallery-pouch-navy.webp" alt="Paket foto POSKART biru tua yang masih tersegel" draggable={false} onError={finish} /></div>
         <div ref={tear} className={styles.tear} aria-hidden="true"><img src="/landing/gallery-pouch-navy-tear.webp" alt="" draggable={false} /></div>
          <button className={styles.handle} aria-label="Tarik ke kiri untuk merobek seal, atau tekan untuk membuka paket" disabled={opening || loading}
@@ -167,9 +283,9 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
           onPointerUp={event => release(event)} onPointerCancel={event => release(event, true)}>
           <span className={styles.notch}><ArrowLeft size={22} strokeWidth={2.5} aria-hidden="true" /></span>
         </button>
-      </div>
+       </div>}
        <div className={styles.actions}>
-          {loading ? <><p className={styles.loadingState} aria-live="polite"><span /> Foto sedang diunggah…</p><small>Halaman ini akan memperbarui otomatis saat foto siap.</small></> : revealed ? <><p className={styles.success}><CheckCircle2 size={14} /> Foto Anda sudah siap</p><button data-gallery-button className={styles.viewAll} onClick={enterGallery}>Lihat semua foto <ArrowRight size={17} /></button><small>Foto original, Live Photo, dan pilihan download ada di dalam.</small></> : <><p aria-live="polite">{opening ? "Membuka paket foto…" : "Atau buka dengan satu ketukan."}</p><button onClick={open} disabled={opening}><PackageOpen size={17} /> Buka paket</button></>}
+          {loading ? <><p className={styles.loadingState} aria-live="polite"><span /> Foto sedang diunggah…</p><small>Halaman ini akan memperbarui otomatis saat foto siap.</small></> : revealed ? <><p className={styles.success}><CheckCircle2 size={14} /> Foto Anda sudah siap</p><button data-gallery-button className={styles.viewAll} onClick={enterGallery}>Lihat semua foto <ArrowRight size={17} /></button><small>Foto original, Live Photo, dan pilihan download ada di dalam.</small><p className={styles.countdown} role="timer">{resultReady ? <>Galeri terbuka otomatis dalam <strong>{countdown} detik</strong></> : "Menyiapkan tampilan foto…"}</p></> : <><p aria-live="polite">{opening ? (style === "envelope" ? "Membuka amplop…" : "Membuka paket foto…") : style === "envelope" ? "Klik segel lilin, atau gunakan tombol di bawah." : "Atau buka dengan satu ketukan."}</p><button onClick={open} disabled={opening}><PackageOpen size={17} /> {style === "envelope" ? "Buka amplop" : "Buka paket"}</button></>}
       </div>
     </div>}
   </UnboxingContext.Provider>;

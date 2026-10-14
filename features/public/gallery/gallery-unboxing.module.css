@@ -51,3 +51,77 @@
 .replayBar button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #e4e4e7; border-radius: 999px; padding: 9px 14px; background: white; color: #52525b; font-size: 12px; }
 .replayBar button:hover { background: #f4f4f5; }
 .replayBar button:focus-visible { outline: 3px solid #014eb4; outline-offset: 3px; }
+
+/* Registered paper layers keep the accepted silhouette; only the paper moves.
+   The source is 1145 × 1374, contained in a 2:3 stage (10% vertical padding).
+   Its real top fold is y=282; the flap is cropped to (48,282,1052,470). */
+.envelopeOverlay { scrollbar-gutter: stable both-edges; }
+.envelopePouch { width: min(360px, 74vw, 44dvh); aspect-ratio: 2 / 3; perspective: none; isolation: isolate; overflow: visible; margin-top: 18px; margin-bottom: 32px; }
+.envelopeRear, .envelopePocket, .envelopeFlapLayer { position: absolute; inset: 0; pointer-events: none; }
+.envelopeRear { z-index: 1; }
+.envelopePocket { z-index: 3; filter: drop-shadow(0 8px 6px rgba(62, 45, 24, .2)); }
+.envelopeFlapLayer { z-index: 4; perspective: 1200px; }
+.envelopeRear > img, .envelopePocket > img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.envelopeFlap { position: absolute; left: 4.192%; top: 26.419%; width: 91.878%; height: 27.365%; transform-origin: 50% 0%; transform-style: preserve-3d; }
+.envelopeFlap > img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.envelopeFlapFront { transform: translateZ(.2px); }
+.envelopeFlapInside { transform: rotateX(180deg) translateZ(.2px); filter: brightness(.94); }
+.envelopeCard { z-index: 2; top: 28.4%; left: 11%; width: 78%; height: 40.7%; max-height: none; padding: 7px; opacity: 0; transform: none; background: transparent; border-radius: 2px; box-shadow: 0 8px 22px rgba(50, 29, 13, .18); overflow: hidden; }
+.photoBacking { position: absolute; inset: 0; background: #faf7f2; border-radius: 2px; box-shadow: 0 8px 22px rgba(50, 29, 13, .18); pointer-events: none; }
+.envelopeCard img { position: relative; display: block; width: 100%; height: 100%; max-height: none; object-fit: contain; }
+.waxSeal { position: absolute; z-index: 5; left: 40.262%; top: 45.985%; width: 19.214%; height: 12.81%; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; filter: drop-shadow(0 4px 3px rgba(58, 27, 14, .24)); transition: filter .2s ease; }
+.waxSeal img { display: block; width: 100%; height: 100%; }
+.waxSeal:hover:not(:disabled) { filter: drop-shadow(0 5px 5px rgba(58, 27, 14, .4)); }
+.waxSeal:disabled { cursor: default; pointer-events: none; }
+.header button:focus-visible,.handle:focus-visible,.waxSeal:focus-visible,.actions button:focus-visible { outline: 3px solid #014eb4; outline-offset: 4px; }
+@media (max-width: 640px) { .envelopePouch { width: min(335px, 82vw, 42dvh); margin-top: 28px; margin-bottom: 42px; } .envelopeCard { padding: 6px; } }
+
+/* Once the paper is gone, size the result to the viewport rather than the
+   envelope's small inner pocket. Keep the sealed/opening layer geometry intact. */
+.envelopeOverlay[data-revealed="true"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(160px, 1fr) auto;
+  justify-items: center;
+  align-items: start;
+  gap: 16px;
+}
+.envelopeOverlay[data-revealed="true"] .intro { margin: 0; }
+.envelopeOverlay[data-revealed="true"] .envelopePouch {
+  width: min(640px, 100%);
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  margin: 0;
+  overflow: visible;
+}
+.envelopeOverlay[data-revealed="true"] .envelopeCard {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vw, 22px);
+  overflow: visible;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+.envelopeOverlay[data-revealed="true"] .envelopeCard img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 2px;
+  box-shadow: none;
+}
+.envelopeOverlay[data-revealed="true"] .envelopeRear,
+.envelopeOverlay[data-revealed="true"] .envelopePocket,
+.envelopeOverlay[data-revealed="true"] .envelopeFlapLayer,
+.envelopeOverlay[data-revealed="true"] .waxSeal { visibility: hidden; }
+.envelopeOverlay[data-revealed="true"] .actions { margin: 0; min-height: 0; }
+.envelopeOverlay[data-revealed="true"] .actions small { margin-top: 8px; }
+
+.actions .countdown { margin: 10px 0 0; font-size: 11px; font-variant-numeric: tabular-nums; }
+.countdown strong { color: #52525b; font-weight: 600; }

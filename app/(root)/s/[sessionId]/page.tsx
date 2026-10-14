@@ -91,6 +91,24 @@ export default async function SharedGalleryPage({
 
   const galleryUrl = getPublicGalleryUrl(sessionId);
   const { branding } = await resolveGallerySessionBranding(supabase, session);
+  let organizationExperience: { gallery_unboxing_enabled?: boolean | null; gallery_unboxing_style?: string | null } | null = null;
+  if (session.organization_id) {
+    const fullExperience = await supabase.from("organizations")
+      .select("gallery_unboxing_enabled,gallery_unboxing_style")
+      .eq("id", session.organization_id).maybeSingle();
+    if (!fullExperience.error) {
+      organizationExperience = fullExperience.data;
+    } else {
+      // Older deployments may not have the style column yet. Keep public
+      // galleries available with the original packaging experience.
+      const legacyExperience = await supabase.from("organizations")
+        .select("gallery_unboxing_enabled")
+        .eq("id", session.organization_id).maybeSingle();
+      organizationExperience = legacyExperience.error ? null : legacyExperience.data;
+    }
+  }
+  const unboxingEnabled = organizationExperience?.gallery_unboxing_enabled !== false;
+  const unboxingStyle = organizationExperience?.gallery_unboxing_style === "envelope" ? "envelope" : "packaging";
 
   const { data: photos } = await supabase
     .from("gallery_photos")
@@ -153,7 +171,8 @@ export default async function SharedGalleryPage({
         brandName={branding.brandName}
         logoUrl={branding.logoUrl}
         subtitle={branding.subtitle}
-        enabled={!selectedPhoto}
+        enabled={unboxingEnabled && !selectedPhoto}
+        style={unboxingStyle}
         loading={!framedStatic}
         autoOpen={!selectedPhoto}
         photoUrl={framedStatic ? galleryMediaUrl(sessionId, framedStatic.id) : undefined}
