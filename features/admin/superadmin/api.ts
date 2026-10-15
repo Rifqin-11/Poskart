@@ -8,6 +8,7 @@ import {
   getSuperAdminSystemErrors,
   setSuperAdminSystemErrorResolved,
 } from "@/server/admin/actions/superadmin-system-error-actions";
+import { getSuperAdminSystemLogs } from "@/server/admin/actions/superadmin-system-log-actions";
 import {
   broadcastAdminNotification,
   getSuperAdminNotifications,
@@ -52,6 +53,7 @@ export const superadminApi = {
   setDeviceErrorResolved: setSuperAdminDeviceErrorResolved,
   getSystemErrors: getSuperAdminSystemErrors,
   setSystemErrorResolved: setSuperAdminSystemErrorResolved,
+  getSystemLogs: getSuperAdminSystemLogs,
   broadcastAdminNotification,
   getSuperAdminNotifications,
   deleteSuperAdminNotification,

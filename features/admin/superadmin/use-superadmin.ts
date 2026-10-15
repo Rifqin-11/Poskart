@@ -23,6 +23,15 @@ export function useTenants() {
   });
 }
 
+export function useSuperAdminSystemLogs() {
+  return useQuery({
+    queryKey: ["superadmin", "system-logs"],
+    queryFn: superadminApi.getSystemLogs,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
 export function useCreateTenant() {
   const queryClient = useQueryClient();
   return useMutation({

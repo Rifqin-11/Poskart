@@ -64,6 +64,7 @@ import { TransactionActionRequestManagement } from "./_components/transaction-ac
 import { GalleryStorageManagement } from "./_components/gallery-storage-management";
 import { DeviceErrorLogManagement } from "./_components/device-error-log-management";
 import { SystemErrorLogManagement } from "./_components/system-error-log-management";
+import { SystemLogManagement } from "./_components/system-log-management";
 import { NotificationManagement } from "./_components/notification-management";
 import { ProductFeedbackManagement } from "./_components/product-feedback-management";
 import { SubscriptionPaymentManagement } from "./_components/subscription-payment-management";
@@ -718,13 +719,17 @@ export function TenantManagement() {
               <Tabs defaultValue="devices">
                 <TabsList>
                   <TabsTrigger value="devices">Devices</TabsTrigger>
-                  <TabsTrigger value="system">System</TabsTrigger>
+                 <TabsTrigger value="system">System errors</TabsTrigger>
+                 <TabsTrigger value="application">Application logs</TabsTrigger>
                 </TabsList>
                 <TabsContent value="devices">
                   <DeviceErrorLogManagement />
                 </TabsContent>
                 <TabsContent value="system">
                   <SystemErrorLogManagement />
+                </TabsContent>
+                <TabsContent value="application">
+                  <SystemLogManagement />
                 </TabsContent>
               </Tabs>
             </CardContent>
