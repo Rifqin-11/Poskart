@@ -1,6 +1,6 @@
 "use server";
 
-import { getAdminContext, verifyRole } from "@/server/admin/context";
+import { getAdminContext, getAdminProfileRole, verifyRole } from "@/server/admin/context";
 import { getPairingForAdminCode } from "@/lib/kiosk/device-pairings";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
@@ -486,8 +486,8 @@ export async function createPairedDevice(
   await syncDevicePricingProductAssignments(supabase, id, pricingProductIds);
 }
 
-// Authorize against the device's actual workspace, not an arbitrary first
-// membership. The authenticated client still enforces device visibility (RLS).
+// Match RLS: platform admins may manage all organizations; other users need
+// owner/admin membership in the device's actual organization.
 async function getDeviceMutationContext(id: string) {
   const { supabase, user } = await getAdminContext();
   const { data: device, error: deviceError } = await supabase
@@ -500,6 +500,9 @@ async function getDeviceMutationContext(id: string) {
   }
   if (!device) {
     throw new Error("Device tidak ditemukan atau akses sudah berubah. Muat ulang daftar device.");
+  }
+  if ((await getAdminProfileRole()) === "admin") {
+    return { supabase, organizationId: device.organization_id as string };
   }
   const { data: member, error: memberError } = await supabase
     .from("organization_members")

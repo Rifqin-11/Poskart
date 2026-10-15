@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import ts from "typescript";
 
-function fixture({ device = { id: "device-1", organization_id: "org-device" }, role = "owner", updated = true } = {}) {
+function fixture({ device = { id: "device-1", organization_id: "org-device" }, role = "owner", profileRole = "user", updated = true } = {}) {
   const calls = [];
   const supabase = {
     from(table) {
@@ -41,6 +41,7 @@ function fixture({ device = { id: "device-1", organization_id: "org-device" }, r
   const mocks = {
     "@/server/admin/context": {
       getAdminContext: async () => ({ supabase, user: { id: "user-1" } }),
+      getAdminProfileRole: async () => profileRole,
       verifyRole: async () => { throw new Error("Must not use first membership"); },
     },
     "@/lib/supabase/admin": { createSupabaseAdminClient: () => admin },
@@ -75,4 +76,24 @@ test("update is organization scoped and supports admin", async () => {
 test("update does not report success when RLS or concurrent deletion affects zero rows", async () => {
   const { actions } = fixture({ updated: false });
   await assert.rejects(actions.updateDevice("device-1", { name: "Updated" }), /akses berubah/);
+});
+
+test("platform admin can delete a visible device without organization membership", async () => {
+  const { actions, calls } = fixture({ profileRole: "admin", role: null });
+  await actions.deleteDevice("device-1");
+  assert.equal(calls.find(c => c.rpc).args.p_organization_id, "org-device");
+  assert.equal(calls.some(c => c.table === "organization_members"), false);
+});
+
+test("platform admin can update a visible device without organization membership", async () => {
+  const { actions, calls } = fixture({ profileRole: "admin", role: null });
+  await actions.updateDevice("device-1", { name: "Updated" });
+  assert.deepEqual(calls.find(c => c.update).filters,
+    [["id", "device-1"], ["organization_id", "org-device"]]);
+});
+
+test("platform admin still cannot mutate a missing device", async () => {
+  const { actions, calls } = fixture({ profileRole: "admin", device: null });
+  await assert.rejects(actions.deleteDevice("device-1"));
+  assert.equal(calls.some(c => c.revoke || c.rpc), false);
 });
