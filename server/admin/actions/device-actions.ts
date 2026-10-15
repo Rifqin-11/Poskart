@@ -486,11 +486,41 @@ export async function createPairedDevice(
   await syncDevicePricingProductAssignments(supabase, id, pricingProductIds);
 }
 
+// Authorize against the device's actual workspace, not an arbitrary first
+// membership. The authenticated client still enforces device visibility (RLS).
+async function getDeviceMutationContext(id: string) {
+  const { supabase, user } = await getAdminContext();
+  const { data: device, error: deviceError } = await supabase
+    .from("devices")
+    .select("id, organization_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (deviceError) {
+    throw new Error(`Unable to load device: ${deviceError.message}`);
+  }
+  if (!device) {
+    throw new Error("Device tidak ditemukan atau akses sudah berubah. Muat ulang daftar device.");
+  }
+  const { data: member, error: memberError } = await supabase
+    .from("organization_members")
+    .select("role")
+    .eq("profile_id", user.id)
+    .eq("organization_id", device.organization_id)
+    .maybeSingle();
+  if (memberError) {
+    throw new Error(`Unable to verify device access: ${memberError.message}`);
+  }
+  if (!member || !["owner", "admin"].includes(member.role)) {
+    throw new Error("Unauthorized: Owner or admin access to this device's organization is required.");
+  }
+  return { supabase, organizationId: device.organization_id as string };
+}
+
 export async function updateDevice(
   id: string,
   patch: Partial<BoothInput>,
 ): Promise<void> {
-  const { supabase, organizationId } = await verifyRole(["owner", "admin"]);
+  const { supabase, organizationId } = await getDeviceMutationContext(id);
   const dbPatch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };
@@ -679,8 +709,17 @@ export async function updateDevice(
     dbPatch.paper_core_diameter_mm = core;
   }
 
-  const { error } = await supabase.from("devices").update(dbPatch).eq("id", id);
+  const { data: updatedDevice, error } = await supabase
+    .from("devices")
+    .update(dbPatch)
+    .eq("id", id)
+    .eq("organization_id", organizationId)
+    .select("id")
+    .maybeSingle();
   if (error) throw new Error(`Unable to update device: ${error.message}`);
+  if (!updatedDevice) {
+    throw new Error("Device tidak dapat diperbarui karena sudah dihapus atau akses berubah. Muat ulang daftar device.");
+  }
   if (frameTemplates) {
     await syncDeviceFrameTemplateAssignments(supabase, id, frameTemplates);
   }
@@ -872,7 +911,7 @@ async function assertPricingAssignmentModes(
 }
 
 export async function deleteDevice(id: string): Promise<void> {
-  const { organizationId, supabase } = await verifyRole(["owner", "admin"]);
+  const { organizationId, supabase } = await getDeviceMutationContext(id);
   const admin = createSupabaseAdminClient();
   const { error: revokeTokenError } = await admin
     .from("device_pairings")
