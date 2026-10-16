@@ -15,7 +15,7 @@ export function PricingPromotionNav() {
       aria-label={t("nav.pricingPromotions")}
       className="mb-6 flex w-full items-stretch gap-2"
     >
-      <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto rounded-full border border-zinc-200 bg-zinc-50 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto rounded-full bg-zinc-100 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[
           { href: "/pricing", label: t("nav.pricingTab"), icon: CreditCard },
           { href: "/vouchers", label: t("nav.vouchers"), icon: Ticket },
@@ -25,9 +25,9 @@ export function PricingPromotionNav() {
             href={href}
             aria-current={pathname === href ? "page" : undefined}
             className={cn(
-              "flex min-w-[150px] flex-1 shrink-0 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]/20",
+              "inline-flex h-9 min-w-[150px] flex-1 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 text-sm font-medium text-zinc-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]/20",
               pathname === href
-                ? "bg-[#014EB4] text-white hover:bg-[#00357B]"
+                ? "bg-white text-zinc-950 shadow-sm"
                 : "bg-transparent text-zinc-500 hover:text-zinc-900",
             )}
           >
