@@ -15,7 +15,7 @@ export function PricingPromotionNav() {
       aria-label={t("nav.pricingPromotions")}
       className="mb-6 flex w-full items-stretch gap-2"
     >
-      <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto rounded-full bg-zinc-100 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto rounded-full border border-black/5 bg-[#e9ebef]/90 p-1 backdrop-blur-md [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[
           { href: "/pricing", label: t("nav.pricingTab"), icon: CreditCard },
           { href: "/vouchers", label: t("nav.vouchers"), icon: Ticket },
@@ -25,10 +25,10 @@ export function PricingPromotionNav() {
             href={href}
             aria-current={pathname === href ? "page" : undefined}
             className={cn(
-              "inline-flex h-9 min-w-[150px] flex-1 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 text-sm font-medium text-zinc-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00357B]/20",
+              "relative isolate inline-flex h-9 min-w-[150px] flex-1 shrink-0 items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-full px-3 text-sm font-semibold tracking-tight transition-[background-color,filter,transform,box-shadow] duration-200 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[radial-gradient(140%_80%_at_50%_0%,rgba(255,255,255,0.28)_0%,rgba(255,255,255,0)_55%)] before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#014EB4]/30",
               pathname === href
-                ? "bg-white text-zinc-950 shadow-sm"
-                : "bg-transparent text-zinc-500 hover:text-zinc-900",
+                ? "border border-t-transparent border-b-white/60 bg-[#014EB4] text-white shadow-[0_10px_24px_rgba(1,78,180,0.3)] hover:bg-[#00357B]"
+                : "border border-black/5 bg-white/55 text-zinc-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_10px_rgba(15,23,42,0.08)] hover:bg-white hover:text-[#00357B]",
             )}
           >
             <Icon className="size-4" />
