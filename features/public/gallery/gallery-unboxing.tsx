@@ -47,6 +47,7 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
   const drag = useRef<{ id: number; start: number; width: number } | null>(null);
   const progress = useRef(0);
   const busy = useRef(false);
+  const openDirectly = useRef(false);
   const animation = useRef<gsap.core.Timeline | null>(null);
   const envelopeAnimationContext = useRef<gsap.Context | null>(null);
   const key = `poskart:unboxed:${sessionId}`;
@@ -143,9 +144,10 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
     return () => context.revert();
   }, [visible, revealed, style]);
 
-  function open() {
+  function open(openGalleryWhenReady = false) {
     if (busy.current || loading) return;
     busy.current = true;
+    openDirectly.current = openGalleryWhenReady;
     drag.current = null;
     setOpening(true);
     const driver = { value: progress.current };
@@ -203,6 +205,11 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
 
   useEffect(() => {
     if (!visible || !resultReady || loading) return;
+    if (openDirectly.current) {
+      openDirectly.current = false;
+      enterGallery();
+      return;
+    }
     countdownTimers.current = [1, 2, 3, 4, 5].map(second => setTimeout(() => {
       if (second === 5) enterGallery();
       else setCountdown(5 - second);
@@ -216,6 +223,7 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
     busy.current = false;
     exiting.current = false;
     setOpening(false);
+    openDirectly.current = false;
     setRevealed(false);
     setResultReady(false);
     setCountdown(5);
@@ -248,7 +256,7 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
       }}>
       <div className={styles.header}>
         <div className={styles.brand}><img src={logoUrl} alt={`${brandName} logo`} /><div><strong>{brandName}</strong><span>{subtitle}</span></div></div>
-         {!loading && <button ref={skip} onClick={revealed ? enterGallery : finish}>{revealed ? "Lihat semua foto" : "Langsung lihat foto"} <ArrowRight size={16} /></button>}
+         {!loading && <button ref={skip} onClick={revealed ? enterGallery : () => open(true)}>{revealed ? "Lihat semua foto" : "Langsung lihat foto"} <ArrowRight size={16} /></button>}
        </div>
         <div className={styles.intro}><h1 id="unboxing-title">{loading ? "Foto Anda sedang disiapkan." : revealed ? "Foto Anda sudah siap." : "Foto Anda sudah siap."}</h1><p>{loading ? "Foto sedang diunggah. Paket akan bisa dibuka setelah selesai." : revealed ? "Lihat dan unduh semua foto dari sesi Anda." : style === "envelope" ? "Klik segel lilin di tengah amplop untuk membukanya." : "Tarik seal dari kanan ke kiri untuk membuka paket."}</p></div>
        {style === "envelope" ? <div ref={pouch} className={`${styles.pouch} ${styles.envelopePouch}`}>
@@ -261,7 +269,7 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
              <img className={styles.envelopeFlapInside} src="/landing/gallery-envelope-flap-inside.webp" alt="" draggable={false} onError={finish} />
            </div>
          </div>
-         <button ref={seal} type="button" className={styles.waxSeal} aria-label="Klik segel lilin untuk membuka amplop" disabled={opening || loading} onClick={open}><img src="/landing/gallery-envelope-wax.webp" alt="" draggable={false} onError={finish} /></button>
+          <button ref={seal} type="button" className={styles.waxSeal} aria-label="Klik segel lilin untuk membuka amplop" disabled={opening || loading} onClick={() => open()}><img src="/landing/gallery-envelope-wax.webp" alt="" draggable={false} onError={finish} /></button>
        </div> : <div ref={pouch} className={styles.pouch}>
         <div ref={photo} className={styles.photo}>{photoUrl && <img src={photoUrl} alt="Foto hasil sesi Anda" onError={finish} />}</div>
         <div ref={body} className={styles.body}><img src="/landing/gallery-pouch-navy-body.webp" alt="" draggable={false} onError={finish} /></div>
@@ -285,7 +293,7 @@ export function GalleryUnboxing({ children, sessionId, photoUrl, brandName, logo
         </button>
        </div>}
        <div className={styles.actions}>
-          {loading ? <><p className={styles.loadingState} aria-live="polite"><span /> Foto sedang diunggah…</p><small>Halaman ini akan memperbarui otomatis saat foto siap.</small></> : revealed ? <><p className={styles.success}><CheckCircle2 size={14} /> Foto Anda sudah siap</p><button data-gallery-button className={styles.viewAll} onClick={enterGallery}>Lihat semua foto <ArrowRight size={17} /></button><small>Foto original, Live Photo, dan pilihan download ada di dalam.</small><p className={styles.countdown} role="timer">{resultReady ? <>Galeri terbuka otomatis dalam <strong>{countdown} detik</strong></> : "Menyiapkan tampilan foto…"}</p></> : <><p aria-live="polite">{opening ? (style === "envelope" ? "Membuka amplop…" : "Membuka paket foto…") : style === "envelope" ? "Klik segel lilin, atau gunakan tombol di bawah." : "Atau buka dengan satu ketukan."}</p><button onClick={open} disabled={opening}><PackageOpen size={17} /> {style === "envelope" ? "Buka amplop" : "Buka paket"}</button></>}
+           {loading ? <><p className={styles.loadingState} aria-live="polite"><span /> Foto sedang diunggah…</p><small>Halaman ini akan memperbarui otomatis saat foto siap.</small></> : revealed ? <><p className={styles.success}><CheckCircle2 size={14} /> Foto Anda sudah siap</p><button data-gallery-button className={styles.viewAll} onClick={enterGallery}>Lihat semua foto <ArrowRight size={17} /></button><small>Foto original, Live Photo, dan pilihan download ada di dalam.</small><p className={styles.countdown} role="timer">{resultReady ? <>Galeri terbuka otomatis dalam <strong>{countdown} detik</strong></> : "Menyiapkan tampilan foto…"}</p></> : <><p aria-live="polite">{opening ? (style === "envelope" ? "Membuka amplop…" : "Membuka paket foto…") : style === "envelope" ? "Klik segel lilin, atau gunakan tombol di bawah." : "Atau buka dengan satu ketukan."}</p><button onClick={() => open()} disabled={opening}><PackageOpen size={17} /> {style === "envelope" ? "Buka amplop" : "Buka paket"}</button></>}
       </div>
     </div>}
   </UnboxingContext.Provider>;
