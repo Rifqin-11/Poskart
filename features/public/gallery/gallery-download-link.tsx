@@ -12,8 +12,9 @@ type GalleryDownloadLinkProps = {
 };
 
 /**
- * Shares media through the native share sheet when file sharing is supported.
- * Browsers without that capability keep the regular attachment download flow.
+ * iOS uses the native share sheet so users can choose "Save Image" to Photos.
+ * Android and desktop keep the regular attachment download flow, even when
+ * their browser exposes the Web Share API.
  */
 export function GalleryDownloadLink({
   href,
@@ -30,10 +31,7 @@ export function GalleryDownloadLink({
       return;
     }
 
-    if (
-      typeof navigator.share !== "function" ||
-      typeof navigator.canShare !== "function"
-    ) {
+    if (!isIOS() || typeof navigator.share !== "function" || typeof navigator.canShare !== "function") {
       return;
     }
 
@@ -116,6 +114,14 @@ function getPathExtension(href: string) {
 
 function isShareCancelled(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";
+}
+
+function isIOS() {
+  const userAgent = navigator.userAgent || navigator.vendor || "";
+  const isAppleMobile = /iPad|iPhone|iPod/.test(userAgent);
+  const isIPadOS = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+
+  return isAppleMobile || isIPadOS;
 }
 
 function downloadWithBrowser(href: string) {
