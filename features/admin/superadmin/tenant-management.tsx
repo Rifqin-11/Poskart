@@ -69,6 +69,7 @@ import { SystemLogManagement } from "./_components/system-log-management";
 import { NotificationManagement } from "./_components/notification-management";
 import { ProductFeedbackManagement } from "./_components/product-feedback-management";
 import { SubscriptionPaymentManagement } from "./_components/subscription-payment-management";
+import { SubscriptionCampaignManagement } from "./_components/subscription-campaign-management";
 import {
   DEFAULT_ORGANIZATION_FEATURES,
   normalizeOrganizationFeatures,
@@ -620,6 +621,7 @@ export function TenantManagement() {
             <div className="mb-4 rounded-[24px] bg-white p-2 shadow-sm">
               <TabsList className="w-full justify-start rounded-[18px]">
                 <TabsTrigger value="saas-pricing">Pricing</TabsTrigger>
+                <TabsTrigger value="subscription-campaigns">Campaigns</TabsTrigger>
                 <TabsTrigger value="subscription-payments">
                   Subscription Payments
                 </TabsTrigger>
@@ -640,6 +642,9 @@ export function TenantManagement() {
             </TabsContent>
             <TabsContent value="subscription-payments">
               <SubscriptionPaymentManagement />
+            </TabsContent>
+            <TabsContent value="subscription-campaigns">
+              <SubscriptionCampaignManagement plans={subscriptionPlans} />
             </TabsContent>
             <TabsContent value="payment-gateway">
               <PaymentGatewayManagement />
