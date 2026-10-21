@@ -17,7 +17,7 @@ function load(path, overrides) {
   return mod.exports;
 }
 
-function setup({ gateway = 'duitku', quoteError, insertError, existing = null } = {}) {
+function setup({ gateway = 'duitku', quoteError, insertError, existing = null, automatic = false } = {}) {
   const inserts = [], payments = [], quotes = [], filters = [];
   const plan = { id: 'pro', name: 'Pro', amount: 300000, includedDevices: 1, additionalDevicePriceMonthly: 50000, durationMonths: 1 };
   const promotion = { campaignId: 'campaign-id', code: 'XMAS20', name: 'Christmas', discountAmount: 70000, totalAmount: 280000 };
@@ -46,7 +46,7 @@ function setup({ gateway = 'duitku', quoteError, insertError, existing = null } 
     '@/lib/supabase/admin': { createSupabaseAdminClient: () => admin },
     '@/lib/auth/site-url': { getSiteUrl: async () => 'https://poskart.test' },
     '@/server/subscription/pricing': { getPublicSubscriptionPricingPlans: async () => [plan] },
-    '@/server/subscription/promotions': { quoteSubscriptionPromotion: async (...args) => { quotes.push(args); if (quoteError) throw new Error(quoteError); return promotion; } },
+    '@/server/subscription/promotions': { quoteAutomaticSubscriptionPromotion: async () => automatic ? promotion : null, quoteSubscriptionPromotion: async (...args) => { quotes.push(args); if (quoteError) throw new Error(quoteError); return promotion; } },
     '@/server/subscription/payment-reconciliation': { expireSubscriptionPayments: async () => {}, refreshSubscriptionPayment: async (_db, order) => order, subscriptionPaymentColumns: '*' },
     '@/server/payments/duitku': {
       createMerchantOrderId: () => 'ORDER1', getDuitkuConfig: () => null,
@@ -113,4 +113,24 @@ test('resume the already-issued invoice without claiming quota again', async () 
   const result = await s.run();
   assert.equal(result.ok, true); assert.equal(result.merchantOrderId, 'PREVIOUS');
   assert.equal(s.quotes.length, 0); assert.equal(s.inserts.length, 0); assert.equal(s.payments.length, 0);
+});
+
+test('automatic promotion applies without a voucher code and reaches the gateway', async () => {
+  const s = setup({ automatic: true }); s.form.delete('promotionCode');
+  assert.equal((await s.run()).ok, true);
+  assert.equal(s.inserts[0].promotion_code, 'XMAS20');
+  assert.equal(s.payments[0].amount, 280000);
+  assert.equal(s.quotes.length, 0);
+});
+
+test('automatic promotion changed since preview blocks payment', async () => {
+  const s = setup({ automatic: true }); s.form.delete('promotionCode'); s.form.set('promotionTotal', '350000');
+  assert.match((await s.run()).message, /Promo berubah/);
+  assert.equal(s.inserts.length, 0);
+});
+
+test('expired automatic promotion cannot silently increase the charge', async () => {
+  const s = setup(); s.form.delete('promotionCode');
+  assert.match((await s.run()).message, /Promo berubah/);
+  assert.equal(s.payments.length, 0);
 });

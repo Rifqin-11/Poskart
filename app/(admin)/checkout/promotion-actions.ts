@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { calculateSubscriptionTotal } from '@/lib/constants/business';
 import { getPublicSubscriptionPricingPlans } from '@/server/subscription/pricing';
-import { quoteSubscriptionPromotion } from '@/server/subscription/promotions';
+import { quoteSubscriptionPromotion, quoteAutomaticSubscriptionPromotion } from '@/server/subscription/promotions';
 import { getSubscriptionPaymentUrl, type SubscriptionPayment } from '@/features/billing/subscription/payment-types';
 import { subscriptionPaymentColumns } from '@/server/subscription/payment-reconciliation';
 
@@ -21,6 +21,10 @@ export async function previewSubscriptionPromotion(code: string, planId: string,
     const admin = createSupabaseAdminClient();
     // A resumable invoice already owns a quota slot; preview its frozen price.
     const normalizedCode = code.trim().toUpperCase();
+    if (!normalizedCode) {
+      const promotion = await quoteAutomaticSubscriptionPromotion(admin, member.organization_id, plan.id, quote.totalAmount, quote.deviceCount);
+      return { ok: true as const, promotion };
+    }
     if (!/^[A-Z0-9_-]{3,40}$/.test(normalizedCode)) throw new Error('Kode voucher tidak valid.');
     const { data: previous, error: previousError } = await admin.from('subscription_orders')
       .select(`${subscriptionPaymentColumns},campaign_id,promotion_name,promotion_code,discount_amount`)

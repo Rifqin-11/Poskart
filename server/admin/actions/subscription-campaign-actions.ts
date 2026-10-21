@@ -28,7 +28,9 @@ export async function saveSubscriptionCampaign(input: SubscriptionCampaign): Pro
   if (!['draft', 'published', 'paused', 'archived'].includes(input.status) ||
       !['percentage', 'fixed'].includes(input.discount_type) || !['all', 'new', 'existing'].includes(input.audience)) throw new Error('Aturan kampanye tidak valid.');
   const name = input.name.trim();
-  const code = input.code.trim().toUpperCase();
+  if (!['voucher', 'automatic'].includes(input.application_mode)) throw new Error('Mode promo tidak valid.');
+  const code = input.application_mode === 'automatic' && !input.code.trim()
+    ? `AUTO_${crypto.randomUUID().replaceAll('-', '').slice(0, 20).toUpperCase()}` : input.code.trim().toUpperCase();
   if (!name || name.length > 120 || !/^[A-Z0-9_-]{3,40}$/.test(code)) throw new Error('Nama atau kode voucher tidak valid.');
   const start = new Date(input.starts_at), end = new Date(input.ends_at);
   if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) throw new Error('Periode kampanye tidak valid.');
@@ -42,7 +44,7 @@ export async function saveSubscriptionCampaign(input: SubscriptionCampaign): Pro
   }).sort((a, b) => a.minAmount - b.minAmount);
   if (new Set(discountTiers.map((tier) => tier.minAmount)).size !== discountTiers.length) throw new Error('Minimum tier tidak boleh sama.');
   if (!Array.isArray(input.plan_ids) || input.plan_ids.some((id) => typeof id !== 'string' || id.length > 100)) throw new Error('Target paket tidak valid.');
-  const values = { name, code, description: input.description.slice(0, 2000), status: input.status,
+  const values = { name, code, application_mode: input.application_mode, description: input.description.slice(0, 2000), status: input.status,
     starts_at: start.toISOString(), ends_at: end.toISOString(), discount_type: input.discount_type,
     discount_value: integer(input.discount_value, 1), discount_tiers: discountTiers, max_discount: integer(input.max_discount, 1, true),
     min_amount: integer(input.min_amount, 0), plan_ids: [...new Set(input.plan_ids)], audience: input.audience,

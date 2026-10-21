@@ -3,6 +3,7 @@ export type SubscriptionCampaign = {
   name: string;
   description: string;
   code: string;
+  application_mode: 'voucher' | 'automatic';
   status: 'draft' | 'published' | 'paused' | 'archived';
   starts_at: string;
   ends_at: string;

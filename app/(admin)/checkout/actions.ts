@@ -17,7 +17,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { expireSubscriptionPayments, refreshSubscriptionPayment, subscriptionPaymentColumns } from "@/server/subscription/payment-reconciliation";
 import { getSubscriptionPaymentUrl, type SubscriptionPayment } from "@/features/billing/subscription/payment-types";
-import { quoteSubscriptionPromotion } from "@/server/subscription/promotions";
+import { quoteSubscriptionPromotion, quoteAutomaticSubscriptionPromotion } from "@/server/subscription/promotions";
 
 function redirectWithStatus(
   planId: string,
@@ -170,6 +170,17 @@ export async function createSubscriptionOrderAction(formData: FormData) {
 
   const siteUrl = await getSiteUrl();
   const paymentMetadataClient = createSupabaseAdminClient();
+  let automaticPromotion;
+  try {
+    automaticPromotion = !promotionCode ? await quoteAutomaticSubscriptionPromotion(paymentMetadataClient, membership.organization_id, plan.id, quote.totalAmount, quote.deviceCount) : null;
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Promo belum dapat diperiksa.", planId: plan.id } satisfies SubscriptionCheckoutActionResult;
+  }
+  const resolvedCode = promotionCode || automaticPromotion?.code || '';
+  const expectedPromotionTotal = valueFromForm(formData, 'promotionTotal');
+  if (expectedPromotionTotal && Number(expectedPromotionTotal) !== (automaticPromotion?.totalAmount ?? quote.totalAmount) && !promotionCode) {
+    return { ok: false, message: "Promo berubah. Muat ulang checkout sebelum membayar.", planId: plan.id } satisfies SubscriptionCheckoutActionResult;
+  }
   try {
     await expireSubscriptionPayments(paymentMetadataClient, membership.organization_id);
   } catch {
@@ -183,7 +194,7 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     .eq("device_count", quote.deviceCount)
     .eq("base_amount", quote.baseAmount)
     .eq("additional_device_amount", quote.additionalDeviceAmount)
-    .filter("promotion_code", promotionCode ? "eq" : "is", promotionCode || null)
+    .filter("promotion_code", resolvedCode ? "eq" : "is", resolvedCode || null)
     .eq("payment_gateway", paymentGateway)
     .eq("status", "pending")
     .not("payment_url", "is", null)
@@ -229,7 +240,7 @@ export async function createSubscriptionOrderAction(formData: FormData) {
   const merchantOrderId = createMerchantOrderId();
   let promotion;
   try {
-    promotion = promotionCode ? await quoteSubscriptionPromotion(paymentMetadataClient, promotionCode, membership.organization_id, plan.id, quote.totalAmount) : null;
+    promotion = promotionCode ? await quoteSubscriptionPromotion(paymentMetadataClient, promotionCode, membership.organization_id, plan.id, quote.totalAmount) : automaticPromotion;
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Voucher tidak dapat digunakan.", planId: plan.id } satisfies SubscriptionCheckoutActionResult;
   }
