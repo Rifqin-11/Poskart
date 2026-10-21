@@ -14,6 +14,8 @@ const navLinks: PublicNavLink[] = [
   { href: "/contact", label: "Kontak" },
 ];
 
+import { PromotionStrip } from './promotion-strip';
+
 export function PublicHeader({
   variant = "default",
   userEmail,
@@ -38,6 +40,7 @@ export function PublicHeader({
           : "sticky top-0 border-b border-zinc-100 bg-white/85 backdrop-blur-xl",
       )}
     >
+      {isLanding ? <PromotionStrip /> : null}
       <div
         className={cn(
           "mx-auto flex max-w-[90rem] items-center justify-between px-5 sm:px-8 lg:px-12",

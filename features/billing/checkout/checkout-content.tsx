@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Script from "next/script";
 import { useSearchParams } from "next/navigation";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useEffect, useState, useTransition } from "react";
 import { CreditCard, Minus, Plus, ReceiptText } from "lucide-react";
 import { createSubscriptionOrderAction } from "@/app/(admin)/checkout/actions";
 import { LandingButton } from "@/components/ui/landing-button";
@@ -101,12 +101,25 @@ export function CheckoutContent({
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [duitkuScriptReady, setDuitkuScriptReady] = useState(false);
   const [duitkuScriptFailed, setDuitkuScriptFailed] = useState(false);
-  const [promotionCode, setPromotionCode] = useState("");
+  const [promotionCode, setPromotionCode] = useState(searchParams.get('voucher')?.toUpperCase() ?? "");
   const [promotion, setPromotion] = useState<(SubscriptionPromotionQuote & { planId: string; deviceCount: number }) | null>(null);
   const [promotionError, setPromotionError] = useState<string | null>(null);
   const [checkingPromotion, startPromotionTransition] = useTransition();
   const quote = calculateSubscriptionTotal(plan, deviceCount);
-  const appliedPromotion = promotion?.planId === plan.id && promotion.deviceCount === quote.deviceCount && promotion.code === promotionCode.trim().toUpperCase() ? promotion : null;
+  const [automaticResult, setAutomaticResult] = useState<{ planId: string; deviceCount: number; promotion: SubscriptionPromotionQuote | null; error: string | null } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    previewSubscriptionPromotion('', plan.id, quote.deviceCount).then((result) => {
+      if (!cancelled) setAutomaticResult({ planId: plan.id, deviceCount: quote.deviceCount, promotion: result.ok ? result.promotion : null, error: result.ok ? null : result.message });
+    }).catch(() => {
+      if (!cancelled) setAutomaticResult({ planId: plan.id, deviceCount: quote.deviceCount, promotion: null, error: 'Promo otomatis belum dapat diperiksa. Muat ulang halaman.' });
+    });
+    return () => { cancelled = true; };
+  }, [plan.id, quote.deviceCount]);
+  const manualPromotion = promotion?.planId === plan.id && promotion.deviceCount === quote.deviceCount && promotion.code === promotionCode.trim().toUpperCase() ? promotion : null;
+  const automaticReady = automaticResult?.planId === plan.id && automaticResult.deviceCount === quote.deviceCount;
+  const automaticPromotion = automaticReady ? automaticResult.promotion : null;
+  const appliedPromotion = manualPromotion ?? automaticPromotion;
   const renewal = renewalPreview?.plans[plan.id];
   const selectedGatewayLabel =
     paymentGateway === "midtrans" ? "Midtrans" : "Duitku";
@@ -207,8 +220,8 @@ export function CheckoutContent({
       ) : null}
       <input type="hidden" name="planId" value={plan.id} />
       <input type="hidden" name="paymentGateway" value={paymentGateway} />
-      <input type="hidden" name="promotionCode" value={appliedPromotion?.code ?? ""} />
-      <input type="hidden" name="promotionTotal" value={appliedPromotion?.totalAmount ?? ""} />
+      <input type="hidden" name="promotionCode" value={manualPromotion?.code ?? ""} />
+      <input type="hidden" name="promotionTotal" value={appliedPromotion?.totalAmount ?? quote.totalAmount} />
       <div className="space-y-5">
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600">
@@ -542,13 +555,15 @@ export function CheckoutContent({
               setPromotionError(null);
               startPromotionTransition(async () => {
                 const result = await previewSubscriptionPromotion(promotionCode, plan.id, quote.deviceCount);
-                if (result.ok) setPromotion({ ...result.promotion, planId: plan.id, deviceCount: quote.deviceCount });
+                if (result.ok && result.promotion) setPromotion({ ...result.promotion, planId: plan.id, deviceCount: quote.deviceCount });
+                else if (result.ok) setPromotionError('Voucher tidak tersedia.');
                 else { setPromotion(null); setPromotionError(result.message); }
               });
             }}>{checkingPromotion ? "Memeriksa…" : "Terapkan"}</button>
           </div>
           <div aria-live="polite" className="text-xs leading-5">
-            {promotionError ? <p className="text-red-700">{promotionError}</p> : appliedPromotion ? <p className="text-emerald-700">{appliedPromotion.code} diterapkan. Divalidasi ulang saat pembayaran dibuat.</p> : promotionCode ? <p className="text-amber-700">Terapkan voucher setelah mengubah kode atau jumlah device.</p> : null}
+            {!automaticReady ? <p className="text-zinc-500">Memeriksa promo otomatis…</p> : automaticResult?.error ? <p className="text-red-700">{automaticResult.error}</p> : null}
+            {promotionError ? <p className="text-red-700">{promotionError}</p> : manualPromotion ? <p className="text-emerald-700">{manualPromotion.code} diterapkan menggantikan promo otomatis.</p> : promotionCode ? <p className="text-amber-700">Terapkan voucher atau kosongkan kode untuk memakai promo otomatis.</p> : automaticPromotion ? <p className="text-emerald-700">{automaticPromotion.name} diterapkan otomatis, tanpa kode voucher.</p> : null}
           </div>
         </div>
 
@@ -572,7 +587,7 @@ export function CheckoutContent({
           variant="primary"
           size="lg"
           className="mt-4 h-14 w-full rounded-2xl"
-          disabled={isPending || checkingPromotion || waitingForDuitkuScript || (!!promotionCode.trim() && !appliedPromotion)}
+          disabled={isPending || checkingPromotion || waitingForDuitkuScript || (!manualPromotion && (!automaticReady || !!automaticResult?.error)) || (!!promotionCode.trim() && !manualPromotion)}
         >
           {isPending
             ? "Preparing secure payment..."

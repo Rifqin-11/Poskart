@@ -23,6 +23,7 @@ test('subscription campaign SQL: eligibility, money, quota, snapshots, audit and
       );
     `);
     await db.exec(readFileSync(new URL('../supabase/migrations/20261021120000_subscription_campaigns.sql', import.meta.url), 'utf8'));
+    await db.exec(readFileSync(new URL('../supabase/migrations/20261021140000_subscription_automatic_campaigns.sql', import.meta.url), 'utf8'));
     const actor = '11111111-1111-4111-8111-111111111111';
     await db.query('insert into auth.users values ($1)', [actor]);
     const { rows: [campaign] } = await db.query(`insert into subscription_campaigns
@@ -101,5 +102,13 @@ test('subscription campaign SQL: eligibility, money, quota, snapshots, audit and
     for (const tiers of ['{}', '[{"minAmount":0,"value":101}]', '[{"minAmount":0,"value":10},{"minAmount":0,"value":20}]', '[{"value":10}]', '[{"minAmount":-1,"value":10}]']) {
       await assert.rejects(db.query("update subscription_campaigns set discount_tiers=$1::jsonb where code='TIERS'", [tiers]), /discount tier/i);
     }
+    const automaticQuote = async () => (await db.query("select quote_automatic_subscription_campaign('auto-org','pro',500000) q")).rows[0].q;
+    assert.equal(await automaticQuote(), null, 'voucher campaigns are never automatic');
+    await db.query("update subscription_campaigns set application_mode='automatic' where code in ('TIERS','FIXED')");
+    assert.equal((await automaticQuote()).code, 'FIXED', 'largest eligible discount wins');
+    await db.query("update subscription_campaigns set status='paused' where code='FIXED'");
+    assert.equal((await automaticQuote()).code, 'TIERS');
+    await db.query("update subscription_campaigns set plan_ids=array['starter'] where code='TIERS'");
+    assert.equal(await automaticQuote(), null, 'automatic selection respects plan eligibility');
   } finally { await db.close(); }
 });

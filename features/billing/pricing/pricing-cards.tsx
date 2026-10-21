@@ -12,6 +12,8 @@ import {
   type PricingTierId,
 } from "@/lib/constants/business";
 import { cn, formatCurrency } from "@/lib/utils";
+import { usePublicPromotions } from './use-public-promotions';
+import { bestPublicPromotion, publicPromotionCondition, type PublicSubscriptionPromotion } from '@/lib/subscription-public-promotions';
 
 export function PricingCards({
   plans = fallbackPricingPlans,
@@ -21,6 +23,7 @@ export function PricingCards({
   onSelectPlan?: (plan: PricingPlan) => void;
 }) {
   const visiblePlans = plans.length > 0 ? plans : fallbackPricingPlans;
+  const promotions = usePublicPromotions();
   const [activeDuration, setActiveDuration] = useState(
     visiblePlans.find((plan) => plan.durationMonths === 1)?.durationMonths ??
       visiblePlans[0]?.durationMonths ??
@@ -119,6 +122,7 @@ export function PricingCards({
             plan={plan}
             monthlyPlans={monthlyPlans}
             onSelectPlan={onSelectPlan}
+            promotions={promotions}
           />
         ))}
       </div>
@@ -130,22 +134,27 @@ function PricingCard({
   plan,
   monthlyPlans,
   onSelectPlan,
+  promotions,
 }: {
   plan: PricingPlan;
   monthlyPlans: PricingPlan[];
   onSelectPlan?: (plan: PricingPlan) => void;
+  promotions: PublicSubscriptionPromotion[];
 }) {
+  const offer = bestPublicPromotion(promotions, plan.id, plan.amount);
+  const displayAmount = plan.amount - (offer?.discount ?? 0);
+  const compareAtAmount = offer ? plan.amount : plan.compareAtAmount;
   const tier = getTierMeta(plan);
-  const monthlyEquivalent = getMonthlyEquivalent(plan);
-  const monthlyDeviceEquivalent = getMonthlyDeviceEquivalent(plan);
+  const monthlyEquivalent = getMonthlyEquivalent({ ...plan, amount: displayAmount });
+  const monthlyDeviceEquivalent = getMonthlyDeviceEquivalent({ ...plan, amount: displayAmount });
   const monthlyBenchmark = getMonthlyBenchmark(monthlyPlans, plan);
   const durationSavingsPercent = getSavingsPercent(
     monthlyBenchmark,
     monthlyEquivalent,
   );
   const promoSavingsPercent = getSavingsPercent(
-    plan.compareAtAmount ?? null,
-    plan.amount,
+    compareAtAmount ?? null,
+    displayAmount,
   );
   const savingsPercent = promoSavingsPercent || durationSavingsPercent;
 
@@ -171,14 +180,14 @@ function PricingCard({
       </div>
 
       <div className="mt-7 min-h-[88px]">
-        {plan.compareAtAmount ? (
+        {compareAtAmount ? (
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <span
               className={cn(
                 "text-lg font-medium line-through",
               )}
             >
-              {formatCurrency(plan.compareAtAmount)}
+              {formatCurrency(compareAtAmount)}
             </span>
             {promoSavingsPercent > 0 ? (
               <span
@@ -194,7 +203,7 @@ function PricingCard({
 
         <div className="flex flex-wrap items-end gap-2">
           <span className="text-4xl font-semibold tracking-tight sm:text-5xl">
-            {formatCurrency(plan.amount)}
+            {formatCurrency(displayAmount)}
           </span>
           <span className="pb-1 text-sm text-zinc-500">
             {plan.period}
@@ -202,6 +211,7 @@ function PricingCard({
         </div>
       </div>
 
+      {offer ? <div className="mt-2 space-y-1 text-xs leading-5 text-[#00357B]"><p className="font-semibold">{offer.campaign.name}</p><p>{publicPromotionCondition(offer.campaign)}</p><p className="text-zinc-500">Harga promo untuk paket ini dengan {plan.includedDevices} device. Kelayakan diperiksa saat checkout.</p></div> : null}
       <p className="mt-2 text-xs text-zinc-500">
         {plan.includedDevices} device termasuk
         {!plan.compareAtAmount && savingsPercent > 0
@@ -223,7 +233,7 @@ function PricingCard({
         </LandingButton>
       ) : (
         <LandingButton asChild className="mt-7 w-full" size="md">
-          <Link href={`/checkout?plan=${encodeURIComponent(plan.id)}`}>
+          <Link href={`/checkout?plan=${encodeURIComponent(plan.id)}${offer?.campaign.code ? `&voucher=${encodeURIComponent(offer.campaign.code)}` : ''}`}>
             {plan.cta} <ArrowRight className="size-4" />
           </Link>
         </LandingButton>
