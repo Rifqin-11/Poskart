@@ -4,7 +4,7 @@ import { PosDashboard } from "@/features/pos/pos-dashboard";
 import { DEFAULT_POS_SALE_FILTERS } from "@/features/pos/pos-list-defaults";
 import { getQueryClient } from "@/lib/query-client.server";
 import { requireOrganizationFeatureAccess } from "@/server/admin/organization-feature-access";
-import { requireOrganizationSubscriptionAccess } from "@/server/admin/page-access";
+import { requireOrganizationMembershipAccess } from "@/server/admin/page-access";
 import {
   getPosFrames,
   getPosPackages,
@@ -12,7 +12,7 @@ import {
 } from "@/server/pos/pos-service";
 
 export default async function PosPage() {
-  await requireOrganizationSubscriptionAccess("/pos");
+  await requireOrganizationMembershipAccess();
   await requireOrganizationFeatureAccess("posKasir");
 
   const queryClient = getQueryClient();

@@ -2,6 +2,7 @@
 
 import { getAdminContext, getAdminProfileRole, verifyRole } from "@/server/admin/context";
 import { getPairingForAdminCode } from "@/lib/kiosk/device-pairings";
+import { requireOperationalSubscription } from "@/server/subscription/operational-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   PRINTER_TUNING_LIMITS,
@@ -339,7 +340,8 @@ export type DevicePairingClaim = {
 export async function validateDevicePairingCode(
   code: string,
 ): Promise<DevicePairingClaim> {
-  const { organizationId, user } = await verifyRole(["owner", "admin"]);
+  const { supabase, organizationId, user } = await verifyRole(["owner", "admin"]);
+  await requireOperationalSubscription(supabase, organizationId);
   const pairing = await getPairingForAdminCode(organizationId, user.id, code);
 
   const id = `BTH-${Date.now()}`;
@@ -398,6 +400,7 @@ export async function createPairedDevice(
 ): Promise<void> {
   const { supabase, organizationId } = await verifyRole(["owner", "admin"]);
   const normalizedPairingId = pairingId.trim();
+  await requireOperationalSubscription(supabase, organizationId);
   if (!normalizedPairingId) throw new Error("Pairing request is required.");
 
   const frameTemplates = await resolveFrameTemplateAssignmentIds(

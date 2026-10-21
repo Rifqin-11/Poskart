@@ -1,6 +1,7 @@
 "use server";
 
 import crypto from "node:crypto";
+import { requireOperationalSubscription } from "@/server/subscription/operational-access";
 
 import { getAdminContext, getAdminMembership, verifyRole } from "@/server/admin/context";
 import { isSuperAdminProfile } from "@/lib/auth/admin";
@@ -267,6 +268,7 @@ export async function createAdminQrisTransaction(
     "admin",
     "akuntan",
   ]);
+  await requireOperationalSubscription(supabase, organizationId);
   const productName = input.productName.trim();
   const amount = Math.round(Number(input.amount));
   const description = input.description?.trim() || productName;

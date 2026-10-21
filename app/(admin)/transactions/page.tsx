@@ -4,14 +4,14 @@ import { adminQueryKeys } from "@/features/admin/query-keys";
 import { DEFAULT_TRANSACTION_FILTERS } from "@/features/admin/transactions/transaction-list-defaults";
 import { getQueryClient } from "@/lib/query-client.server";
 import { transactionService } from "@/server/admin/transaction-service";
-import { requireOrganizationSubscriptionAccess } from "@/server/admin/page-access";
+import { requireOrganizationMembershipAccess } from "@/server/admin/page-access";
 
 export default async function TransactionsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireOrganizationSubscriptionAccess("/transactions");
+  await requireOrganizationMembershipAccess();
   const params = await searchParams;
   const initialSearch =
     typeof params.search === "string" ? params.search.slice(0, 80) : "";

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireOperationalSubscription } from "@/server/subscription/operational-access";
 import { hasOrganizationFeatureAccess } from "@/server/admin/organization-feature-access";
 import { getAdminContext, getAdminMembership } from "@/server/admin/context";
 import { calculatePhotoPricingQuote } from "@/lib/pricing/photo-slot-pricing";
@@ -78,6 +79,11 @@ export async function createPosSale(
     return { success: false, error: "Account is not connected to an organization." };
   }
   const { supabase, user, organizationId } = context;
+  try {
+    await requireOperationalSubscription(supabase, organizationId);
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Subscription belum dapat diverifikasi." };
+  }
 
   const { data: selectedPackage, error: packageError } = await supabase
     .from("pricing_products")

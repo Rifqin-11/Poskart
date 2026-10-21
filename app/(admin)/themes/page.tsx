@@ -3,10 +3,10 @@ import { BuilderThemesPage } from "@/features/admin/themes/builder-themes-page";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { getQueryClient } from "@/lib/query-client.server";
 import { layoutService } from "@/server/admin/layout-service";
-import { requireOrganizationSubscriptionAccess } from "@/server/admin/page-access";
+import { requireOrganizationMembershipAccess } from "@/server/admin/page-access";
 
 export default async function ThemesPage() {
-  await requireOrganizationSubscriptionAccess("/themes");
+  await requireOrganizationMembershipAccess();
   const queryClient = getQueryClient();
   await queryClient.prefetchQuery({
     queryKey: adminQueryKeys.themes,

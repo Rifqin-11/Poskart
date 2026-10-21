@@ -4,14 +4,14 @@ import { BoothManagement } from "@/features/admin/devices";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { getQueryClient } from "@/lib/query-client.server";
 import { deviceService } from "@/server/admin/device-service";
-import { requireOrganizationSubscriptionAccess } from "@/server/admin/page-access";
+import { requireOrganizationMembershipAccess } from "@/server/admin/page-access";
 
 export default async function BoothsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireOrganizationSubscriptionAccess("/devices");
+  await requireOrganizationMembershipAccess();
   const params = await searchParams;
   const initialAction =
     typeof params.action === "string" ? params.action : undefined;

@@ -3,6 +3,7 @@ import {
   jsonOk,
   KioskApiError,
   requireKioskContext,
+  requireActiveKioskSubscription,
 } from "@/lib/kiosk/server";
 
 /**
@@ -48,6 +49,7 @@ export async function GET(request: Request) {
       );
     }
 
+    await requireActiveKioskSubscription(context);
     return jsonOk({ active: true, deviceId: data.id });
   } catch (error) {
     return jsonError(error);

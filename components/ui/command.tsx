@@ -282,21 +282,8 @@ export function CommandSearch({
             return false;
           }
           return true;
-        })
-        .map((page) => {
-          if (!page.requiresSubscription || hasActiveSubscription) return page;
-          const params = new URLSearchParams({
-            tab: "organization",
-            subscription: "required",
-            next: page.href,
-          });
-          return {
-            ...page,
-            href: `/settings?${params.toString()}`,
-            description: `${page.description} · Requires active subscription`,
-          };
         }),
-    [hasActiveSubscription, isSuperAdmin, organizationFeatures],
+    [isSuperAdmin, organizationFeatures],
   );
 
   const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -310,7 +297,6 @@ export function CommandSearch({
   }, [normalizedQuery, visiblePages]);
 
   const quickActions = useMemo<SearchItem[]>(() => {
-    if (!hasActiveSubscription) return [];
     const actions: SearchItem[] = [
       {
         key: "action-export-transactions",
@@ -327,7 +313,7 @@ export function CommandSearch({
           key: "action-add-device",
           title: "Add device",
           description: "Register a new photobooth device",
-          href: "/devices?action=create",
+          href: hasActiveSubscription ? "/devices?action=create" : "/devices",
           icon: MonitorSmartphone,
         },
         {
@@ -356,7 +342,6 @@ export function CommandSearch({
     queryFn: ({ signal }) => searchWorkspace(debouncedQuery, signal),
     enabled:
       open &&
-      hasActiveSubscription &&
       debouncedQuery.length >= 2,
   });
 

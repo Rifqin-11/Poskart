@@ -439,7 +439,7 @@ export async function requireActiveKioskSubscription(
   }
 
   throw new KioskApiError(
-    "The organization subscription is not active.",
+    "Belum ada subscription aktif. Aktifkan subscription melalui Poskart Admin untuk menggunakan device ini.",
     403,
     "KIOSK_SUBSCRIPTION_INACTIVE",
   );
@@ -606,6 +606,7 @@ export async function requirePairedDeviceByHardwareId(
 }
 
 export async function buildKioskPairingSession(context: KioskRequestContext) {
+  await requireActiveKioskSubscription(context);
   const { data: organization, error } = await context.client
     .from("organizations")
     .select("id,name,status,join_code,payment_collection_mode")
@@ -792,21 +793,9 @@ export async function buildKioskBootstrap(
   }
 
   const subscription = subscriptionResult.data;
-  const subscriptionStatus = subscription?.status ?? "free";
-  const periodEnd = subscription?.current_period_end
-    ? new Date(subscription.current_period_end).getTime()
-    : null;
-  const paidPeriodExpired =
-    ["active", "trialing"].includes(subscriptionStatus) &&
-    periodEnd !== null &&
-    periodEnd <= Date.now();
-
-  if (
-    ["past_due", "canceled", "free"].includes(subscriptionStatus) ||
-    paidPeriodExpired
-  ) {
+  if (!isSubscriptionActive(subscription)) {
     throw new KioskApiError(
-      "The organization subscription is not active.",
+      "Belum ada subscription aktif. Aktifkan subscription melalui Poskart Admin untuk menggunakan device ini.",
       403,
       "KIOSK_SUBSCRIPTION_INACTIVE",
     );

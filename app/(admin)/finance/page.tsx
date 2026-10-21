@@ -1,5 +1,5 @@
 import { FinanceDashboard } from "@/features/finance/finance-dashboard";
-import { requireOrganizationSubscriptionAccess } from "@/server/admin/page-access";
+import { requireOrganizationMembershipAccess } from "@/server/admin/page-access";
 import {
   getMoneyCategories,
   getMoneyEntries,
@@ -8,7 +8,7 @@ import {
 } from "@/server/finance/finance-service";
 
 export default async function FinancePage() {
-  await requireOrganizationSubscriptionAccess("/finance");
+  await requireOrganizationMembershipAccess();
 
   const [entries, categories, tags, wallets] = await Promise.all([
     getMoneyEntries(),

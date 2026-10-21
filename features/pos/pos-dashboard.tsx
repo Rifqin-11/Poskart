@@ -1,4 +1,6 @@
 "use client";
+import { OperationalSubscriptionNotice } from "@/features/admin/subscription/operational-subscription-notice";
+import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
 
 import {
   Banknote,
@@ -75,6 +77,7 @@ export function PosDashboard({
   initialLoadError?: string | null;
 }) {
   const queryClient = useQueryClient();
+  const { data: subscription } = useSubscriptionStatus();
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const confirmDelete = useConfirmDialog();
@@ -410,6 +413,7 @@ export function PosDashboard({
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {!subscription?.isActive && <OperationalSubscriptionNotice />}
             <form ref={formRef} action={handleSubmit} className="space-y-5">
               <input type="hidden" name="packageCode" value={selectedPackage} />
               <input type="hidden" name="templateId" value={selectedTemplate} />
@@ -562,6 +566,7 @@ export function PosDashboard({
                 className="w-full md:w-auto"
                 size="lg"
                 disabled={
+                  !subscription?.isActive ||
                   isPending ||
                   !hasPackages ||
                   (requiresFrame && !selectedTemplate)

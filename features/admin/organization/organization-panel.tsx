@@ -130,9 +130,9 @@ function OrganizationSettings({
             <div>
               <div className="font-semibold">Active subscription required</div>
               <p className="mt-1 leading-6">
-                Theme, builder, template, devices, analytics, settings, and
-                transaction tools are locked while this organization is on a
-                free organization plan.
+                All admin menus remain available for exploration and configuration.
+                An active subscription is required to pair devices, create any
+                transaction, and operate devices, including through email login.
               </p>
             </div>
           </div>
@@ -289,7 +289,7 @@ function OrganizationSettings({
             </div>
             <p className="mt-3 text-sm leading-6 text-zinc-600">
               {isFreeAccount
-                ? "Free organization can view dashboard and organization settings only. Activate a subscription to unlock builder, themes, frames, devices, analytics, transactions, and settings."
+                ? "Explore and configure all admin menus for free. Activate a subscription to pair devices, create transactions with any payment method, and operate devices, including through email login."
                 : "This organization can use the POSKART operating tools according to the active subscription and paid device limit."}
             </p>
             <button

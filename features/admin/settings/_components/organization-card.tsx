@@ -220,8 +220,9 @@ export function OrganizationCard({
                   : "Workspace is on free plan"}
               </div>
               <p className="mt-1 leading-6">
-                Aktifkan subscription untuk membuka builder, themes, templates,
-                devices, transactions, gallery, dan settings operasional lain.
+                Semua menu admin tetap bisa dijelajahi dan dikonfigurasi. Aktifkan
+                subscription untuk pairing device, membuat transaksi dengan metode
+                pembayaran apa pun, dan mengoperasikan device termasuk lewat login email.
               </p>
             </div>
           </div>

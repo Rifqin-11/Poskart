@@ -2,7 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isSuperAdminProfile } from "@/lib/auth/admin";
 import { normalizeOrganizationFeatures } from "@/lib/organization-features";
-import { isSubscriptionActive } from "@/lib/subscription-policy";
 
 /**
  * Routes that never read or write the visitor session.
@@ -92,21 +91,6 @@ export async function updateSession(request: NextRequest) {
     "/vouchers",
   ];
   const authRoutes = ["/login", "/register"];
-  const subscriptionRoutes = [
-    "/builder",
-    "/pos",
-    "/queue",
-    "/finance",
-    "/money",
-    "/themes",
-    "/templates",
-    "/transactions",
-    "/withdraw",
-    "/devices",
-    "/pricing",
-    "/analytics",
-    "/settings",
-  ];
   const pathname = request.nextUrl.pathname;
 
   const isProtectedCheckoutRoute = pathname === "/checkout";
@@ -116,20 +100,13 @@ export async function updateSession(request: NextRequest) {
     isProtectedShowcaseRoute ||
     protectedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const isAuthRoute = authRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
-  const isSubscriptionRoute =
-    isProtectedShowcaseRoute ||
-    subscriptionRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
   const featureRoute =
     pathname === "/pos" || pathname.startsWith("/pos/")
       ? "posKasir"
       : pathname === "/showcase" || pathname.startsWith("/showcase/")
         ? "showcase"
         : null;
-  const isOrganizationSettingsRoute =
-    pathname === "/settings" && request.nextUrl.searchParams.get("tab") === "organization";
-  // Page access is now enforced by server-side route guards. Preserve the
-  // existing entitlement check for Server Actions, where there is no page
-  // render to run that guard, but keep ordinary sidebar navigation auth-only.
+  // Billing is checked inside operational actions, not configuration/navigation.
   const isServerAction = request.headers.has("next-action");
 
   if (!user && isProtectedRoute) {
@@ -167,44 +144,6 @@ export async function updateSession(request: NextRequest) {
       url.pathname = "/dashboard";
       url.search = "";
       return NextResponse.redirect(url);
-    }
-  }
-
-  if (
-    user &&
-    isServerAction &&
-    isSubscriptionRoute &&
-    !isOrganizationSettingsRoute
-  ) {
-    const isSuperAdmin = await isSuperAdminProfile(supabase, user.sub);
-
-    if (!isSuperAdmin) {
-      const { data: member } = await supabase
-        .from("organization_members")
-        .select("organization_id")
-        .eq("profile_id", user.sub)
-        .limit(1)
-        .maybeSingle();
-
-      const { data: subscription } = member?.organization_id
-        ? await supabase
-            .from("subscriptions")
-            .select("plan_id,status,current_period_end")
-            .eq("organization_id", member.organization_id)
-            .maybeSingle()
-        : { data: null };
-
-      const hasActiveSubscription = isSubscriptionActive(subscription);
-
-      if (!hasActiveSubscription) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/settings";
-        url.search = "";
-        url.searchParams.set("tab", "organization");
-        url.searchParams.set("subscription", "required");
-        url.searchParams.set("next", pathname);
-        return NextResponse.redirect(url);
-      }
     }
   }
 

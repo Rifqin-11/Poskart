@@ -1,4 +1,6 @@
 "use client";
+import { OperationalSubscriptionNotice } from "@/features/admin/subscription/operational-subscription-notice";
+import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
 
 import {
   type ComponentType,
@@ -438,6 +440,7 @@ export function TransactionsMonitoring({
   const markTesting = useMarkTransactionAsTesting();
   const unmarkTesting = useUnmarkTransactionAsTesting();
   const createAdminQrisTransaction = useCreateAdminQrisTransaction();
+  const { data: subscription } = useSubscriptionStatus();
   const checkAdminQrisStatus = useCheckAdminQrisTransactionStatus();
   const { isReadOnly } = usePermission();
   const { data: booths = [] } = useBooths();
@@ -1112,7 +1115,7 @@ export function TransactionsMonitoring({
               Selesai
             </Button>
           </div>
-        ) : (
+        ) : !subscription?.isActive ? <OperationalSubscriptionNotice /> : (
           <form className="space-y-4" onSubmit={handleCreateTransaction}>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Metode pembayaran</label>

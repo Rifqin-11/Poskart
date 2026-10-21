@@ -393,7 +393,7 @@ export function DashboardOverview() {
                 No devices, transactions, or analytics have been recorded yet.
                 {canUseOperatingTools
                   ? "Add your first device, create frames, and publish a builder layout to start collecting operational data."
-                  : "Activate a subscription to unlock frames, builder, devices, transactions, analytics, and settings."}
+                  : "Explore all admin menus and prepare your frames, pricing, and layouts for free. Activate a subscription to pair devices and create transactions."}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -409,10 +409,16 @@ export function DashboardOverview() {
                   </Link>
                 </>
               ) : (
+                <>
+                <Link href="/templates" className={buttonVariants({ variant: "outline" })}>
+                  <LayoutTemplate className="size-4" />
+                  Create frame
+                </Link>
                 <Link href="/settings?tab=organization&subscription=required" className={buttonVariants()}>
                   <Plus className="size-4" />
                   Activate subscription
                 </Link>
+                </>
               )}
             </div>
           </CardContent>

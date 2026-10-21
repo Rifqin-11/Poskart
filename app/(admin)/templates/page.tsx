@@ -3,10 +3,10 @@ import { TemplateManagement } from "@/features/admin/templates";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { getQueryClient } from "@/lib/query-client.server";
 import { templateService } from "@/server/admin/template-service";
-import { requireOrganizationSubscriptionAccess } from "@/server/admin/page-access";
+import { requireOrganizationMembershipAccess } from "@/server/admin/page-access";
 
 export default async function TemplatesPage() {
-  await requireOrganizationSubscriptionAccess("/templates");
+  await requireOrganizationMembershipAccess();
   const queryClient = getQueryClient();
   await Promise.all([
     queryClient.prefetchQuery({

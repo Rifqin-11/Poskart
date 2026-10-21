@@ -1,4 +1,5 @@
 "use client";
+import { OperationalSubscriptionNotice } from "@/features/admin/subscription/operational-subscription-notice";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -322,6 +323,7 @@ export function BoothManagement({
   };
 
   const confirmPairingCode = () => {
+    if (!subscriptionStatus?.isActive) return;
     validatePairing.mutate(pairingCode, {
       onSuccess: ({ pairingId: nextPairingId, deviceId }) => {
         setPairingId(nextPairingId);
@@ -780,7 +782,7 @@ export function BoothManagement({
         title="Pasangkan device kiosk"
         className="max-w-md"
       >
-        <form
+        {!subscriptionStatus?.isActive ? <OperationalSubscriptionNotice /> : <form
           className="space-y-5"
           onSubmit={(event) => {
             event.preventDefault();
@@ -825,7 +827,7 @@ export function BoothManagement({
               {validatePairing.isPending ? "Checking..." : "Continue"}
             </Button>
           </div>
-        </form>
+        </form>}
       </Dialog>
 
       {creating &&
