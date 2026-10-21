@@ -17,6 +17,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { expireSubscriptionPayments, refreshSubscriptionPayment, subscriptionPaymentColumns } from "@/server/subscription/payment-reconciliation";
 import { getSubscriptionPaymentUrl, type SubscriptionPayment } from "@/features/billing/subscription/payment-types";
+import { quoteSubscriptionPromotion } from "@/server/subscription/promotions";
 
 function redirectWithStatus(
   planId: string,
@@ -89,6 +90,7 @@ export type SubscriptionCheckoutActionResult =
     };
 
 export async function createSubscriptionOrderAction(formData: FormData) {
+  const promotionCode = valueFromForm(formData, "promotionCode").toUpperCase();
   const planId = valueFromForm(formData, "planId") || "starter-monthly";
   const requestedPaymentGateway = normalizePaymentGateway(
     valueFromForm(formData, "paymentGateway"),
@@ -179,7 +181,9 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     .eq("organization_id", membership.organization_id)
     .eq("plan_id", plan.id)
     .eq("device_count", quote.deviceCount)
-    .eq("amount", quote.totalAmount)
+    .eq("base_amount", quote.baseAmount)
+    .eq("additional_device_amount", quote.additionalDeviceAmount)
+    .filter("promotion_code", promotionCode ? "eq" : "is", promotionCode || null)
     .eq("payment_gateway", paymentGateway)
     .eq("status", "pending")
     .not("payment_url", "is", null)
@@ -223,7 +227,16 @@ export async function createSubscriptionOrderAction(formData: FormData) {
   }
 
   const merchantOrderId = createMerchantOrderId();
-  const { error } = await supabase.from("subscription_orders").insert({
+  let promotion;
+  try {
+    promotion = promotionCode ? await quoteSubscriptionPromotion(paymentMetadataClient, promotionCode, membership.organization_id, plan.id, quote.totalAmount) : null;
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Voucher tidak dapat digunakan.", planId: plan.id } satisfies SubscriptionCheckoutActionResult;
+  }
+  if (promotion && numberFromForm(formData, "promotionTotal", -1) !== promotion.totalAmount) {
+    return { ok: false, message: "Harga promo berubah. Terapkan ulang voucher sebelum membayar.", planId: plan.id } satisfies SubscriptionCheckoutActionResult;
+  }
+  const { data: insertedOrder, error } = await paymentMetadataClient.from("subscription_orders").insert({
     organization_id: membership.organization_id,
     profile_id: user.id,
     plan_id: plan.id,
@@ -235,7 +248,7 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     additional_device_price_monthly: quote.additionalDevicePriceMonthly,
     base_amount: quote.baseAmount,
     additional_device_amount: quote.additionalDeviceAmount,
-    amount: quote.totalAmount,
+    amount: promotion?.totalAmount ?? quote.totalAmount,
     customer_name: customerName,
     email,
     whatsapp: whatsapp || businessProfile.phone,
@@ -244,7 +257,9 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     payment_gateway: paymentGateway,
     payment_method: paymentGateway === "midtrans" ? "snap" : "duitku_pop",
     merchant_order_id: merchantOrderId,
-  });
+    campaign_id: promotion?.campaignId ?? null,
+    promotion_code: promotion?.code ?? null,
+  }).select("amount").single();
 
   if (error) {
     return {
@@ -255,12 +270,14 @@ export async function createSubscriptionOrderAction(formData: FormData) {
   }
 
   try {
+    // The database trigger validates and snapshots the final payable amount.
+    const payableAmount = insertedOrder!.amount;
     const returnUrl = `${siteUrl}/checkout/return?order=${encodeURIComponent(merchantOrderId)}`;
 
     if (paymentGateway === "midtrans") {
       const payment = await createMidtransPayment({
         merchantOrderId,
-        amount: quote.totalAmount,
+        amount: payableAmount,
         plan,
         customerName,
         email,
@@ -287,7 +304,7 @@ export async function createSubscriptionOrderAction(formData: FormData) {
     } else {
       const payment = await createDuitkuPayment({
         merchantOrderId,
-        amount: quote.totalAmount,
+        amount: payableAmount,
         plan,
         customerName,
         email,

@@ -14,6 +14,8 @@ import {
   type PricingPlan,
 } from "@/lib/constants/business";
 import { formatCurrency } from "@/lib/utils";
+import { previewSubscriptionPromotion } from "@/app/(admin)/checkout/promotion-actions";
+import type { SubscriptionPromotionQuote } from "@/types/subscription-campaign";
 
 type PaymentGateway = "duitku" | "midtrans";
 type GatewayMode = PaymentGateway | "both";
@@ -99,7 +101,12 @@ export function CheckoutContent({
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [duitkuScriptReady, setDuitkuScriptReady] = useState(false);
   const [duitkuScriptFailed, setDuitkuScriptFailed] = useState(false);
+  const [promotionCode, setPromotionCode] = useState("");
+  const [promotion, setPromotion] = useState<(SubscriptionPromotionQuote & { planId: string; deviceCount: number }) | null>(null);
+  const [promotionError, setPromotionError] = useState<string | null>(null);
+  const [checkingPromotion, startPromotionTransition] = useTransition();
   const quote = calculateSubscriptionTotal(plan, deviceCount);
+  const appliedPromotion = promotion?.planId === plan.id && promotion.deviceCount === quote.deviceCount && promotion.code === promotionCode.trim().toUpperCase() ? promotion : null;
   const renewal = renewalPreview?.plans[plan.id];
   const selectedGatewayLabel =
     paymentGateway === "midtrans" ? "Midtrans" : "Duitku";
@@ -200,6 +207,8 @@ export function CheckoutContent({
       ) : null}
       <input type="hidden" name="planId" value={plan.id} />
       <input type="hidden" name="paymentGateway" value={paymentGateway} />
+      <input type="hidden" name="promotionCode" value={appliedPromotion?.code ?? ""} />
+      <input type="hidden" name="promotionTotal" value={appliedPromotion?.totalAmount ?? ""} />
       <div className="space-y-5">
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-600">
@@ -517,10 +526,29 @@ export function CheckoutContent({
                 <span>{formatCurrency(quote.additionalDeviceAmount)}</span>
               </div>
             ) : null}
+            {appliedPromotion ? <div className="flex justify-between text-sm text-emerald-700"><span>{appliedPromotion.name}</span><span>−{formatCurrency(appliedPromotion.discountAmount)}</span></div> : null}
             <div className="flex justify-between border-t border-zinc-200 pt-4 text-base font-semibold text-zinc-950">
               <span>Total due</span>
-              <span>{formatCurrency(quote.totalAmount)}</span>
+              <span>{formatCurrency(appliedPromotion?.totalAmount ?? quote.totalAmount)}</span>
             </div>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          <label htmlFor="subscription-promo-code" className="text-sm font-medium">Kode voucher</label>
+          <div className="flex gap-2">
+            <input id="subscription-promo-code" maxLength={40} value={promotionCode} disabled={isPending || checkingPromotion} onChange={(event) => { setPromotionCode(event.target.value.toUpperCase()); setPromotion(null); setPromotionError(null); }} placeholder="XMAS20" className="min-w-0 flex-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm" />
+            <button type="button" disabled={checkingPromotion || isPending || !promotionCode.trim()} className="rounded-lg bg-zinc-100 px-3 py-2 text-sm font-semibold disabled:opacity-50" onClick={() => {
+              setPromotionError(null);
+              startPromotionTransition(async () => {
+                const result = await previewSubscriptionPromotion(promotionCode, plan.id, quote.deviceCount);
+                if (result.ok) setPromotion({ ...result.promotion, planId: plan.id, deviceCount: quote.deviceCount });
+                else { setPromotion(null); setPromotionError(result.message); }
+              });
+            }}>{checkingPromotion ? "Memeriksa…" : "Terapkan"}</button>
+          </div>
+          <div aria-live="polite" className="text-xs leading-5">
+            {promotionError ? <p className="text-red-700">{promotionError}</p> : appliedPromotion ? <p className="text-emerald-700">{appliedPromotion.code} diterapkan. Divalidasi ulang saat pembayaran dibuat.</p> : promotionCode ? <p className="text-amber-700">Terapkan voucher setelah mengubah kode atau jumlah device.</p> : null}
           </div>
         </div>
 
@@ -544,7 +572,7 @@ export function CheckoutContent({
           variant="primary"
           size="lg"
           className="mt-4 h-14 w-full rounded-2xl"
-          disabled={isPending || waitingForDuitkuScript}
+          disabled={isPending || checkingPromotion || waitingForDuitkuScript || (!!promotionCode.trim() && !appliedPromotion)}
         >
           {isPending
             ? "Preparing secure payment..."
