@@ -83,6 +83,11 @@ export async function POST(request: Request) {
         })
         .eq("organization_id", context.organizationId)
         .eq("id", transaction.id)
+        // Abandoning a kiosk session is not a refund or a financial correction.
+        // Keep *all* QRIS attempts (including pending ones that can settle later)
+        // visible and payable. Filter in the UPDATE itself so stale/offline
+        // requests cannot race a successful payment or trust a client provider.
+        .or("provider.is.null,provider.neq.QRIS")
         .is("payout_invoice_id", null)
         .select("id")
         .maybeSingle();
