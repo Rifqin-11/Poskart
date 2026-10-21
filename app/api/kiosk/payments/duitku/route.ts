@@ -152,6 +152,26 @@ export async function POST(request: Request) {
 
     const siteUrl = getSiteUrl(request);
     const merchantOrderId = createMerchantOrderId();
+    // Never replace a payment order for the same session. An expired/cancelled
+    // QR can still settle; overwriting its order ID would orphan that money.
+    if (existing?.merchant_order_id) {
+      throw new KioskApiError("Pembayaran sesi ini sudah dibuat. Periksa status atau mulai sesi baru.", 409, "KIOSK_PAYMENT_ALREADY_CREATED");
+    }
+    const reservedAt = new Date().toISOString();
+    const { error: reserveError } = await context.client.from("transactions").insert({
+      id: sessionId, organization_id: context.organizationId,
+      booth: device.name, location: device.location,
+      customer: body.customerName?.trim() || "Walk-in", package_name: product.name,
+      amount: product.amount, pricing_mode: product.pricingMode,
+      pricing_unit_amount: product.unitAmount, photo_slot_count: product.photoSlotCount,
+      pricing_snapshot: product.pricingSnapshot, ordered_print_count: product.printCount,
+      status: "pending", provider: "QRIS", collection_mode: collectionMode,
+      payment_gateway: "duitku", merchant_order_id: merchantOrderId,
+      template_id: product.templateId, print_count: 0, created_at_label: reservedAt,
+      print_status: "pending", print_attempts: 0, updated_at: reservedAt,
+    });
+    // A concurrent request which loses the unique session insert never calls PG.
+    if (reserveError) throw reserveError;
     const payment = await createDuitkuDirectPayment(
       {
         merchantOrderId,
@@ -167,42 +187,13 @@ export async function POST(request: Request) {
     );
 
     const now = new Date().toISOString();
-    const templateId = product.templateId;
-    const { error } = await context.client.from("transactions").upsert({
-      id: sessionId,
-      organization_id: context.organizationId,
-      booth: device.name,
-      location: device.location,
-      customer: body.customerName?.trim() || "Walk-in",
-      package_name: product.name,
-      amount: product.amount,
-      pricing_mode: product.pricingMode,
-      pricing_unit_amount: product.unitAmount,
-      photo_slot_count: product.photoSlotCount,
-      pricing_snapshot: product.pricingSnapshot,
-      ordered_print_count: product.printCount,
-      status: "pending",
-      provider: "QRIS",
-      collection_mode: collectionMode,
-      payment_gateway: "duitku",
-      merchant_order_id: payment.merchantOrderId,
+    const { error } = await context.client.from("transactions").update({
       payment_reference: payment.reference ?? null,
       payment_url: payment.paymentUrl ?? null,
       duitku_qr_string: payment.qrString,
-      duitku_status_code: payment.statusCode ?? null,
-      duitku_status_message: payment.statusMessage ?? null,
       payment_expires_at: payment.expiresAt,
-      gateway_response: payment.raw,
-      template_id: templateId,
-      // A paid package grants an allowance, but is not proof that a print was
-      // completed. Successful printer events increment this separately.
-      print_count: 0,
-      created_at_label: now,
-      print_status: "pending",
-      print_attempts: 0,
-      print_last_error: null,
       updated_at: now,
-    });
+    }).eq("id", sessionId).eq("organization_id", context.organizationId).eq("merchant_order_id", merchantOrderId);
 
     if (error) throw error;
 
@@ -419,6 +410,11 @@ async function refreshTransactionStatus(
   );
   const mappedStatus = mapDuitkuTransactionStatusCode(status.statusCode);
   const now = new Date().toISOString();
+  if (mappedStatus === "paid") {
+    await recordDuitkuPaymentLedgerEntry(adminClient, { transaction, verifiedStatus: status });
+    const latest = await loadTransaction(context, transaction.id);
+    return formatStatus(latest ?? { ...transaction, status: "paid", paid_at: now });
+  }
   const { data, error } = await context.client
     .from("transactions")
     .update({
@@ -428,7 +424,6 @@ async function refreshTransactionStatus(
       duitku_status_message: status.statusMessage ?? null,
       gateway_status_checked_at: now,
       gateway_response: status.raw,
-      paid_at: mappedStatus === "paid" ? now : null,
       updated_at: now,
     })
     .eq("id", transaction.id)
@@ -445,12 +440,6 @@ async function refreshTransactionStatus(
   if (!data) {
     const latest = await loadTransaction(context, transaction.id);
     return formatStatus(latest ?? transaction);
-  }
-  if (mappedStatus === "paid") {
-    await recordDuitkuPaymentLedgerEntry(adminClient, {
-      transaction: data as TransactionRow,
-      verifiedStatus: status,
-    });
   }
   return formatStatus(data as TransactionRow);
 }

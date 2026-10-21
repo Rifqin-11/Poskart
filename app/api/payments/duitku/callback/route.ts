@@ -12,6 +12,7 @@ import {
   verifyDuitkuCallbackSignature,
 } from "@/server/payments/duitku";
 import { reconcileSubscriptionPayment } from "@/server/subscription/payment-reconciliation";
+import { recordPaymentIssue } from "@/server/payments/reconciliation-issues";
 
 export async function POST(request: NextRequest) {
   const payload = await readDuitkuPayload(request);
@@ -84,7 +85,12 @@ export async function POST(request: NextRequest) {
         { status: 401 },
       );
     }
-    return NextResponse.json({ message: "OK" });
+    await recordPaymentIssue(supabase, {
+      merchantOrderId: payload.merchantOrderId,
+      kind: "unmatched_callback",
+      evidence: { reference: payload.reference, amount: payload.amount, resultCode: payload.resultCode, settlementDate: payload.settlementDate },
+    });
+    return NextResponse.json({ message: "Callback recorded for reconciliation." });
   }
 
   const duitkuConfig = await resolveDuitkuRuntimeConfigForOrganization(
@@ -110,7 +116,19 @@ export async function POST(request: NextRequest) {
     verifiedStatus.statusCode,
   );
   const now = new Date().toISOString();
-  let transactionUpdate = supabase
+  if (verifiedMappedStatus === "paid") {
+    try {
+      await recordDuitkuPaymentLedgerEntry(supabase, { transaction, verifiedStatus, callbackPayload: payload });
+    } catch (error) {
+      await recordPaymentIssue(supabase, {
+        merchantOrderId: payload.merchantOrderId, organizationId: transaction.organization_id,
+        kind: "finalization_failed", evidence: { reference: verifiedStatus.reference, amount: verifiedStatus.amount },
+      });
+      throw error;
+    }
+    return NextResponse.json({ message: "OK" });
+  }
+  const transactionUpdate = supabase
     .from("transactions")
     .update({
       status: verifiedMappedStatus,
@@ -128,17 +146,14 @@ export async function POST(request: NextRequest) {
         callback: payload,
         verified: verifiedStatus.raw,
       },
-      paid_at: verifiedMappedStatus === "paid" ? now : null,
       updated_at: now,
     })
-    .eq("merchant_order_id", payload.merchantOrderId);
+    .eq("merchant_order_id", payload.merchantOrderId)
+    .eq("status", "pending");
 
   // A local kiosk cancellation must not be reverted merely because Duitku
   // still reports the QR as pending or failed. A real settled payment remains
   // authoritative, so it is deliberately allowed to move cancelled -> paid.
-  if (verifiedMappedStatus !== "paid") {
-    transactionUpdate = transactionUpdate.eq("status", "pending");
-  }
 
   const { error: transactionError } = await transactionUpdate;
 
@@ -147,22 +162,6 @@ export async function POST(request: NextRequest) {
       { message: transactionError.message },
       { status: 500 },
     );
-  }
-
-  if (verifiedMappedStatus === "paid") {
-    await recordDuitkuPaymentLedgerEntry(supabase, {
-      transaction: {
-        ...transaction,
-        payment_reference:
-          verifiedStatus.reference ??
-          payload.reference ??
-          transaction.payment_reference,
-        paid_at: now,
-        gateway_response: verifiedStatus.raw,
-      },
-      verifiedStatus,
-      callbackPayload: payload,
-    });
   }
 
   return NextResponse.json({ message: "OK" });

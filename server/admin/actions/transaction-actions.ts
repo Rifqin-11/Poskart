@@ -338,6 +338,15 @@ export async function createAdminQrisTransaction(
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     "http://localhost:3000"
   ).replace(/\/+$/, "");
+  const { error: reserveError } = await supabase.from("transactions").insert({
+    id: transactionId, organization_id: organizationId, booth: "Web Admin",
+    location: "Transaction Monitoring", customer: productName, package_name: productName,
+    amount, status: "pending", provider: "QRIS", collection_mode: collectionMode,
+    payment_gateway: "duitku", merchant_order_id: merchantOrderId,
+    print_count: 0, created_at_label: now, print_status: "pending",
+    print_attempts: 0, updated_at: now,
+  });
+  if (reserveError) throw new Error(`Gagal menyimpan payment order: ${reserveError.message}`);
   const payment = await createDuitkuDirectPayment(
     {
       merchantOrderId,
@@ -351,33 +360,13 @@ export async function createAdminQrisTransaction(
     },
     duitkuConfig,
   );
-  const { error } = await supabase.from("transactions").insert({
-    id: transactionId,
-    organization_id: organizationId,
-    booth: "Web Admin",
-    location: "Transaction Monitoring",
-    customer: productName,
-    package_name: productName,
-    amount,
-    status: "pending",
-    provider: "QRIS",
-    collection_mode: collectionMode,
-    payment_gateway: "duitku",
-    merchant_order_id: payment.merchantOrderId,
+  const { error } = await supabase.from("transactions").update({
     payment_reference: payment.reference ?? null,
     payment_url: payment.paymentUrl ?? null,
     duitku_qr_string: payment.qrString,
-    duitku_status_code: payment.statusCode ?? null,
-    duitku_status_message: payment.statusMessage ?? null,
     payment_expires_at: payment.expiresAt,
-    gateway_response: payment.raw,
-    print_count: 0,
-    created_at_label: now,
-    print_status: "pending",
-    print_attempts: 0,
-    print_last_error: null,
     updated_at: now,
-  });
+  }).eq("id", transactionId).eq("organization_id", organizationId).eq("merchant_order_id", merchantOrderId);
   if (error) throw new Error(`Gagal menyimpan transaksi: ${error.message}`);
 
   return {
@@ -406,7 +395,6 @@ export async function checkAdminQrisTransactionStatus(transactionId: string) {
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!transaction) throw new Error("Transaksi tidak ditemukan.");
-  if (transaction.status === "paid") return { status: "paid" as const };
   if (!transaction.merchant_order_id || transaction.payment_gateway !== "duitku") {
     return { status: transaction.status };
   }
@@ -422,6 +410,10 @@ export async function checkAdminQrisTransactionStatus(transactionId: string) {
   );
   const status = mapDuitkuTransactionStatusCode(verifiedStatus.statusCode);
   const now = new Date().toISOString();
+  if (status === "paid") {
+    await recordDuitkuPaymentLedgerEntry(adminClient, { transaction, verifiedStatus });
+    return { status };
+  }
   const { error: updateError } = await supabase
     .from("transactions")
     .update({
@@ -431,18 +423,11 @@ export async function checkAdminQrisTransactionStatus(transactionId: string) {
       duitku_status_message: verifiedStatus.statusMessage ?? null,
       gateway_status_checked_at: now,
       gateway_response: verifiedStatus.raw,
-      paid_at: status === "paid" ? now : null,
       updated_at: now,
     })
     .eq("id", transaction.id)
     .eq("status", "pending");
   if (updateError) throw new Error(updateError.message);
-  if (status === "paid") {
-    await recordDuitkuPaymentLedgerEntry(adminClient, {
-      transaction: { ...transaction, paid_at: now, gateway_response: verifiedStatus.raw },
-      verifiedStatus,
-    });
-  }
   return { status };
 }
 

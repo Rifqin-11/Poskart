@@ -75,6 +75,7 @@ export function PayoutDashboard({
   const [invoicePage, setInvoicePage] = useState(invoicesPage);
   const [ledgerPage, setLedgerPage] = useState(pendingSettlementPage);
   const [requestOpen, setRequestOpen] = useState(false);
+  const [requestKey, setRequestKey] = useState("");
   const [selectedInvoice, setSelectedInvoice] = useState<PayoutInvoice | null>(
     null,
   );
@@ -150,6 +151,7 @@ export function PayoutDashboard({
 
     startTransition(async () => {
       const result = await requestPayout({
+        requestId: requestKey,
         amount: requestForm.amount,
         accountId: summary.payoutAccount!.id,
       });
@@ -178,6 +180,7 @@ export function PayoutDashboard({
             className="w-full rounded-2xl sm:w-auto"
             disabled={!canRequest || isReadOnly("invoices")}
             onClick={() => {
+              setRequestKey(crypto.randomUUID());
               setRequestForm({
                 amount: summary.availableGrossAmount,
               });

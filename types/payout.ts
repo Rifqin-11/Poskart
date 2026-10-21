@@ -131,6 +131,7 @@ export type SavePayoutAccountInput = {
 };
 
 export type RequestPayoutInput = {
+  requestId: string;
   amount: number;
   accountId: string;
   notes?: string;

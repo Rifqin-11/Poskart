@@ -9,7 +9,6 @@ import {
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAdminNotification } from "@/server/admin/notifications";
 import {
-  calculatePaymentGatewayFee,
   normalizeGatewayFeeSettings,
 } from "@/lib/payment-gateway-fee";
 import {
@@ -309,8 +308,11 @@ async function getPayoutSettings(
 }
 
 function calculateLine(row: EligibleLedgerEntryRow, settings: PayoutSettings) {
+  void settings;
   const grossAmount = Number(row.gross_amount);
-  const gatewayFeeAmount = calculatePaymentGatewayFee(grossAmount, settings);
+  // Historical entitlements use the fee snapshot recorded at payment time,
+  // never today's mutable configuration.
+  const gatewayFeeAmount = Number(row.gateway_fee_amount);
   const platformFeeAmount = 0;
 
   return {
@@ -981,6 +983,20 @@ export async function requestPayout(
     const isAccountant = role === "akuntan";
     const initialStatus = isAccountant ? "pending_approval" : "requested";
     const ledgerClient = createSupabaseAdminClient();
+    if (!/^[0-9a-f-]{36}$/i.test(values.requestId ?? "")) {
+      return { success: false, error: "Invalid withdrawal request key. Reopen the request dialog." };
+    }
+    // A response can be lost after a successful commit. Do not allocate twice.
+    const { data: prior, error: priorError } = await ledgerClient.from("payout_invoices")
+      .select("id,requested_amount,payout_account_id,requested_by")
+      .eq("organization_id", organizationId).eq("request_key", values.requestId).maybeSingle();
+    if (priorError) throw priorError;
+    if (prior) {
+      if (prior.requested_by !== user.id || prior.requested_amount !== Math.round(Number(values.amount)) || prior.payout_account_id !== values.accountId) {
+        return { success: false, error: "Withdrawal request key was already used for different details." };
+      }
+      return { success: true };
+    }
     const requestedAmount = Math.round(Number(values.amount));
     if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
       return { success: false, error: "Invalid withdrawal amount." };
@@ -1061,9 +1077,9 @@ export async function requestPayout(
       source: "request",
     };
 
-    const { data: invoice, error: invoiceError } = await ledgerClient
-      .from("payout_invoices")
-      .insert({
+    const { data: invoiceId, error: invoiceError } = await ledgerClient.rpc("create_reserved_payout", {
+      p_invoice: {
+        request_key: values.requestId,
         invoice_number: invoiceNumber,
         organization_id: organizationId,
         payout_account_id: account.id,
@@ -1080,51 +1096,27 @@ export async function requestPayout(
         account_snapshot: accountSnapshot,
         fee_snapshot: feeSnapshot,
         updated_at: now,
-      })
-      .select("id")
-      .single();
+      },
+      p_items: selectedLines.map((line) => ({
+        ledger_entry_id: line.ledgerEntryId,
+        transaction_id: line.transactionId,
+        payment_gateway: line.paymentGateway,
+        booth: line.booth, package_name: line.packageName,
+        transaction_paid_at: line.transactionPaidAt,
+        gross_amount: line.grossAmount,
+        gateway_fee_amount: line.gatewayFeeAmount,
+        platform_fee_amount: line.platformFeeAmount, net_amount: line.netAmount,
+      })),
+    });
 
-    if (invoiceError || !invoice?.id) {
+    if (invoiceError || !invoiceId) {
       return {
         success: false,
         error: `Failed to create payout: ${invoiceError?.message ?? "empty payout"}`,
       };
     }
 
-    const { error: itemError } = await ledgerClient
-      .from("payout_invoice_items")
-      .insert(
-        selectedLines.map((line) => ({
-          payout_invoice_id: invoice.id,
-          organization_id: organizationId,
-          ledger_entry_id: line.ledgerEntryId,
-          transaction_id: line.transactionId,
-          payment_gateway: line.paymentGateway,
-          booth: line.booth,
-          package_name: line.packageName,
-          transaction_paid_at: line.transactionPaidAt,
-          gross_amount: line.grossAmount,
-          gateway_fee_amount: line.gatewayFeeAmount,
-          platform_fee_amount: line.platformFeeAmount,
-          net_amount: line.netAmount,
-        })),
-      );
-
-    if (itemError) {
-      await ledgerClient
-        .from("payout_invoices")
-        .update({
-          status: "canceled",
-          rejection_reason: "Payout items failed to be created.",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", invoice.id);
-
-      return {
-        success: false,
-        error: `Failed to create payout items: ${itemError.message}`,
-      };
-    }
+    const invoice = { id: invoiceId as string };
 
     revalidatePath("/withdraw");
     revalidatePath("/superadmin");
@@ -1270,7 +1262,7 @@ export async function approvePayoutInvoice(
 
     const now = new Date().toISOString();
 
-    const { error } = await supabase
+    const { data: changed, error } = await ledgerClient
       .from("payout_invoices")
       .update({
         status: "approved",
@@ -1279,19 +1271,12 @@ export async function approvePayoutInvoice(
         reviewed_at: now,
         updated_at: now,
       })
-      .eq("id", id);
+      .eq("id", id)
+      .in("status", ["requested", "approved"])
+      .select("id").maybeSingle();
 
     if (error) return { success: false, error: error.message };
-
-    await ledgerClient
-      .from("payment_ledger_entries")
-      .update({ settlement_status: "approved", updated_at: now })
-      .eq("payout_invoice_id", id);
-
-    await ledgerClient
-      .from("transactions")
-      .update({ payout_status: "approved", updated_at: now })
-      .eq("payout_invoice_id", id);
+    if (!changed) return { success: false, error: "Payout status changed. Refresh and try again." };
 
     revalidatePath("/withdraw");
     revalidatePath("/superadmin");
@@ -1335,7 +1320,7 @@ export async function rejectPayoutInvoice(
     if (invoiceError) throw invoiceError;
     if (!invoice) return { success: false, error: "Payout not found." };
 
-    const { error } = await supabase
+    const { data: changed, error } = await ledgerClient
       .from("payout_invoices")
       .update({
         status: "rejected",
@@ -1345,27 +1330,11 @@ export async function rejectPayoutInvoice(
         updated_at: now,
       })
       .eq("id", id)
-      .in("status", ["requested", "approved"]);
+      .eq("status", "requested")
+      .select("id").maybeSingle();
 
     if (error) return { success: false, error: error.message };
-
-    await ledgerClient
-      .from("payment_ledger_entries")
-      .update({
-        settlement_status: null,
-        payout_invoice_id: null,
-        updated_at: now,
-      })
-      .eq("payout_invoice_id", id);
-
-    await ledgerClient
-      .from("transactions")
-      .update({
-        payout_status: null,
-        payout_invoice_id: null,
-        updated_at: now,
-      })
-      .eq("payout_invoice_id", id);
+    if (!changed) return { success: false, error: "Only a requested payout can be rejected. Approved transfers remain reserved." };
 
     revalidatePath("/withdraw");
     revalidatePath("/superadmin");
@@ -1430,7 +1399,7 @@ export async function markPayoutInvoicePaid(
     if (invoiceError) throw invoiceError;
     if (!invoice) return { success: false, error: "Payout not found." };
 
-    const { data: updatedInvoice, error } = await supabase
+    const { data: updatedInvoice, error } = await ledgerClient
       .from("payout_invoices")
       .update({
         status: "paid",
@@ -1456,16 +1425,6 @@ export async function markPayoutInvoicePaid(
         error: "This payout is not in a status that can be marked as paid.",
       };
     }
-
-    await ledgerClient
-      .from("payment_ledger_entries")
-      .update({ settlement_status: "paid", updated_at: now })
-      .eq("payout_invoice_id", id);
-
-    await ledgerClient
-      .from("transactions")
-      .update({ payout_status: "paid", updated_at: now })
-      .eq("payout_invoice_id", id);
 
     revalidatePath("/withdraw");
     revalidatePath("/superadmin");
@@ -1529,7 +1488,7 @@ export async function approveInternalPayoutRequest(
     }
 
     // Update the invoice status
-    const { error: updateError } = await supabase
+    const { data: changed, error: updateError } = await ledgerClient
       .from("payout_invoices")
       .update({
         status: "requested",
@@ -1537,22 +1496,12 @@ export async function approveInternalPayoutRequest(
         reviewed_at: now,
         updated_at: now,
       })
-      .eq("id", invoiceId);
+      .eq("id", invoiceId).eq("organization_id", organizationId)
+      .eq("status", "pending_approval").select("id").maybeSingle();
 
-    if (updateError) {
+    if (updateError || !changed) {
       return { success: false, error: "Failed to approve payout." };
     }
-
-    // Update related transactions and payment_ledger_entries status
-    await ledgerClient
-      .from("transactions")
-      .update({ payout_status: "requested", updated_at: now })
-      .eq("payout_invoice_id", invoiceId);
-
-    await ledgerClient
-      .from("payment_ledger_entries")
-      .update({ settlement_status: "requested", updated_at: now })
-      .eq("payout_invoice_id", invoiceId);
 
     revalidatePath("/withdraw");
     revalidatePath("/superadmin");
@@ -1630,27 +1579,8 @@ export async function rejectInternalPayoutRequest(
       return { success: false, error: "This payout is not pending approval." };
     }
 
-    // Unlink items
-    await ledgerClient
-      .from("payment_ledger_entries")
-      .update({
-        settlement_status: null,
-        payout_invoice_id: null,
-        updated_at: now,
-      })
-      .eq("payout_invoice_id", invoiceId);
-
-    await ledgerClient
-      .from("transactions")
-      .update({
-        payout_status: null,
-        payout_invoice_id: null,
-        updated_at: now,
-      })
-      .eq("payout_invoice_id", invoiceId);
-
     // Update invoice status
-    const { error: updateError } = await supabase
+    const { data: changed, error: updateError } = await ledgerClient
       .from("payout_invoices")
       .update({
         status: "rejected",
@@ -1660,9 +1590,10 @@ export async function rejectInternalPayoutRequest(
           reason.trim() || "Rejected by the organization admin/owner.",
         updated_at: now,
       })
-      .eq("id", invoiceId);
+      .eq("id", invoiceId).eq("organization_id", organizationId)
+      .eq("status", "pending_approval").select("id").maybeSingle();
 
-    if (updateError) {
+    if (updateError || !changed) {
       return { success: false, error: "Failed to reject payout." };
     }
 
@@ -1727,35 +1658,17 @@ export async function cancelInternalPayoutRequest(
       };
     }
 
-    // Unlink items
-    await ledgerClient
-      .from("payment_ledger_entries")
-      .update({
-        settlement_status: null,
-        payout_invoice_id: null,
-        updated_at: now,
-      })
-      .eq("payout_invoice_id", invoiceId);
-
-    await ledgerClient
-      .from("transactions")
-      .update({
-        payout_status: null,
-        payout_invoice_id: null,
-        updated_at: now,
-      })
-      .eq("payout_invoice_id", invoiceId);
-
     // Update invoice status
-    const { error: updateError } = await supabase
+    const { data: changed, error: updateError } = await ledgerClient
       .from("payout_invoices")
       .update({
         status: "canceled",
         updated_at: now,
       })
-      .eq("id", invoiceId);
+      .eq("id", invoiceId).eq("organization_id", organizationId)
+      .eq("requested_by", user.id).eq("status", "pending_approval").select("id").maybeSingle();
 
-    if (updateError) {
+    if (updateError || !changed) {
       return { success: false, error: "Failed to cancel payout draft." };
     }
 

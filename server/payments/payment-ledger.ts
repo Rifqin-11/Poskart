@@ -49,19 +49,18 @@ export async function recordDuitkuPaymentLedgerEntry(
     !transaction.merchant_order_id ||
     transaction.provider !== "QRIS" ||
     transaction.payment_gateway !== "duitku" ||
-    transaction.collection_mode === "custom" ||
     verifiedStatus.statusCode !== "00"
   ) {
     return null;
   }
 
-  const grossAmount = Math.max(
-    0,
-    Math.round(Number(verifiedStatus.amount ?? transaction.amount)),
-  );
+  const grossAmount = Number(verifiedStatus.amount);
   const transactionAmount = Math.max(0, Math.round(Number(transaction.amount)));
 
-  if (grossAmount !== transactionAmount) {
+  if (!Number.isSafeInteger(grossAmount) || grossAmount !== transactionAmount ||
+      verifiedStatus.merchantOrderId !== transaction.merchant_order_id ||
+      !verifiedStatus.reference ||
+      (transaction.payment_reference && transaction.payment_reference !== verifiedStatus.reference)) {
     throw new Error(
       `Duitku amount mismatch for ${transaction.merchant_order_id}: expected ${transactionAmount}, got ${grossAmount}.`,
     );
@@ -71,27 +70,6 @@ export async function recordDuitkuPaymentLedgerEntry(
     callbackPayload?.settlementDate,
   );
   const settlementState = getEstimatedSettlementState(settlementDate);
-  const { data: existing, error: existingError } = await supabase
-    .from("payment_ledger_entries")
-    .select("id,gateway_settlement_date")
-    .eq("merchant_order_id", transaction.merchant_order_id)
-    .maybeSingle();
-
-  if (existingError) {
-    throw new Error(`Gagal cek ledger pembayaran: ${existingError.message}`);
-  }
-  if (existing?.id) {
-    if (!existing.gateway_settlement_date) {
-      await saveSettlementEstimate(
-        supabase,
-        existing.id,
-        settlementDate,
-        settlementState,
-      );
-    }
-    return existing;
-  }
-
   const settings = await loadPayoutFeeSettings(supabase);
   const gatewayFeeAmount = calculatePaymentGatewayFee(grossAmount, settings);
   const platformFeeAmount = 0;
@@ -99,9 +77,16 @@ export async function recordDuitkuPaymentLedgerEntry(
   const now = new Date().toISOString();
   const paidAt = transaction.paid_at ?? now;
 
-  const { data, error } = await supabase
-    .from("payment_ledger_entries")
-    .insert({
+  const { data, error } = await supabase.rpc("finalize_verified_duitku_payment", {
+    p_transaction_id: transaction.id,
+    p_verified: {
+      ...verifiedStatus.raw,
+      merchantOrderId: verifiedStatus.merchantOrderId,
+      reference: verifiedStatus.reference,
+      amount: grossAmount,
+      statusCode: verifiedStatus.statusCode,
+    },
+    p_ledger: transaction.collection_mode === "custom" ? null : {
       organization_id: transaction.organization_id,
       transaction_id: transaction.id,
       provider: "duitku",
@@ -124,58 +109,14 @@ export async function recordDuitkuPaymentLedgerEntry(
       verified_at: now,
       callback_payload: callbackPayload ?? {},
       verified_response: verifiedStatus.raw,
-    })
-    .select("id")
-    .single();
+    },
+  });
 
   if (error) {
-    if (error.code === "23505") {
-      const { data: duplicate } = await supabase
-        .from("payment_ledger_entries")
-        .select("id,gateway_settlement_date")
-        .eq("merchant_order_id", transaction.merchant_order_id)
-        .maybeSingle();
-      if (duplicate?.id) {
-        if (!duplicate.gateway_settlement_date) {
-          await saveSettlementEstimate(
-            supabase,
-            duplicate.id,
-            settlementDate,
-            settlementState,
-          );
-        }
-        return duplicate;
-      }
-    }
     throw new Error(`Gagal membuat ledger pembayaran: ${error.message}`);
   }
 
   return data;
-}
-
-async function saveSettlementEstimate(
-  supabase: SupabaseAdminClient,
-  ledgerEntryId: string,
-  settlementDate: string | null,
-  settlementState: ReturnType<typeof getEstimatedSettlementState>,
-) {
-  if (!settlementDate) return;
-
-  const { error } = await supabase
-    .from("payment_ledger_entries")
-    .update({
-      gateway_settlement_date: settlementDate,
-      gateway_settlement_status: settlementState.status,
-      gateway_balance_available_at: settlementState.availableAt,
-    })
-    .eq("id", ledgerEntryId)
-    .is("gateway_settlement_date", null);
-
-  if (error) {
-    throw new Error(
-      `Gagal menyimpan estimasi settlement Duitku: ${error.message}`,
-    );
-  }
 }
 
 async function loadPayoutFeeSettings(
