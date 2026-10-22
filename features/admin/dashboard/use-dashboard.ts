@@ -29,3 +29,12 @@ export function useMyTrialRequest() {
     staleTime: 30_000,
   });
 }
+
+export function useMyTrialEligibility() {
+  return useQuery({
+    queryKey: adminQueryKeys.myTrialEligibility,
+    queryFn: dashboardApi.getMyTrialEligibility,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}

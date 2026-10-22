@@ -54,4 +54,5 @@ export const adminQueryKeys = {
   trialRequests: (filters: Record<string, unknown> = {}) =>
     ["trial-requests", filters] as const,
   myTrialRequest: ["my-trial-request"] as const,
+  myTrialEligibility: ["my-trial-eligibility"] as const,
 };

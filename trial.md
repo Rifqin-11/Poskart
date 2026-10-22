@@ -1,5 +1,7 @@
 # Rencana Implementasi Public Trial POSKART
 
+> **Digantikan pada 22 Oktober 2026:** trial sekarang self-service, langsung aktif 14 hari, sekali seumur hidup per organisasi/email (serta profil pemilik). Superadmin dapat mencabut trial dengan alasan tanpa menghapus organisasi. Pengajuan lama yang belum aktif dapat dimulai langsung oleh owner; penggunaan trial lama tetap dihitung. Lihat `docs/self-service-trials.md` untuk aturan dan deployment terbaru. Bagian di bawah disimpan sebagai referensi desain historis, bukan spesifikasi aktif.
+
 ## 1. Ringkasan keputusan
 
 POSKART akan menyediakan trial operasional selama **14 hari** dengan model **hybrid approval**:

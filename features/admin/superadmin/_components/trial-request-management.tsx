@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Info, LoaderCircle, XCircle } from "lucide-react";
+import { LoaderCircle, XCircle } from "lucide-react";
 import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dialog } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -24,7 +24,6 @@ import {
 import { TablePagination } from "@/components/ui/table-pagination";
 import {
   useTrialRequests,
-  useReviewTrialRequest,
   useRevokeTrialByRequestId,
 } from "@/features/admin/superadmin/use-superadmin";
 import { formatDateTime } from "@/lib/utils";
@@ -32,15 +31,17 @@ import type { TrialRequest, TrialRequestStatus } from "@/types/trial";
 
 const STATUS_OPTIONS: { label: string; value: TrialRequestStatus | "all" }[] = [
   { label: "Semua", value: "all" },
-  { label: "Pending", value: "pending" },
-  { label: "Perlu Info", value: "needs_information" },
-  { label: "Disetujui", value: "approved" },
-  { label: "Aktif", value: "activated" },
+  { label: "Pernah diaktifkan", value: "activated" },
+  { label: "Dibatalkan", value: "canceled" },
+  { label: "Pengajuan lama", value: "pending" },
   { label: "Ditolak", value: "rejected" },
   { label: "Kedaluwarsa", value: "activation_expired" },
 ];
 
-function statusVariant(status: TrialRequestStatus) {
+function statusVariant(request: TrialRequest) {
+  if (request.claimStatus === "revoked") return "destructive" as const;
+  if (request.claimStatus === "expired" || request.claimStatus === "converted") return "secondary" as const;
+  const status = request.status;
   switch (status) {
     case "pending": return "warning" as const;
     case "needs_information": return "warning" as const;
@@ -52,7 +53,11 @@ function statusVariant(status: TrialRequestStatus) {
   }
 }
 
-function statusLabel(status: TrialRequestStatus) {
+function statusLabel(request: TrialRequest) {
+  if (request.claimStatus === "revoked") return "Dicabut";
+  if (request.claimStatus === "expired") return "Berakhir";
+  if (request.claimStatus === "converted") return "Berlangganan";
+  const status = request.status;
   switch (status) {
     case "pending": return "Pending";
     case "needs_information": return "Perlu Info";
@@ -87,91 +92,69 @@ export function TrialRequestManagement() {
     page,
     pageSize,
   });
-  const review = useReviewTrialRequest();
   const revoke = useRevokeTrialByRequestId();
-  const confirmDialog = useConfirmDialog();
+  const [revokeTarget, setRevokeTarget] = useState<TrialRequest | null>(null);
+  const [revokeReason, setRevokeReason] = useState("");
 
   const requests = data?.items ?? [];
   const total = data?.total ?? 0;
   const isTableLoading = isLoading || (isFetching && isPlaceholderData);
 
-  function handleApprove(request: TrialRequest) {
-    confirmDialog.confirm({
-      title: "Setujui trial request?",
-      description: `Organisasi "${request.organizationName ?? request.organizationId}" akan mendapatkan persetujuan trial 14 hari. Device harus mengaktifkan dalam 72 jam.`,
-      confirmLabel: "Setujui",
-      onConfirm: () => {
-        review.mutate(
-          { requestId: request.id, decision: "approved", note: "Approved by superadmin" },
-          {
-            onSuccess: () => toast.success("Trial request disetujui."),
-            onError: (err) => showErrorToast("Tidak dapat menyetujui trial", err, "Trial request belum disetujui."),
-          },
-        );
+  function handleRevoke() {
+    if (!revokeTarget) return;
+    revoke.mutate(
+      { requestId: revokeTarget.id, reason: revokeReason.trim() },
+      {
+        onSuccess: () => {
+          toast.success("Trial dicabut. Organisasi tidak dapat memulai trial kembali.");
+          setRevokeTarget(null);
+          setRevokeReason("");
+        },
+        onError: (err) => showErrorToast("Tidak dapat mencabut trial", err, "Trial belum dicabut."),
       },
-    });
-  }
-
-  function handleReject(request: TrialRequest) {
-    confirmDialog.confirm({
-      title: "Tolak trial request?",
-      description: `Request dari "${request.emailSnapshot}" akan ditolak.`,
-      confirmLabel: "Tolak",
-      destructive: true,
-      onConfirm: () => {
-        review.mutate(
-          { requestId: request.id, decision: "rejected", rejectionCode: "manual_reject", note: "Rejected by superadmin" },
-          {
-            onSuccess: () => toast.success("Trial request ditolak."),
-            onError: (err) => showErrorToast("Tidak dapat menolak trial", err, "Trial request belum ditolak."),
-          },
-        );
-      },
-    });
-  }
-
-  function handleNeedsInfo(request: TrialRequest) {
-    confirmDialog.confirm({
-      title: "Minta informasi tambahan?",
-      description: `Request dari "${request.emailSnapshot}" akan dikembalikan ke pemohon untuk melengkapi informasi.`,
-      confirmLabel: "Kirim",
-      onConfirm: () => {
-        review.mutate(
-          { requestId: request.id, decision: "needs_information", note: "Informasi tambahan diperlukan." },
-          {
-            onSuccess: () => toast.success("Status diperbarui."),
-            onError: (err) => showErrorToast("Tidak dapat memperbarui trial", err, "Status trial belum diperbarui."),
-          },
-        );
-      },
-    });
-  }
-
-  function handleRevoke(request: TrialRequest) {
-    confirmDialog.confirm({
-      title: "Batalkan trial?",
-      description: `Trial aktif organisasi "${request.organizationName ?? request.emailSnapshot}" akan dibatalkan dan subscription dikembalikan ke free.`,
-      confirmLabel: "Batalkan Trial",
-      destructive: true,
-      onConfirm: () => {
-        revoke.mutate(
-          { requestId: request.id, reason: "Revoked by superadmin" },
-          {
-            onSuccess: () => toast.success("Trial dibatalkan."),
-            onError: (err) => showErrorToast("Tidak dapat membatalkan trial", err, "Trial belum dibatalkan."),
-          },
-        );
-      },
-    });
+    );
   }
 
   return (
     <Card>
-      {confirmDialog.dialog}
+      <Dialog
+        open={Boolean(revokeTarget)}
+        onOpenChange={(open) => { if (!open && !revoke.isPending) setRevokeTarget(null); }}
+        title="Cabut trial organisasi?"
+        className="max-w-md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-zinc-500">
+            Trial &quot;{revokeTarget?.organizationName ?? revokeTarget?.emailSnapshot}&quot; akan dihentikan
+            dan kembali ke Free. Data tidak dihapus, tetapi jatah trial tetap terpakai.
+          </p>
+          <label className="block space-y-2 text-sm font-medium">
+            <span>Alasan pencabutan</span>
+            <textarea
+              value={revokeReason}
+              onChange={(event) => setRevokeReason(event.target.value)}
+              minLength={5}
+              maxLength={1000}
+              rows={3}
+              disabled={revoke.isPending}
+              placeholder="Jelaskan indikasi abuse (minimal 5 karakter)"
+              className="w-full rounded-xl border border-zinc-200 p-3 text-sm font-normal"
+            />
+          </label>
+          <p className="text-xs text-zinc-400">Alasan dicatat dalam riwayat dan dapat dilihat pemilik organisasi.</p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" disabled={revoke.isPending} onClick={() => setRevokeTarget(null)}>Batal</Button>
+            <Button variant="destructive" disabled={revoke.isPending || revokeReason.trim().length < 5} onClick={handleRevoke}>
+              {revoke.isPending && <LoaderCircle className="size-4 animate-spin" />}
+              Cabut Trial
+            </Button>
+          </div>
+        </div>
+      </Dialog>
       <CardHeader>
-        <CardTitle>Trial Requests</CardTitle>
+        <CardTitle>Trial Organisasi</CardTitle>
         <CardDescription>
-          Tinjau dan proses pengajuan trial 14 hari dari organisasi baru.
+          Trial langsung aktif selama 14 hari, sekali per organisasi dan email. Cabut trial jika terindikasi abuse.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -215,7 +198,7 @@ export function TrialRequestManagement() {
               ) : requests.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="py-8 text-center text-sm text-zinc-400">
-                    Tidak ada trial request.
+                    Belum ada riwayat trial.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -235,55 +218,22 @@ export function TrialRequestManagement() {
                       <RiskBadges flags={req.riskFlags} />
                     </TableCell>
                     <TableCell>
-                      <Badge variant={statusVariant(req.status)}>
-                        {statusLabel(req.status)}
-                      </Badge>
+                        <Badge variant={statusVariant(req)}>
+                          {statusLabel(req)}
+                        </Badge>
+                        {req.trialEndsAt && <p className="mt-1 text-xs text-zinc-400">Berakhir {formatDateTime(req.trialEndsAt)}</p>}
+                        {req.revokeReason && <p className="mt-1 max-w-xs text-xs text-zinc-500">{req.revokeReason}</p>}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-zinc-500">
                       {formatDateTime(req.createdAt)}
                     </TableCell>
                     <TableCell>
-                      {(req.status === "pending" || req.status === "needs_information") && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={review.isPending}
-                            onClick={() => handleApprove(req)}
-                            className="text-emerald-600 hover:text-emerald-700"
-                          >
-                            {review.isPending ? (
-                              <LoaderCircle className="size-4 animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="size-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={review.isPending}
-                            onClick={() => handleNeedsInfo(req)}
-                            className="text-zinc-400 hover:text-zinc-700"
-                          >
-                            <Info className="size-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={review.isPending}
-                            onClick={() => handleReject(req)}
-                            className="text-zinc-400 hover:text-red-500"
-                          >
-                            <XCircle className="size-4" />
-                          </Button>
-                        </div>
-                      )}
-                      {req.status === "activated" && (
+                      {req.claimStatus === "active" && (
                         <Button
                           variant="ghost"
                           size="sm"
                           disabled={revoke.isPending}
-                          onClick={() => handleRevoke(req)}
+                          onClick={() => { setRevokeTarget(req); setRevokeReason(""); }}
                           className="text-zinc-400 hover:text-red-500"
                         >
                           {revoke.isPending ? (
@@ -291,6 +241,7 @@ export function TrialRequestManagement() {
                           ) : (
                             <XCircle className="size-4" />
                           )}
+                          Cabut Trial
                         </Button>
                       )}
                     </TableCell>

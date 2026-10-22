@@ -3,16 +3,19 @@
 import { getAdminContext, getAdminProfileRole } from "@/server/admin/context";
 import { getServiceRoleClient } from "@/lib/supabase/server";
 import { createAdminNotification } from "@/server/admin/notifications";
+import { revalidatePath } from "next/cache";
 import type {
   TrialRequest,
   TrialRequestFilters,
   ReviewTrialRequestInput,
+  TrialClaimStatus,
+  TrialEligibility,
 } from "@/types/trial";
 
 type TrialRequestRow = {
   id: string;
-  organization_id: string;
-  requester_profile_id: string;
+  organization_id: string | null;
+  requester_profile_id: string | null;
   device_id: string | null;
   hardware_id_hash: string | null;
   email_snapshot: string;
@@ -35,9 +38,14 @@ type TrialRequestRow = {
   updated_at: string;
   organization: { name: string | null } | null;
   requester: { email: string | null } | null;
+  claims: { status: TrialClaimStatus; ends_at: string; revoke_reason: string | null; started_at: string }[];
 };
 
 function mapTrialRequest(row: TrialRequestRow): TrialRequest {
+  const claim = [...(row.claims ?? [])].sort((a, b) => b.started_at.localeCompare(a.started_at))[0];
+  const claimStatus = claim?.status === "active" && new Date(claim.ends_at).getTime() <= Date.now()
+    ? "expired"
+    : claim?.status ?? null;
   return {
     id: row.id,
     organizationId: row.organization_id,
@@ -64,6 +72,9 @@ function mapTrialRequest(row: TrialRequestRow): TrialRequest {
     activatedAt: row.activated_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    claimStatus,
+    trialEndsAt: claim?.ends_at ?? null,
+    revokeReason: claim?.revoke_reason ?? null,
   };
 }
 
@@ -92,7 +103,8 @@ export async function listTrialRequests(
        rejection_code, rejection_reason, approved_at, activation_deadline,
        activated_at, created_at, updated_at,
        organization:organizations(name),
-       requester:profiles!requester_profile_id(email)`,
+        requester:profiles!requester_profile_id(email),
+        claims:trial_claims(status, ends_at, revoke_reason, started_at)`,
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -124,7 +136,8 @@ export async function getTrialRequestDetail(id: string): Promise<TrialRequest> {
        rejection_code, rejection_reason, approved_at, activation_deadline,
        activated_at, created_at, updated_at,
        organization:organizations(name),
-       requester:profiles!requester_profile_id(email)`,
+        requester:profiles!requester_profile_id(email),
+        claims:trial_claims(status, ends_at, revoke_reason, started_at)`,
     )
     .eq("id", id)
     .single();
@@ -134,61 +147,11 @@ export async function getTrialRequestDetail(id: string): Promise<TrialRequest> {
 }
 
 export async function reviewTrialRequest(
-  input: ReviewTrialRequestInput,
+  _input: ReviewTrialRequestInput,
 ): Promise<void> {
+  void _input;
   await requireSuperAdmin();
-  const { user } = await getAdminContext();
-  const serviceRoleClient = await getServiceRoleClient();
-
-  // Set reviewed_by directly via update before calling RPC
-  // (RPC has no auth.uid() when called with service role key)
-  await serviceRoleClient
-    .from("trial_requests")
-    .update({ reviewed_by: user.id })
-    .eq("id", input.requestId);
-
-  const { error } = await serviceRoleClient.rpc("review_trial_request", {
-    p_request_id: input.requestId,
-    p_decision: input.decision,
-    p_note: input.note ?? null,
-    p_rejection_code: input.rejectionCode ?? null,
-  });
-
-  if (error) throw new Error(`Gagal memproses review: ${error.message}`);
-
-  // Auto-activate immediately on approval — no device activation step needed
-  if (input.decision === "approved") {
-    const { data: req } = await serviceRoleClient
-      .from("trial_requests")
-      .select("organization_id")
-      .eq("id", input.requestId)
-      .single();
-
-    if (req?.organization_id) {
-      const { error: activateError } = await serviceRoleClient.rpc(
-        "activate_approved_trial",
-        { p_request_id: input.requestId, p_organization_id: req.organization_id },
-      );
-      if (activateError) throw new Error(`Gagal mengaktifkan trial: ${activateError.message}`);
-
-      // Send 2 welcome notifications to the organization
-      await createAdminNotification(serviceRoleClient as never, {
-        audience: "organization",
-        organizationId: req.organization_id,
-        type: "trial_activated",
-        title: "Trial 14 hari Anda telah aktif!",
-        body: "Selamat! Akses penuh fitur Starter kini tersedia. Mulai eksplorasi dashboard, buat frame, dan siapkan kiosk Anda.",
-      });
-      await createAdminNotification(serviceRoleClient as never, {
-        audience: "organization",
-        organizationId: req.organization_id,
-        type: "trial_setup_guide",
-        title: "Cara memulai: pasangkan device kiosk",
-        body: "Login ke aplikasi POSKART di tablet Anda, lalu masuk ke Settings > Pair Device dan masukkan kode yang muncul di halaman Devices pada dashboard.",
-        href: "/devices",
-      });
-    }
-  }
+  throw new Error("Trial tidak lagi memerlukan review. Pemilik organisasi dapat langsung memulai trial.");
 }
 
 export async function revokeTrialByRequestId(
@@ -196,43 +159,18 @@ export async function revokeTrialByRequestId(
   reason: string,
 ): Promise<void> {
   await requireSuperAdmin();
-  const { user } = await getAdminContext();
-  const serviceRoleClient = await getServiceRoleClient();
-
-  const { data: claim } = await serviceRoleClient
-    .from("trial_claims")
-    .select("id, organization_id")
-    .eq("request_id", requestId)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (!claim) throw new Error("Tidak ada trial aktif untuk request ini.");
-
-  const { error: claimError } = await serviceRoleClient
-    .from("trial_claims")
-    .update({
-      status: "revoked",
-      revoked_at: new Date().toISOString(),
-      revoked_by: user.id,
-      revoke_reason: reason,
-    })
-    .eq("id", claim.id);
-
-  if (claimError) throw new Error(`Gagal merevoke trial: ${claimError.message}`);
-
-  // Revert subscription to free
-  const { error: subError } = await serviceRoleClient
-    .from("subscriptions")
-    .update({ status: "free", plan_id: "free", current_period_end: null })
-    .eq("organization_id", claim.organization_id);
-
-  if (subError) throw new Error(`Gagal mereset subscription: ${subError.message}`);
-
-  // Mark request as canceled
-  await serviceRoleClient
-    .from("trial_requests")
-    .update({ status: "canceled" })
-    .eq("id", requestId);
+  const { supabase } = await getAdminContext();
+  const trimmedReason = reason.trim();
+  if (trimmedReason.length < 5 || trimmedReason.length > 1000) {
+    throw new Error("Alasan pembatalan harus berisi 5–1000 karakter.");
+  }
+  const { error } = await supabase.rpc("revoke_trial", {
+    p_request_id: requestId,
+    p_reason: trimmedReason,
+  });
+  if (error) throw new Error(`Gagal membatalkan trial: ${error.message}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/trial");
 }
 
 export async function revokeTrialClaim(
@@ -240,20 +178,14 @@ export async function revokeTrialClaim(
   reason: string,
 ): Promise<void> {
   await requireSuperAdmin();
-  const { user } = await getAdminContext();
   const serviceRoleClient = await getServiceRoleClient();
-
-  const { error } = await serviceRoleClient
+  const { data: claim, error } = await serviceRoleClient
     .from("trial_claims")
-    .update({
-      status: "revoked",
-      revoked_at: new Date().toISOString(),
-      revoked_by: user.id,
-      revoke_reason: reason,
-    })
-    .eq("id", claimId);
-
-  if (error) throw new Error(`Gagal merevoke trial: ${error.message}`);
+    .select("request_id")
+    .eq("id", claimId)
+    .single();
+  if (error || !claim) throw new Error("Trial tidak ditemukan.");
+  await revokeTrialByRequestId(claim.request_id, reason);
 }
 
 export async function createTrialOverride(
@@ -279,29 +211,31 @@ export async function createTrialOverride(
 
 export async function submitTrialRequest(input?: {
   hardwareIdHash?: string | null;
-}): Promise<{ requestId: string; autoRejected: boolean; rejectionCode: string | null }> {
+}): Promise<{ requestId: string | null; autoRejected: boolean; rejectionCode: string | null; alreadyActive: boolean }> {
   const { supabase, user } = await getAdminContext();
 
   // 3 trial submissions per user per 24 hours (anti-spam)
   const { createSupabaseAdminClient } = await import("@/lib/supabase/admin");
   const adminClient = createSupabaseAdminClient();
-  const { data: rlAllowed } = await adminClient.rpc("check_rate_limit", {
+  const { data: rlAllowed, error: rateLimitError } = await adminClient.rpc("check_rate_limit", {
     p_key: `trial_submit:${user.id}`,
     p_window_secs: 86400,
     p_max: 3,
   });
+  if (rateLimitError) throw new Error("Trial belum dapat diproses. Silakan coba lagi.");
   if (rlAllowed === false) {
     throw new Error("Terlalu banyak permintaan trial. Coba lagi besok.");
   }
 
-  const { data: membership } = await supabase
+  const { data: membership, error: membershipError } = await supabase
     .from("organization_members")
     .select("organization_id")
     .eq("profile_id", user.id)
     .eq("role", "owner")
     .maybeSingle();
 
-  if (!membership) throw new Error("Hanya pemilik organisasi yang dapat mengajukan trial.");
+  if (membershipError) throw new Error("Gagal memeriksa pemilik organisasi.");
+  if (!membership) throw new Error("Hanya pemilik organisasi yang dapat memulai trial.");
 
   const { data, error } = await supabase.rpc("submit_trial_request", {
     p_organization_id: membership.organization_id,
@@ -314,12 +248,65 @@ export async function submitTrialRequest(input?: {
     p_event_date: null,
   });
 
-  if (error) throw new Error(`Gagal mengajukan trial: ${error.message}`);
+  if (error) throw new Error(`Gagal memulai trial: ${error.message}`);
+
+  const result = data as {
+    request_id: string | null;
+    auto_rejected: boolean;
+    rejection_code: string | null;
+    already_active: boolean;
+  };
+  if (!result.auto_rejected) {
+    revalidatePath("/dashboard");
+    revalidatePath("/trial");
+    if (!result.already_active) {
+      // Notification failures must not turn a committed activation into an error.
+      try {
+        await createAdminNotification(supabase, {
+          audience: "organization",
+          organizationId: membership.organization_id,
+          type: "trial_activated",
+          title: "Trial 14 hari Anda telah aktif!",
+          body: "Akses fitur Starter kini tersedia. Pasangkan kiosk Anda untuk mulai menggunakan POSKART.",
+          href: "/devices",
+        });
+      } catch (notificationError) {
+        console.error("Trial activation notification failed", notificationError);
+      }
+    }
+  }
 
   return {
-    requestId: (data as { request_id: string }).request_id,
-    autoRejected: (data as { auto_rejected: boolean }).auto_rejected,
-    rejectionCode: (data as { rejection_code: string | null }).rejection_code,
+    requestId: result.request_id,
+    autoRejected: result.auto_rejected,
+    rejectionCode: result.rejection_code,
+    alreadyActive: result.already_active,
+  };
+}
+
+export async function getMyTrialEligibility(): Promise<TrialEligibility> {
+  const { supabase, user } = await getAdminContext();
+  const { data: membership, error: membershipError } = await supabase
+    .from("organization_members")
+    .select("organization_id")
+    .eq("profile_id", user.id)
+    .eq("role", "owner")
+    .maybeSingle();
+  if (membershipError) throw new Error("Gagal memeriksa pemilik organisasi.");
+  if (!membership) {
+    return { checkedAt: new Date().toISOString(), eligible: false, reason: "not_owner", claimStatus: null, endsAt: null, revokeReason: null };
+  }
+  const { data, error } = await supabase.rpc("get_trial_eligibility", {
+    p_organization_id: membership.organization_id,
+  });
+  if (error || !data) throw new Error("Gagal memeriksa jatah trial.");
+  return {
+    checkedAt: data.checked_at,
+    eligible: data.eligible === true,
+    reason: data.reason,
+    claimStatus: data.claim_status,
+    endsAt: data.ends_at,
+    revokeReason: data.revoke_reason,
   };
 }
 
@@ -344,10 +331,10 @@ export async function getMyTrialRequest(): Promise<TrialRequest | null> {
        rejection_code, rejection_reason, approved_at, activation_deadline,
        activated_at, created_at, updated_at,
        organization:organizations(name),
-       requester:profiles!requester_profile_id(email)`,
+        requester:profiles!requester_profile_id(email),
+        claims:trial_claims(status, ends_at, revoke_reason, started_at)`,
     )
     .eq("organization_id", membership.organization_id)
-    .eq("requester_profile_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

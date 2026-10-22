@@ -45,7 +45,7 @@ import {
   eventPeriodTabs,
   pieColors,
 } from "@/features/admin/dashboard/dashboard-overview.constants";
-import { useDashboardData, useSubscriptionStatus, useMyTrialRequest } from "@/features/admin/dashboard/use-dashboard";
+import { useDashboardData, useSubscriptionStatus, useMyTrialEligibility } from "@/features/admin/dashboard/use-dashboard";
 import type {
   Device,
   DashboardTransactionStat,
@@ -57,6 +57,7 @@ import type {
 import { cn, formatCurrency } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { TrialDialog } from "@/features/admin/trial/trial-dialog";
+import { trialEligibilityTitle, trialUnavailableMessage } from "@/lib/trial-policy";
 import { SubscriptionPaymentDashboardNotice } from "@/features/billing/subscription/subscription-payments-panel";
 
 const dashboardInnerCardClass =
@@ -185,7 +186,7 @@ export function DashboardOverview() {
   const { t } = useI18n();
   const { data, isError, isLoading } = useDashboardData();
   const { data: subscription } = useSubscriptionStatus();
-  const { data: trialRequest } = useMyTrialRequest();
+  const { data: trialEligibility } = useMyTrialEligibility();
   const chartsMounted = useClientMounted();
   const [selectedEventPeriod, setSelectedEventPeriod] =
     useState<EventPeriodKey>("daily");
@@ -251,19 +252,17 @@ export function DashboardOverview() {
   return (
     <div className="space-y-6">
       <SubscriptionPaymentDashboardNotice />
-      {!canUseOperatingTools && subscription?.status !== "trialing" ? (
-        trialRequest && !["rejected", "canceled", "activation_expired"].includes(trialRequest.status) ? (
+      {!canUseOperatingTools && trialEligibility ? (
+        !trialEligibility.eligible ? (
           <div className="flex items-center justify-between gap-6 rounded-3xl border border-zinc-200 bg-white px-6 py-5 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-amber-100 text-amber-700">
                 <span className="text-xs font-bold">14</span>
               </div>
               <div>
-                <p className="text-sm font-semibold text-zinc-950">Trial sedang ditinjau</p>
+                <p className="text-sm font-semibold text-zinc-950">{trialEligibilityTitle(trialEligibility)}</p>
                 <p className="text-xs text-zinc-500">
-                  {trialRequest.status === "approved"
-                    ? "Disetujui — aktifkan dari device kiosk Anda."
-                    : "Request Anda sedang dalam antrean review."}
+                  {trialUnavailableMessage(trialEligibility.reason)}
                 </p>
               </div>
             </div>
@@ -283,7 +282,7 @@ export function DashboardOverview() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-zinc-950">14 hari trial gratis</p>
-                <p className="text-xs text-zinc-500">1 device · fitur Starter · tanpa kartu kredit</p>
+                <p className="text-xs text-zinc-500">Langsung aktif · 1 device · sekali per organisasi dan email</p>
               </div>
             </div>
             <button
@@ -291,12 +290,12 @@ export function DashboardOverview() {
               onClick={() => setTrialOpen(true)}
               className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0 rounded-full" })}
             >
-              Ajukan sekarang
+              Mulai sekarang
             </button>
           </div>
         )
       ) : null}
-      <TrialDialog open={trialOpen} onOpenChange={setTrialOpen} trialRequest={trialRequest ?? null} />
+      <TrialDialog open={trialOpen} onOpenChange={setTrialOpen} eligibility={trialEligibility ?? null} />
       {canUseOperatingTools && !hasDevices ? (
         <Link
           href="/devices?action=create"
