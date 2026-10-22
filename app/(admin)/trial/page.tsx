@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
-import { getMyTrialRequest } from "@/server/admin/actions/trial-actions";
+import { getMyTrialEligibility } from "@/server/admin/actions/trial-actions";
 import { getSubscriptionStatus } from "@/server/admin/actions/dashboard-actions";
 import { TrialPage } from "@/features/admin/trial/trial-page";
 
 export default async function TrialRoute() {
-  const [subscription, trialRequest] = await Promise.all([
+  const [subscription, eligibility] = await Promise.all([
     getSubscriptionStatus(),
-    getMyTrialRequest(),
+    getMyTrialEligibility(),
   ]);
 
   // Already on paid plan — no trial needed
@@ -14,5 +14,5 @@ export default async function TrialRoute() {
     redirect("/dashboard");
   }
 
-  return <TrialPage subscription={subscription} trialRequest={trialRequest} />;
+  return <TrialPage eligibility={eligibility} />;
 }

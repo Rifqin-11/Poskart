@@ -11,14 +11,16 @@ export type TrialClaimStatus = "active" | "converted" | "expired" | "revoked";
 
 export type TrialRiskFlag =
   | "duplicate_owner"
+  | "duplicate_organization"
+  | "duplicate_email"
   | "duplicate_hardware"
   | "duplicate_payout";
 
 export type TrialRequest = {
   id: string;
-  organizationId: string;
+  organizationId: string | null;
   organizationName: string | null;
-  requesterProfileId: string;
+  requesterProfileId: string | null;
   requesterEmail: string | null;
   deviceId: string | null;
   hardwareIdHash: string | null;
@@ -40,13 +42,25 @@ export type TrialRequest = {
   activatedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  claimStatus: TrialClaimStatus | null;
+  trialEndsAt: string | null;
+  revokeReason: string | null;
+};
+
+export type TrialEligibility = {
+  checkedAt: string;
+  eligible: boolean;
+  reason: string | null;
+  claimStatus: TrialClaimStatus | null;
+  endsAt: string | null;
+  revokeReason: string | null;
 };
 
 export type TrialClaim = {
   id: string;
   requestId: string;
-  organizationId: string;
-  ownerProfileId: string;
+  organizationId: string | null;
+  ownerProfileId: string | null;
   deviceId: string | null;
   startedAt: string;
   endsAt: string;

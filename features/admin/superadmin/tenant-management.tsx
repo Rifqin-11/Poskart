@@ -677,7 +677,7 @@ export function TenantManagement() {
                 <TabsTrigger value="transaction-requests">
                   Transaction Requests
                 </TabsTrigger>
-                <TabsTrigger value="trial-requests">Trial Requests</TabsTrigger>
+                <TabsTrigger value="trial-requests">Trial Organisasi</TabsTrigger>
                 <TabsTrigger value="product-feedback">
                   Product Feedback
                 </TabsTrigger>

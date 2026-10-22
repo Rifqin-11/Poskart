@@ -301,6 +301,9 @@ export function useRevokeTrialClaim() {
       queryClient.invalidateQueries({
         queryKey: adminQueryKeys.trialRequestsRoot,
       });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.subscriptionStatus });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.myTrialRequest });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.myTrialEligibility });
     },
   });
 }
@@ -319,6 +322,9 @@ export function useRevokeTrialByRequestId() {
       queryClient.invalidateQueries({
         queryKey: adminQueryKeys.trialRequestsRoot,
       });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.subscriptionStatus });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.myTrialRequest });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.myTrialEligibility });
     },
   });
 }
