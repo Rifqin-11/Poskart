@@ -14,6 +14,8 @@ const publicRoutePrefixes = [
   "/about",
   "/contact",
   "/download",
+  "/software-receipt-photobooth",
+  "/receipt-photobooth-app",
   "/terms",
   "/privacy",
   "/refund-policy",
@@ -21,7 +23,7 @@ const publicRoutePrefixes = [
 ];
 
 function isPublicRoute(pathname: string) {
-  if (pathname === "/") return true;
+  if (pathname === "/" || pathname === "/robots.txt" || pathname === "/sitemap.xml") return true;
   return publicRoutePrefixes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );

@@ -13,15 +13,14 @@ const geistMono = Geist_Mono({
 });
 
 import type { Metadata } from "next";
+import { HOME_DESCRIPTION, HOME_TITLE, SITE_URL } from "@/lib/seo";
 
-export const metadataBase = new URL("https://www.poskart.my.id");
+export const metadataBase = new URL(SITE_URL);
 
 export const metadata: Metadata = {
   metadataBase,
-  title: "Receipt Photobooth App Indonesia | POSKART",
-  description:
-    "POSKART adalah receipt photobooth app untuk mengatur frame, kamera, printer, QRIS, antrean, gallery, dan banyak booth dari satu dashboard.",
-  keywords: ["Receipt Photobooth App", "Aplikasi Receipt Photobooth", "Photobooth Android", "Receipt Photobooth QRIS"],
+  title: HOME_TITLE,
+  description: HOME_DESCRIPTION,
   authors: [{ name: "POSKART Indonesia" }],
   applicationName: "POSKART",
   creator: "POSKART Indonesia",
@@ -36,9 +35,8 @@ export const metadata: Metadata = {
     locale: "id_ID",
     url: "/",
     siteName: "POSKART",
-    title: "Receipt Photobooth App Indonesia | POSKART",
-    description:
-      "POSKART adalah receipt photobooth app untuk mengatur frame, kamera, printer, QRIS, antrean, gallery, dan banyak booth dari satu dashboard.",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
     images: [
       {
         url: "/opengraph-image.png",
@@ -50,9 +48,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Receipt Photobooth App Indonesia | POSKART",
-    description:
-      "Kelola receipt photobooth dari satu dashboard. Customize theme, frame, pembayaran QRIS, antrean, dan hasil foto dengan mudah.",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
     images: ["/opengraph-image.png"],
     creator: "@poskart_id",
   },

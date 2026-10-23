@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { receiptPageLanguages, SITE_URL } from "@/lib/seo";
 
 /**
  * Only canonical, indexable, stable marketing routes belong here.
@@ -9,7 +10,7 @@ import type { MetadataRoute } from "next";
  * every route sends false freshness signals to crawlers.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://www.poskart.my.id";
+  const baseUrl = SITE_URL;
 
   const publicRoutes = [
     {
@@ -32,6 +33,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly" as const,
       priority: 0.9,
     },
+    ...Object.values(receiptPageLanguages).map((path) => ({
+      url: `${baseUrl}${path}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+      alternates: {
+        languages: Object.fromEntries(
+          Object.entries(receiptPageLanguages).map(([language, route]) => [language, `${baseUrl}${route}`]),
+        ),
+      },
+    })),
     {
       url: `${baseUrl}/terms`,
       changeFrequency: "yearly" as const,

@@ -54,13 +54,13 @@ export function HeroSection() {
       <div className={styles.layout}>
         <div className={styles.copy}>
           <p className={styles.eyebrow}><span /> POSKART / RECEIPT PHOTOBOOTH</p>
-          <h1 id="retro-hero-title">Momen kecil.<br />Kenangan yang<br /><em>bisa dipegang.</em></h1>
-          <p className={styles.description}>Receipt Photobooth App untuk bisnis Anda. Dari senyum di depan kamera sampai struk foto di tangan, semuanya dalam satu platform.</p>
+          <h1 id="retro-hero-title">Receipt Photobooth<br /><em>App & Software.</em></h1>
+          <p className={styles.description}>Ubah tablet Android menjadi photobooth bisnis Anda. Atur frame, cetak struk foto, dan terima QRIS dari satu platform.</p>
           <div className={styles.actions}>
             <LandingButton variant="primary" size="md" asChild><Link href="/register">Coba gratis <ArrowUpRight size={18} /></Link></LandingButton>
             <Link href="#workflow" className={styles.secondary}>Lihat cara kerja <span>↗</span></Link>
           </div>
-          <div className={styles.note}>Untuk coffee shop, event, dan ruang kreatif Anda.</div>
+          <div className={styles.note}>Momen kecil. Kenangan yang bisa dipegang.</div>
           <p data-retro-hint className={styles.hint}><ArrowDown size={16} /> Scroll untuk mencetak kenangan</p>
         </div>
         <HeroRetroScene />
