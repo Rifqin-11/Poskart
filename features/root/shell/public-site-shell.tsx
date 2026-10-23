@@ -223,6 +223,14 @@ export function PublicFooter({
             </p>
           </div>
           <div className="flex flex-col items-start gap-4 sm:items-end">
+            <nav aria-label="Produk POSKART" className="flex flex-wrap gap-x-5 gap-y-2">
+              <Link href="/software-receipt-photobooth" className="text-zinc-600 transition-colors hover:text-[#00357B]">
+                Software receipt photobooth
+              </Link>
+              <Link href="/receipt-photobooth-app" hrefLang="en" lang="en" className="text-zinc-600 transition-colors hover:text-[#00357B]">
+                Receipt photobooth app (English)
+              </Link>
+            </nav>
             <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2">
               {legalLinks.map((link) =>
                 link.external ? (
