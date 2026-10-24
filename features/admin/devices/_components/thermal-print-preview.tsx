@@ -6,9 +6,11 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { thermalPreviewRaster, type ThermalPreviewOptions } from "@/lib/thermal-preview";
+import { printPersonMask } from "@/lib/print-person-segmenter";
 
-export function ThermalPrintPreview({ brightness, contrast, dotDensity, shadowLift }: {
-  brightness: number; contrast: number; dotDensity: number; shadowLift: number;
+export function ThermalPrintPreview({ brightness, contrast, dotDensity, darkSmoothing, localContrast, backgroundLift }: {
+  brightness: number; contrast: number; dotDensity: number;
+  darkSmoothing: number; localContrast: number; backgroundLift: number;
 }) {
   const [source, setSource] = useState<HTMLCanvasElement | null>(null);
   const [original, setOriginal] = useState("");
@@ -20,14 +22,15 @@ export function ThermalPrintPreview({ brightness, contrast, dotDensity, shadowLi
   const [fileError, setFileError] = useState("");
   const [result, setResult] = useState({ src: "", key: "", error: "" });
   const pickGeneration = useRef(0);
-  const key = JSON.stringify([brightness, contrast, dotDensity, shadowLift, paper, style, sharpness]);
+  const key = JSON.stringify([brightness, contrast, dotDensity, darkSmoothing, localContrast, backgroundLift, paper, style, sharpness]);
   const updating = source !== null && key !== result.key;
 
   useEffect(() => () => { pickGeneration.current++; }, []);
 
   useEffect(() => {
     if (!source) return;
-    const timer = setTimeout(() => {
+    let cancelled = false;
+    const timer = setTimeout(async () => {
       try {
         const width = paper === "58mm" ? 384 : 576;
         const canvas = document.createElement("canvas");
@@ -40,18 +43,20 @@ export function ThermalPrintPreview({ brightness, contrast, dotDensity, shadowLi
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
         const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const personMask = backgroundLift > 0 ? await printPersonMask(source, canvas.width, canvas.height) : undefined;
+        if (cancelled) return;
         const pixels = thermalPreviewRaster(data.data, canvas.width, canvas.height, {
-          brightness, contrast, dotDensity, shadowLift, sharpness, printStyle: style,
+          brightness, contrast, dotDensity, darkSmoothing, localContrast, backgroundLift, personMask, sharpness, printStyle: style,
         });
         data.data.set(pixels);
         ctx.putImageData(data, 0, 0);
         setResult({ src: canvas.toDataURL("image/png"), key, error: "" });
       } catch {
-        setResult({ src: "", key, error: "Preview gagal dibuat. Pilih foto JPG/PNG dengan rasio normal." });
+        if (!cancelled) setResult({ src: "", key, error: backgroundLift > 0 ? "Preview/segmentasi gagal. Coba nonaktifkan Terangkan latar atau pilih foto lain." : "Preview gagal dibuat. Pilih foto JPG/PNG dengan rasio normal." });
       }
     }, 350);
-    return () => clearTimeout(timer);
-  }, [source, brightness, contrast, dotDensity, shadowLift, paper, style, sharpness, key]);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [source, brightness, contrast, dotDensity, darkSmoothing, localContrast, backgroundLift, paper, style, sharpness, key]);
 
   async function pick(file?: File) {
     if (!file) return;

@@ -15,7 +15,8 @@ function load(path, mocks = {}) {
   }, testModule);
   return testModule.exports;
 }
-const { thermalPreviewRaster } = load("../lib/thermal-preview.ts");
+const photoTone = load("../lib/photo-print-tone.ts");
+const { thermalPreviewRaster } = load("../lib/thermal-preview.ts", { "./photo-print-tone": photoTone });
 const tuning = load("../lib/printer-tuning.ts");
 const options = { brightness: 0, contrast: 0, dotDensity: 1, shadowLift: 0, sharpness: 20, printStyle: "thermal_photo" };
 const width = 384, height = 64;
@@ -90,7 +91,7 @@ async function postSettings(body) {
       requireKioskContext: async () => context,
       requireOrganizationDevice: async (_ctx, deviceId) => {
         assert.equal(deviceId, "device-1");
-        return { id: deviceId, printer_shadow_lift: 42 };
+        return { id: deviceId, printer_shadow_lift: 42, printer_dark_smoothing: 20, printer_local_contrast: 30, printer_background_lift: 40 };
       },
       jsonOk: (data) => data,
       jsonError: (error) => { throw error; },
@@ -110,6 +111,52 @@ test("old kiosk payload preserves shadow lift; new payload is device/org scoped"
   assert.deepEqual(current.filters, [["id", "device-1"], ["organization_id", "org-1"]]);
   assert.equal((await postSettings({ shadowLift: 0 })).patch.printer_shadow_lift, 0);
   assert.equal((await postSettings({ shadowLift: 999 })).patch.printer_shadow_lift, 100);
+});
+
+test("new controls preserve omitted values from older kiosks and respect explicit zero", async () => {
+  const old = await postSettings({ brightness: 10 });
+  assert.equal(old.patch.printer_dark_smoothing, 20);
+  assert.equal(old.patch.printer_local_contrast, 30);
+  assert.equal(old.patch.printer_background_lift, 40);
+  const current = await postSettings({ darkSmoothing: 0, localContrast: 500, backgroundLift: -20 });
+  assert.equal(current.patch.printer_dark_smoothing, 0);
+  assert.equal(current.patch.printer_local_contrast, 100);
+  assert.equal(current.patch.printer_background_lift, 0);
+});
+
+test("new controls at zero are exactly the original raster", () => {
+  const source = solid(40);
+  assert.deepEqual(thermalPreviewRaster(source, width, height, options), thermalPreviewRaster(source, width, height,
+    { ...options, darkSmoothing: 0, localContrast: 0, backgroundLift: 0 }));
+});
+
+test("dark smoothing opens black backgrounds; segmentation preserves people", () => {
+  const source = solid(10), before = source.slice();
+  assert.ok(coverage(thermalPreviewRaster(source, width, height, { ...options, darkSmoothing: 100 })) < .8);
+  const values = new Float64Array(64).fill(40), people = new Float32Array(64).fill(1);
+  const subject = photoTone.photoPrintTone(values, 8, 8, 0, 0, 100, people);
+  assert.deepEqual(subject, values);
+  const background = photoTone.photoPrintTone(values, 8, 8, 0, 0, 100, new Float32Array(64));
+  assert.ok(background.every((v) => v === 255));
+  assert.deepEqual(source, before);
+});
+
+test("CLAHE is bounded and robust at tiny sizes and flat photos", () => {
+  for (const size of [1, 8, 65]) {
+    const result = photoTone.photoPrintTone(new Float64Array(size * size).fill(100), size, size, 0, 100);
+    assert.ok(result.every((v) => Number.isFinite(v) && v >= 0 && v <= 255));
+  }
+});
+
+test("photo-tuning migration retains atomic pairing and legacy column", () => {
+  const migration = readFileSync(new URL("../supabase/migrations/20261024190000_device_photo_print_tuning.sql", import.meta.url), "utf8");
+  for (const field of ["dark_smoothing", "local_contrast", "background_lift"]) {
+    assert.ok(migration.includes(`check (printer_${field} between 0 and 100)`));
+  }
+  assert.match(migration, /for update/);
+  assert.match(migration, /pairing.organization_id <> p_organization_id/);
+  assert.match(migration, /to service_role/);
+  assert.doesNotMatch(migration, /drop column/);
 });
 
 test("pairing migration preserves existing checks and adds bounded shadow lift atomically", () => {

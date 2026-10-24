@@ -95,6 +95,9 @@ const EMPTY_BOOTH: BoothInput = {
   printerContrast: 0,
   printerDotDensity: 1,
   printerShadowLift: 0,
+  printerDarkSmoothing: 0,
+  printerLocalContrast: 0,
+  printerBackgroundLift: 0,
 };
 
 function getDeviceTourSteps(t: (key: DictionaryKey) => string): FeatureTourStep[] {

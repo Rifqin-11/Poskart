@@ -1,11 +1,16 @@
 /** Browser-only simulation of the kiosk's USB raster pipeline. Input is already
  * resized to 384/576 dots. Canvas resampling can differ slightly from Dart image.
- * No auto exposure, histogram normalization, or background detection is used. */
+ * No automatic exposure/night detection. Optional controls are manual only. */
+import { photoPrintTone } from "./photo-print-tone";
 export type ThermalPreviewOptions = {
   brightness: number;
   contrast: number;
   dotDensity: number;
-  shadowLift: number;
+  shadowLift?: number; // Legacy simulation compatibility, no longer exposed.
+  darkSmoothing?: number;
+  localContrast?: number;
+  backgroundLift?: number;
+  personMask?: Float32Array;
   sharpness: number;
   printStyle: "smooth" | "retro" | "thermal_photo";
 };
@@ -76,8 +81,8 @@ export function thermalPreviewRaster(
     }
   }
   // Monotonic curve: preserve relative shadow detail and leave whites intact.
-  const liftStrength = clamp(options.shadowLift, 0, 100) * 1.1;
-  const values = new Float64Array(width * height);
+  const liftStrength = clamp(options.shadowLift ?? 0, 0, 100) * 1.1;
+  let values: Float64Array = new Float64Array(width * height);
   for (let p = 0; p < values.length; p++) {
     if (liftStrength > 0) {
       const lift = liftStrength * (1 - luminance(rgb, p * 3) / 255) ** 2;
@@ -85,6 +90,10 @@ export function thermalPreviewRaster(
     }
     values[p] = luminance(rgb, p * 3);
   }
+  if ((options.darkSmoothing ?? 0) > 0 || (options.localContrast ?? 0) > 0 || (options.backgroundLift ?? 0) > 0) {
+    values = Float64Array.from(photoPrintTone(values, width, height, options.darkSmoothing, options.localContrast, options.backgroundLift, options.personMask), (v) => Math.round(v));
+  }
+  const ordered = Uint8Array.from(values, (v) => (options.darkSmoothing ?? 0) > 0 && v < 144 ? 1 : 0);
   const output = new Uint8ClampedArray(rgba.length);
   const density = clamp(options.dotDensity, .5, 1.5);
   const threshold = clamp(132 + (density - 1) * 44, 96, 176);
@@ -92,16 +101,18 @@ export function thermalPreviewRaster(
   function spread(x: number, y: number, error: number) {
     if (x >= 0 && x < width && y >= 0 && y < height) {
       const i = y * width + x;
+      if (ordered[i]) return;
       values[i] = clamp(values[i] + error / 8, 0, 255);
     }
   }
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
     const i = y * width + x;
-    const black = values[i] < (photo ? threshold : clamp(32 + bayer[(y & 3) * 4 + (x & 3)] * 13 + (density - 1) * 80, 0, 255));
+    const orderedThreshold = (bayer[(y & 3) * 4 + (x & 3)] + .5) * 255 / 16 + (density - 1) * 44;
+    const black = values[i] < (photo ? (ordered[i] ? orderedThreshold : threshold) : clamp(32 + bayer[(y & 3) * 4 + (x & 3)] * 13 + (density - 1) * 80, 0, 255));
     const value = black ? 0 : 255;
     output.fill(value, i * 4, i * 4 + 3);
     output[i * 4 + 3] = 255;
-    if (photo) {
+    if (photo && !ordered[i]) {
       const error = values[i] - value;
       spread(x + 1, y, error); spread(x + 2, y, error);
       spread(x - 1, y + 1, error); spread(x, y + 1, error);

@@ -1347,26 +1347,31 @@ export function BoothFormDialog({
                 printer settings.
               </p>
               <div className="mt-5 rounded-xl border border-zinc-200 bg-white p-4">
-                <label className="block text-xs font-semibold text-zinc-800">
-                  Angkat bayangan: {form.printerShadowLift ?? 0}%
-                  <input type="range" className="mt-3 block w-full accent-[#00357B]"
-                    min={PRINTER_TUNING_LIMITS.shadowLift.min}
-                    max={PRINTER_TUNING_LIMITS.shadowLift.max}
-                    step={PRINTER_TUNING_LIMITS.shadowLift.step}
-                    value={form.printerShadowLift ?? 0} disabled={readOnly}
-                    onChange={(e) => setForm({ ...form, printerShadowLift: Number(e.target.value) })} />
-                </label>
+                {([
+                  ["printerDarkSmoothing", "Haluskan latar gelap"],
+                  ["printerLocalContrast", "Kontras lokal (CLAHE)"],
+                  ["printerBackgroundLift", "Terangkan latar (segmentasi orang)"],
+                ] as const).map(([field, label]) => (
+                  <label key={field} className="mb-5 block text-xs font-semibold text-zinc-800">
+                    {label}: {form[field] ?? 0}%
+                    <input type="range" className="mt-3 block w-full accent-[#00357B]" min={0} max={100} step={1}
+                      value={form[field] ?? 0} disabled={readOnly}
+                      onChange={(e) => setForm({ ...form, [field]: Number(e.target.value) })} />
+                  </label>
+                ))}
                 <div className="mt-2 flex items-start justify-between gap-4">
-                  <p className="max-w-prose text-xs leading-5 text-zinc-500">Manual, tanpa auto-levels. Angkat area gelap agar background malam tidak menjadi blok hitam. Nilai 0 menonaktifkan efek dan mempertahankan hasil lama. Simpan perangkat untuk menerapkan ke kiosk.</p>
-                  <Button type="button" variant="ghost" size="sm" disabled={readOnly || !form.printerShadowLift}
-                    onClick={() => setForm({ ...form, printerShadowLift: 0 })}>Nonaktifkan</Button>
+                  <p className="max-w-prose text-xs leading-5 text-zinc-500">Manual, 0 = nonaktif; foto digital tidak berubah. Pada cetakan baru penyesuaian hanya untuk photo slot, teks/logo frame tetap tajam; density global. Cetak ulang tanpa mask memakai penyesuaian global tanpa segmentasi. Periksa rambut/foto grup di preview. Simpan perangkat untuk menerapkan ke kiosk.</p>
+                  <Button type="button" variant="ghost" size="sm" disabled={readOnly}
+                    onClick={() => setForm({ ...form, printerDarkSmoothing: 0, printerLocalContrast: 0, printerBackgroundLift: 0 })}>Nonaktifkan</Button>
                 </div>
               </div>
               <ThermalPrintPreview
                 brightness={form.printerBrightness ?? 0}
                 contrast={form.printerContrast ?? 0}
                 dotDensity={form.printerDotDensity ?? 1}
-                shadowLift={form.printerShadowLift ?? 0}
+                darkSmoothing={form.printerDarkSmoothing ?? 0}
+                localContrast={form.printerLocalContrast ?? 0}
+                backgroundLift={form.printerBackgroundLift ?? 0}
               />
             </div>
 
