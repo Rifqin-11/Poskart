@@ -16,6 +16,9 @@ type PrinterSettingsBody = {
   contrast?: number;
   dotDensity?: number;
   shadowLift?: number;
+  darkSmoothing?: number;
+  localContrast?: number;
+  backgroundLift?: number;
 };
 
 export async function POST(request: Request) {
@@ -54,6 +57,9 @@ export async function POST(request: Request) {
         PRINTER_TUNING_LIMITS.dotDensity.max,
       ),
       updated_at: now,
+      printer_dark_smoothing: clampPrinterTuningValue(body.darkSmoothing, Number(device.printer_dark_smoothing ?? 0), 0, 100),
+      printer_local_contrast: clampPrinterTuningValue(body.localContrast, Number(device.printer_local_contrast ?? 0), 0, 100),
+      printer_background_lift: clampPrinterTuningValue(body.backgroundLift, Number(device.printer_background_lift ?? 0), 0, 100),
       // Older kiosks omit this field: retain the current manual adjustment.
       printer_shadow_lift: clampPrinterTuningValue(
         body.shadowLift,

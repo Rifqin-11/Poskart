@@ -41,3 +41,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Generated from the pinned @mediapipe/tasks-vision package before dev/build.
+/public/mediapipe/wasm/

@@ -53,6 +53,9 @@ export type Device = {
   printerContrast: number;
   printerDotDensity: number;
   printerShadowLift?: number;
+  printerDarkSmoothing?: number;
+  printerLocalContrast?: number;
+  printerBackgroundLift?: number;
   paperRollType?: string | null;
   paperInitialLengthMm?: number | null;
   paperUsedLengthMm?: number | null;

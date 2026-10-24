@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/prepare-mediapipe.mjs && next dev",
+    "build": "node scripts/prepare-mediapipe.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "worker:live-photo": "node workers/live-photo-worker.mjs"
@@ -17,6 +17,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
+    "@mediapipe/tasks-vision": "0.10.35",
     "@signpdf/placeholder-pdf-lib": "^3.3.0",
     "@signpdf/signer-p12": "^3.3.0",
     "@signpdf/signpdf": "^3.3.0",

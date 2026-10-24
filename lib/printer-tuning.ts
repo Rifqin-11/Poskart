@@ -4,6 +4,9 @@ export const PRINTER_TUNING_LIMITS = {
   contrast: { min: -100, max: 100, step: 1 },
   dotDensity: { min: 0.5, max: 1.5, step: 0.05 },
   shadowLift: { min: 0, max: 100, step: 1 },
+  darkSmoothing: { min: 0, max: 100, step: 1 },
+  localContrast: { min: 0, max: 100, step: 1 },
+  backgroundLift: { min: 0, max: 100, step: 1 },
 } as const;
 
 export function clampPrinterTuningValue(

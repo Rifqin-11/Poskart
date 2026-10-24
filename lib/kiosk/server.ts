@@ -64,6 +64,9 @@ export type KioskDeviceRow = {
   printer_contrast: number | null;
   printer_dot_density: number | null;
   printer_shadow_lift: number | null;
+  printer_dark_smoothing: number | null;
+  printer_local_contrast: number | null;
+  printer_background_lift: number | null;
   paper_roll_type: string | null;
   paper_initial_length_mm: number | null;
   paper_used_length_mm: number | null;
@@ -359,7 +362,7 @@ export async function requireOrganizationDevice(
   const { data, error } = await context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,updated_at,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,social_media_consent_enabled,email_delivery_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,printer_shadow_lift,paper_roll_type,paper_initial_length_mm,paper_used_length_mm,paper_installed_at,paper_updated_at,voucher_requested_at,voucher_command,voucher_command_updated_at",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,updated_at,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,social_media_consent_enabled,email_delivery_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,printer_shadow_lift,printer_dark_smoothing,printer_local_contrast,printer_background_lift,paper_roll_type,paper_initial_length_mm,paper_used_length_mm,paper_installed_at,paper_updated_at,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
     .eq("id", normalizedId)
     .eq("organization_id", context.organizationId)
@@ -516,7 +519,7 @@ export async function listOrganizationDevices(context: KioskRequestContext) {
   let query = context.client
     .from("devices")
     .select(
-      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,social_media_consent_enabled,email_delivery_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,printer_shadow_lift,paper_roll_type,paper_initial_length_mm,paper_used_length_mm,paper_installed_at,paper_updated_at,voucher_requested_at,voucher_command,voucher_command_updated_at",
+      "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,social_media_consent_enabled,email_delivery_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,printer_shadow_lift,printer_dark_smoothing,printer_local_contrast,printer_background_lift,paper_roll_type,paper_initial_length_mm,paper_used_length_mm,paper_installed_at,paper_updated_at,voucher_requested_at,voucher_command,voucher_command_updated_at",
     )
     .eq("organization_id", context.organizationId);
   if (context.deviceTokenDeviceId) {
@@ -564,7 +567,7 @@ export async function requirePairedDeviceByHardwareId(
     await createSupabaseAdminClient()
       .from("devices")
       .select(
-        "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,social_media_consent_enabled,email_delivery_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,printer_shadow_lift,paper_roll_type,paper_initial_length_mm,paper_used_length_mm,paper_installed_at,paper_updated_at,voucher_requested_at,voucher_command,voucher_command_updated_at",
+        "id,organization_id,hardware_id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,social_media_consent_enabled,email_delivery_enabled,settings_pin,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,printer_shadow_lift,printer_dark_smoothing,printer_local_contrast,printer_background_lift,paper_roll_type,paper_initial_length_mm,paper_used_length_mm,paper_installed_at,paper_updated_at,voucher_requested_at,voucher_command,voucher_command_updated_at",
       )
       .eq("hardware_id", normalizedHwId)
       .maybeSingle();

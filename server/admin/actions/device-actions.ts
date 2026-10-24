@@ -325,6 +325,9 @@ export async function createDevice(values: BoothInput): Promise<void> {
       PRINTER_TUNING_LIMITS.shadowLift.min,
       PRINTER_TUNING_LIMITS.shadowLift.max,
     ),
+    printer_dark_smoothing: clampPrinterTuningValue(values.printerDarkSmoothing ?? values.printerShadowLift, 0, 0, 100),
+    printer_local_contrast: clampPrinterTuningValue(values.printerLocalContrast, 0, 0, 100),
+    printer_background_lift: clampPrinterTuningValue(values.printerBackgroundLift, 0, 0, 100),
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(`Unable to create device: ${error.message}`);
@@ -384,6 +387,9 @@ export async function validateDevicePairingCode(
         printerContrast: 0,
         printerDotDensity: 1,
         printerShadowLift: 0,
+        printerDarkSmoothing: 0,
+        printerLocalContrast: 0,
+        printerBackgroundLift: 0,
       },
     },
   );
@@ -494,6 +500,9 @@ export async function createPairedDevice(
           PRINTER_TUNING_LIMITS.shadowLift.min,
           PRINTER_TUNING_LIMITS.shadowLift.max,
         ),
+        printerDarkSmoothing: clampPrinterTuningValue(values.printerDarkSmoothing ?? values.printerShadowLift, 0, 0, 100),
+        printerLocalContrast: clampPrinterTuningValue(values.printerLocalContrast, 0, 0, 100),
+        printerBackgroundLift: clampPrinterTuningValue(values.printerBackgroundLift, 0, 0, 100),
       },
     },
   );
@@ -699,6 +708,9 @@ export async function updateDevice(
       PRINTER_TUNING_LIMITS.shadowLift.max,
     );
   }
+  if (patch.printerDarkSmoothing !== undefined) dbPatch.printer_dark_smoothing = clampPrinterTuningValue(patch.printerDarkSmoothing, 0, 0, 100);
+  if (patch.printerLocalContrast !== undefined) dbPatch.printer_local_contrast = clampPrinterTuningValue(patch.printerLocalContrast, 0, 0, 100);
+  if (patch.printerBackgroundLift !== undefined) dbPatch.printer_background_lift = clampPrinterTuningValue(patch.printerBackgroundLift, 0, 0, 100);
   if (
     patch.paperRollType != null ||
     patch.paperInitialLengthMm != null ||
