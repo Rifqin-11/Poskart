@@ -355,15 +355,18 @@ export async function GET(request: Request) {
     const context = await requireKioskContext(request);
     const { searchParams } = new URL(request.url);
     const deviceId = searchParams.get("deviceId") ?? "";
+    const from = searchParams.get("from");
     const device = await requireOrganizationDevice(context, deviceId);
 
     // Fetch transactions for this booth
-    const { data: transactions, error } = await context.client
+    let transactionQuery = context.client
       .from("transactions")
       .select("*")
       .eq("organization_id", context.organizationId)
       .eq("booth", device.name)
       .order("created_at_label", { ascending: false });
+    if (from) transactionQuery = transactionQuery.gte("created_at_label", from);
+    const { data: transactions, error } = await transactionQuery;
 
     if (error) throw error;
 
@@ -372,15 +375,36 @@ export async function GET(request: Request) {
         normalizeQrisTransactionStatus(transaction),
       ) ?? [];
 
+    let voucherQuery = context.client
+      .from("voucher_redemptions")
+      .select("id,redeemed_at,device_id,voucher_codes(code)")
+      .eq("organization_id", context.organizationId)
+      .eq("device_id", device.id)
+      .order("redeemed_at", { ascending: false });
+    if (from) voucherQuery = voucherQuery.gte("redeemed_at", from);
+    const { data: voucherRedemptions, error: voucherError } = await voucherQuery;
+    if (voucherError) throw voucherError;
+    const voucherTransactions = (voucherRedemptions ?? []).map((redemption) => ({
+      id: redemption.id,
+      provider: "Voucher",
+      status: "paid",
+      amount: 0,
+      package_name: "Voucher",
+      customer: redemption.voucher_codes?.[0]?.code ?? "Voucher",
+      created_at_label: redemption.redeemed_at,
+    }));
+    const allTransactions = [...normalizedTransactions, ...voucherTransactions]
+      .sort((a, b) => String(b.created_at_label ?? "").localeCompare(String(a.created_at_label ?? "")));
+
     // Calculate total money (paid transactions)
     const totalAmount =
-      normalizedTransactions
+      allTransactions
         .filter((t) => t.status === "paid")
         .reduce((sum, t) => sum + (t.amount ?? 0), 0) ?? 0;
 
     return jsonOk({
       totalAmount,
-      transactions: normalizedTransactions,
+      transactions: allTransactions,
     });
   } catch (error) {
     return jsonError(error);
