@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import type { LayoutSchema } from "@/types/builder";
 import type { Device } from "@/types/device";
+import { ThermalPrintPreview } from "./thermal-print-preview";
 
 type DeviceFormOptions = {
   themeOptions: ThemeOption[];
@@ -1345,6 +1346,28 @@ export function BoothFormDialog({
                 These values are saved per device and synced to the Flutter
                 printer settings.
               </p>
+              <div className="mt-5 rounded-xl border border-zinc-200 bg-white p-4">
+                <label className="block text-xs font-semibold text-zinc-800">
+                  Angkat bayangan: {form.printerShadowLift ?? 0}%
+                  <input type="range" className="mt-3 block w-full accent-[#00357B]"
+                    min={PRINTER_TUNING_LIMITS.shadowLift.min}
+                    max={PRINTER_TUNING_LIMITS.shadowLift.max}
+                    step={PRINTER_TUNING_LIMITS.shadowLift.step}
+                    value={form.printerShadowLift ?? 0} disabled={readOnly}
+                    onChange={(e) => setForm({ ...form, printerShadowLift: Number(e.target.value) })} />
+                </label>
+                <div className="mt-2 flex items-start justify-between gap-4">
+                  <p className="max-w-prose text-xs leading-5 text-zinc-500">Manual, tanpa auto-levels. Angkat area gelap agar background malam tidak menjadi blok hitam. Nilai 0 menonaktifkan efek dan mempertahankan hasil lama. Simpan perangkat untuk menerapkan ke kiosk.</p>
+                  <Button type="button" variant="ghost" size="sm" disabled={readOnly || !form.printerShadowLift}
+                    onClick={() => setForm({ ...form, printerShadowLift: 0 })}>Nonaktifkan</Button>
+                </div>
+              </div>
+              <ThermalPrintPreview
+                brightness={form.printerBrightness ?? 0}
+                contrast={form.printerContrast ?? 0}
+                dotDensity={form.printerDotDensity ?? 1}
+                shadowLift={form.printerShadowLift ?? 0}
+              />
             </div>
 
             <div className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50/60 p-4 sm:p-5">

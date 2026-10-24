@@ -319,6 +319,12 @@ export async function createDevice(values: BoothInput): Promise<void> {
       PRINTER_TUNING_LIMITS.dotDensity.min,
       PRINTER_TUNING_LIMITS.dotDensity.max,
     ),
+    printer_shadow_lift: clampPrinterTuningValue(
+      values.printerShadowLift,
+      0,
+      PRINTER_TUNING_LIMITS.shadowLift.min,
+      PRINTER_TUNING_LIMITS.shadowLift.max,
+    ),
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(`Unable to create device: ${error.message}`);
@@ -377,6 +383,7 @@ export async function validateDevicePairingCode(
         printerBrightness: 0,
         printerContrast: 0,
         printerDotDensity: 1,
+        printerShadowLift: 0,
       },
     },
   );
@@ -480,6 +487,12 @@ export async function createPairedDevice(
           1,
           PRINTER_TUNING_LIMITS.dotDensity.min,
           PRINTER_TUNING_LIMITS.dotDensity.max,
+        ),
+        printerShadowLift: clampPrinterTuningValue(
+          values.printerShadowLift,
+          0,
+          PRINTER_TUNING_LIMITS.shadowLift.min,
+          PRINTER_TUNING_LIMITS.shadowLift.max,
         ),
       },
     },
@@ -676,6 +689,14 @@ export async function updateDevice(
       1,
       PRINTER_TUNING_LIMITS.dotDensity.min,
       PRINTER_TUNING_LIMITS.dotDensity.max,
+    );
+  }
+  if (patch.printerShadowLift !== undefined) {
+    dbPatch.printer_shadow_lift = clampPrinterTuningValue(
+      patch.printerShadowLift,
+      0,
+      PRINTER_TUNING_LIMITS.shadowLift.min,
+      PRINTER_TUNING_LIMITS.shadowLift.max,
     );
   }
   if (
