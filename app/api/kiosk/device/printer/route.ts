@@ -15,6 +15,7 @@ type PrinterSettingsBody = {
   brightness?: number;
   contrast?: number;
   dotDensity?: number;
+  shadowLift?: number;
 };
 
 export async function POST(request: Request) {
@@ -53,6 +54,13 @@ export async function POST(request: Request) {
         PRINTER_TUNING_LIMITS.dotDensity.max,
       ),
       updated_at: now,
+      // Older kiosks omit this field: retain the current manual adjustment.
+      printer_shadow_lift: clampPrinterTuningValue(
+        body.shadowLift,
+        Number(device.printer_shadow_lift ?? 0),
+        PRINTER_TUNING_LIMITS.shadowLift.min,
+        PRINTER_TUNING_LIMITS.shadowLift.max,
+      ),
     };
 
     const { error } = await context.client
