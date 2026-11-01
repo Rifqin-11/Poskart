@@ -49,9 +49,11 @@ export type Device = {
   printerStatusUpdatedAt?: string | null;
   printerBidirectional: boolean;
   printerBottomSafeZoneMm: number;
+  printerPreset: "outdoor_day" | "night" | "very_dark" | "advanced";
   printerBrightness: number;
   printerContrast: number;
   printerDotDensity: number;
+  printerSharpness: number;
   printerShadowLift?: number;
   printerDarkSmoothing?: number;
   printerLocalContrast?: number;

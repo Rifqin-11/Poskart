@@ -3,6 +3,7 @@ import type { Device } from "@/types/device";
 import {
   PRINTER_TUNING_LIMITS,
   clampPrinterTuningValue,
+  normalizePrinterPreset,
 } from "@/lib/printer-tuning";
 import type { LayoutSchema } from "@/types/builder";
 import type {
@@ -50,7 +51,7 @@ export const TRANSACTION_COLUMNS =
   "id,organization_id,booth,location,customer,package_name,amount,status,provider,created_at_label,created_at,print_count,print_status,print_attempts,print_last_error,paid_at,duitku_status_code,gateway_response,merchant_order_id,archived_at,archive_reason,payout_status";
 
 export const BOOTH_COLUMNS =
-  "id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,social_media_consent_enabled,email_delivery_enabled,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_brightness,printer_contrast,printer_dot_density,printer_shadow_lift,printer_dark_smoothing,printer_local_contrast,printer_background_lift,paper_roll_type,paper_initial_length_mm,paper_used_length_mm,paper_installed_at,paper_updated_at,paper_outer_diameter_mm,paper_core_diameter_mm,voucher_requested_at,voucher_command,voucher_command_updated_at";
+  "id,name,location,status,battery,app_version,last_sync,layout_schema_id,theme,template,pricing_profile,frame_templates,frame_categories_enabled,pricing_profiles,session_countdown_seconds,payment_countdown_seconds,voucher_enabled,test_voucher_enabled,social_media_consent_enabled,email_delivery_enabled,protect_settings,printer_status,printer_name,printer_last_error,printer_status_updated_at,printer_bidirectional,printer_bottom_safe_zone_mm,printer_preset,printer_brightness,printer_contrast,printer_dot_density,printer_sharpness,printer_shadow_lift,printer_dark_smoothing,printer_local_contrast,printer_background_lift,paper_roll_type,paper_initial_length_mm,paper_used_length_mm,paper_installed_at,paper_updated_at,paper_outer_diameter_mm,paper_core_diameter_mm,voucher_requested_at,voucher_command,voucher_command_updated_at";
 
 export type TransactionRow = Omit<
   Transaction,
@@ -264,9 +265,11 @@ export type BoothRow = Omit<
   printer_status_updated_at: string | null;
   printer_bidirectional: boolean;
   printer_bottom_safe_zone_mm: number | null;
+  printer_preset: string | null;
   printer_brightness: number | null;
   printer_contrast: number | null;
   printer_dot_density: number | null;
+  printer_sharpness: number | null;
   printer_shadow_lift: number | null;
   printer_dark_smoothing: number | null;
   printer_local_contrast: number | null;
@@ -635,6 +638,7 @@ export const mapBooth = (row: BoothRow): Device => ({
     PRINTER_TUNING_LIMITS.bottomSafeZoneMm.min,
     PRINTER_TUNING_LIMITS.bottomSafeZoneMm.max,
   ),
+  printerPreset: normalizePrinterPreset(row.printer_preset),
   printerBrightness: clampPrinterTuningValue(
     row.printer_brightness,
     0,
@@ -653,6 +657,7 @@ export const mapBooth = (row: BoothRow): Device => ({
     PRINTER_TUNING_LIMITS.dotDensity.min,
     PRINTER_TUNING_LIMITS.dotDensity.max,
   ),
+  printerSharpness: clampPrinterTuningValue(row.printer_sharpness, 20, 0, 100),
   paperRollType: row.paper_roll_type ?? null,
   printerDarkSmoothing: clampPrinterTuningValue(row.printer_dark_smoothing ?? row.printer_shadow_lift, 0, 0, 100),
   printerLocalContrast: clampPrinterTuningValue(row.printer_local_contrast, 0, 0, 100),
