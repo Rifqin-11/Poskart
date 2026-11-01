@@ -1,5 +1,4 @@
 "use client";
-import { OperationalSubscriptionNotice } from "@/features/admin/subscription/operational-subscription-notice";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -21,20 +20,15 @@ import {
 import { showErrorToast, toast } from "@/lib/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { DeviceStatusBadge } from "@/components/ui/device-status-badge";
-import { Dialog } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardTitle,
 } from "@/components/ui/card";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/features/admin/_components/page-header";
 import {
   useBooths,
-  useCreatePairedBooth,
   useDeleteBooth,
   useUpdateBooth,
   useValidateDevicePairing,
@@ -66,16 +60,20 @@ import type { Device } from "@/types/device";
 
 import { BoothFormDialog } from "./_components/booth-form-dialog";
 import { BoothLocationMap } from "./_components/booth-location-map";
+import {
+  DevicePairingDialog,
+  type DevicePairingStep,
+} from "./_components/device-pairing-dialog";
 import { DeviceErrorsDialog } from "./_components/device-errors-dialog";
 import { FailedPrintsDialog } from "./_components/printer-status-logs-dialog";
 
 const EMPTY_BOOTH: BoothInput = {
   name: "",
   location: "",
-  status: "online",
-  battery: 100,
-  appVersion: "1.0.0",
-  lastSync: "just now",
+  status: "offline",
+  battery: 0,
+  appVersion: "",
+  lastSync: "",
   theme: "",
   template: "",
   pricingProfile: "",
@@ -214,7 +212,6 @@ export function BoothManagement({
   const { isReadOnly } = usePermission();
   const { t } = useI18n();
   const { data: pricingProducts = [] } = usePricing();
-  const createPairedBooth = useCreatePairedBooth();
   const updateBooth = useUpdateBooth();
   const deleteBooth = useDeleteBooth();
   const validatePairing = useValidateDevicePairing();
@@ -225,6 +222,7 @@ export function BoothManagement({
   const [pairingDialogOpen, setPairingDialogOpen] = useState(
     initialAction === "create",
   );
+  const [pairingStep, setPairingStep] = useState<DevicePairingStep>("prepare");
   const [pairingCode, setPairingCode] = useState("");
   const [pairingId, setPairingId] = useState<string | null>(null);
   const [createdDeviceId, setCreatedDeviceId] = useState<string | null>(null);
@@ -325,6 +323,8 @@ export function BoothManagement({
   const openPairing = () => {
     setPairingCode("");
     setPairingId(null);
+    setCreatedDeviceId(null);
+    setPairingStep("prepare");
     setPairingDialogOpen(true);
   };
 
@@ -334,8 +334,7 @@ export function BoothManagement({
       onSuccess: ({ pairingId: nextPairingId, deviceId }) => {
         setPairingId(nextPairingId);
         setCreatedDeviceId(deviceId);
-        setPairingDialogOpen(false);
-        setCreating(true);
+        setPairingStep("paired");
       },
       onError: (error) =>
         showErrorToast(
@@ -782,66 +781,39 @@ export function BoothManagement({
         ) : null}
       </div>
 
-      <Dialog
+      <DevicePairingDialog
         open={pairingDialogOpen}
-        onOpenChange={setPairingDialogOpen}
-        title="Pasangkan device kiosk"
-        className="max-w-md"
-      >
-        {!subscriptionStatus?.isActive ? <OperationalSubscriptionNotice /> : <form
-          className="space-y-5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            confirmPairingCode();
-          }}
-        >
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
-              <p className="font-medium text-zinc-950">Kode berasal dari tablet, bukan dari sini.</p>
-              <ol className="mt-2 space-y-1 text-xs leading-5">
-                <li>1. Buka aplikasi POSKART Kiosk di tablet</li>
-                <li>2. Pilih Login dengan code</li>
-                <li>3. Kode 8 karakter muncul otomatis di layar tablet</li>
-                <li>4. Ketik kode tersebut di bawah — berlaku 10 menit</li>
-              </ol>
-            </div>
-          </div>
-          <Input
-            autoFocus
-            value={pairingCode}
-            onChange={(event) =>
-              setPairingCode(
-                event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""),
-              )
-            }
-            placeholder="AB12CD34"
-            maxLength={10}
-            className="h-12 text-center font-mono text-lg font-semibold tracking-[0.2em]"
-          />
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setPairingDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={pairingCode.length < 8 || validatePairing.isPending}
-            >
-              {validatePairing.isPending ? "Checking..." : "Continue"}
-            </Button>
-          </div>
-        </form>}
-      </Dialog>
+        onOpenChange={(open) => {
+          setPairingDialogOpen(open);
+          if (!open) {
+            setPairingStep("prepare");
+            setPairingCode("");
+            setPairingId(null);
+            setCreatedDeviceId(null);
+          }
+        }}
+        subscriptionActive={Boolean(subscriptionStatus?.isActive)}
+        step={pairingStep}
+        pairingCode={pairingCode}
+        validating={validatePairing.isPending}
+        onCodeChange={(value) =>
+          setPairingCode(value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+        }
+        onContinueToCode={() => setPairingStep("code")}
+        onBackToPrepare={() => setPairingStep("prepare")}
+        onSubmit={confirmPairingCode}
+        onContinueToConfiguration={() => {
+          setPairingDialogOpen(false);
+          setPairingStep("prepare");
+          setCreating(true);
+        }}
+      />
 
       {creating &&
       pairingId &&
       createdDeviceId &&
       !devicesLoading &&
       !subscriptionLoading &&
-      !deviceLimitReached &&
       !isReadOnly("devices") ? (
         <BoothFormDialog
           title="Configure new device"
@@ -854,8 +826,19 @@ export function BoothManagement({
             setCreatedDeviceId(null);
           }}
           onSubmit={(values) => {
+            const {
+              battery: _battery,
+              appVersion: _appVersion,
+              lastSync: _lastSync,
+              status: _status,
+              ...configuration
+            } = values;
+            void _battery;
+            void _appVersion;
+            void _lastSync;
+            void _status;
             updateBooth.mutate(
-              { id: createdDeviceId!, patch: values },
+              { id: createdDeviceId!, patch: configuration },
               {
                 onSuccess: () => {
                   toast.success("Device configured");

@@ -19,10 +19,8 @@ import {
   AlertCircle,
   ArrowRight,
   CircleDollarSign,
-  LayoutTemplate,
   MonitorCheck,
   MonitorSmartphone,
-  Plus,
   Printer,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +36,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/features/admin/_components/empty-state";
 import { LoadingState } from "@/features/admin/_components/loading-state";
 import { StatCard } from "@/features/admin/_components/stat-card";
+import { DashboardSetupGuide } from "@/features/admin/dashboard/setup-guide";
 import { AnimatedNumber } from "@/features/admin/_components/animated-number";
 import {
   dashboardChartBlue,
@@ -59,6 +58,7 @@ import { useI18n } from "@/lib/i18n/i18n-provider";
 import { TrialDialog } from "@/features/admin/trial/trial-dialog";
 import { trialEligibilityTitle, trialUnavailableMessage } from "@/lib/trial-policy";
 import { SubscriptionPaymentDashboardNotice } from "@/features/billing/subscription/subscription-payments-panel";
+import { isDeviceReady } from "@/features/admin/devices/device-readiness";
 
 const dashboardInnerCardClass =
   "rounded-3xl border border-zinc-100 bg-white/90 shadow-sm shadow-zinc-200/60 backdrop-blur";
@@ -185,7 +185,8 @@ function useClientMounted() {
 export function DashboardOverview() {
   const { t } = useI18n();
   const { data, isError, isLoading } = useDashboardData();
-  const { data: subscription } = useSubscriptionStatus();
+  const { data: subscription, isLoading: subscriptionLoading } =
+    useSubscriptionStatus();
   const { data: trialEligibility } = useMyTrialEligibility();
   const chartsMounted = useClientMounted();
   const [selectedEventPeriod, setSelectedEventPeriod] =
@@ -241,8 +242,11 @@ export function DashboardOverview() {
   );
   const hasFeedTransactions = feedTransactions.length > 0;
   const hasPosSales = dashboardData.posSummary.totalTransactions > 0;
-  const isEmptyWorkspace =
-    !hasDevices && !hasTransactions && !hasPosSales && !hasWeeklyChart && !hasMonthlyChart;
+  const hasOperationalHistory =
+    hasTransactions || hasPosSales || hasWeeklyChart || hasMonthlyChart;
+  const hasReadyDevice = dashboardData.devices.some(isDeviceReady);
+  const showSetupGuide =
+    !subscriptionLoading && !hasOperationalHistory && !hasReadyDevice;
   const canUseOperatingTools = Boolean(subscription?.isActive);
 
   if (isLoading) {
@@ -296,37 +300,6 @@ export function DashboardOverview() {
         )
       ) : null}
       <TrialDialog open={trialOpen} onOpenChange={setTrialOpen} eligibility={trialEligibility ?? null} />
-      {canUseOperatingTools && !hasDevices ? (
-        <Link
-          href="/devices?action=create"
-          className="group flex flex-col gap-4 rounded-3xl border border-[#00357B]/20 bg-[#00357B] px-5 py-5 text-white shadow-[0_12px_28px_rgba(0,53,123,0.16)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_16px_34px_rgba(0,53,123,0.22)] active:translate-y-px sm:flex-row sm:items-center sm:justify-between sm:px-6"
-        >
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="grid size-12 shrink-0 place-items-center rounded-2xl border border-white/20 bg-white/10 text-white">
-              <MonitorSmartphone className="size-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-blue-100">
-                <span className="size-1.5 rounded-full bg-[#F5A3AE]" />
-                Langkah pertama
-              </p>
-              <p className="mt-1 text-base font-semibold leading-6 tracking-tight sm:text-lg">
-                Pasangkan device kiosk pertama Anda
-              </p>
-              <p className="mt-1 text-xs leading-5 text-blue-100 sm:text-sm">
-                Login di tablet POSKART, lalu masukkan kode pairing di sini.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex shrink-0 items-center sm:pl-4">
-            <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-[#00357B] transition-colors duration-200 group-hover:bg-blue-50 sm:w-auto sm:min-w-36">
-              Mulai pairing
-              <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </span>
-          </div>
-        </Link>
-      ) : null}
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">
@@ -377,51 +350,11 @@ export function DashboardOverview() {
         </div>
       ) : null}
 
-      {isEmptyWorkspace ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-2xl">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-600">
-                <LayoutTemplate className="size-3.5 text-red-500" />
-                New workspace
-              </div>
-              <h2 className="text-xl font-semibold tracking-tight">
-                Your POSKART dashboard is ready.
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">
-                No devices, transactions, or analytics have been recorded yet.
-                {canUseOperatingTools
-                  ? "Add your first device, create frames, and publish a builder layout to start collecting operational data."
-                  : "Explore all admin menus and prepare your frames, pricing, and layouts for free. Activate a subscription to pair devices and create transactions."}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {canUseOperatingTools ? (
-                <>
-                  <Link href="/templates" className={buttonVariants({ variant: "outline" })}>
-                    <LayoutTemplate className="size-4" />
-                    Create frame
-                  </Link>
-                  <Link href="/devices" className={buttonVariants()}>
-                    <Plus className="size-4" />
-                    Add device
-                  </Link>
-                </>
-              ) : (
-                <>
-                <Link href="/templates" className={buttonVariants({ variant: "outline" })}>
-                  <LayoutTemplate className="size-4" />
-                  Create frame
-                </Link>
-                <Link href="/settings?tab=organization&subscription=required" className={buttonVariants()}>
-                  <Plus className="size-4" />
-                  Activate subscription
-                </Link>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      {showSetupGuide ? (
+        <DashboardSetupGuide
+          subscriptionActive={canUseOperatingTools}
+          devices={dashboardData.devices}
+        />
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -490,6 +423,13 @@ export function DashboardOverview() {
                   <Progress value={device.battery} className="mt-3" />
                 </div>
               ))
+            ) : showSetupGuide ? (
+              <EmptyState
+                title={t("dashboard.deviceNetworkEmptyTitle")}
+                description={t("dashboard.deviceNetworkEmptyDescription")}
+                icon={MonitorSmartphone}
+                className="rounded-3xl border-blue-100 bg-[#f7f9ff] py-8"
+              />
             ) : (
               <div className="relative overflow-hidden rounded-4xl border border-blue-100 bg-[#f7f9ff] px-5 py-10 text-center">
                 <div className="absolute -right-14 -top-16 size-48 rounded-full bg-blue-100/70 blur-3xl" />

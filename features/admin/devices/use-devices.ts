@@ -36,8 +36,11 @@ export function useCreatePairedBooth() {
 }
 
 export function useValidateDevicePairing() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (code: string) => devicesApi.validateDevicePairingCode(code),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.devices }),
   });
 }
 
