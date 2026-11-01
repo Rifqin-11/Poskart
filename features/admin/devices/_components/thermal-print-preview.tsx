@@ -8,15 +8,16 @@ import { Dialog } from "@/components/ui/dialog";
 import { thermalPreviewRaster, type ThermalPreviewOptions } from "@/lib/thermal-preview";
 import { printPersonMask } from "@/lib/print-person-segmenter";
 
-export function ThermalPrintPreview({ brightness, contrast, dotDensity, darkSmoothing, localContrast, backgroundLift }: {
+export function ThermalPrintPreview({ brightness, contrast, dotDensity, sharpness: initialSharpness = 20, darkSmoothing, localContrast, backgroundLift }: {
   brightness: number; contrast: number; dotDensity: number;
+  sharpness?: number;
   darkSmoothing: number; localContrast: number; backgroundLift: number;
 }) {
   const [source, setSource] = useState<HTMLCanvasElement | null>(null);
   const [original, setOriginal] = useState("");
   const [paper, setPaper] = useState("80mm");
   const [style, setStyle] = useState<ThermalPreviewOptions["printStyle"]>("thermal_photo");
-  const [sharpness, setSharpness] = useState(20);
+  const [sharpness, setSharpness] = useState(initialSharpness);
   const [zoom, setZoom] = useState(false);
   const [picking, setPicking] = useState(false);
   const [fileError, setFileError] = useState("");

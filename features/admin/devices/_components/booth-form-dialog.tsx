@@ -31,7 +31,11 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { BoothInput, PricingProduct } from "@/features/admin/devices/api";
 import { ThemeThumbnail } from "@/features/admin/themes/theme-thumbnail";
-import { PRINTER_TUNING_LIMITS } from "@/lib/printer-tuning";
+import {
+  PRINTER_PRESETS,
+  PRINTER_TUNING_LIMITS,
+  type PrinterPresetId,
+} from "@/lib/printer-tuning";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import type { LayoutSchema } from "@/types/builder";
@@ -183,6 +187,34 @@ export function BoothFormDialog({
       settingsPin: "",
     } as BoothInput;
   });
+
+  const updatePrinterManually = (patch: Partial<BoothInput>) => {
+    setForm((current) => ({
+      ...current,
+      ...patch,
+      printerPreset: "advanced",
+    }));
+  };
+
+  const applyPrinterPreset = (value: string) => {
+    const preset = value as PrinterPresetId;
+    const values = PRINTER_PRESETS[preset as keyof typeof PRINTER_PRESETS];
+    if (!values) {
+      setForm((current) => ({ ...current, printerPreset: "advanced" }));
+      return;
+    }
+    setForm((current) => ({
+      ...current,
+      printerPreset: preset,
+      printerBrightness: values.brightness,
+      printerContrast: values.contrast,
+      printerSharpness: values.sharpness,
+      printerDarkSmoothing: values.darkSmoothing,
+      printerLocalContrast: values.localContrast,
+      printerBackgroundLift: values.backgroundLift,
+      printerDotDensity: values.dotDensity,
+    }));
+  };
 
   const deviceInitial = initial as Partial<Device>;
   const printerStatus = deviceInitial.printerStatus ?? "unknown";
@@ -1268,7 +1300,27 @@ export function BoothFormDialog({
                   </p>
                 </div>
               </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <label className="mt-4 block text-xs font-medium text-zinc-600">
+                Printer profile
+                <Select
+                  className="mt-1.5 h-10 rounded-xl bg-white"
+                  value={form.printerPreset ?? "advanced"}
+                  disabled={readOnly}
+                  onChange={(event) => applyPrinterPreset(event.target.value)}
+                >
+                  {Object.entries(PRINTER_PRESETS).map(([value, preset]) => (
+                    <option key={value} value={value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                  <option value="advanced">Advanced / Custom</option>
+                </Select>
+                <span className="mt-1 block text-[11px] font-normal text-zinc-400">
+                  Preset menerapkan nilai rekomendasi; perubahan manual akan
+                  kembali ke Advanced.
+                </span>
+              </label>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <label className="block text-xs font-medium text-zinc-600">
                   Bottom safe zone (0–24 mm)
                   <Input
@@ -1280,8 +1332,7 @@ export function BoothFormDialog({
                     value={form.printerBottomSafeZoneMm ?? 0}
                     disabled={readOnly}
                     onChange={(e) =>
-                      setForm({
-                        ...form,
+                      updatePrinterManually({
                         printerBottomSafeZoneMm: Number(e.target.value),
                       })
                     }
@@ -1298,8 +1349,7 @@ export function BoothFormDialog({
                     value={form.printerBrightness ?? 0}
                     disabled={readOnly}
                     onChange={(e) =>
-                      setForm({
-                        ...form,
+                      updatePrinterManually({
                         printerBrightness: Number(e.target.value),
                       })
                     }
@@ -1316,8 +1366,7 @@ export function BoothFormDialog({
                     value={form.printerContrast ?? 0}
                     disabled={readOnly}
                     onChange={(e) =>
-                      setForm({
-                        ...form,
+                      updatePrinterManually({
                         printerContrast: Number(e.target.value),
                       })
                     }
@@ -1334,8 +1383,7 @@ export function BoothFormDialog({
                     value={form.printerDotDensity ?? 1}
                     disabled={readOnly}
                     onChange={(e) =>
-                      setForm({
-                        ...form,
+                      updatePrinterManually({
                         printerDotDensity: Number(e.target.value),
                       })
                     }
@@ -1347,7 +1395,13 @@ export function BoothFormDialog({
                 printer settings.
               </p>
               <div className="mt-5 rounded-xl border border-zinc-200 bg-white p-4">
-                {([
+                 <label className="mb-5 block text-xs font-semibold text-zinc-800">
+                   Ketajaman: {form.printerSharpness ?? 20}%
+                   <input type="range" className="mt-3 block w-full accent-[#00357B]" min={0} max={100} step={1}
+                     value={form.printerSharpness ?? 20} disabled={readOnly}
+                     onChange={(e) => updatePrinterManually({ printerSharpness: Number(e.target.value) })} />
+                 </label>
+                 {([
                   ["printerDarkSmoothing", "Haluskan latar gelap"],
                   ["printerLocalContrast", "Kontras lokal (CLAHE)"],
                   ["printerBackgroundLift", "Terangkan latar (segmentasi orang)"],
@@ -1356,19 +1410,21 @@ export function BoothFormDialog({
                     {label}: {form[field] ?? 0}%
                     <input type="range" className="mt-3 block w-full accent-[#00357B]" min={0} max={100} step={1}
                       value={form[field] ?? 0} disabled={readOnly}
-                      onChange={(e) => setForm({ ...form, [field]: Number(e.target.value) })} />
+                       onChange={(e) => updatePrinterManually({ [field]: Number(e.target.value) })} />
                   </label>
                 ))}
                 <div className="mt-2 flex items-start justify-between gap-4">
                   <p className="max-w-prose text-xs leading-5 text-zinc-500">Manual, 0 = nonaktif; foto digital tidak berubah. Pada cetakan baru penyesuaian hanya untuk photo slot, teks/logo frame tetap tajam; density global. Cetak ulang tanpa mask memakai penyesuaian global tanpa segmentasi. Periksa rambut/foto grup di preview. Simpan perangkat untuk menerapkan ke kiosk.</p>
                   <Button type="button" variant="ghost" size="sm" disabled={readOnly}
-                    onClick={() => setForm({ ...form, printerDarkSmoothing: 0, printerLocalContrast: 0, printerBackgroundLift: 0 })}>Nonaktifkan</Button>
+                     onClick={() => updatePrinterManually({ printerDarkSmoothing: 0, printerLocalContrast: 0, printerBackgroundLift: 0 })}>Nonaktifkan</Button>
                 </div>
               </div>
               <ThermalPrintPreview
+                key={`printer-preview-${form.printerSharpness ?? 20}`}
                 brightness={form.printerBrightness ?? 0}
                 contrast={form.printerContrast ?? 0}
                 dotDensity={form.printerDotDensity ?? 1}
+                sharpness={form.printerSharpness ?? 20}
                 darkSmoothing={form.printerDarkSmoothing ?? 0}
                 localContrast={form.printerLocalContrast ?? 0}
                 backgroundLift={form.printerBackgroundLift ?? 0}

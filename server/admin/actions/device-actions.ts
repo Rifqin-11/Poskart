@@ -5,8 +5,10 @@ import { getPairingForAdminCode } from "@/lib/kiosk/device-pairings";
 import { requireOperationalSubscription } from "@/server/subscription/operational-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
+  PRINTER_PRESETS,
   PRINTER_TUNING_LIMITS,
   clampPrinterTuningValue,
+  normalizePrinterPreset,
 } from "@/lib/printer-tuning";
 import {
   assertSettingsPin,
@@ -265,6 +267,10 @@ export async function createDevice(values: BoothInput): Promise<void> {
     organizationId,
     values.layoutSchemaId ?? values.theme,
   );
+  const printerPreset = normalizePrinterPreset(values.printerPreset);
+  const presetValues = printerPreset === "advanced"
+    ? null
+    : PRINTER_PRESETS[printerPreset];
   const settingsPin = normalizeSettingsPin(values.settingsPin);
   if (values.protectSettings && !settingsPin) {
     throw new Error(
@@ -301,23 +307,30 @@ export async function createDevice(values: BoothInput): Promise<void> {
       PRINTER_TUNING_LIMITS.bottomSafeZoneMm.min,
       PRINTER_TUNING_LIMITS.bottomSafeZoneMm.max,
     ),
+    printer_preset: printerPreset,
     printer_brightness: clampPrinterTuningValue(
-      values.printerBrightness,
+      presetValues?.brightness ?? values.printerBrightness,
       0,
       PRINTER_TUNING_LIMITS.brightness.min,
       PRINTER_TUNING_LIMITS.brightness.max,
     ),
     printer_contrast: clampPrinterTuningValue(
-      values.printerContrast,
+      presetValues?.contrast ?? values.printerContrast,
       0,
       PRINTER_TUNING_LIMITS.contrast.min,
       PRINTER_TUNING_LIMITS.contrast.max,
     ),
     printer_dot_density: clampPrinterTuningValue(
-      values.printerDotDensity,
+      presetValues?.dotDensity ?? values.printerDotDensity,
       1,
       PRINTER_TUNING_LIMITS.dotDensity.min,
       PRINTER_TUNING_LIMITS.dotDensity.max,
+    ),
+    printer_sharpness: clampPrinterTuningValue(
+      presetValues?.sharpness ?? values.printerSharpness,
+      20,
+      0,
+      100,
     ),
     printer_shadow_lift: clampPrinterTuningValue(
       values.printerShadowLift,
@@ -325,9 +338,9 @@ export async function createDevice(values: BoothInput): Promise<void> {
       PRINTER_TUNING_LIMITS.shadowLift.min,
       PRINTER_TUNING_LIMITS.shadowLift.max,
     ),
-    printer_dark_smoothing: clampPrinterTuningValue(values.printerDarkSmoothing ?? values.printerShadowLift, 0, 0, 100),
-    printer_local_contrast: clampPrinterTuningValue(values.printerLocalContrast, 0, 0, 100),
-    printer_background_lift: clampPrinterTuningValue(values.printerBackgroundLift, 0, 0, 100),
+    printer_dark_smoothing: clampPrinterTuningValue(presetValues?.darkSmoothing ?? values.printerDarkSmoothing ?? values.printerShadowLift, 0, 0, 100),
+    printer_local_contrast: clampPrinterTuningValue(presetValues?.localContrast ?? values.printerLocalContrast, 0, 0, 100),
+    printer_background_lift: clampPrinterTuningValue(presetValues?.backgroundLift ?? values.printerBackgroundLift, 0, 0, 100),
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(`Unable to create device: ${error.message}`);
@@ -383,9 +396,11 @@ export async function validateDevicePairingCode(
         settingsPin: "",
         protectSettings: false,
         printerBottomSafeZoneMm: 0,
+        printerPreset: "advanced",
         printerBrightness: 0,
         printerContrast: 0,
         printerDotDensity: 1,
+        printerSharpness: 20,
         printerShadowLift: 0,
         printerDarkSmoothing: 0,
         printerLocalContrast: 0,
@@ -440,6 +455,10 @@ export async function createPairedDevice(
     organizationId,
     values.layoutSchemaId ?? values.theme,
   );
+  const printerPreset = normalizePrinterPreset(values.printerPreset);
+  const presetValues = printerPreset === "advanced"
+    ? null
+    : PRINTER_PRESETS[printerPreset];
 
   const id = `BTH-${Date.now()}`;
   const { error } = await createSupabaseAdminClient().rpc(
@@ -470,26 +489,28 @@ export async function createPairedDevice(
         emailDeliveryEnabled: values.emailDeliveryEnabled,
         settingsPin: normalizeSettingsPin(values.settingsPin),
         protectSettings: values.protectSettings,
-        printerBottomSafeZoneMm: clampPrinterTuningValue(
+         printerBottomSafeZoneMm: clampPrinterTuningValue(
           values.printerBottomSafeZoneMm,
           0,
           PRINTER_TUNING_LIMITS.bottomSafeZoneMm.min,
           PRINTER_TUNING_LIMITS.bottomSafeZoneMm.max,
-        ),
-        printerBrightness: clampPrinterTuningValue(
-          values.printerBrightness,
+         ),
+         printerPreset,
+         printerSharpness: presetValues?.sharpness ?? values.printerSharpness,
+         printerBrightness: clampPrinterTuningValue(
+           presetValues?.brightness ?? values.printerBrightness,
           0,
           PRINTER_TUNING_LIMITS.brightness.min,
           PRINTER_TUNING_LIMITS.brightness.max,
         ),
-        printerContrast: clampPrinterTuningValue(
-          values.printerContrast,
+         printerContrast: clampPrinterTuningValue(
+           presetValues?.contrast ?? values.printerContrast,
           0,
           PRINTER_TUNING_LIMITS.contrast.min,
           PRINTER_TUNING_LIMITS.contrast.max,
         ),
-        printerDotDensity: clampPrinterTuningValue(
-          values.printerDotDensity,
+         printerDotDensity: clampPrinterTuningValue(
+           presetValues?.dotDensity ?? values.printerDotDensity,
           1,
           PRINTER_TUNING_LIMITS.dotDensity.min,
           PRINTER_TUNING_LIMITS.dotDensity.max,
@@ -500,9 +521,9 @@ export async function createPairedDevice(
           PRINTER_TUNING_LIMITS.shadowLift.min,
           PRINTER_TUNING_LIMITS.shadowLift.max,
         ),
-        printerDarkSmoothing: clampPrinterTuningValue(values.printerDarkSmoothing ?? values.printerShadowLift, 0, 0, 100),
-        printerLocalContrast: clampPrinterTuningValue(values.printerLocalContrast, 0, 0, 100),
-        printerBackgroundLift: clampPrinterTuningValue(values.printerBackgroundLift, 0, 0, 100),
+         printerDarkSmoothing: clampPrinterTuningValue(presetValues?.darkSmoothing ?? values.printerDarkSmoothing ?? values.printerShadowLift, 0, 0, 100),
+         printerLocalContrast: clampPrinterTuningValue(presetValues?.localContrast ?? values.printerLocalContrast, 0, 0, 100),
+         printerBackgroundLift: clampPrinterTuningValue(presetValues?.backgroundLift ?? values.printerBackgroundLift, 0, 0, 100),
       },
     },
   );
@@ -668,6 +689,36 @@ export async function updateDevice(
   if (patch.emailDeliveryEnabled !== undefined) {
     dbPatch.email_delivery_enabled = patch.emailDeliveryEnabled;
   }
+  if (patch.printerPreset !== undefined) {
+    const printerPreset = normalizePrinterPreset(patch.printerPreset);
+    dbPatch.printer_preset = printerPreset;
+    const presetValues = printerPreset === "advanced"
+      ? null
+      : PRINTER_PRESETS[printerPreset];
+    if (presetValues) {
+      dbPatch.printer_brightness = presetValues.brightness;
+      dbPatch.printer_contrast = presetValues.contrast;
+      dbPatch.printer_dot_density = presetValues.dotDensity;
+      dbPatch.printer_sharpness = presetValues.sharpness;
+      dbPatch.printer_dark_smoothing = presetValues.darkSmoothing;
+      dbPatch.printer_local_contrast = presetValues.localContrast;
+      dbPatch.printer_background_lift = presetValues.backgroundLift;
+    }
+  }
+  if (
+    patch.printerPreset === undefined &&
+    (patch.printerBottomSafeZoneMm !== undefined ||
+      patch.printerBrightness !== undefined ||
+      patch.printerContrast !== undefined ||
+      patch.printerDotDensity !== undefined ||
+      patch.printerSharpness !== undefined ||
+      patch.printerShadowLift !== undefined ||
+      patch.printerDarkSmoothing !== undefined ||
+      patch.printerLocalContrast !== undefined ||
+      patch.printerBackgroundLift !== undefined)
+  ) {
+    dbPatch.printer_preset = "advanced";
+  }
   if (patch.printerBottomSafeZoneMm !== undefined) {
     dbPatch.printer_bottom_safe_zone_mm = clampPrinterTuningValue(
       patch.printerBottomSafeZoneMm,
@@ -698,6 +749,14 @@ export async function updateDevice(
       1,
       PRINTER_TUNING_LIMITS.dotDensity.min,
       PRINTER_TUNING_LIMITS.dotDensity.max,
+    );
+  }
+  if (patch.printerSharpness !== undefined) {
+    dbPatch.printer_sharpness = clampPrinterTuningValue(
+      patch.printerSharpness,
+      20,
+      0,
+      100,
     );
   }
   if (patch.printerShadowLift !== undefined) {

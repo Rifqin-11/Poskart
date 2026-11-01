@@ -9,6 +9,51 @@ export const PRINTER_TUNING_LIMITS = {
   backgroundLift: { min: 0, max: 100, step: 1 },
 } as const;
 
+export const PRINTER_PRESETS = {
+  outdoor_day: {
+    label: "Outdoor / Siang",
+    description: "Untuk foto luar ruangan atau kondisi cahaya cukup.",
+    brightness: 10,
+    contrast: 15,
+    sharpness: 19,
+    darkSmoothing: 32,
+    localContrast: 20,
+    backgroundLift: 30,
+    dotDensity: 0.9,
+  },
+  night: {
+    label: "Malam",
+    description: "Untuk kondisi malam dengan cahaya terbatas.",
+    brightness: 15,
+    contrast: 12,
+    sharpness: 19,
+    darkSmoothing: 32,
+    localContrast: 20,
+    backgroundLift: 35,
+    dotDensity: 0.9,
+  },
+  very_dark: {
+    label: "Gelap banget",
+    description: "Untuk kondisi sangat gelap atau hampir tanpa cahaya.",
+    brightness: 20,
+    contrast: 10,
+    sharpness: 19,
+    darkSmoothing: 32,
+    localContrast: 20,
+    backgroundLift: 40,
+    dotDensity: 0.9,
+  },
+} as const;
+
+export type PrinterPresetId = keyof typeof PRINTER_PRESETS | "advanced";
+
+export function normalizePrinterPreset(value: unknown): PrinterPresetId {
+  return typeof value === "string" &&
+      (value === "advanced" || value in PRINTER_PRESETS)
+    ? (value as PrinterPresetId)
+    : "advanced";
+}
+
 export function clampPrinterTuningValue(
   value: unknown,
   fallback: number,
