@@ -1685,7 +1685,7 @@ function ThemePicker({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className={cn("grid grid-cols-2 gap-2", className)}>
+    <div className={cn("grid grid-cols-3 gap-2", className)}>
       <button
         type="button"
         disabled={disabled}
