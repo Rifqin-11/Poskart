@@ -641,6 +641,10 @@ function EventAnalyticsSection({
                       stroke={dashboardChartBlue}
                       fill={`url(#eventRevenue-${period.key})`}
                       strokeWidth={2.5}
+                      dot={
+                        period.key === "daily" &&
+                        period.revenueSeries.length === 1
+                      }
                     />
                   </AreaChart>
                 </ResponsiveContainer>

@@ -221,7 +221,7 @@ function buildDailySeries(
   printEvents: TransactionPrintEventRow[],
   startOfDay: Date,
 ) {
-  return Array.from({ length: 24 }, (_, index) => {
+  const hourlySeries = Array.from({ length: 24 }, (_, index) => {
     const bucketStart = new Date(startOfDay.getTime() + index * HOUR_MS);
     const bucketEnd = new Date(bucketStart.getTime() + HOUR_MS);
     const bucketRows = rows.filter((row) => {
@@ -240,6 +240,21 @@ function buildDailySeries(
       prints: sumPrintedCopies(bucketPrintEvents),
     };
   });
+
+  const firstRevenueHour = hourlySeries.findIndex((point) => point.revenue > 0);
+  if (firstRevenueHour === -1) return [];
+
+  let lastRevenueHour = hourlySeries.length - 1;
+  while (
+    lastRevenueHour > firstRevenueHour &&
+    hourlySeries[lastRevenueHour].revenue <= 0
+  ) {
+    lastRevenueHour -= 1;
+  }
+
+  // Keep zero-revenue hours between transactions so gaps remain visible, but
+  // omit the empty hours before the first sale and after the last sale.
+  return hourlySeries.slice(firstRevenueHour, lastRevenueHour + 1);
 }
 
 function buildWeeklySeries(
