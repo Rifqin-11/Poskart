@@ -149,9 +149,9 @@ begin
     or new.gateway_fee_amount < 0 or allocated_fee+new.gateway_fee_amount > l.gateway_fee_amount
     or new.platform_fee_amount <> 0
     or new.net_amount <> new.gross_amount-new.gateway_fee_amount
-    or new.gateway_fee_amount <> case when allocated_gross+new.gross_amount=l.gross_amount
+    or new.gateway_fee_amount <> (case when allocated_gross+new.gross_amount=l.gross_amount
       then l.gateway_fee_amount-allocated_fee
-      else round(new.gross_amount::numeric*(l.gateway_fee_amount-allocated_fee)/(l.gross_amount-allocated_gross))::integer end
+      else round(new.gross_amount::numeric*(l.gateway_fee_amount-allocated_fee)/(l.gross_amount-allocated_gross))::integer end)
   then raise exception 'Payout allocation exceeds verified gross/fee balance'; end if;
   return new;
 end $$;

@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { verifyRole } from "@/server/admin/context";
 
 export type VoucherGenerationType = "random" | "sequential" | "reusable";
+export type VoucherExtensionDays = 30 | 90;
 
 export type GenerateVoucherInput = {
   name: string;
@@ -94,6 +95,30 @@ export async function deleteVoucherCampaign(id: string): Promise<void> {
     .maybeSingle();
   if (error) throw new Error("Voucher campaign could not be deleted. Please try again.");
   if (!data) throw new Error("Voucher campaign was not found or is no longer available.");
+}
+
+/**
+ * Extends from the later of the current expiry and now. This means an expired
+ * campaign can be renewed without first creating a replacement campaign.
+ */
+export async function extendVoucherCampaign(
+  id: string,
+  extensionDays: VoucherExtensionDays,
+): Promise<{ expiresAt: string }> {
+  const { supabase } = await verifyRole(["owner", "admin"]);
+  if (extensionDays !== 30 && extensionDays !== 90) {
+    throw new Error("Voucher extension must be 30 or 90 days.");
+  }
+
+  const { data, error } = await supabase.rpc("extend_voucher_campaign", {
+    p_campaign_id: id,
+    p_extension_days: extensionDays,
+  });
+  if (error) throw new Error(`Unable to extend voucher campaign: ${error.message}`);
+  if (typeof data !== "string") {
+    throw new Error("Voucher campaign was not found or could not be extended.");
+  }
+  return { expiresAt: data };
 }
 
 function firstRelation<T>(value: T | T[] | null) {
@@ -236,8 +261,8 @@ function normalizeReusableCode(value: string | undefined) {
 
 function normalizeValidityDays(value: number) {
   const validityDays = Math.trunc(value);
-  if (![1, 3, 7, 14, 30].includes(validityDays)) {
-    throw new Error("Voucher validity must be 1, 3, 7, 14, or 30 days.");
+  if (![1, 3, 7, 14, 30, 90].includes(validityDays)) {
+    throw new Error("Voucher validity must be 1, 3, 7, 14, 30, or 90 days.");
   }
   return validityDays;
 }
