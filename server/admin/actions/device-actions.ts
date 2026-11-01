@@ -382,10 +382,12 @@ export async function validateDevicePairingCode(
       p_device: {
         name: "New Kiosk",
         location: "",
-        status: "online",
-        battery: 100,
+        // Pairing itself is not a heartbeat. Keep the device offline until the
+        // kiosk reports its first real sync and battery level.
+        status: "offline",
+        battery: 0,
         appVersion: "",
-        lastSync: new Date().toISOString(),
+        lastSync: "",
         theme: "",
         layoutSchemaId: null,
         template: "",
