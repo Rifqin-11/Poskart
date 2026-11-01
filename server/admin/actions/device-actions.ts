@@ -241,11 +241,17 @@ export async function sendDeviceErrorToDeveloper(
 export async function createDevice(values: BoothInput): Promise<void> {
   const { supabase, organizationId } = await verifyRole(["owner", "admin"]);
   const id = `BTH-${Date.now()}`;
-  const frameTemplates = await resolveFrameTemplateAssignmentIds(
+  let frameTemplates = await resolveFrameTemplateAssignmentIds(
     supabase,
     organizationId,
     normalizeAssignmentList(values.frameTemplates, values.template),
   );
+  if (frameTemplates.length === 0) {
+    frameTemplates = await getDefaultFrameTemplateAssignmentIds(
+      supabase,
+      organizationId,
+    );
+  }
   const pricingProfiles = normalizeAssignmentList(
     values.pricingProfiles,
     values.pricingProfile,
@@ -416,11 +422,17 @@ export async function createPairedDevice(
   await requireOperationalSubscription(supabase, organizationId);
   if (!normalizedPairingId) throw new Error("Pairing request is required.");
 
-  const frameTemplates = await resolveFrameTemplateAssignmentIds(
+  let frameTemplates = await resolveFrameTemplateAssignmentIds(
     supabase,
     organizationId,
     normalizeAssignmentList(values.frameTemplates, values.template),
   );
+  if (frameTemplates.length === 0) {
+    frameTemplates = await getDefaultFrameTemplateAssignmentIds(
+      supabase,
+      organizationId,
+    );
+  }
   const pricingProfiles = normalizeAssignmentList(
     values.pricingProfiles,
     values.pricingProfile,
@@ -790,6 +802,25 @@ async function resolveFrameTemplateAssignmentIds(
     );
   }
   return assignments;
+}
+
+async function getDefaultFrameTemplateAssignmentIds(
+  supabase: Awaited<ReturnType<typeof getAdminContext>>["supabase"],
+  organizationId: string,
+) {
+  const { data, error } = await supabase
+    .from("templates")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("category", "frame")
+    .eq("is_default", true)
+    .order("display_order", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) {
+    throw new Error(`Unable to load default frame templates: ${error.message}`);
+  }
+  return (data ?? []).map((template) => template.id);
 }
 
 async function syncDeviceFrameTemplateAssignments(

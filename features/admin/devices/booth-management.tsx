@@ -207,7 +207,10 @@ export function BoothManagement({
   const { data: subscriptionStatus, isLoading: subscriptionLoading } =
     useSubscriptionStatus();
   const { data: layouts = [] } = useLayoutSchemas();
-  const { data: templates = [] } = useTemplates();
+  const {
+    data: templates = [],
+    isLoading: templatesLoading,
+  } = useTemplates();
   const { data: frameCategories = [] } = useFrameCategories();
   const { isReadOnly } = usePermission();
   const { t } = useI18n();
@@ -299,6 +302,17 @@ export function BoothManagement({
     }),
     [frameCategories, layouts, pricingProducts, templates],
   );
+  const newDeviceInitial = useMemo<BoothInput>(() => {
+    const frameTemplates = templates
+      .filter((template) => template.category === "frame" && template.isDefault)
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map((template) => template.id);
+    return {
+      ...EMPTY_BOOTH,
+      frameTemplates,
+      template: frameTemplates[0] ?? "",
+    };
+  }, [templates]);
 
   const handleDelete = (device: Device) => {
     confirmDelete.confirm({
@@ -838,12 +852,13 @@ export function BoothManagement({
       pairingId &&
       createdDeviceId &&
       !devicesLoading &&
+      !templatesLoading &&
       !subscriptionLoading &&
       !deviceLimitReached &&
       !isReadOnly("devices") ? (
         <BoothFormDialog
           title="Configure new device"
-          initial={EMPTY_BOOTH}
+          initial={newDeviceInitial}
           options={deviceFormOptions}
           submitting={updateBooth.isPending}
           onClose={() => {
