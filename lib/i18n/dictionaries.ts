@@ -120,7 +120,7 @@ export const dictionaries = {
     "transactions.searchPlaceholder": "Search by ID, device, customer…",
     "devices.pageTitle": "Device Management",
     "devices.pageDesc":
-      "Configure kiosk theme, frame, pricing package, countdowns, sync status, and remote actions.",
+      "Configure kiosk behavior and device settings. Manage its frames and theme from Design.",
     "devices.showTutorial": "Show tutorial",
     "devices.refreshNetwork": "Refresh network",
     "devices.addDevice": "Add device",
@@ -147,7 +147,7 @@ export const dictionaries = {
     "devices.pairingContinue": "Connect device",
     "devices.pairingSuccessTitle": "Device connected",
     "devices.pairingSuccessDesc":
-      "The tablet is paired. Next, add its name, choose a frame and price, then save the setup. It is not ready for customers until configuration and sync are complete.",
+      "The tablet is paired. Next, add its name, configure the kiosk, then choose its frames and theme from Design.",
     "devices.pairingConfigure": "Set up this device",
     "devices.pairingLater": "Do this later",
     "devices.tourPairTitle": "Pair a new device",
@@ -158,10 +158,10 @@ export const dictionaries = {
       "This section shows how many devices are in use and remaining slots from the organization's subscription plan.",
     "devices.tourConfigTitle": "Configure each booth",
     "devices.tourConfigDesc":
-      "After pairing, open Configure to set up the theme, frames, pricing or event, vouchers, printer, and security settings.",
-    "devices.configTourTabsTitle": "Three configuration areas",
+      "After pairing, use Configure for kiosk behavior and hardware settings. Use Design to choose the frames and theme for this booth.",
+    "devices.configTourTabsTitle": "Two configuration areas",
     "devices.configTourTabsDesc":
-      "General controls the visitor experience, Frame sets the available frame choices, and System handles security and device settings.",
+      "General controls identity, visitor access, payment, and delivery. System handles security, paper, printer, and countdown settings.",
     "devices.configTourThemeTitle": "Theme and layout",
     "devices.configTourThemeDesc":
       "Select the visual theme displayed on the kiosk. Changes take effect the next time the device syncs.",
@@ -587,7 +587,7 @@ export const dictionaries = {
       "Cari berdasarkan ID, perangkat, pelanggan…",
     "devices.pageTitle": "Manajemen Perangkat",
     "devices.pageDesc":
-      "Konfigurasi tema kiosk, frame, paket harga, countdown, status sinkronisasi, dan aksi remote.",
+      "Atur perilaku dan pengaturan device. Kelola frame dan tema device melalui Design.",
     "devices.showTutorial": "Tampilkan tutorial",
     "devices.refreshNetwork": "Refresh jaringan",
     "devices.addDevice": "Tambah perangkat",
@@ -614,7 +614,7 @@ export const dictionaries = {
     "devices.pairingContinue": "Hubungkan perangkat",
     "devices.pairingSuccessTitle": "Perangkat berhasil terhubung",
     "devices.pairingSuccessDesc":
-      "Tablet sudah dipasangkan. Selanjutnya, beri nama perangkat, pilih frame dan harga, lalu simpan pengaturannya. Perangkat belum siap menerima pelanggan sampai konfigurasi dan sinkronisasi selesai.",
+      "Tablet sudah dipasangkan. Selanjutnya, beri nama device, atur konfigurasi kiosk, lalu pilih frame dan tema melalui Design.",
     "devices.pairingConfigure": "Atur perangkat ini",
     "devices.pairingLater": "Nanti saja",
     "devices.tourPairTitle": "Pasangkan perangkat baru",
@@ -625,10 +625,10 @@ export const dictionaries = {
       "Bagian ini menampilkan berapa perangkat yang digunakan dan slot tersisa dari paket langganan organisasi.",
     "devices.tourConfigTitle": "Konfigurasi setiap booth",
     "devices.tourConfigDesc":
-      "Setelah pairing, buka Konfigurasi untuk mengatur tema, frame, harga atau event, voucher, printer, dan pengaturan keamanan.",
-    "devices.configTourTabsTitle": "Tiga area konfigurasi",
+      "Setelah pairing, gunakan Configure untuk perilaku kiosk dan pengaturan hardware. Gunakan Design untuk memilih frame dan tema booth ini.",
+    "devices.configTourTabsTitle": "Dua area konfigurasi",
     "devices.configTourTabsDesc":
-      "General mengontrol pengalaman pengunjung, Frame mengatur pilihan frame yang tersedia, dan System menangani keamanan dan pengaturan perangkat.",
+      "General mengatur identitas, akses pengunjung, pembayaran, dan delivery. System menangani keamanan, kertas, printer, dan countdown.",
     "devices.configTourThemeTitle": "Tema dan tata letak",
     "devices.configTourThemeDesc":
       "Pilih tema visual yang ditampilkan di kiosk. Perubahan berlaku saat perangkat berikutnya sinkronisasi.",

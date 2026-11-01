@@ -131,19 +131,9 @@ function getDeviceConfigTourSteps(t: (key: DictionaryKey) => string): FeatureTou
       description: t("devices.configTourTabsDesc"),
     },
     {
-      selectors: ['[data-device-config-tour="theme"]'],
-      title: t("devices.configTourThemeTitle"),
-      description: t("devices.configTourThemeDesc"),
-    },
-    {
       selectors: ['[data-device-config-tour="session-access"]'],
       title: t("devices.configTourAccessTitle"),
       description: t("devices.configTourAccessDesc"),
-    },
-    {
-      selectors: ['[data-device-config-tour="frames"]'],
-      title: t("devices.configTourFramesTitle"),
-      description: t("devices.configTourFramesDesc"),
     },
     {
       selectors: ['[data-device-config-tour="settings-pin"]'],
@@ -163,10 +153,8 @@ const DEVICE_TOUR_TAB_BY_STEP = [
   undefined,
   undefined,
   undefined,
+  undefined,
   "general",
-  "general",
-  "general",
-  "frame",
   "system",
   "system",
 ] as const;
@@ -218,6 +206,7 @@ export function BoothManagement({
   const [editingId, setEditingId] = useState<string | null>(
     initialDeviceId ?? null,
   );
+  const [designingId, setDesigningId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [pairingDialogOpen, setPairingDialogOpen] = useState(
     initialAction === "create",
@@ -241,6 +230,7 @@ export function BoothManagement({
     deviceLimit > 0 ? Math.min(100, (usedDevices / deviceLimit) * 100) : 0;
   const deviceLimitReached = remainingDevices <= 0;
   const editing = data.find((item) => item.id === editingId) ?? null;
+  const designing = data.find((item) => item.id === designingId) ?? null;
   const DEVICE_TOUR_STEPS = getDeviceTourSteps(t);
   const DEVICE_CONFIGURATION_TOUR_STEPS = getDeviceConfigTourSteps(t);
   const deviceTourSteps =
@@ -711,15 +701,25 @@ export function BoothManagement({
                     <Printer className="size-3.5" /> Prints
                   </Button>
                 </div>
-                <Button
-                  data-devices-tour="configure"
-                  size="sm"
-                  className="h-8 w-full rounded-lg bg-[#00357B] px-4 text-xs hover:bg-[#014EB4] sm:w-auto"
-                  onClick={() => setEditingId(device.id)}
-                >
-                  <SlidersHorizontal className="size-3.5" />{" "}
-                  {isReadOnly("devices") ? "View" : "Configure"}
-                </Button>
+                <div className="grid w-full grid-cols-2 gap-1.5 sm:flex sm:w-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-full rounded-lg px-3 text-xs sm:w-auto"
+                    onClick={() => setDesigningId(device.id)}
+                  >
+                    <Palette className="size-3.5" /> Design
+                  </Button>
+                  <Button
+                    data-devices-tour="configure"
+                    size="sm"
+                    className="h-8 w-full rounded-lg bg-[#00357B] px-4 text-xs hover:bg-[#014EB4] sm:w-auto"
+                    onClick={() => setEditingId(device.id)}
+                  >
+                    <SlidersHorizontal className="size-3.5" />{" "}
+                    {isReadOnly("devices") ? "View" : "Configure"}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -912,6 +912,42 @@ export function BoothManagement({
           onShowTutorial={() =>
             startDeviceTutorial(DEVICE_CONFIGURATION_TOUR_START)
           }
+        />
+      ) : null}
+      {designing ? (
+        <BoothFormDialog
+          mode="design"
+          title={`Design ${designing.name}`}
+          initial={designing}
+          options={deviceFormOptions}
+          submitting={updateBooth.isPending}
+          onClose={() => setDesigningId(null)}
+          onSubmit={(values) => {
+            updateBooth.mutate(
+              {
+                id: designing.id,
+                patch: {
+                  layoutSchemaId: values.layoutSchemaId,
+                  theme: values.theme,
+                  template: values.template,
+                  frameTemplates: values.frameTemplates,
+                  frameCategoriesEnabled: values.frameCategoriesEnabled,
+                },
+              },
+              {
+                onSuccess: () => {
+                  toast.success("Design updated");
+                  setDesigningId(null);
+                },
+                onError: (err) =>
+                  showErrorToast(
+                    "Gagal memperbarui design",
+                    err,
+                    "Design device tidak dapat diperbarui. Coba lagi.",
+                  ),
+              },
+            );
+          }}
         />
       ) : null}
       {failedFor ? (

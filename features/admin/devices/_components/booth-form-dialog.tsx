@@ -11,6 +11,7 @@ import {
   Loader2,
   Mail,
   MonitorCog,
+  Palette,
   Printer,
   Search,
   ShieldCheck,
@@ -74,7 +75,8 @@ type FrameCategoryOption = {
 };
 
 type SessionAccessMode = "" | "paid" | "event";
-type DeviceConfigurationTab = "general" | "frame" | "system";
+type DeviceConfigurationTab = "general" | "frame" | "theme" | "system";
+type BoothFormDialogMode = "configuration" | "design";
 
 const ALL_FRAME_CATEGORY_ID = "__all__";
 const GENERAL_FRAME_CATEGORY_ID = "__general__";
@@ -101,6 +103,7 @@ type BoothFormDialogProps = {
   initial: BoothInput | Device;
   options: DeviceFormOptions;
   submitting: boolean;
+  mode?: BoothFormDialogMode;
   onClose: () => void;
   onDelete?: () => void;
   onSubmit: (values: BoothInput) => void;
@@ -113,6 +116,7 @@ export function BoothFormDialog({
   initial,
   options,
   submitting,
+  mode = "configuration",
   onClose,
   onDelete,
   onSubmit,
@@ -121,6 +125,7 @@ export function BoothFormDialog({
 }: BoothFormDialogProps) {
   const { isReadOnly } = usePermission();
   const readOnly = isReadOnly("devices");
+  const isDesignMode = mode === "design";
   const initialDevice = initial as Partial<Device>;
   const initialPricingAssignments = normalizeStringList(
     initialDevice.pricingProfiles,
@@ -158,7 +163,9 @@ export function BoothFormDialog({
   const [eventSelection, setEventSelection] = useState(
     initialEventProduct?.id ?? "",
   );
-  const [activeTab, setActiveTab] = useState<DeviceConfigurationTab>("general");
+  const [activeTab, setActiveTab] = useState<DeviceConfigurationTab>(
+    isDesignMode ? "frame" : "general",
+  );
   const [frameSearch, setFrameSearch] = useState("");
   const [activeFrameCategoryId, setActiveFrameCategoryId] = useState(
     ALL_FRAME_CATEGORY_ID,
@@ -374,52 +381,54 @@ export function BoothFormDialog({
         onSubmit={(e) => {
           e.preventDefault();
           setFormError(null);
-          if (!form.name.trim() || !form.location.trim()) {
-            showFormError("Name and location are required", "general");
-            return;
-          }
-          if (
-            form.protectSettings &&
-            !form.settingsPin?.trim() &&
-            !initialDevice.protectSettings
-          ) {
-            showFormError(
-              "Set a 4 to 12 digit Settings PIN before enabling protection",
-              "system",
-            );
-            return;
-          }
-          if (
-            form.settingsPin?.trim() &&
-            !/^\d{4,12}$/.test(form.settingsPin.trim())
-          ) {
-            showFormError(
-              "Settings PIN must contain 4 to 12 digits",
-              "system",
-            );
-            return;
-          }
-          if (
-            sessionMode === "event" &&
-            !eventProducts.some(
-              (product) =>
-                (product.id === eventSelection ||
-                  product.name === eventSelection) &&
-                product.active &&
-                !isEventExpired(product),
-            )
-          ) {
-            showFormError(
-              "The selected event is inactive or expired",
-              "general",
-            );
-            return;
+          if (!isDesignMode) {
+            if (!form.name.trim() || !form.location.trim()) {
+              showFormError("Name and location are required", "general");
+              return;
+            }
+            if (
+              form.protectSettings &&
+              !form.settingsPin?.trim() &&
+              !initialDevice.protectSettings
+            ) {
+              showFormError(
+                "Set a 4 to 12 digit Settings PIN before enabling protection",
+                "system",
+              );
+              return;
+            }
+            if (
+              form.settingsPin?.trim() &&
+              !/^\d{4,12}$/.test(form.settingsPin.trim())
+            ) {
+              showFormError(
+                "Settings PIN must contain 4 to 12 digits",
+                "system",
+              );
+              return;
+            }
+            if (
+              sessionMode === "event" &&
+              !eventProducts.some(
+                (product) =>
+                  (product.id === eventSelection ||
+                    product.name === eventSelection) &&
+                  product.active &&
+                  !isEventExpired(product),
+              )
+            ) {
+              showFormError(
+                "The selected event is inactive or expired",
+                "general",
+              );
+              return;
+            }
           }
           onSubmit(form);
         }}
       >
         <Tabs
-          defaultValue="general"
+          defaultValue={isDesignMode ? "frame" : "general"}
           value={tutorialTab ?? activeTab}
           onValueChange={(value) =>
             setActiveTab(value as DeviceConfigurationTab)
@@ -428,44 +437,63 @@ export function BoothFormDialog({
         >
           <TabsList
             data-device-config-tour="tabs"
-            className="sticky top-0 z-20 -mx-1 grid h-auto w-[calc(100%+0.5rem)] grid-cols-3 gap-1.5 rounded-[1.35rem] border border-zinc-300 bg-zinc-100/95 p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.10)] backdrop-blur-xl"
+            className="sticky top-0 z-20 -mx-1 grid h-auto w-[calc(100%+0.5rem)] grid-cols-2 gap-1.5 rounded-[1.35rem] border border-zinc-300 bg-zinc-100/95 p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.10)] backdrop-blur-xl"
           >
-            <TabsTrigger
-              value="general"
-              className="h-auto min-w-0 rounded-2xl border border-zinc-200/90 px-2 py-2.5 sm:justify-start sm:px-4"
-            >
-              <Sparkles className="size-4 shrink-0" />
-              <span className="ml-2 min-w-0 text-left">
-                <span className="block font-semibold text-zinc-900">General</span>
-                <span className="hidden truncate text-[10px] font-normal text-zinc-400 sm:block">
-                  Identity & access
-                </span>
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="frame"
-              className="h-auto min-w-0 rounded-2xl border border-zinc-200/90 px-2 py-2.5 sm:justify-start sm:px-4"
-            >
-              <GalleryVerticalEnd className="size-4 shrink-0" />
-              <span className="ml-2 min-w-0 text-left">
-                <span className="block font-semibold text-zinc-900">Frames</span>
-                <span className="hidden truncate text-[10px] font-normal text-zinc-400 sm:block">
-                  {form.frameTemplates.length} selected
-                </span>
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="system"
-              className="h-auto min-w-0 rounded-2xl border border-zinc-200/90 px-2 py-2.5 sm:justify-start sm:px-4"
-            >
-              <Wrench className="size-4 shrink-0" />
-              <span className="ml-2 min-w-0 text-left">
-                <span className="block font-semibold text-zinc-900">System</span>
-                <span className="hidden truncate text-[10px] font-normal text-zinc-400 sm:block">
-                  Security & hardware
-                </span>
-              </span>
-            </TabsTrigger>
+            {isDesignMode ? (
+              <>
+                <TabsTrigger
+                  value="frame"
+                  className="h-auto min-w-0 rounded-2xl border border-zinc-200/90 px-2 py-2.5 sm:justify-start sm:px-4"
+                >
+                  <GalleryVerticalEnd className="size-4 shrink-0" />
+                  <span className="ml-2 min-w-0 text-left">
+                    <span className="block font-semibold text-zinc-900">Frames</span>
+                    <span className="hidden truncate text-[10px] font-normal text-zinc-400 sm:block">
+                      {form.frameTemplates.length} selected
+                    </span>
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="theme"
+                  className="h-auto min-w-0 rounded-2xl border border-zinc-200/90 px-2 py-2.5 sm:justify-start sm:px-4"
+                >
+                  <Palette className="size-4 shrink-0" />
+                  <span className="ml-2 min-w-0 text-left">
+                    <span className="block font-semibold text-zinc-900">Themes</span>
+                    <span className="hidden truncate text-[10px] font-normal text-zinc-400 sm:block">
+                      Kiosk visual style
+                    </span>
+                  </span>
+                </TabsTrigger>
+              </>
+            ) : (
+              <>
+                <TabsTrigger
+                  value="general"
+                  className="h-auto min-w-0 rounded-2xl border border-zinc-200/90 px-2 py-2.5 sm:justify-start sm:px-4"
+                >
+                  <Sparkles className="size-4 shrink-0" />
+                  <span className="ml-2 min-w-0 text-left">
+                    <span className="block font-semibold text-zinc-900">General</span>
+                    <span className="hidden truncate text-[10px] font-normal text-zinc-400 sm:block">
+                      Identity & access
+                    </span>
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger
+                  value="system"
+                  className="h-auto min-w-0 rounded-2xl border border-zinc-200/90 px-2 py-2.5 sm:justify-start sm:px-4"
+                >
+                  <Wrench className="size-4 shrink-0" />
+                  <span className="ml-2 min-w-0 text-left">
+                    <span className="block font-semibold text-zinc-900">System</span>
+                    <span className="hidden truncate text-[10px] font-normal text-zinc-400 sm:block">
+                      Security & hardware
+                    </span>
+                  </span>
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           {/* TAB 1: GENERAL */}
@@ -531,47 +559,7 @@ export function BoothFormDialog({
               </div>
             </section>
 
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              <section
-                data-device-config-tour="theme"
-                className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50/60 p-4 sm:p-5"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[#00357B] shadow-sm ring-1 ring-zinc-200">
-                    <Layers3 className="size-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-zinc-900">
-                      Theme / layout
-                    </h3>
-                    <p className="mt-1 text-xs leading-5 text-zinc-500">
-                      Choose the visual layout shown on this kiosk.
-                    </p>
-                  </div>
-                </div>
-                <ThemePicker
-                  className="mt-4"
-                  value={form.layoutSchemaId ?? ""}
-                  options={includeCurrentThemeOptions(
-                    options.themeOptions,
-                    form.layoutSchemaId,
-                    form.theme,
-                  )}
-                  disabled={readOnly}
-                  onChange={(value) => {
-                    const layout = options.themeOptions.find(
-                      (option) => option.id === value,
-                    );
-                    setForm({
-                      ...form,
-                      layoutSchemaId: value || null,
-                      theme: layout?.name ?? "",
-                    });
-                  }}
-                />
-              </section>
-
-              <section
+            <section
                 data-device-config-tour="session-access"
                 className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50/60 p-4 sm:p-5"
               >
@@ -677,7 +665,6 @@ export function BoothFormDialog({
                   </p>
                 )}
               </section>
-            </div>
 
             <section
               className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50/60 p-4 sm:p-5"
@@ -819,7 +806,49 @@ export function BoothFormDialog({
             </section>
           </TabsContent>
 
-          {/* TAB 2: FRAME */}
+          {/* DESIGN TAB: THEME */}
+          <TabsContent value="theme" className="min-h-[340px]">
+            <section
+              data-device-design-tour="theme"
+              className="rounded-[1.5rem] border border-zinc-200 bg-zinc-50/60 p-4 sm:p-5"
+            >
+              <div className="flex items-start gap-3">
+                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[#00357B] shadow-sm ring-1 ring-zinc-200">
+                  <Palette className="size-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900">
+                    Theme / layout
+                  </h3>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">
+                    Choose the visual layout shown on this kiosk.
+                  </p>
+                </div>
+              </div>
+              <ThemePicker
+                className="mt-4"
+                value={form.layoutSchemaId ?? ""}
+                options={includeCurrentThemeOptions(
+                  options.themeOptions,
+                  form.layoutSchemaId,
+                  form.theme,
+                )}
+                disabled={readOnly}
+                onChange={(value) => {
+                  const layout = options.themeOptions.find(
+                    (option) => option.id === value,
+                  );
+                  setForm({
+                    ...form,
+                    layoutSchemaId: value || null,
+                    theme: layout?.name ?? "",
+                  });
+                }}
+              />
+            </section>
+          </TabsContent>
+
+          {/* DESIGN TAB: FRAME */}
           <TabsContent value="frame" className="min-h-[340px]">
             <section
               data-device-config-tour="frames"
@@ -1534,7 +1563,11 @@ export function BoothFormDialog({
                 disabled={submitting}
               >
                 {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-                {submitting ? "Saving..." : "Save configuration"}
+                {submitting
+                  ? "Saving..."
+                  : isDesignMode
+                    ? "Save design"
+                    : "Save configuration"}
               </Button>
             </div>
           )}
