@@ -15,7 +15,7 @@ export async function createOrganizationAction(formData: FormData) {
     return encodedRedirect(
       "error",
       "/onboarding",
-      "Organization name is required.",
+      "Workspace name is required.",
     );
   }
 
@@ -39,7 +39,7 @@ export async function createOrganizationAction(formData: FormData) {
     return encodedRedirect(
       "error",
       "/onboarding",
-      "Workspace belum dapat dibuat. Periksa nama workspace lalu coba lagi.",
+      "We could not create the workspace. Check the name and try again.",
     );
   }
 
@@ -59,7 +59,7 @@ export async function joinOrganizationAction(formData: FormData) {
     return encodedRedirect(
       "error",
       "/onboarding",
-      "Organization code is required.",
+      "Workspace join code is required.",
     );
   }
 
@@ -75,7 +75,7 @@ export async function joinOrganizationAction(formData: FormData) {
   return encodedRedirect(
     "success",
     "/onboarding",
-    "Join request sent successfully. Waiting for owner or admin approval.",
+    "Join request sent. The workspace owner or admin must approve it before you can access the dashboard.",
   );
 }
 
@@ -94,7 +94,7 @@ export async function cancelMyPendingRequestAction(formData: FormData) {
     return encodedRedirect(
       "success",
       "/onboarding",
-      "Join request cancelled successfully.",
+      "Join request cancelled. You can enter a different workspace code.",
     );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan.";

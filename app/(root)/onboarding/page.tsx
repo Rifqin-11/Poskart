@@ -1,22 +1,12 @@
 import type { Metadata } from "next";
-import { Building2, KeyRound, Plus, UsersRound } from "lucide-react";
+import { UsersRound } from "lucide-react";
 import { redirect } from "next/navigation";
 import {
-  createOrganizationAction,
-  joinOrganizationAction,
   cancelMyPendingRequestAction,
 } from "@/app/(admin)/onboarding/actions";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { LandingButton } from "@/components/ui/landing-button";
 import { createClient } from "@/lib/supabase/server";
-import { OnboardingSubmitButton } from "@/features/root/onboarding/onboarding-submit-button";
+import { OnboardingWorkspaceSetup } from "@/features/root/onboarding/onboarding-workspace-setup";
 
 export const metadata: Metadata = {
   title: "Onboarding | POSKART",
@@ -50,15 +40,16 @@ export default async function OnboardingPage({
     redirect("/dashboard");
   }
 
-  // Fetch pending join requests for the current user
   const { data: pendingRequest } = await supabase
     .from("organization_join_requests")
-    .select(`
+    .select(
+      `
       id,
       status,
       created_at,
       organization:organizations(name)
-    `)
+    `,
+    )
     .eq("profile_id", data.user.id)
     .eq("status", "pending")
     .maybeSingle();
@@ -71,171 +62,80 @@ export default async function OnboardingPage({
     const organization = Array.isArray(pendingOrganization)
       ? pendingOrganization[0]
       : pendingOrganization;
-    const orgName = organization?.name ?? "organization";
+    const organizationName = organization?.name ?? "this workspace";
+
     return (
-      <div className="flex min-h-[70vh] items-center justify-center p-4">
-        <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <main className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#f5f6f8] p-4 text-zinc-950 sm:p-8">
+        <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-12 size-72 rounded-full bg-amber-100/70 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-24 bottom-0 size-96 rounded-full bg-blue-100/60 blur-3xl" />
+        <div className="relative w-full max-w-md space-y-8">
           <div className="text-center">
-            <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-amber-100/50 ring-1 ring-amber-200/50 shadow-sm">
+            <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-amber-100/70 shadow-[0_10px_30px_rgba(245,158,11,0.12)] ring-1 ring-amber-200/70">
               <UsersRound className="size-6 text-amber-600" />
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-              Pending Approval
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Photobooth workspace</p>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">
+              Your join request is pending
             </h1>
-            <p className="mt-2 text-sm text-zinc-500">
-              Your request to join <strong className="text-zinc-900 font-medium">{orgName}</strong> is under review. You will receive access once approved.
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              The owner or an admin of <strong className="font-medium text-zinc-900">{organizationName}</strong> needs to approve your request before you can open the workspace.
             </p>
           </div>
 
           {params.error ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 shadow-sm">
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 shadow-sm" role="alert">
               {params.error}
             </div>
           ) : null}
           {params.success ? (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700 shadow-sm">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700 shadow-sm" role="status">
               {params.success}
             </div>
           ) : null}
 
-          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm ring-1 ring-zinc-200/50">
-            <div className="border-b border-zinc-100 bg-zinc-50/80 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-zinc-700">Status</span>
-                <div className="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-                  <span className="relative flex size-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex size-2 rounded-full bg-amber-500"></span>
-                  </span>
-                  Under Review
-                </div>
+          <section className="rounded-[28px] border border-white/90 bg-white/65 p-2 shadow-[0_24px_70px_rgba(0,53,123,0.12)] backdrop-blur-xl">
+            <div className="rounded-[22px] border border-white/80 bg-white/70 p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-3 border-b border-zinc-200/70 pb-4">
+                <span className="text-sm font-medium text-zinc-700">Join request status</span>
+                <span className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                  <span className="size-1.5 rounded-full bg-amber-500" />
+                  Waiting for approval
+                </span>
               </div>
-            </div>
-            <div className="px-6 py-5">
-              <div className="mb-6 space-y-1.5">
-                <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Submitted On</p>
-                <p className="text-sm font-medium text-zinc-900">
+              <div className="pt-5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">Submitted on</p>
+                <p className="mt-1 text-sm font-medium text-zinc-900">
                   {new Date(pendingRequest.created_at).toLocaleString("en-US", {
                     dateStyle: "medium",
                     timeStyle: "short",
                   })}
                 </p>
+                <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/70 p-3 text-xs leading-5 text-blue-900">
+                  Once approved, you can open the dashboard and see the devices, frames, pricing, and settings shared by this workspace.
+                </div>
+                <form action={cancelMyPendingRequestAction} className="mt-5">
+                  <input type="hidden" name="requestId" value={pendingRequest.id} />
+                  <LandingButton
+                    type="submit"
+                    variant="secondary"
+                    size="sm"
+                    className="w-full text-zinc-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    Cancel request
+                  </LandingButton>
+                </form>
               </div>
-              <form action={cancelMyPendingRequestAction}>
-                <input type="hidden" name="requestId" value={pendingRequest.id} />
-                 <Button
-                   type="submit"
-                   variant="outline"
-                   className="w-full rounded-xl border-zinc-200 text-zinc-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-                 >
-                   Cancel Request
-                 </Button>
-              </form>
             </div>
-          </div>
+          </section>
 
           <p className="text-center text-xs leading-relaxed text-zinc-400">
-            Want to join a different workspace? <br/>
-            Cancel this request to enter a new code.
+            Need to join a different workspace? <br />
+            Cancel this request first, then enter another join code.
           </p>
         </div>
-      </div>
+      </main>
     );
   }
 
-  return (
-    <div className="mx-auto max-w-5xl space-y-6 py-8">
-      <div className="max-w-2xl">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-600">
-          <Building2 className="size-3.5 text-red-500" />
-          Workspace setup
-        </div>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Create or join your POSKART organization.
-        </h1>
-        <p className="mt-3 text-sm leading-7 text-zinc-600">
-          POSKART is organization-based. Before using dashboard data, themes,
-          frames, devices, and analytics, connect this account to a
-          workspace.
-        </p>
-      </div>
-
-      {params.error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
-          {params.error}
-        </div>
-      ) : null}
-      {params.success ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
-          {params.success}
-        </div>
-      ) : null}
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="mb-3 grid size-10 place-items-center rounded-lg bg-zinc-100">
-              <Plus className="size-5 text-zinc-700" />
-            </div>
-            <CardTitle>Create organization</CardTitle>
-            <CardDescription>
-              Start a new POSKART workspace and become its owner.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={createOrganizationAction} className="space-y-4">
-              <label className="block text-xs font-medium text-zinc-500">
-                Organization name
-                <Input
-                  className="mt-1"
-                  name="organizationName"
-                  placeholder="POSKART Bandung"
-                  required
-                />
-              </label>
-               <OnboardingSubmitButton pendingLabel="Membuat workspace...">
-                 Create organization
-                 <Building2 className="size-4" />
-               </OnboardingSubmitButton>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="mb-3 grid size-10 place-items-center rounded-lg bg-zinc-100">
-              <KeyRound className="size-5 text-zinc-700" />
-            </div>
-            <CardTitle>Join organization</CardTitle>
-            <CardDescription>
-              Enter the unique organization code from your workspace owner.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={joinOrganizationAction} className="space-y-4">
-              <label className="block text-xs font-medium text-zinc-500">
-                Organization code
-                <Input
-                  className="mt-1 font-mono uppercase tracking-[0.2em]"
-                  name="organizationCode"
-                  placeholder="A1B2C3D4"
-                  required
-                />
-              </label>
-               <OnboardingSubmitButton pendingLabel="Mengirim permintaan..." variant="outline">
-                 Join organization
-                 <UsersRound className="size-4" />
-               </OnboardingSubmitButton>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="rounded-lg border border-zinc-200 bg-white p-4 text-sm leading-6 text-zinc-600">
-        Organization owners can find the join code later on the Organization
-        Management page. Free organizations can view dashboard and organization
-        settings, while operating tools unlock after subscription activation.
-      </div>
-    </div>
-  );
+  return <OnboardingWorkspaceSetup error={params.error} success={params.success} />;
 }

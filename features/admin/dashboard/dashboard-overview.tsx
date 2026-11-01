@@ -234,8 +234,12 @@ export function DashboardOverview() {
   const activeBooths = dashboardData.devices.filter((device: Device) =>
     isDeviceConnected(device.status),
   ).length;
-  const hasWeeklyChart = dashboardData.weeklyChart.length > 0;
-  const hasMonthlyChart = dashboardData.monthlyChart.length > 0;
+  const hasWeeklyActivity = dashboardData.weeklyChart.some(
+    (point) => point.transactions > 0 || point.revenue > 0,
+  );
+  const hasMonthlyActivity = dashboardData.monthlyChart.some(
+    (point) => point.transactions > 0 || point.revenue > 0,
+  );
   const hasDevices = dashboardData.devices.length > 0;
   const hasTransactions = dashboardData.transactionStats.some(
     (stat) => stat.transactionCount > 0,
@@ -243,7 +247,7 @@ export function DashboardOverview() {
   const hasFeedTransactions = feedTransactions.length > 0;
   const hasPosSales = dashboardData.posSummary.totalTransactions > 0;
   const hasOperationalHistory =
-    hasTransactions || hasPosSales || hasWeeklyChart || hasMonthlyChart;
+    hasTransactions || hasPosSales || hasWeeklyActivity || hasMonthlyActivity;
   const hasReadyDevice = dashboardData.devices.some(isDeviceReady);
   const showSetupGuide =
     !subscriptionLoading && !hasOperationalHistory && !hasReadyDevice;

@@ -11,14 +11,14 @@ export default function OnboardingError({ reset }: { reset: () => void }) {
           <span className="text-xl font-bold">!</span>
         </div>
         <h1 className="mt-5 text-xl font-semibold tracking-tight">
-          Workspace belum dapat dimuat
+           Your photobooth workspace could not load
         </h1>
         <p className="mt-3 text-sm leading-6 text-zinc-500">
-          Sesi Anda tetap aman. Muat ulang halaman untuk melanjutkan pengaturan
-          workspace POSKART.
+           Your session is safe. Reload the page to continue setting up your
+           photobooth workspace.
         </p>
         <Button className="mt-6 rounded-full" onClick={reset}>
-          <RefreshCw className="size-4" /> Coba lagi
+           <RefreshCw className="size-4" /> Try again
         </Button>
       </section>
     </main>
