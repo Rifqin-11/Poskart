@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Fragment } from "react";
 import { usePathname } from "next/navigation";
 import { useSubscriptionStatus } from "@/features/admin/subscription/use-subscription";
 import { useTenantDetails } from "@/features/admin/organization/use-organization";
@@ -41,7 +42,37 @@ export function AdminSidebar({ isSuperAdmin = false, onNavigate }: { isSuperAdmi
         <div><div className="text-sm font-semibold tracking-tight">POSKART</div><div className="text-xs text-zinc-500">Kiosk operating system</div></div>
       </Link>
       <nav data-admin-tour="navigation" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]">
-        {filteredNavItems.map((item) => { const Icon = item.icon; const active = item.activeHrefs ? item.activeHrefs.includes(pathname) : pathname === item.href; return <Link key={item.href} href={item.href} onClick={onNavigate} className={cn("flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-white hover:text-zinc-950 hover:shadow-sm", active && "bg-zinc-950 text-white shadow-lg shadow-zinc-950/10 hover:bg-zinc-950 hover:text-white")}><Icon className="size-4" />{t(item.labelKey)}</Link>; })}
+        {filteredNavItems.map((item, index) => {
+          const Icon = item.icon;
+          const active = item.activeHrefs
+            ? item.activeHrefs.includes(pathname)
+            : pathname === item.href;
+          const previousItem = filteredNavItems[index - 1];
+          const showDivider = previousItem && previousItem.section !== item.section;
+
+          return (
+            <Fragment key={item.href}>
+              {showDivider ? (
+                <div
+                  aria-hidden="true"
+                  className="my-2 shrink-0 border-t border-zinc-200/80"
+                />
+              ) : null}
+              <Link
+                href={item.href}
+                onClick={onNavigate}
+                className={cn(
+                  "flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-sm text-zinc-600 transition-colors hover:bg-white hover:text-zinc-950 hover:shadow-sm",
+                  active &&
+                    "bg-zinc-950 text-white shadow-md shadow-zinc-950/10 hover:bg-zinc-950 hover:text-white",
+                )}
+              >
+                <Icon className="size-4" />
+                {t(item.labelKey)}
+              </Link>
+            </Fragment>
+          );
+        })}
       </nav>
        <OrganizationStatusCarousel
          hasActiveSubscription={hasActiveSubscription}

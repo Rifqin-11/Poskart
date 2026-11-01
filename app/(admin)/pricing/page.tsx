@@ -1,6 +1,5 @@
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { PricingManagement } from "@/features/admin/pricing";
-import { PricingPromotionNav } from "@/features/admin/pricing/pricing-promotion-nav";
 import { adminQueryKeys } from "@/features/admin/query-keys";
 import { getQueryClient } from "@/lib/query-client.server";
 import { pricingService } from "@/server/admin/pricing-service";
@@ -16,8 +15,7 @@ export default async function AdminPricingPage() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <PricingPromotionNav />
-      <PricingManagement />
+      <PricingManagement mode="paid" />
     </HydrationBoundary>
   );
 }

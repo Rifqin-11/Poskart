@@ -15,9 +15,9 @@ function readPassword(formData: FormData) {
   return typeof value === "string" ? value : "";
 }
 
-function safeNextPath(value: string) {
+function safeNextPath(value: string, fallback = "/dashboard") {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/dashboard";
+    return fallback;
   }
   return value;
 }
@@ -69,11 +69,15 @@ export async function signUpAction(formData: FormData) {
   const email = readField(formData, "email");
   const password = readPassword(formData);
   const fullName = readField(formData, "fullName");
+  const next = safeNextPath(readField(formData, "next"), "/onboarding");
+  const registerPath = next === "/onboarding"
+    ? "/register"
+    : `/register?next=${encodeURIComponent(next)}`;
 
   if (!email || !password || !fullName) {
     return encodedRedirect(
       "error",
-      "/register",
+      registerPath,
       "Name, email, and password are required.",
     );
   }
@@ -81,7 +85,7 @@ export async function signUpAction(formData: FormData) {
   if (password.length < 8) {
     return encodedRedirect(
       "error",
-      "/register",
+      registerPath,
       "Password must be at least 8 characters.",
     );
   }
@@ -95,25 +99,31 @@ export async function signUpAction(formData: FormData) {
       data: {
         full_name: fullName,
       },
-      emailRedirectTo: `${siteUrl}/auth/callback?next=/onboarding`,
+      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });
 
   if (error) {
-    return encodedRedirect("error", "/register", getSignUpErrorMessage(error.message));
+    return encodedRedirect("error", registerPath, getSignUpErrorMessage(error.message));
   }
 
   return encodedRedirect(
     "success",
-    "/login",
+    next === "/onboarding"
+      ? "/login"
+      : `/login?next=${encodeURIComponent(next)}`,
     "Registration submitted. Check your email to confirm your account before signing in.",
   );
 }
 
-export async function signOutAction() {
+export async function signOutAction(formData?: FormData) {
   const supabase = await createClient();
+  const next = safeNextPath(readField(formData ?? new FormData(), "next"));
   await supabase.auth.signOut();
-  return encodedRedirect("success", "/login", "Signed out successfully.");
+  const loginPath = next === "/dashboard"
+    ? "/login"
+    : `/login?next=${encodeURIComponent(next)}`;
+  return encodedRedirect("success", loginPath, "Signed out successfully.");
 }
 
 export async function signInWithGoogleAction(formData: FormData) {

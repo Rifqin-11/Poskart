@@ -8,6 +8,7 @@ type SettingsCardProps = {
   title: string;
   description: string;
   icon?: ReactNode;
+  action?: ReactNode;
   children: ReactNode;
   className?: string;
 };
@@ -16,6 +17,7 @@ export function SettingsCard({
   title,
   description,
   icon,
+  action,
   children,
   className,
 }: SettingsCardProps) {
@@ -37,7 +39,12 @@ export function SettingsCard({
           <p className="mt-1 text-xs leading-5 text-zinc-400">{description}</p>
         </div>
       </div>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0">
+        {action ? (
+          <div className="mb-3 flex justify-end">{action}</div>
+        ) : null}
+        {children}
+      </div>
     </section>
   );
 }

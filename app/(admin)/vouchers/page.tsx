@@ -1,5 +1,4 @@
 import { VoucherManagement } from "@/features/admin/vouchers/voucher-management";
-import { PricingPromotionNav } from "@/features/admin/pricing/pricing-promotion-nav";
 import { requireOrganizationMembershipAccess } from "@/server/admin/page-access";
 
 export default async function VouchersPage({
@@ -10,15 +9,12 @@ export default async function VouchersPage({
   await requireOrganizationMembershipAccess();
   const params = await searchParams;
   return (
-    <>
-      <PricingPromotionNav />
-      <VoucherManagement
-        initialOpen={params.action === "generate"}
-        initialCampaignId={
-          typeof params.campaign === "string" ? params.campaign : undefined
-        }
-        initialCode={typeof params.code === "string" ? params.code : undefined}
-      />
-    </>
+    <VoucherManagement
+      initialOpen={params.action === "generate"}
+      initialCampaignId={
+        typeof params.campaign === "string" ? params.campaign : undefined
+      }
+      initialCode={typeof params.code === "string" ? params.code : undefined}
+    />
   );
 }

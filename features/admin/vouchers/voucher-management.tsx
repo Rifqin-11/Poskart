@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/features/admin/_components/page-header";
+import { PricingPromotionNav } from "@/features/admin/pricing/pricing-promotion-nav";
 import { useBooths } from "@/features/admin/devices/use-devices";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import {
@@ -190,6 +191,7 @@ export function VoucherManagement({
           </div>
         }
       />
+      <PricingPromotionNav />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Metric label="Campaigns" value={campaigns.length} />

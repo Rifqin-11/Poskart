@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { PageHeader } from "@/features/admin/_components/page-header";
+import { PricingPromotionNav } from "@/features/admin/pricing/pricing-promotion-nav";
 import {
   useCreatePricing,
   useDeletePricing,
@@ -97,7 +98,7 @@ function getPricingTourSteps(
   ];
 }
 
-export function PricingManagement() {
+export function PricingManagement({ mode = "paid" }: { mode?: "paid" | "event" }) {
   const { data = [] } = usePricing();
   const createPricing = useCreatePricing();
   const { isReadOnly } = usePermission();
@@ -108,7 +109,11 @@ export function PricingManagement() {
   const [creating, setCreating] = useState<PricingProductInput | null>(null);
   const confirmDelete = useConfirmDialog();
   const pricingTutorial = useFeatureTutorial("pricing");
-  const PRICING_TOUR_STEPS = getPricingTourSteps(t);
+  const PRICING_TOUR_STEPS = getPricingTourSteps(t).filter((step) =>
+    mode === "event"
+      ? step.selectors.some((selector) => selector.includes("event"))
+      : !step.selectors.some((selector) => selector.includes("event")),
+  );
 
   const handleToggle = (
     product: PricingProduct,
@@ -158,8 +163,8 @@ export function PricingManagement() {
     <div>
       {confirmDelete.dialog}
       <PageHeader
-        title={t("pricing.pageTitle")}
-        description={t("pricing.pageDesc")}
+        title={mode === "event" ? t("pricing.eventPageTitle") : t("pricing.pageTitle")}
+        description={mode === "event" ? t("pricing.eventPageDesc") : t("pricing.pageDesc")}
         action={
           <Button variant="outline" onClick={pricingTutorial.show}>
             <CircleHelp className="size-4" />
@@ -167,30 +172,18 @@ export function PricingManagement() {
           </Button>
         }
       />
+      <PricingPromotionNav />
 
       <div className="space-y-5">
         <PricingTableCard
-          title={t("pricing.packagesTitle")}
-          description={t("pricing.packagesDesc")}
-          products={data.filter((product) => product.accessMode === "paid")}
-          eventMode={false}
-          tourTarget="packages"
-          infoTourTarget="package-info"
+          title={mode === "event" ? t("pricing.eventsTitle") : t("pricing.packagesTitle")}
+          description={mode === "event" ? t("pricing.eventsDesc") : t("pricing.packagesDesc")}
+          products={data.filter((product) => product.accessMode === mode)}
+          eventMode={mode === "event"}
+          tourTarget={mode === "event" ? "events" : "packages"}
+          infoTourTarget={mode === "event" ? "event-info" : "package-info"}
           readOnly={isReadOnly("pricing")}
-          onAdd={() => setCreating({ ...EMPTY_PRICING })}
-          onEdit={setEditing}
-          onDelete={handleDelete}
-          onToggle={handleToggle}
-        />
-        <PricingTableCard
-          title={t("pricing.eventsTitle")}
-          description={t("pricing.eventsDesc")}
-          products={data.filter((product) => product.accessMode === "event")}
-          eventMode
-          tourTarget="events"
-          infoTourTarget="event-info"
-          readOnly={isReadOnly("pricing")}
-          onAdd={() => setCreating({ ...EMPTY_EVENT })}
+          onAdd={() => setCreating({ ...(mode === "event" ? EMPTY_EVENT : EMPTY_PRICING) })}
           onEdit={setEditing}
           onDelete={handleDelete}
           onToggle={handleToggle}
@@ -199,9 +192,7 @@ export function PricingManagement() {
 
       {creating ? (
         <PricingFormDialog
-          title={
-            creating.accessMode === "event" ? "Add event access" : "Add package"
-          }
+            title={mode === "event" ? "Tambah event" : "Tambah paket berbayar"}
           initial={creating}
           submitting={createPricing.isPending}
           onClose={() => setCreating(null)}
@@ -209,7 +200,7 @@ export function PricingManagement() {
             createPricing.mutate(values, {
               onSuccess: () => {
                 toast.success(
-                  values.accessMode === "event"
+                      mode === "event"
                     ? t("pricing.eventAccessCreated")
                     : t("pricing.packageCreated"),
                 );
@@ -231,9 +222,9 @@ export function PricingManagement() {
           initial={editing}
           submitting={updatePricing.isPending}
           onClose={() => setEditing(null)}
-          onSubmit={(values) => {
+            onSubmit={(values) => {
             updatePricing.mutate(
-              { id: editing.id, patch: values },
+              { id: editing.id, patch: { ...values, accessMode: mode } },
               {
                 onSuccess: () => {
                   toast.success(t("pricing.accessUpdated"));

@@ -94,6 +94,9 @@ export async function updateSession(request: NextRequest) {
   ];
   const authRoutes = ["/login", "/register"];
   const pathname = request.nextUrl.pathname;
+  const isOrganizationInvitationRoute =
+    pathname === "/organization/invitations" ||
+    pathname.startsWith("/organization/invitations/");
 
   const isProtectedCheckoutRoute = pathname === "/checkout";
   const isProtectedShowcaseRoute = pathname === "/showcase";
@@ -134,7 +137,11 @@ export async function updateSession(request: NextRequest) {
       .maybeSingle();
     const hasOrganization = Boolean(member?.organization_id);
 
-    if (!hasOrganization && pathname !== "/onboarding") {
+    if (
+      !hasOrganization &&
+      pathname !== "/onboarding" &&
+      !isOrganizationInvitationRoute
+    ) {
       const url = request.nextUrl.clone();
       url.pathname = "/onboarding";
       url.search = "";

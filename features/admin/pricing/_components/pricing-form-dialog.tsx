@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { DialogActions } from "@/features/admin/_components/dialog-actions";
 import {
@@ -58,25 +57,11 @@ export function PricingFormDialog({
             placeholder="Bronze package"
           />
         </label>
-        <label className="md:col-span-2 block text-xs font-medium text-zinc-600">
-          Session access
-          <Select
-            className="mt-1"
-            value={form.accessMode}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                accessMode: e.target.value as PricingProductInput["accessMode"],
-              })
-            }
-          >
-            <option value="paid">Paid package</option>
-            <option value="event">Event access (no payment)</option>
-          </Select>
-          <span className="mt-1 block text-[11px] font-normal text-zinc-400">
-            Event access skips package and payment selection on assigned kiosks.
-          </span>
-        </label>
+        <div className="md:col-span-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+          {form.accessMode === "event"
+            ? "Event: pelanggan langsung memulai sesi. Aktivitas tetap tercatat, tetapi tidak menghasilkan pendapatan."
+            : "Pricing: pelanggan memilih paket dan membayar di kiosk sebelum sesi dimulai."}
+        </div>
         {form.accessMode === "paid" ? (
           <>
             <label className="flex items-start gap-2 rounded-xl border border-zinc-200 p-3 text-sm text-zinc-700 md:col-span-2">

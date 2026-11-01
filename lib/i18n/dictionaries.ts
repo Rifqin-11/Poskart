@@ -14,6 +14,7 @@ export const dictionaries = {
     "nav.pricing": "Pricing",
     "nav.pricingPromotions": "Pricing & Vouchers",
     "nav.pricingTab": "Pricing",
+    "nav.eventsTab": "Event",
     "nav.devices": "Devices",
     "nav.themes": "Themes",
     "nav.templates": "Frames",
@@ -24,7 +25,7 @@ export const dictionaries = {
     "experience.configure": "Configure",
     "experience.galleryDescription": "Let customers unwrap their photos before entering the gallery.",
     "nav.gallery": "Gallery",
-    "nav.vouchers": "Vouchers",
+    "nav.vouchers": "Voucher",
     "nav.superAdmin": "Super Admin",
     "nav.feedback": "Feedback",
     "nav.settings": "Settings",
@@ -306,7 +307,10 @@ export const dictionaries = {
     "themeBuilder.animPremium": "Premium",
     "pricing.pageTitle": "Pricing & Product Management",
     "pricing.pageDesc":
-      "Configure paid packages and event access for POSKART kiosks.",
+      "Configure paid packages. Customers pay at the kiosk before starting a session.",
+    "pricing.eventPageTitle": "Event",
+    "pricing.eventPageDesc":
+      "Sessions for events that do not collect payment. Every session and activity is still recorded; event sessions do not add revenue.",
     "pricing.showTutorial": "Show tutorial",
     "pricing.tourPaidTitle": "Paid packages",
     "pricing.tourPaidDesc":
@@ -325,7 +329,7 @@ export const dictionaries = {
       "Paid packages with payment, print, and media settings.",
     "pricing.eventsTitle": "Event access",
     "pricing.eventsDesc":
-      "Complimentary sessions that skip package and payment selection on assigned kiosks.",
+      "Assigned kiosks start the session without checkout. Sessions, prints, and activity are recorded with Rp0 revenue.",
     "pricing.addEvent": "Add event",
     "pricing.addPackage": "Add package",
     "pricing.deleteTitle": "Delete access?",
@@ -460,6 +464,7 @@ export const dictionaries = {
     "nav.pricing": "Pricing",
     "nav.pricingPromotions": "Harga & Voucher",
     "nav.pricingTab": "Harga",
+    "nav.eventsTab": "Event",
     "nav.devices": "Perangkat",
     "nav.themes": "Themes",
     "nav.templates": "Frames",
@@ -770,7 +775,10 @@ export const dictionaries = {
     "themeBuilder.animPremium": "Premium",
     "pricing.pageTitle": "Manajemen Harga & Produk",
     "pricing.pageDesc":
-      "Konfigurasi paket berbayar dan akses event untuk kiosk POSKART.",
+      "Atur paket berbayar. Pelanggan membayar di kiosk sebelum memulai sesi.",
+    "pricing.eventPageTitle": "Event",
+    "pricing.eventPageDesc":
+      "Sesi acara tanpa pembayaran. Setiap sesi dan aktivitas tetap tercatat; sesi event tidak menambah pendapatan.",
     "pricing.showTutorial": "Tampilkan tutorial",
     "pricing.tourPaidTitle": "Paket berbayar",
     "pricing.tourPaidDesc":
@@ -789,7 +797,7 @@ export const dictionaries = {
       "Paket berbayar dengan pengaturan pembayaran, cetak, dan media.",
     "pricing.eventsTitle": "Akses event",
     "pricing.eventsDesc":
-      "Sesi gratis yang melewati pemilihan paket dan pembayaran di kiosk yang ditugaskan.",
+      "Kiosk yang ditugaskan langsung memulai sesi tanpa checkout. Sesi, cetakan, dan aktivitas tercatat dengan pendapatan Rp0.",
     "pricing.addEvent": "Tambah event",
     "pricing.addPackage": "Tambah paket",
     "pricing.deleteTitle": "Hapus akses?",

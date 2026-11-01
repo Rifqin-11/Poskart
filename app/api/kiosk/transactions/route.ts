@@ -235,7 +235,14 @@ export async function POST(request: Request) {
         location: device.location,
         customer: transaction.customer?.trim() || "Walk-in",
         package_name: product.name,
-        amount: existingTransaction?.amount ?? product.amount,
+        // Event sessions are complimentary. A voucher is a payment method, so
+        // record the selected kiosk package once on its session transaction.
+        amount:
+          provider === "Event"
+            ? 0
+            : provider === "Voucher"
+              ? product.amount
+              : existingTransaction?.amount ?? product.amount,
         pricing_mode: existingTransaction?.pricing_mode ?? product.pricingMode,
         pricing_unit_amount:
           existingTransaction?.pricing_unit_amount ?? product.unitAmount,
@@ -375,26 +382,10 @@ export async function GET(request: Request) {
         normalizeQrisTransactionStatus(transaction),
       ) ?? [];
 
-    let voucherQuery = context.client
-      .from("voucher_redemptions")
-      .select("id,redeemed_at,device_id,voucher_codes(code)")
-      .eq("organization_id", context.organizationId)
-      .eq("device_id", device.id)
-      .order("redeemed_at", { ascending: false });
-    if (from) voucherQuery = voucherQuery.gte("redeemed_at", from);
-    const { data: voucherRedemptions, error: voucherError } = await voucherQuery;
-    if (voucherError) throw voucherError;
-    const voucherTransactions = (voucherRedemptions ?? []).map((redemption) => ({
-      id: redemption.id,
-      provider: "Voucher",
-      status: "paid",
-      amount: 0,
-      package_name: "Voucher",
-      customer: redemption.voucher_codes?.[0]?.code ?? "Voucher",
-      created_at_label: redemption.redeemed_at,
-    }));
-    const allTransactions = [...normalizedTransactions, ...voucherTransactions]
-      .sort((a, b) => String(b.created_at_label ?? "").localeCompare(String(a.created_at_label ?? "")));
+    // Voucher redemption is an authorization record, not a second payment.
+    // The session transaction above already contains the selected package
+    // amount, so do not append synthetic voucher rows here.
+    const allTransactions = normalizedTransactions;
 
     // Calculate total money (paid transactions)
     const totalAmount =

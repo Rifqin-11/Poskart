@@ -1,0 +1,11 @@
+-- Draft only. Do not apply this file to the remote database.
+--
+-- Voucher campaigns, device allocations, and idempotent redemptions are
+-- already provided by the earlier voucher migrations. Voucher creation does
+-- not represent a payment: the kiosk selects a paid package and records that
+-- package amount once in its session transaction when the voucher is used.
+-- Event packages remain complimentary and are recorded at Rp0.
+--
+-- No schema change is required for this flow. This file is intentionally kept
+-- as a local draft so the discarded operator-confirmation/payment model is not
+-- applied accidentally.
