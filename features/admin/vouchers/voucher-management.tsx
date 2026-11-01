@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronDown, CircleHelp, Copy, Loader2, Plus, Ticket, Trash2 } from "lucide-react";
+import { CalendarPlus, Check, ChevronDown, CircleHelp, Copy, Loader2, Plus, Ticket, Trash2 } from "lucide-react";
 import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
 } from "@/features/admin/tutorial/feature-guided-tour";
 import { useFeatureTutorial } from "@/features/admin/tutorial/use-feature-tutorial";
 import { adminQueryKeys } from "@/features/admin/query-keys";
-import { vouchersApi, type VoucherGenerationType } from "@/features/admin/vouchers/api";
+import { vouchersApi, type VoucherExtensionDays, type VoucherGenerationType } from "@/features/admin/vouchers/api";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { type DictionaryKey } from "@/lib/i18n/dictionaries";
@@ -124,6 +124,15 @@ export function VoucherManagement({
         "Voucher campaign tidak dapat dihapus. Coba lagi.",
       ),
   });
+  const extendCampaign = useMutation({
+    mutationFn: ({ id, days }: { id: string; days: VoucherExtensionDays }) =>
+      vouchersApi.extendVoucherCampaign(id, days),
+    onSuccess: async ({ expiresAt }) => {
+      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.vouchers });
+      toast.success(`Voucher diperpanjang sampai ${new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(expiresAt))}.`);
+    },
+    onError: (error) => showErrorToast("Gagal memperpanjang voucher", error, "Voucher belum berhasil diperpanjang."),
+  });
 
   const selectedDevices = useMemo(
     () => devices.filter((device) => form.deviceIds.includes(device.id)),
@@ -216,7 +225,7 @@ export function VoucherManagement({
             </div>
           ) : (
             <div className="divide-y divide-zinc-100">
-              {campaigns.map((campaign) => <CampaignRow key={campaign.id} campaign={campaign} deleting={deleteCampaign.isPending} readOnly={isReadOnly("vouchers")} highlighted={campaign.id === initialCampaignId} highlightedCode={campaign.id === initialCampaignId ? initialCode : undefined} onDelete={() => confirmDelete.confirm({
+              {campaigns.map((campaign) => <CampaignRow key={campaign.id} campaign={campaign} deleting={deleteCampaign.isPending} extending={extendCampaign.isPending} readOnly={isReadOnly("vouchers")} highlighted={campaign.id === initialCampaignId} highlightedCode={campaign.id === initialCampaignId ? initialCode : undefined} onExtend={(days) => extendCampaign.mutate({ id: campaign.id, days })} onDelete={() => confirmDelete.confirm({
                 title: "Hapus voucher campaign?",
                 description: `Campaign “${campaign.name}”, seluruh kode voucher, dan allocation device akan dihapus. Voucher yang sudah tersimpan pada device offline baru hilang saat perangkat kembali sync.`,
                 confirmLabel: "Hapus campaign",
@@ -236,7 +245,7 @@ export function VoucherManagement({
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <label className="text-xs font-medium text-zinc-600 sm:col-span-2">Nama campaign<Input className="mt-1" value={form.name} onChange={(event) => update({ name: event.target.value })} placeholder="Contoh: Promo MPLS 2026" /></label>
               {form.generationType !== "reusable" ? <label className="text-xs font-medium text-zinc-600">Jumlah voucher<Input className="mt-1" type="number" min="1" max="5000" value={form.count} onChange={(event) => update({ count: event.target.value })} /></label> : null}
-              <label className="text-xs font-medium text-zinc-600">Masa berlaku<Select className="mt-1" value={form.validityDays} onChange={(event) => update({ validityDays: event.target.value })}><option value="1">1 hari</option><option value="3">3 hari</option><option value="7">7 hari</option><option value="14">14 hari</option><option value="30">30 hari</option></Select></label>
+              <label className="text-xs font-medium text-zinc-600">Masa berlaku<Select className="mt-1" value={form.validityDays} onChange={(event) => update({ validityDays: event.target.value })}><option value="1">1 hari</option><option value="3">3 hari</option><option value="7">7 hari</option><option value="14">14 hari</option><option value="30">30 hari</option><option value="90">90 hari</option></Select></label>
             </div>
             <TabsContent value="random"><p className="rounded-xl bg-zinc-50 p-3 text-xs leading-5 text-zinc-500">Kode unik acak dibuat server lalu dibagi rata ke device terpilih.</p></TabsContent>
             <TabsContent value="sequential"><div className="grid gap-4 sm:grid-cols-2"><label className="text-xs font-medium text-zinc-600">Prefix<Input className="mt-1" value={form.prefix} maxLength={12} onChange={(event) => update({ prefix: event.target.value.toUpperCase() })} placeholder="PROMO" /></label><label className="text-xs font-medium text-zinc-600">Nomor awal<Input className="mt-1" type="number" min="1" value={form.startNumber} onChange={(event) => update({ startNumber: event.target.value })} /></label></div></TabsContent>
@@ -273,7 +282,7 @@ function Metric({ label, value }: { label: string; value: number }) {
   return <Card><CardContent className="p-5"><p className="text-sm text-zinc-500">{label}</p><p className="mt-2 text-2xl font-semibold tracking-tight">{value.toLocaleString("id-ID")}</p></CardContent></Card>;
 }
 
-function CampaignRow({ campaign, deleting, readOnly, highlighted, highlightedCode, onDelete }: { campaign: Awaited<ReturnType<typeof vouchersApi.getVoucherCampaigns>>[number]; deleting: boolean; readOnly: boolean; highlighted?: boolean; highlightedCode?: string; onDelete: () => void }) {
+function CampaignRow({ campaign, deleting, extending, readOnly, highlighted, highlightedCode, onExtend, onDelete }: { campaign: Awaited<ReturnType<typeof vouchersApi.getVoucherCampaigns>>[number]; deleting: boolean; extending: boolean; readOnly: boolean; highlighted?: boolean; highlightedCode?: string; onExtend: (days: VoucherExtensionDays) => void; onDelete: () => void }) {
   const [open, setOpen] = useState(Boolean(highlighted));
   const rowRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -298,7 +307,7 @@ function CampaignRow({ campaign, deleting, readOnly, highlighted, highlightedCod
         <div className="flex items-center gap-2"><p className="font-semibold text-zinc-900">{campaign.name}</p><Badge variant="secondary">{campaign.generationType}</Badge></div>
         <p className="mt-1 text-xs text-zinc-500">{campaign.totalCodes} voucher · {campaign.allocations.map((allocation) => `${allocation.deviceName} (${allocation.allocatedCount})`).join(", ")}</p>
       </div>
-      <div className="flex items-center gap-2"><p className="text-xs text-zinc-500">{campaign.expiresAt ? `Berakhir ${new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(campaign.expiresAt))}` : "Tidak ada masa berlaku"}</p><CollapsibleTrigger asChild><Button type="button" variant="outline" size="sm">{open ? "Hide codes" : `Show ${campaign.codes.length} codes`}<ChevronDown className={cn("ml-2 size-4 transition-transform", open && "rotate-180")} /></Button></CollapsibleTrigger><Button type="button" variant="outline" size="icon" disabled={readOnly || deleting} onClick={onDelete} aria-label={`Delete ${campaign.name}`} className="text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"><Trash2 className="size-4" /></Button></div>
+       <div className="flex flex-wrap items-center gap-2"><p className="text-xs text-zinc-500">{campaign.expiresAt ? `Berakhir ${new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(campaign.expiresAt))}` : "Tidak ada masa berlaku"}</p><Button type="button" variant="outline" size="sm" disabled={readOnly || deleting || extending} onClick={() => onExtend(30)} title="Tambah 30 hari"><CalendarPlus className="mr-1.5 size-4" />+30 hari</Button><Button type="button" variant="outline" size="sm" disabled={readOnly || deleting || extending} onClick={() => onExtend(90)} title="Tambah 90 hari">+90 hari</Button><CollapsibleTrigger asChild><Button type="button" variant="outline" size="sm">{open ? "Hide codes" : `Show ${campaign.codes.length} codes`}<ChevronDown className={cn("ml-2 size-4 transition-transform", open && "rotate-180")} /></Button></CollapsibleTrigger><Button type="button" variant="outline" size="icon" disabled={readOnly || deleting || extending} onClick={onDelete} aria-label={`Delete ${campaign.name}`} className="text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"><Trash2 className="size-4" /></Button></div>
     </div>
     <CollapsibleContent className="pt-4">
       <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-3">
