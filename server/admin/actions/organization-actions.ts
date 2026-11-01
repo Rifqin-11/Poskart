@@ -24,6 +24,14 @@ import {
   parseJakartaDateTimeInput,
 } from "@/lib/jakarta-time";
 import { getServiceRoleClient } from "@/lib/supabase/server";
+import { getSiteUrl } from "@/lib/auth/site-url";
+import { sendOrganizationInvitationEmail } from "@/server/admin/organization-invitation-email";
+import {
+  createOrganizationInvitationToken,
+  hashOrganizationInvitationToken,
+  organizationInvitationExpiry,
+  organizationInvitationPath,
+} from "@/server/admin/organization-invitation";
 import {
   getOrganizationDuitkuGatewaySummary,
   saveOrganizationDuitkuGateway,
@@ -569,8 +577,9 @@ export async function getMyOrganizationInvitations() {
 
   const { data, error } = await supabase
     .from("organization_invitations")
-    .select("id,email,created_at")
+    .select("id,email,status,created_at,expires_at,email_sent_at")
     .eq("organization_id", membership.organizationId)
+    .eq("status", "pending")
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data;
@@ -578,6 +587,14 @@ export async function getMyOrganizationInvitations() {
 
 export async function inviteUserToTenant(email: string) {
   const { supabase, user } = await getAdminContext();
+
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    throw new Error("A valid email address is required.");
+  }
+  if (normalizedEmail === user.email?.trim().toLowerCase()) {
+    throw new Error("You are already part of this organization.");
+  }
 
   const { data: profile } = await supabase
     .from("organization_members")
@@ -594,7 +611,7 @@ export async function inviteUserToTenant(email: string) {
   const { data: existingProfile } = await supabase
     .from("profiles")
     .select("id")
-    .eq("email", email)
+    .eq("email", normalizedEmail)
     .maybeSingle();
 
   if (existingProfile) {
@@ -608,40 +625,75 @@ export async function inviteUserToTenant(email: string) {
     if (existingMember) {
       throw new Error("User is already a member of this organization");
     }
-
-    const { error: memberErr } = await supabase
-      .from("organization_members")
-      .insert({
-        organization_id: profile.organization_id,
-        profile_id: existingProfile.id,
-        role: "partner",
-      });
-    if (memberErr) throw memberErr;
-    return { status: "joined" };
   }
 
-  const { data: existingInvitation } = await supabase
+  const { data: organization, error: organizationError } = await supabase
+    .from("organizations")
+    .select("name")
+    .eq("id", profile.organization_id)
+    .single();
+  if (organizationError) throw organizationError;
+
+  const rawToken = createOrganizationInvitationToken();
+  const tokenHash = hashOrganizationInvitationToken(rawToken);
+  const expiresAt = organizationInvitationExpiry();
+
+  const { data: existingInvitation, error: existingInvitationError } = await supabase
     .from("organization_invitations")
     .select("id")
     .eq("organization_id", profile.organization_id)
-    .eq("email", email)
+    .eq("email", normalizedEmail)
     .maybeSingle();
+  if (existingInvitationError) throw existingInvitationError;
 
-  if (existingInvitation) {
-    throw new Error("Invitation already exists for this email");
-  }
+  const invitationPayload = {
+    email: normalizedEmail,
+    organization_id: profile.organization_id,
+    invited_by: user.email ?? "Admin",
+    token_hash: tokenHash,
+    status: "pending",
+    expires_at: expiresAt,
+    accepted_at: null,
+    accepted_by: null,
+    declined_at: null,
+    declined_by: null,
+    email_sent_at: null,
+    updated_at: new Date().toISOString(),
+  };
 
-  const { data, error } = await supabase
+  const { data, error } = existingInvitation
+    ? await supabase
+        .from("organization_invitations")
+        .update(invitationPayload)
+        .eq("id", existingInvitation.id)
+        .select()
+        .single()
+    : await supabase
+        .from("organization_invitations")
+        .insert(invitationPayload)
+        .select()
+        .single();
+  if (error) throw error;
+
+  const siteUrl = await getSiteUrl();
+  const inviteUrl = `${siteUrl}${organizationInvitationPath(rawToken)}`;
+  await sendOrganizationInvitationEmail({
+    email: normalizedEmail,
+    organizationName: organization.name,
+    invitedBy: user.email ?? "A workspace admin",
+    inviteUrl,
+    expiresAt,
+  });
+
+  const { data: sentInvitation, error: sentInvitationError } = await supabase
     .from("organization_invitations")
-    .insert({
-      email: email,
-      organization_id: profile.organization_id,
-      invited_by: user.email ?? "Admin",
-    })
+    .update({ email_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", data.id)
     .select()
     .single();
-  if (error) throw error;
-  return { status: "invited", data };
+  if (sentInvitationError) throw sentInvitationError;
+
+  return { status: "invited", data: sentInvitation };
 }
 
 export async function deleteTenantInvitation(id: string) {

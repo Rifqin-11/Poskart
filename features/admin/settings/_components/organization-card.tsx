@@ -19,6 +19,8 @@ import {
   LogOut,
   PanelsTopLeft,
   Calculator,
+  PencilLine,
+  X,
 } from "lucide-react";
 import { showErrorToast, toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
@@ -69,8 +71,6 @@ import { cn } from "@/lib/utils";
 type OrganizationCardProps = {
   myEmail: string;
   subscriptionRequired: boolean;
-  isEditing: boolean;
-  editSection?: "workspace" | "payout" | "team";
 };
 
 type OrganizationMemberRow = {
@@ -84,7 +84,10 @@ type OrganizationMemberRow = {
 type OrganizationInvitationRow = {
   id: string;
   email: string;
+  status?: string;
   created_at: string;
+  expires_at?: string;
+  email_sent_at?: string | null;
 };
 
 type OrganizationJoinRequestRow = {
@@ -132,8 +135,6 @@ function OrganizationMetric({
 export function OrganizationCard({
   myEmail,
   subscriptionRequired,
-  isEditing,
-  editSection = "workspace",
 }: OrganizationCardProps) {
   const { t } = useI18n();
   const { data: tenant, isLoading: isLoadingTenant } = useTenantDetails();
@@ -157,6 +158,9 @@ export function OrganizationCard({
   const confirmLeave = useConfirmDialog();
 
   const [editedName, setEditedName] = useState<string | null>(null);
+  const [workspaceEditing, setWorkspaceEditing] = useState(false);
+  const [payoutEditing, setPayoutEditing] = useState(false);
+  const [teamEditing, setTeamEditing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] =
@@ -198,16 +202,35 @@ export function OrganizationCard({
   const canEditDetails = isOwner || isAdmin;
   const canViewPayout = isOwner;
   const canViewSubscription = isOwner;
-  const showWorkspace = !isEditing || editSection === "workspace";
-  const showPayout = !isEditing || editSection === "payout";
-  const showTeam = !isEditing || editSection === "team";
+
+  const cancelWorkspaceEditing = () => {
+    setEditedName(null);
+    setWorkspaceEditing(false);
+  };
+
+  const saveWorkspaceName = () => {
+    if (!organizationName.trim() || organizationName === tenant?.name) return;
+    updateName.mutate(organizationName.trim(), {
+      onSuccess: () => {
+        toast.success("Organization name updated");
+        setEditedName(null);
+        setWorkspaceEditing(false);
+      },
+      onError: (err) =>
+        showErrorToast(
+          "Organization name could not be updated",
+          err,
+          "Failed to update organization.",
+        ),
+    });
+  };
 
   return (
     <div className="space-y-0">
       {confirmRemove.dialog}
       {confirmTransfer.dialog}
       {confirmLeave.dialog}
-      {!isEditing && (subscriptionRequired || isFreeAccount) ? (
+      {subscriptionRequired || isFreeAccount ? (
         <div className="mb-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
@@ -229,8 +252,7 @@ export function OrganizationCard({
         </div>
       ) : null}
 
-      {showWorkspace ? (
-        <SettingsCard
+      <SettingsCard
           icon={<Building2 className="size-4" />}
           title="Workspace"
           description={t("settings.orgIdentityDesc")}
@@ -242,10 +264,77 @@ export function OrganizationCard({
                   <div className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-400">
                     Organization name
                   </div>
-                  <div className="mt-1.5 truncate text-xl font-semibold text-zinc-950 sm:text-2xl">
-                    {isLoadingTenant
-                      ? "Loading organization..."
-                      : tenant?.name ?? "POSKART Workspace"}
+                  <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
+                    {workspaceEditing ? (
+                      <>
+                        <Input
+                          autoFocus
+                          aria-label="Workspace name"
+                          className="h-10 max-w-md text-lg font-semibold sm:text-xl"
+                          value={organizationName}
+                          onChange={(event) => setEditedName(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              saveWorkspaceName();
+                            }
+                            if (event.key === "Escape") cancelWorkspaceEditing();
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          className="size-9 shrink-0 rounded-xl"
+                          aria-label="Save workspace name"
+                          title="Save workspace name"
+                          disabled={
+                            !organizationName.trim() ||
+                            organizationName === tenant?.name ||
+                            updateName.isPending
+                          }
+                          onClick={saveWorkspaceName}
+                        >
+                          <Check className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="size-9 shrink-0 rounded-xl text-zinc-500"
+                          aria-label="Cancel workspace name edit"
+                          title="Cancel"
+                          disabled={updateName.isPending}
+                          onClick={cancelWorkspaceEditing}
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="truncate text-xl font-semibold text-zinc-950 sm:text-2xl">
+                          {isLoadingTenant
+                            ? "Loading organization..."
+                            : tenant?.name ?? "POSKART Workspace"}
+                        </div>
+                        {canEditDetails ? (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="size-8 shrink-0 rounded-lg text-zinc-500 hover:text-[#00357B]"
+                            aria-label="Edit workspace name"
+                            title="Edit workspace name"
+                            disabled={isLoadingTenant}
+                            onClick={() => {
+                              setEditedName(tenant?.name ?? "");
+                              setWorkspaceEditing(true);
+                            }}
+                          >
+                            <PencilLine className="size-4" />
+                          </Button>
+                        ) : null}
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -259,46 +348,8 @@ export function OrganizationCard({
               </div>
             </SettingsPanelBlock>
 
-            {isEditing && canEditDetails && (
+            {workspaceEditing && canEditDetails && (
               <div className="space-y-4">
-                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                  <label className="block text-[11px] font-medium uppercase tracking-wide text-zinc-400">
-                    Edit organization name
-                    <Input
-                      className="mt-1.5"
-                      value={organizationName}
-                      onChange={(event) => setEditedName(event.target.value)}
-                      placeholder="POSKART Admin"
-                    />
-                  </label>
-                  <div className="flex gap-2 self-end">
-                    <Button
-                      className="rounded-xl"
-                      disabled={
-                        !organizationName.trim() ||
-                        organizationName === tenant?.name ||
-                        updateName.isPending
-                      }
-                      onClick={() => {
-                        updateName.mutate(organizationName.trim(), {
-                          onSuccess: () => {
-                            toast.success("Organization name updated");
-                            setEditedName(null);
-                          },
-                          onError: (err) =>
-                            showErrorToast(
-                              "Organization name could not be updated",
-                              err,
-                              "Failed to update organization.",
-                            ),
-                        });
-                      }}
-                    >
-                      {updateName.isPending ? "Saving..." : "Save name"}
-                    </Button>
-                  </div>
-                </div>
-
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -419,10 +470,8 @@ export function OrganizationCard({
             )}
           </div>
         </SettingsCard>
-      ) : null}
 
-      {!isEditing ? (
-        <SettingsCard
+      <SettingsCard
           icon={<CreditCard className="size-4" />}
           title="Subscription"
           description={t("settings.subscriptionDesc")}
@@ -466,50 +515,72 @@ export function OrganizationCard({
             <SubscriptionPaymentsPanel />
           </div>
         </SettingsCard>
-      ) : null}
 
-      {canViewPayout && showPayout ? (
+      {canViewPayout ? (
         <SettingsCard
           icon={<Landmark className="size-4" />}
           title="Payout account"
           description={t("settings.payoutAccountDesc")}
+          action={
+            <Button
+              type="button"
+              variant={payoutEditing ? "outline" : "ghost"}
+              size="sm"
+              className="rounded-xl"
+              onClick={() => setPayoutEditing((editing) => !editing)}
+            >
+              {payoutEditing ? <X className="size-4" /> : <PencilLine className="size-4" />}
+              {payoutEditing ? "Cancel" : "Edit"}
+            </Button>
+          }
         >
           <PayoutAccountForm
+            key={`${payoutAccount?.updatedAt ?? "new-payout-account"}-${payoutEditing}`}
             account={payoutAccount}
             compact
             onSaved={loadPayoutAccount}
-            isEditing={isEditing}
+            isEditing={payoutEditing}
           />
         </SettingsCard>
       ) : null}
 
-      {showTeam ? (
         <SettingsCard
           icon={<UserRound className="size-4" />}
           title="Team"
           description={t("settings.membersDesc")}
           className="border-b-0 pb-0 lg:grid-cols-[180px_minmax(0,1fr)]"
+          action={
+            canManageTeam ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant={teamEditing ? "outline" : "ghost"}
+                  size="sm"
+                  className="rounded-xl"
+                  onClick={() => setTeamEditing((editing) => !editing)}
+                >
+                  {teamEditing ? <Check className="size-4" /> : <PencilLine className="size-4" />}
+                  {teamEditing ? "Done" : "Edit"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="rounded-xl"
+                  onClick={() => setInviteDialogOpen(true)}
+                >
+                  <MailPlus className="size-4" />
+                  Invite
+                </Button>
+              </div>
+            ) : null
+          }
         >
           <div className="space-y-5">
-          {canManageTeam && isEditing && (
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-xl"
-                onClick={() => setInviteDialogOpen(true)}
-              >
-                <MailPlus className="size-4" />
-                Invite member
-              </Button>
-            </div>
-          )}
-
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
             <div
               className={cn(
                 "hidden border-b border-zinc-100 bg-zinc-50/70 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400",
-                isEditing && canManageTeam
+                teamEditing && canManageTeam
                   ? "sm:grid sm:grid-cols-[minmax(0,1fr)_112px_100px_92px] sm:gap-3"
                   : "sm:grid sm:grid-cols-[minmax(0,1fr)_112px_100px] sm:gap-3",
               )}
@@ -517,7 +588,7 @@ export function OrganizationCard({
               <span>User</span>
               <span>Role</span>
               <span>Joined</span>
-              {isEditing && canManageTeam ? <span className="text-right">Actions</span> : null}
+              {teamEditing && canManageTeam ? <span className="text-right">Actions</span> : null}
             </div>
             {memberRows.map((member) => {
               const canRemove =
@@ -528,7 +599,7 @@ export function OrganizationCard({
                   key={member.id}
                   className={cn(
                     "grid gap-3 border-b border-zinc-100 px-4 py-4 last:border-b-0 sm:items-center",
-                    isEditing && canManageTeam
+                    teamEditing && canManageTeam
                       ? "sm:grid-cols-[minmax(0,1fr)_112px_100px_92px]"
                       : "sm:grid-cols-[minmax(0,1fr)_112px_100px]",
                   )}
@@ -552,7 +623,7 @@ export function OrganizationCard({
                     </span>
                   </div>
                   <div>
-                    {isEditing && isOwner && member.email !== myEmail ? (
+                    {teamEditing && isOwner && member.email !== myEmail ? (
                       <Select
                         className="h-8 w-full rounded-xl py-0 text-xs"
                         value={member.role}
@@ -592,7 +663,7 @@ export function OrganizationCard({
                   <span className="hidden text-xs text-zinc-500 sm:block">
                     {formatDate(member.created_at)}
                   </span>
-                  {isEditing && canManageTeam ? (
+                  {teamEditing && canManageTeam ? (
                     <div className="flex items-center gap-1 sm:justify-end">
                       {member.email !== myEmail && isOwner && member.profile_id ? (
                         <Button
@@ -678,7 +749,8 @@ export function OrganizationCard({
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>Invited At</TableHead>
-                    {isEditing && <TableHead className="text-right">Action</TableHead>}
+                    <TableHead>Expires</TableHead>
+                    {teamEditing && <TableHead className="text-right">Action</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -690,7 +762,10 @@ export function OrganizationCard({
                       <TableCell className="text-zinc-500">
                         {formatDate(invitation.created_at)}
                       </TableCell>
-                      {isEditing && (
+                      <TableCell className="text-zinc-500">
+                        {formatDate(invitation.expires_at)}
+                      </TableCell>
+                      {teamEditing && (
                         <TableCell className="text-right">
                           <Button
                             type="button"
@@ -797,9 +872,8 @@ export function OrganizationCard({
           )}
           </div>
         </SettingsCard>
-      ) : null}
 
-      {!isEditing && !isOwner ? (
+      {!isOwner ? (
         <SettingsCard
           icon={<LogOut className="size-4" />}
           title="Leave Workspace"
@@ -840,7 +914,7 @@ export function OrganizationCard({
         </SettingsCard>
       ) : null}
 
-      {!isEditing && isOwner && tenant ? (
+      {isOwner && tenant ? (
         <SettingsCard
           icon={<AlertTriangle className="size-4" />}
           title="Danger Zone"

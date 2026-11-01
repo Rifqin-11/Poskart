@@ -117,7 +117,7 @@ body:has([data-admin-buttons]) button:not([data-sonner-toaster] *):not(.poskart-
 body:has([data-admin-buttons]) [data-admin-tour="navigation"] a.bg-zinc-950 {
   border-color: transparent;
   border-bottom-color: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 10px 24px rgba(9, 9, 11, 0.3);
+  box-shadow: 0 5px 12px rgba(9, 9, 11, 0.18);
 }
 
 body:has([data-admin-buttons]) button:not([data-sonner-toaster] *):not(.poskart-button):not([role="switch"]):not([role="checkbox"]):not([role="combobox"]):not(:disabled):active,

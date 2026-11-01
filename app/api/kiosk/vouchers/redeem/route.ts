@@ -40,6 +40,18 @@ export async function POST(request: Request) {
     if (!match) {
       throw new KioskApiError("Voucher is not allocated to this device.", 403, "VOUCHER_NOT_ALLOCATED");
     }
+
+    const { data: existingRedemption, error: existingRedemptionError } =
+      await context.client
+        .from("voucher_redemptions")
+        .select("id")
+        .eq("organization_id", context.organizationId)
+        .eq("device_id", device.id)
+        .eq("client_event_id", clientEventId)
+        .maybeSingle();
+    if (existingRedemptionError) throw existingRedemptionError;
+    if (existingRedemption) return jsonOk({ duplicate: true });
+
     if (!match.voucher.reusable && match.voucher.redemption_count > 0) {
       throw new KioskApiError("Voucher has already been used.", 409, "VOUCHER_ALREADY_USED");
     }

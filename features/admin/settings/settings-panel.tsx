@@ -6,10 +6,8 @@ import {
   Building2,
   CreditCard,
   Image as ImageIcon,
-  Landmark,
   PencilLine,
   UserRound,
-  UsersRound,
 } from "lucide-react";
 import { showErrorToast, toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
@@ -49,7 +47,6 @@ const SETTINGS_TABS = [
 ] as const;
 
 type SettingsTab = (typeof SETTINGS_TABS)[number]["id"];
-type OrganizationEditSection = "workspace" | "payout" | "team";
 
 function readSettingsTab(value: string | null): SettingsTab | null {
   return SETTINGS_TABS.some((tab) => tab.id === value)
@@ -167,9 +164,6 @@ export function SettingsPanel({
 }) {
   const { t } = useI18n();
   const searchParams = useSearchParams();
-  const [editOrganizationOpen, setEditOrganizationOpen] = useState(false);
-  const [organizationEditSection, setOrganizationEditSection] =
-    useState<OrganizationEditSection>("workspace");
   const [editPaymentOpen, setEditPaymentOpen] = useState(false);
   const [editMediaOpen, setEditMediaOpen] = useState(false);
   const [form, setForm] = useState<SettingsForm>(DEFAULT_SETTINGS_FORM);
@@ -381,7 +375,6 @@ export function SettingsPanel({
 
   const currentMember = members.find((m) => m.email === account.email);
   const myRole = currentMember?.role ?? initialMemberRole ?? "partner";
-  const canEditOrg = myRole === "owner" || myRole === "admin";
   const isOwnerOrAdmin = myRole === "owner" || myRole === "admin";
 
   const visibleTabs = getSettingsTabs(t).filter((tab) => {
@@ -470,20 +463,7 @@ export function SettingsPanel({
     }
 
     if (visibleActiveTab === "organization") {
-      if (!canEditOrg) return null;
-      return (
-        <Button
-          type="button"
-          onClick={() => {
-            setOrganizationEditSection("workspace");
-            setEditOrganizationOpen(true);
-          }}
-          className="rounded-xl"
-        >
-          <PencilLine className="size-4" />
-          Edit organization
-        </Button>
-      );
+      return null;
     }
 
     if (visibleActiveTab === "payment") {
@@ -574,7 +554,6 @@ export function SettingsPanel({
             <OrganizationCard
               myEmail={account.email}
               subscriptionRequired={subscriptionRequired}
-              isEditing={false}
             />
           ) : null}
 
@@ -611,65 +590,6 @@ export function SettingsPanel({
           currentMemberRole={currentMember?.role ?? initialMemberRole ?? undefined}
         />
       )}
-
-      {editOrganizationOpen ? (
-        <Dialog
-          open={editOrganizationOpen}
-          onOpenChange={(open) => setEditOrganizationOpen(open)}
-          title="Edit organization"
-          className="min-h-[min(36rem,calc(100dvh-2rem))] max-w-4xl rounded-3xl"
-        >
-          <div
-            className="mb-3 grid gap-1 rounded-full border border-zinc-200 bg-zinc-50 p-1"
-            style={{
-              gridTemplateColumns: `repeat(${myRole === "owner" ? 3 : 2}, minmax(0, 1fr))`,
-            }}
-          >
-            {[
-              {
-                id: "workspace" as const,
-                label: "Workspace",
-                icon: Building2,
-              },
-              ...(myRole === "owner"
-                ? [
-                    {
-                      id: "payout" as const,
-                      label: "Payout",
-                      icon: Landmark,
-                    },
-                  ]
-                : []),
-              { id: "team" as const, label: "Team", icon: UsersRound },
-            ].map((section) => {
-              const Icon = section.icon;
-              const active = organizationEditSection === section.id;
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => setOrganizationEditSection(section.id)}
-                  className={cn(
-                    "flex items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-white text-zinc-950 shadow-sm"
-                      : "text-zinc-500 hover:bg-white/70 hover:text-zinc-900",
-                  )}
-                >
-                  <Icon className="size-4" />
-                  {section.label}
-                </button>
-              );
-            })}
-          </div>
-          <OrganizationCard
-            myEmail={account.email}
-            subscriptionRequired={subscriptionRequired}
-            isEditing
-            editSection={organizationEditSection}
-          />
-        </Dialog>
-      ) : null}
 
       {editPaymentOpen ? (
         <Dialog

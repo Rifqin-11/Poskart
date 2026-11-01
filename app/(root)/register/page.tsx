@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; next?: string }>;
 }) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
@@ -24,5 +24,12 @@ export default async function RegisterPage({
   }
 
   const params = await searchParams;
-  return <AuthForm mode="register" error={params.error} success={params.success} />;
+  return (
+    <AuthForm
+      mode="register"
+      error={params.error}
+      success={params.success}
+      next={params.next}
+    />
+  );
 }

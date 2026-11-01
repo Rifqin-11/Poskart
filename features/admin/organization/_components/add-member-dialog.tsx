@@ -24,14 +24,18 @@ export function AddMemberDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || email === myEmail) return;
-    onSubmit(email);
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || normalizedEmail === myEmail.trim().toLowerCase()) return;
+    onSubmit(normalizedEmail);
     setEmail("");
   };
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()} title="Invite Team Member">
       <form onSubmit={handleSubmit} className="space-y-4">
+        <p className="text-sm leading-6 text-zinc-500">
+          We&apos;ll email this person a secure invitation link. They must accept it before joining the workspace.
+        </p>
         <label className="block text-xs font-medium text-zinc-600">
           Email Address
           <Input
@@ -45,7 +49,7 @@ export function AddMemberDialog({
         </label>
         <DialogActions
           submitting={submitting}
-          submitDisabled={!email.trim() || email === myEmail}
+          submitDisabled={!email.trim() || email.trim().toLowerCase() === myEmail.trim().toLowerCase()}
           submitLabel="Send Invitation"
           submittingLabel="Sending..."
           onCancel={onClose}
