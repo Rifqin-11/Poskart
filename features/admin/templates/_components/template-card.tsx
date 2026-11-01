@@ -18,6 +18,7 @@ import type { Template } from "@/types/template";
 
 type SortableTemplateCardProps = {
   template: Template;
+  categoryLabel: string;
   viewMode: "grid" | "list";
   dragDisabled?: boolean;
   onDelete: (template: Template) => void;
@@ -27,6 +28,7 @@ type SortableTemplateCardProps = {
 
 export function SortableTemplateCard({
   template,
+  categoryLabel,
   viewMode,
   dragDisabled = false,
   onDelete,
@@ -70,8 +72,11 @@ export function SortableTemplateCard({
                 "col-span-2 sm:col-span-1 sm:flex-col sm:justify-center sm:gap-1 lg:flex-row lg:justify-between lg:gap-3",
             )}
           >
-            <span className="text-xs font-medium text-zinc-400">
-              Urutan {template.displayOrder + 1}
+            <span
+              className="min-w-0 truncate text-xs font-medium text-zinc-400"
+              title={`${categoryLabel} · Urutan ${template.displayOrder + 1}`}
+            >
+              {categoryLabel} · Urutan {template.displayOrder + 1}
             </span>
             {!readOnly && !dragDisabled && (
               <button

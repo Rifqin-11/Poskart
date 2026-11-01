@@ -59,8 +59,11 @@ type FrameTemplateOption = {
   frameImageUrl?: string;
   accentColor?: string;
   photoCount?: number;
+  displayOrder?: number;
+  isDefault?: boolean;
   printLengthMm?: number;
   frameCategoryId?: string;
+  frameCategoryName?: string;
 };
 
 type FrameCategoryOption = {
@@ -1822,6 +1825,22 @@ function FrameTemplateMultiSelect({
                   <p className="truncate text-xs font-semibold text-zinc-950">
                     {template.name}
                   </p>
+                  <div className="mt-1 flex min-w-0 items-center gap-1.5">
+                    <p
+                      className="min-w-0 flex-1 truncate text-[10px] text-zinc-500"
+                      title={template.frameCategoryName ?? "General"}
+                    >
+                      {template.frameCategoryName ?? "General"}
+                      {typeof template.displayOrder === "number"
+                        ? ` · Urutan ${template.displayOrder + 1}`
+                        : ""}
+                    </p>
+                    {template.isDefault ? (
+                      <span className="shrink-0 rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-[#00357B]">
+                        Default
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="mt-1 text-[10px] text-zinc-500">
                     {template.photoCount
                       ? `${template.photoCount} photos`

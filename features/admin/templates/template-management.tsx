@@ -714,6 +714,7 @@ function TemplateGroupSection({
               <SortableTemplateCard
                 key={template.id}
                 template={template}
+                categoryLabel={group.label ?? "General"}
                 viewMode={viewMode}
                 dragDisabled={dragDisabled}
                 onDelete={onDelete}

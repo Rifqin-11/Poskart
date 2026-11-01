@@ -185,8 +185,11 @@ type DeviceFormOptions = {
     frameImageUrl?: string;
     accentColor?: string;
     photoCount?: number;
+    displayOrder?: number;
+    isDefault?: boolean;
     printLengthMm?: number;
     frameCategoryId?: string;
+    frameCategoryName?: string;
   }>;
   frameCategories: Array<{
     id: string;
@@ -294,8 +297,14 @@ export function BoothManagement({
           frameImageUrl: template.frameImageUrl,
           accentColor: template.accentColor,
           photoCount: template.photoCount,
+          displayOrder: template.displayOrder,
+          isDefault: template.isDefault,
           printLengthMm: template.printLengthMm,
           frameCategoryId: template.frameCategoryId,
+          frameCategoryName:
+            frameCategories.find(
+              (category) => category.id === template.frameCategoryId,
+            )?.name ?? "General",
         })),
       frameCategories,
       pricingProducts,
