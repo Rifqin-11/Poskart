@@ -5,9 +5,9 @@ export default function OnboardingLoading() {
         <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-zinc-100">
           <div className="size-5 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-900" />
         </div>
-        <h1 className="mt-5 text-lg font-semibold tracking-tight">Menyiapkan workspace</h1>
+        <h1 className="mt-5 text-lg font-semibold tracking-tight">Preparing your photobooth workspace</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-500">
-          Kami sedang memuat pengaturan akun Anda.
+          We are loading the setup options for your account.
         </p>
       </section>
     </main>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  ArrowUpRight,
   Check,
   CreditCard,
   MonitorSmartphone,
@@ -29,6 +30,12 @@ export function DashboardSetupGuide({
   const hasDevice = devices.length > 0;
   const hasConfiguredDevice = devices.some(hasMinimumDeviceConfiguration);
   const hasReadyDevice = devices.some(isDeviceReady);
+  const deviceToConfigure =
+    devices.find((device) => !hasMinimumDeviceConfiguration(device)) ??
+    devices[0];
+  const configurationHref = deviceToConfigure
+    ? `/devices?device=${encodeURIComponent(deviceToConfigure.id)}`
+    : "/devices?action=create";
   const steps = [
     {
       label: t("dashboard.setupSubscription"),
@@ -48,7 +55,7 @@ export function DashboardSetupGuide({
       label: t("dashboard.setupConfiguration"),
       description: t("dashboard.setupConfigurationDesc"),
       done: hasConfiguredDevice,
-      href: "/devices",
+      href: configurationHref,
       icon: Palette,
     },
     {
@@ -94,9 +101,11 @@ export function DashboardSetupGuide({
           {steps.map((step) => {
             const Icon = step.icon;
             return (
-              <div
+              <Link
+                href={step.href}
                 key={step.label}
-                className={`flex min-w-0 items-start gap-3 rounded-2xl border p-3.5 ${
+                aria-label={`${step.label}: ${step.description}`}
+                className={`group flex min-w-0 items-start gap-3 rounded-2xl border p-3.5 transition-[border-color,background-color,box-shadow,transform] hover:-translate-y-px hover:border-[#00357B]/25 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#014EB4] focus-visible:ring-offset-2 ${
                   step.done
                     ? "border-emerald-100 bg-emerald-50/40"
                     : "border-zinc-100 bg-white"
@@ -111,13 +120,14 @@ export function DashboardSetupGuide({
                 >
                   {step.done ? <Check className="size-4" /> : <Icon className="size-4" />}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-zinc-950">{step.label}</p>
-                  <p className="mt-0.5 text-xs leading-5 text-zinc-500">
-                    {step.description}
-                  </p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-zinc-950">{step.label}</p>
+                    <ArrowUpRight className="mt-0.5 size-3.5 shrink-0 text-zinc-300 transition-colors group-hover:text-[#00357B]" />
+                  </div>
+                  <p className="mt-0.5 text-xs leading-5 text-zinc-500">{step.description}</p>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
