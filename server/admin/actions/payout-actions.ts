@@ -1,6 +1,6 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
+import { createHmac, randomInt, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import {
   getAdminContext,
@@ -8,6 +8,7 @@ import {
 } from "@/server/admin/context";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createAdminNotification } from "@/server/admin/notifications";
+import { sendPayoutAccountOtpEmail } from "@/server/admin/payout-account-otp-email";
 import {
   normalizeGatewayFeeSettings,
 } from "@/lib/payment-gateway-fee";
@@ -126,6 +127,101 @@ const DEFAULT_PAYOUT_SETTINGS: PayoutSettings = {
 
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 50;
+
+type PayoutAccountOtpResult = PayoutActionState & {
+  challengeId?: string;
+  maskedEmail?: string;
+  retryAfterSeconds?: number;
+};
+
+type ConfirmPayoutAccountOtpResult = PayoutActionState & {
+  requiresNewCode?: boolean;
+};
+
+function payoutOtpHmac(value: string) {
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!secret) throw new Error("Payout account verification is unavailable.");
+  return createHmac("sha256", secret).update(value).digest("hex");
+}
+
+function normalizePayoutAccount(values: SavePayoutAccountInput) {
+  return {
+    bankName: values.bankName.trim(),
+    accountNumber: values.accountNumber.trim(),
+    accountHolderName: values.accountHolderName.trim(),
+  };
+}
+
+function validatePayoutAccount(
+  account: ReturnType<typeof normalizePayoutAccount>,
+) {
+  if (!account.bankName || !account.accountNumber || !account.accountHolderName) {
+    return "Detail rekening payout wajib diisi.";
+  }
+  if (account.bankName.length > 120) return "Nama bank maksimal 120 karakter.";
+  if (account.accountNumber.length > 64) return "Nomor rekening maksimal 64 karakter.";
+  if (account.accountHolderName.length > 160) {
+    return "Nama pemilik rekening maksimal 160 karakter.";
+  }
+  return null;
+}
+
+function payoutAccountPayloadHash(
+  organizationId: string,
+  requestedBy: string,
+  values: ReturnType<typeof normalizePayoutAccount>,
+) {
+  return payoutOtpHmac(
+    JSON.stringify([
+      organizationId,
+      requestedBy,
+      values.bankName,
+      values.accountNumber,
+      values.accountHolderName,
+    ]),
+  );
+}
+
+function maskEmail(email: string) {
+  const [localPart, domain] = email.trim().split("@");
+  if (!localPart || !domain) return "your organization owner email";
+  const visibleLocal = localPart.length > 2 ? localPart.slice(0, 2) : localPart.slice(0, 1);
+  return `${visibleLocal}${"*".repeat(Math.max(3, localPart.length - visibleLocal.length))}@${domain}`;
+}
+
+async function getOrganizationOwnerEmail(
+  organizationId: string,
+  adminClient: ReturnType<typeof createSupabaseAdminClient>,
+) {
+  const { data: ownerMembership, error: membershipError } = await adminClient
+    .from("organization_members")
+    .select("profile_id")
+    .eq("organization_id", organizationId)
+    .eq("role", "owner")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (membershipError) {
+    throw new Error(`Unable to load organization owner: ${membershipError.message}`);
+  }
+  if (!ownerMembership?.profile_id) {
+    throw new Error("Email pemilik organisasi tidak ditemukan.");
+  }
+
+  const { data, error } = await adminClient.auth.admin.getUserById(
+    ownerMembership.profile_id,
+  );
+  if (error) throw new Error("Email pemilik organisasi tidak dapat diverifikasi.");
+  if (!data.user?.email) {
+    throw new Error("Email pemilik organisasi tidak ditemukan.");
+  }
+
+  return {
+    profileId: ownerMembership.profile_id as string,
+    email: data.user.email,
+  };
+}
 
 function normalizePagination(input?: PaginationInput) {
   const page = Math.max(1, Math.floor(Number(input?.page ?? 1)));
@@ -905,69 +1001,251 @@ export async function getMyPendingSettlementEntries(
   );
 }
 
-export async function saveMyPayoutAccount(
+export async function requestPayoutAccountChangeOtp(
   values: SavePayoutAccountInput,
-): Promise<PayoutActionState> {
+): Promise<PayoutAccountOtpResult> {
   try {
-    const { supabase, organizationId, role } = await getOrganizationContext({
+    const { user, organizationId, role } = await getOrganizationContext({
       requireManager: true,
     });
 
-    if (role === "akuntan") {
+    if (role !== "owner" && role !== "admin") {
       return {
         success: false,
-        error: "Only owners or admins can update the payout account.",
+        error: "Hanya owner atau admin yang dapat mengubah rekening payout.",
       };
     }
 
-    const bankName = values.bankName.trim();
-    const accountNumber = values.accountNumber.trim();
-    const accountHolderName = values.accountHolderName.trim();
+    const account = normalizePayoutAccount(values);
+    const accountError = validatePayoutAccount(account);
+    if (accountError) return { success: false, error: accountError };
 
-    if (!bankName || !accountNumber || !accountHolderName) {
-      return { success: false, error: "Payout account details are required." };
+    const adminClient = createSupabaseAdminClient();
+    const owner = await getOrganizationOwnerEmail(organizationId, adminClient);
+    const { data: slotResult, error: slotError } = await adminClient.rpc(
+      "take_payout_account_change_otp_slot",
+      {
+        p_organization_id: organizationId,
+        p_requested_by: user.id,
+      },
+    );
+    if (slotError) {
+      throw new Error("OTP belum dapat dikirim. Silakan coba lagi nanti.");
+    }
+    const slot = slotResult as {
+      allowed?: boolean;
+      retry_after_seconds?: number;
+    } | null;
+    if (slot?.allowed !== true) {
+      const retryAfterSeconds = Math.max(1, Number(slot?.retry_after_seconds ?? 60));
+      const { data: pendingChallenge } = await adminClient
+        .from("payout_account_change_otps")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("requested_by", user.id)
+        .is("consumed_at", null)
+        .maybeSingle();
+      return {
+        success: false,
+        error: `Tunggu ${retryAfterSeconds} detik sebelum meminta OTP baru.`,
+        challengeId: pendingChallenge?.id,
+        maskedEmail: maskEmail(owner.email),
+        retryAfterSeconds,
+      };
     }
 
-    await supabase
-      .from("organization_payout_accounts")
-      .update({ is_default: false, updated_at: new Date().toISOString() })
-      .eq("organization_id", organizationId);
+    const code = randomInt(0, 1_000_000).toString().padStart(6, "0");
+    const challengeId = randomUUID();
+    const payloadHash = payoutAccountPayloadHash(organizationId, user.id, account);
+    const codeHash = payoutOtpHmac(`${challengeId}:${code}`);
+    const { data: issueResult, error: issueError } = await adminClient.rpc(
+      "issue_payout_account_change_otp",
+      {
+        p_challenge_id: challengeId,
+        p_organization_id: organizationId,
+        p_requested_by: user.id,
+        p_owner_profile_id: owner.profileId,
+        p_code_hash: codeHash,
+        p_payload_hash: payloadHash,
+      },
+    );
+    if (issueError) {
+      throw new Error("OTP belum dapat dibuat. Silakan coba lagi.");
+    }
 
-    const existing = await getDefaultPayoutAccount(supabase, organizationId);
-    const payload = {
-      organization_id: organizationId,
-      bank_name: bankName,
-      account_number: accountNumber,
-      account_holder_name: accountHolderName,
-      is_default: true,
-      updated_at: new Date().toISOString(),
+    const issue = issueResult as {
+      sent?: boolean;
+      challenge_id?: string;
+      retry_after_seconds?: number;
+    } | null;
+    if (issue?.sent !== true || !issue.challenge_id) {
+      const retryAfterSeconds = Math.max(1, Number(issue?.retry_after_seconds ?? 60));
+      return {
+        success: false,
+        error: `Tunggu ${retryAfterSeconds} detik sebelum meminta OTP baru.`,
+        challengeId: issue?.challenge_id,
+        maskedEmail: maskEmail(owner.email),
+        retryAfterSeconds,
+      };
+    }
+
+    const { data: organization } = await adminClient
+      .from("organizations")
+      .select("name")
+      .eq("id", organizationId)
+      .maybeSingle();
+
+    try {
+      await sendPayoutAccountOtpEmail({
+        email: owner.email,
+        organizationName: organization?.name ?? "POSKART organization",
+        code,
+        bankName: account.bankName,
+        accountHolderName: account.accountHolderName,
+        accountNumberLastFour: account.accountNumber.replace(/\s/g, "").slice(-4),
+      });
+    } catch (emailError) {
+      await adminClient
+        .from("payout_account_change_otps")
+        .update({ consumed_at: new Date().toISOString() })
+        .eq("id", issue.challenge_id)
+        .eq("organization_id", organizationId)
+        .eq("requested_by", user.id);
+      return {
+        success: false,
+        error:
+          emailError instanceof Error
+            ? emailError.message
+            : "OTP gagal dikirim ke email owner. Silakan coba lagi.",
+      };
+    }
+
+    return {
+      success: true,
+      challengeId: issue.challenge_id,
+      maskedEmail: maskEmail(owner.email),
     };
-
-    const { error } = existing
-      ? await supabase
-          .from("organization_payout_accounts")
-          .update(payload)
-          .eq("id", existing.id)
-          .eq("organization_id", organizationId)
-      : await supabase.from("organization_payout_accounts").insert(payload);
-
-    if (error) {
-      return {
-        success: false,
-        error: `Failed to save payout account: ${error.message}`,
-      };
-    }
-
-    revalidatePath("/withdraw");
-    revalidatePath("/settings");
-    return { success: true };
   } catch (error) {
     return {
       success: false,
       error:
         error instanceof Error
           ? error.message
-          : "Failed to save payout account.",
+          : "OTP gagal dikirim ke email owner.",
+    };
+  }
+}
+
+export async function cancelPayoutAccountChangeOtp(
+  challengeId: string,
+): Promise<PayoutActionState> {
+  try {
+    const { user, organizationId, role } = await getOrganizationContext({
+      requireManager: true,
+    });
+    if (role !== "owner" && role !== "admin") {
+      return { success: false, error: "Tidak memiliki izin untuk membatalkan verifikasi." };
+    }
+    if (!/^[0-9a-f-]{36}$/i.test(challengeId)) {
+      return { success: false, error: "Sesi verifikasi tidak valid." };
+    }
+
+    const adminClient = createSupabaseAdminClient();
+    const { error } = await adminClient
+      .from("payout_account_change_otps")
+      .update({ consumed_at: new Date().toISOString() })
+      .eq("id", challengeId)
+      .eq("organization_id", organizationId)
+      .eq("requested_by", user.id)
+      .is("consumed_at", null);
+    if (error) throw new Error("Sesi OTP tidak dapat dibatalkan.");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Sesi OTP tidak dapat dibatalkan.",
+    };
+  }
+}
+
+export async function confirmPayoutAccountChangeOtp(input: {
+  challengeId: string;
+  code: string;
+  account: SavePayoutAccountInput;
+}): Promise<ConfirmPayoutAccountOtpResult> {
+  try {
+    const { user, organizationId, role } = await getOrganizationContext({
+      requireManager: true,
+    });
+    if (role !== "owner" && role !== "admin") {
+      return {
+        success: false,
+        error: "Hanya owner atau admin yang dapat mengubah rekening payout.",
+      };
+    }
+
+    if (!/^[0-9a-f-]{36}$/i.test(input.challengeId)) {
+      return { success: false, error: "Sesi verifikasi tidak valid. Minta OTP baru." };
+    }
+    const code = input.code.trim();
+    if (!/^\d{6}$/.test(code)) {
+      return { success: false, error: "Masukkan kode OTP 6 digit." };
+    }
+
+    const account = normalizePayoutAccount(input.account);
+    const accountError = validatePayoutAccount(account);
+    if (accountError) return { success: false, error: accountError };
+
+    const adminClient = createSupabaseAdminClient();
+    const owner = await getOrganizationOwnerEmail(organizationId, adminClient);
+    const { data, error } = await adminClient.rpc(
+      "verify_and_save_payout_account_change",
+      {
+        p_challenge_id: input.challengeId,
+        p_organization_id: organizationId,
+        p_requested_by: user.id,
+        p_owner_profile_id: owner.profileId,
+        p_code_hash: payoutOtpHmac(`${input.challengeId}:${code}`),
+        p_payload_hash: payoutAccountPayloadHash(organizationId, user.id, account),
+        p_bank_name: account.bankName,
+        p_account_number: account.accountNumber,
+        p_account_holder_name: account.accountHolderName,
+      },
+    );
+
+    if (error) {
+      throw new Error("Verifikasi OTP gagal. Silakan minta kode baru.");
+    }
+
+    switch (data) {
+      case "saved":
+        revalidatePath("/withdraw");
+        revalidatePath("/settings");
+        return { success: true };
+      case "invalid_code":
+        return { success: false, error: "Kode OTP salah. Periksa email owner lalu coba lagi." };
+      case "too_many_attempts":
+        return { success: false, error: "Batas percobaan tercapai. Minta OTP baru.", requiresNewCode: true };
+      case "expired":
+        return { success: false, error: "Kode OTP sudah kedaluwarsa. Minta kode baru.", requiresNewCode: true };
+      case "details_changed":
+        return { success: false, error: "Detail rekening berubah. Minta OTP baru untuk detail ini.", requiresNewCode: true };
+      case "owner_changed":
+        return { success: false, error: "Pemilik organisasi berubah. Minta OTP baru.", requiresNewCode: true };
+      case "unauthorized":
+        return { success: false, error: "Akses pengubahan rekening payout sudah dicabut.", requiresNewCode: true };
+      case "invalid_details":
+        return { success: false, error: "Detail rekening payout tidak valid." };
+      default:
+        return { success: false, error: "OTP tidak valid atau sudah digunakan. Minta kode baru.", requiresNewCode: true };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Rekening payout tidak dapat disimpan.",
     };
   }
 }
