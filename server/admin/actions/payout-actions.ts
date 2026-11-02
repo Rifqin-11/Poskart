@@ -136,6 +136,7 @@ type PayoutAccountOtpResult = PayoutActionState & {
 
 type ConfirmPayoutAccountOtpResult = PayoutActionState & {
   requiresNewCode?: boolean;
+  invalidCode?: boolean;
 };
 
 function payoutOtpHmac(value: string) {
@@ -1223,7 +1224,11 @@ export async function confirmPayoutAccountChangeOtp(input: {
         revalidatePath("/settings");
         return { success: true };
       case "invalid_code":
-        return { success: false, error: "Kode OTP salah. Periksa email owner lalu coba lagi." };
+        return {
+          success: false,
+          error: "Kode OTP salah. Silakan coba lagi.",
+          invalidCode: true,
+        };
       case "too_many_attempts":
         return { success: false, error: "Batas percobaan tercapai. Minta OTP baru.", requiresNewCode: true };
       case "expired":
