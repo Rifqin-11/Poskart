@@ -102,7 +102,7 @@ $$;
 -- Saving is only allowed through the OTP-verifying service-role function below.
 drop policy if exists "Organization managers can manage payout accounts"
   on public.organization_payout_accounts;
-revoke insert, update, delete on public.organization_payout_accounts
+revoke all on public.organization_payout_accounts
   from public, anon, authenticated;
 grant select on public.organization_payout_accounts to authenticated;
 grant all on public.organization_payout_accounts to service_role;
