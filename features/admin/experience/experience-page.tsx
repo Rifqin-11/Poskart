@@ -10,7 +10,7 @@ export function ExperiencePage() {
   return (
     <>
       <PageHeader title={t("nav.experience")} description={t("experience.description")} />
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="w-full">
         <GalleryExperience />
       </div>
     </>
