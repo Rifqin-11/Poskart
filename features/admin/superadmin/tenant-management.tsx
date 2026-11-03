@@ -13,6 +13,7 @@ import {
   MessageSquareMore,
 } from "lucide-react";
 import { showErrorToast, toast } from "@/lib/toast";
+import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +46,7 @@ import {
   useUpdateProfile,
   useUpdateTenant,
   useBroadcastAdminNotification,
+  useSuperAdminSubscriptionPayments,
 } from "@/features/admin/superadmin/use-superadmin";
 import {
   useSubscriptionPlans,
@@ -117,6 +119,12 @@ export function TenantManagement() {
   const deleteTenant = useDeleteTenant();
   const updateProfile = useUpdateProfile();
   const updatePlan = useUpdateSubscriptionPlan();
+  const subscriptionPayments = useSuperAdminSubscriptionPayments({
+    page: 1,
+    pageSize: 1,
+    status: "paid",
+    gateway: "all",
+  });
 
   const [editing, setEditing] = useState<Organization | null>(null);
   const [editingProfile, setEditingProfile] = useState<AdminUserProfile | null>(
@@ -214,7 +222,7 @@ export function TenantManagement() {
       />
       {activeSection === "overview" ? (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <SuperAdminMetricCard
               icon={Building2}
               label="Organizations"
@@ -229,9 +237,19 @@ export function TenantManagement() {
             />
             <SuperAdminMetricCard
               icon={ShieldCheck}
-              label="Active subscriptions"
+              label="SaaS subscribers"
               value={activeSubscriptions.toLocaleString()}
-              description="Active or trialing plans"
+              description="Active or trialing paid plans"
+            />
+            <SuperAdminMetricCard
+              icon={WalletCards}
+              label="SaaS revenue"
+              value={
+                subscriptionPayments.isLoading || subscriptionPayments.isError
+                  ? "—"
+                  : formatCurrency(subscriptionPayments.data?.summary.paidAmount ?? 0)
+              }
+              description="All-time successful payments"
             />
             <SuperAdminMetricCard
               icon={WalletCards}
