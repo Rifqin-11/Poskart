@@ -4,6 +4,7 @@ import { encodedRedirect } from "@/lib/auth/redirect";
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { recordSignupCompleted } from "@/server/product-usage";
 
 function readField(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -69,6 +70,7 @@ export async function signUpAction(formData: FormData) {
   const email = readField(formData, "email");
   const password = readPassword(formData);
   const fullName = readField(formData, "fullName");
+  const usageSessionId = readField(formData, "usageSessionId");
   const next = safeNextPath(readField(formData, "next"), "/onboarding");
   const registerPath = next === "/onboarding"
     ? "/register"
@@ -92,7 +94,7 @@ export async function signUpAction(formData: FormData) {
 
   const supabase = await createClient();
   const siteUrl = await getSiteUrl();
-  const { error } = await supabase.auth.signUp({
+  const { data: signUpData, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -106,6 +108,12 @@ export async function signUpAction(formData: FormData) {
   if (error) {
     return encodedRedirect("error", registerPath, getSignUpErrorMessage(error.message));
   }
+
+  await recordSignupCompleted({
+    userId: signUpData.user?.id,
+    sessionId: usageSessionId || null,
+    provider: "email",
+  });
 
   return encodedRedirect(
     "success",
@@ -130,11 +138,14 @@ export async function signInWithGoogleAction(formData: FormData) {
   const supabase = await createClient();
   const siteUrl = await getSiteUrl();
   const next = safeNextPath(readField(formData, "next"));
+  const intent = readField(formData, "intent");
   const loginPath = next === "/dashboard" ? "/login" : `/login?next=${encodeURIComponent(next)}`;
+  const callbackParams = new URLSearchParams({ next });
+  if (intent === "signup") callbackParams.set("signup", "1");
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`,
+      redirectTo: `${siteUrl}/auth/callback?${callbackParams.toString()}`,
     },
   });
 

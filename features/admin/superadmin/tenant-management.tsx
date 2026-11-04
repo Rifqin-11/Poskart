@@ -11,6 +11,7 @@ import {
   Users,
   WalletCards,
   MessageSquareMore,
+  Activity,
 } from "lucide-react";
 import { showErrorToast, toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/utils";
@@ -72,6 +73,7 @@ import { NotificationManagement } from "./_components/notification-management";
 import { ProductFeedbackManagement } from "./_components/product-feedback-management";
 import { SubscriptionPaymentManagement } from "./_components/subscription-payment-management";
 import { SubscriptionCampaignManagement } from "./_components/subscription-campaign-management";
+import { ProductUsageManagement } from "./_components/product-usage-management";
 import {
   DEFAULT_ORGANIZATION_FEATURES,
   normalizeOrganizationFeatures,
@@ -89,7 +91,12 @@ type AdminUserProfile = {
 };
 
 type SuperAdminSection =
-  "overview" | "organizations" | "SaaS" | "requests" | "error-logs";
+  | "overview"
+  | "organizations"
+  | "SaaS"
+  | "requests"
+  | "error-logs"
+  | "usage";
 
 const EMPTY_TENANT: TenantInput = {
   name: "",
@@ -283,6 +290,12 @@ export function TenantManagement() {
               title="Error logs"
               description="Monitor device errors and inspect Supabase, Next.js, API, and Server Action failures."
               onClick={() => setActiveSection("error-logs")}
+            />
+            <SuperAdminSectionButton
+              icon={Activity}
+              title="Usage analytics"
+              description="See the registration-to-activation funnel, page usage, and device pairing drop-offs."
+              onClick={() => setActiveSection("usage")}
             />
           </div>
 
@@ -626,6 +639,16 @@ export function TenantManagement() {
               </Card>
             </TabsContent>
           </Tabs>
+        </div>
+      ) : null}
+      {activeSection === "usage" ? (
+        <div className="space-y-4">
+          <SuperAdminBackHeader
+            title="Usage analytics"
+            description="Understand where trial organizations stop using POSKART."
+            onBack={() => setActiveSection("overview")}
+          />
+          <ProductUsageManagement />
         </div>
       ) : null}
       {activeSection === "SaaS" ? (

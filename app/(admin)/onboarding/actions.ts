@@ -2,6 +2,7 @@
 
 import { encodedRedirect } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/supabase/server";
+import { recordAuthenticatedProductUsageEvent } from "@/server/product-usage";
 
 function readField(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -42,6 +43,12 @@ export async function createOrganizationAction(formData: FormData) {
       "We could not create the workspace. Check the name and try again.",
     );
   }
+
+  await recordAuthenticatedProductUsageEvent({
+    eventName: "onboarding_completed",
+    source: "onboarding",
+    metadata: { path: "create" },
+  });
 
   return encodedRedirect(
     "success",

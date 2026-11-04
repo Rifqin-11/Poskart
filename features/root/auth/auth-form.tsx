@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { ArrowRight, Eye, EyeOff, LoaderCircle, LockKeyhole } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { signInAction, signInWithGoogleAction, signUpAction } from "@/app/auth/actions";
 import { Input } from "@/components/ui/input";
 import { LandingButton } from "@/components/ui/landing-button";
+import { getProductUsageSessionId } from "@/lib/product-usage-client";
 
 export function AuthForm({
   mode,
@@ -21,6 +22,14 @@ export function AuthForm({
   const isLogin = mode === "login";
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const usageSessionInputRef = useRef<HTMLInputElement>(null);
+
+  function handleEmailSubmit() {
+    setIsSubmitting(true);
+    if (!isLogin && usageSessionInputRef.current) {
+      usageSessionInputRef.current.value = getProductUsageSessionId() ?? "";
+    }
+  }
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[#F7F8FA] p-4 sm:p-6 lg:p-8">
@@ -124,6 +133,7 @@ export function AuthForm({
 
             <form action={signInWithGoogleAction} onSubmit={() => setIsSubmitting(true)} className="mt-6">
               {next ? <input type="hidden" name="next" value={next} /> : null}
+              <input type="hidden" name="intent" value={isLogin ? "login" : "signup"} />
               <LandingButton
                 variant="secondary"
                 size="lg"
@@ -144,8 +154,11 @@ export function AuthForm({
               <span className="h-px flex-1 bg-zinc-200" />
             </div>
 
-            <form action={isLogin ? signInAction : signUpAction} onSubmit={() => setIsSubmitting(true)} className="space-y-4">
+            <form action={isLogin ? signInAction : signUpAction} onSubmit={handleEmailSubmit} className="space-y-4">
               {next ? <input type="hidden" name="next" value={next} /> : null}
+              {!isLogin ? (
+                <input ref={usageSessionInputRef} type="hidden" name="usageSessionId" defaultValue="" />
+              ) : null}
               {!isLogin ? (
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-semibold text-zinc-700">Full name</span>

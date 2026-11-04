@@ -4,6 +4,7 @@ import { getAdminContext, getAdminProfileRole } from "@/server/admin/context";
 import { getServiceRoleClient } from "@/lib/supabase/server";
 import { createAdminNotification } from "@/server/admin/notifications";
 import { revalidatePath } from "next/cache";
+import { recordAuthenticatedProductUsageEvent } from "@/server/product-usage";
 import type {
   TrialRequest,
   TrialRequestFilters,
@@ -257,6 +258,14 @@ export async function submitTrialRequest(input?: {
     already_active: boolean;
   };
   if (!result.auto_rejected) {
+    if (!result.already_active) {
+      await recordAuthenticatedProductUsageEvent({
+        eventName: "trial_started",
+        source: "admin",
+        success: true,
+        metadata: { already_active: false },
+      });
+    }
     revalidatePath("/dashboard");
     revalidatePath("/trial");
     if (!result.already_active) {

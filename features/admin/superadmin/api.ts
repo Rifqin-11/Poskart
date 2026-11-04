@@ -40,6 +40,7 @@ import {
   type AdminSubscriptionPaymentStatus,
   type AdminSubscriptionPaymentOverrideInput,
 } from "@/server/admin/actions/superadmin-subscription-payment-actions";
+import { getSuperAdminProductUsageAnalytics } from "@/server/admin/actions/product-usage-actions";
 
 export const superadminApi = {
   getOrganizations: organizationService.getOrganizations,
@@ -70,6 +71,7 @@ export const superadminApi = {
   checkSubscriptionPayment,
   overrideSubscriptionPayment,
   exportSubscriptionPayments,
+  getProductUsageAnalytics: getSuperAdminProductUsageAnalytics,
 };
 
 export type { TenantInput };

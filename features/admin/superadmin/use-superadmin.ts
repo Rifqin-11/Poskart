@@ -32,6 +32,15 @@ export function useSuperAdminSystemLogs() {
   });
 }
 
+export function useSuperAdminProductUsage(days: number) {
+  return useQuery({
+    queryKey: adminQueryKeys.superAdminProductUsage(days),
+    queryFn: () => superadminApi.getProductUsageAnalytics(days),
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
 export function useCreateTenant() {
   const queryClient = useQueryClient();
   return useMutation({

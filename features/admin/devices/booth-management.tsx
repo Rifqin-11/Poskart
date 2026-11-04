@@ -41,6 +41,7 @@ import {
   useTemplates,
 } from "@/features/admin/templates/use-templates";
 import { cn } from "@/lib/utils";
+import { trackProductUsageEvent } from "@/lib/product-usage-client";
 import { usePermission } from "@/features/admin/hooks/use-permission";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { type DictionaryKey } from "@/lib/i18n/dictionaries";
@@ -339,6 +340,13 @@ export function BoothManagement({
     setCreatedDeviceId(null);
     setPairingStep("prepare");
     setPairingDialogOpen(true);
+    trackProductUsageEvent({
+      eventName: "device_pairing_started",
+      pagePath: "/devices",
+      source: "admin",
+      success: true,
+      metadata: { surface: "pairing_dialog" },
+    });
   };
 
   const confirmPairingCode = () => {
@@ -348,13 +356,37 @@ export function BoothManagement({
         setPairingId(nextPairingId);
         setCreatedDeviceId(deviceId);
         setPairingStep("paired");
+        trackProductUsageEvent({
+          eventName: "device_pairing_success",
+          pagePath: "/devices",
+          source: "admin",
+          success: true,
+          metadata: { surface: "pairing_dialog" },
+        });
       },
-      onError: (error) =>
+      onError: (error) => {
+        const message = error instanceof Error ? error.message.toLowerCase() : "";
+        const errorCode = message.includes("expired")
+          ? "PAIRING_EXPIRED"
+          : message.includes("invalid")
+            ? "PAIRING_INVALID_CODE"
+            : message.includes("attempt") || message.includes("too many")
+              ? "PAIRING_ATTEMPT_LIMIT"
+              : "PAIRING_VALIDATION_FAILED";
+        trackProductUsageEvent({
+          eventName: "device_pairing_failed",
+          pagePath: "/devices",
+          source: "admin",
+          success: false,
+          errorCode,
+          metadata: { surface: "pairing_dialog" },
+        });
         showErrorToast(
           "Gagal memvalidasi pairing device",
           error,
           t("devices.pairingFailed"),
-        ),
+        );
+      },
     });
   };
 

@@ -16,6 +16,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { previewSubscriptionPromotion } from "@/app/(admin)/checkout/promotion-actions";
 import type { SubscriptionPromotionQuote } from "@/types/subscription-campaign";
+import { trackProductUsageEvent } from "@/lib/product-usage-client";
 
 type PaymentGateway = "duitku" | "midtrans";
 type GatewayMode = PaymentGateway | "both";
@@ -142,6 +143,16 @@ export function CheckoutContent({
     const formData = new FormData(event.currentTarget);
     setCheckoutError(null);
     setCheckoutMessage(null);
+    trackProductUsageEvent({
+      eventName: "checkout_started",
+      pagePath: "/checkout",
+      source: "billing",
+      success: true,
+      metadata: {
+        plan_id: plan.id,
+        device_count: quote.deviceCount,
+      },
+    });
 
     startTransition(async () => {
       const result = await createSubscriptionOrderAction(formData);

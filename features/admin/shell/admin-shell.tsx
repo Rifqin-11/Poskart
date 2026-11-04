@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/stores/builder-store";
 import { useI18n } from "@/lib/i18n/i18n-provider";
 import { AdminGuidedTour } from "@/features/admin/tutorial/admin-guided-tour";
+import { trackProductUsageEvent } from "@/lib/product-usage-client";
 
 type AiChatMessage = {
   id: number;
@@ -149,6 +150,20 @@ export function AdminShell({
   // since the app shell (not the document) is now the scroll container.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, left: 0 });
+    trackProductUsageEvent({
+      eventName: "page_viewed",
+      pagePath: pathname,
+      source: "admin",
+    });
+    if (pathname === "/pricing") {
+      trackProductUsageEvent({
+        eventName: "pricing_viewed",
+        pagePath: pathname,
+        source: "admin",
+        success: true,
+        metadata: { surface: "admin_pricing" },
+      });
+    }
   }, [pathname]);
 
   return (
